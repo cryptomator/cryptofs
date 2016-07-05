@@ -83,8 +83,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public AsynchronousFileChannel newAsynchronousFileChannel(Path path, Set<? extends OpenOption> options, ExecutorService executor, FileAttribute<?>... attrs) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+		return new AsyncDelegatingFileChannel(newFileChannel(path, options, attrs), executor);
 	}
 
 	@Override
