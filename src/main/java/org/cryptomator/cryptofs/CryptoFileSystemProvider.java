@@ -19,7 +19,6 @@ import java.nio.file.CopyOption;
 import java.nio.file.DirectoryStream;
 import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileStore;
-import java.nio.file.FileSystem;
 import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
@@ -33,31 +32,57 @@ import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.spi.FileSystemProvider;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
+import org.cryptomator.cryptolib.CryptorProvider;
+import org.cryptomator.cryptolib.ReseedingSecureRandom;
+
 public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	/**
-	 * example: cryptomator:///Path/to/vault#/path/inside/vault
+	 * example: cryptomator://user:pass@localhost/Path/to/vault#/path/inside/vault
 	 */
 	private static final String URI_SCHEME = "cryptomator";
 
-	final ConcurrentHashMap<Path, CryptoFileSystem> fileSystems = new ConcurrentHashMap<>();
+	private final CryptorProvider cryptorProvider;
+	private final ConcurrentHashMap<Path, CryptoFileSystem> fileSystems = new ConcurrentHashMap<>();
+
+	public CryptoFileSystemProvider(SecureRandom csprng) {
+		this.cryptorProvider = new CryptorProvider(csprng);
+	}
+
+	public CryptoFileSystemProvider() {
+		this(defaultCsprng());
+	}
+
+	private static SecureRandom defaultCsprng() {
+		try {
+			return new ReseedingSecureRandom(SecureRandom.getInstanceStrong(), SecureRandom.getInstance("SHA1PRNG"), 1 << 30, 55);
+		} catch (NoSuchAlgorithmException e) {
+			throw new IllegalStateException("Java platform is required to support used instances.", e);
+		}
+	}
 
 	@Override
 	public String getScheme() {
 		return URI_SCHEME;
 	}
 
+	ConcurrentHashMap<Path, CryptoFileSystem> getFileSystems() {
+		return fileSystems;
+	}
+
 	@Override
-	public FileSystem newFileSystem(URI uri, Map<String, ?> env) throws IOException {
+	public CryptoFileSystem newFileSystem(URI uri, Map<String, ?> env) throws IOException {
 		Path pathToVault = FileSystems.getDefault().getPath(uri.getPath());
-		return fileSystems.compute(pathToVault, (key, value) -> {
+		return getFileSystems().compute(pathToVault, (key, value) -> {
 			if (value == null) {
-				return new CryptoFileSystem(this, key);
+				return new CryptoFileSystem(this, cryptorProvider, key, extractPassphrase(uri));
 			} else {
 				throw new FileSystemAlreadyExistsException();
 			}
@@ -65,9 +90,9 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	@Override
-	public FileSystem getFileSystem(URI uri) {
+	public CryptoFileSystem getFileSystem(URI uri) {
 		Path pathToVault = FileSystems.getDefault().getPath(uri.getPath());
-		return fileSystems.computeIfAbsent(pathToVault, key -> {
+		return getFileSystems().computeIfAbsent(pathToVault, key -> {
 			throw new FileSystemNotFoundException();
 		});
 	}
@@ -75,10 +100,15 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	@Override
 	public Path getPath(URI uri) {
 		Path pathToVault = FileSystems.getDefault().getPath(uri.getPath());
-		CryptoFileSystem fs = fileSystems.computeIfAbsent(pathToVault, key -> {
-			return new CryptoFileSystem(this, key);
+		CryptoFileSystem fs = getFileSystems().computeIfAbsent(pathToVault, key -> {
+			return new CryptoFileSystem(this, cryptorProvider, key, extractPassphrase(uri));
 		});
 		return fs.getPath(uri.getFragment());
+	}
+
+	private CharSequence extractPassphrase(URI uri) {
+		String userInfo = uri.getUserInfo();
+		return userInfo.substring(userInfo.indexOf(':') + 1);
 	}
 
 	@Override
@@ -88,8 +118,9 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public FileChannel newFileChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+		CryptoFileSystem fs = CryptoFileSystem.cast(path.getFileSystem());
+		Path ciphertextPath = fs.getCryptoPathMapper().getCiphertextFilePath(path);
+		return new CryptoFileChannel(fs.getCryptor(), ciphertextPath, options);
 	}
 
 	@Override

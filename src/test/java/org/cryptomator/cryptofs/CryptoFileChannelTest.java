@@ -38,7 +38,7 @@ public class CryptoFileChannelTest {
 	private Path ciphertextFilePath;
 
 	@Before
-	public void setup() throws ReflectiveOperationException, IOException {
+	public void setup() throws IOException {
 		cryptor = NULL_CRYPTOR_PROVIDER.createNew();
 		ciphertextFilePath = Files.createTempFile("unittest", null);
 	}
@@ -65,6 +65,14 @@ public class CryptoFileChannelTest {
 
 		Assert.assertEquals(88 + 2 * (16 + 32 * 1024 + 32) + 16 + 11 + 32, Files.size(ciphertextFilePath));
 
+		// random access:
+		try (CryptoFileChannel ch = new CryptoFileChannel(cryptor, ciphertextFilePath, new HashSet<>(Arrays.asList(StandardOpenOption.READ)))) {
+			ByteBuffer helloWorldBuffer = ByteBuffer.allocate(14);
+			Assert.assertEquals(11, ch.read(helloWorldBuffer, 64l * 1024));
+			Assert.assertArrayEquals("hello world\0\0\0".getBytes(), helloWorldBuffer.array());
+		}
+
+		// sequential:
 		try (CryptoFileChannel ch = new CryptoFileChannel(cryptor, ciphertextFilePath, new HashSet<>(Arrays.asList(StandardOpenOption.READ)))) {
 			Assert.assertEquals(64l * 1024 + 11, ch.size());
 			ch.read(ByteBuffer.allocate(64 * 1024));

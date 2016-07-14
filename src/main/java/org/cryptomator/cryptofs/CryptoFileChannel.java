@@ -53,7 +53,7 @@ class CryptoFileChannel extends AbstractFileChannel {
 	private final Set<OpenOption> openOptions;
 	private final Collection<IOException> ioExceptionsDuringWrite = new ArrayList<>();
 
-	public CryptoFileChannel(Cryptor cryptor, Path ciphertextPath, Set<OpenOption> options) throws IOException {
+	public CryptoFileChannel(Cryptor cryptor, Path ciphertextPath, Set<? extends OpenOption> options) throws IOException {
 		this.cryptor = cryptor;
 		Set<OpenOption> adjustedOptions = new HashSet<>(options);
 		adjustedOptions.remove(StandardOpenOption.APPEND);
@@ -101,7 +101,7 @@ class CryptoFileChannel extends AbstractFileChannel {
 			int len = Math.min(src.remaining(), PAYLOAD_SIZE - offset);
 			if (pos + len > size()) {
 				// append
-				header.getPayload().setFilesize(pos + len);
+				setSize(pos + len);
 			}
 			if (len == PAYLOAD_SIZE) {
 				// complete chunk, no need to load and decrypt from file:
@@ -123,10 +123,14 @@ class CryptoFileChannel extends AbstractFileChannel {
 		return header.getPayload().getFilesize();
 	}
 
+	private void setSize(long size) {
+		header.getPayload().setFilesize(size);
+	}
+
 	@Override
 	public FileChannel truncate(long size) throws IOException {
 		ch.truncate(FileHeader.SIZE);
-		header.getPayload().setFilesize(Math.min(size, size()));
+		setSize(Math.min(size, size()));
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -160,8 +164,8 @@ class CryptoFileChannel extends AbstractFileChannel {
 	@Override
 	protected void implCloseChannel() throws IOException {
 		try {
-			force(true);
 			// TODO append size obfuscation padding?
+			force(true);
 			if (!ioExceptionsDuringWrite.isEmpty()) {
 				throw new IOException("Failed to write at least " + ioExceptionsDuringWrite.size() + " chunk(s).");
 			}
