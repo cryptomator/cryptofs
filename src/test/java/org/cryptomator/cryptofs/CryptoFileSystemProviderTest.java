@@ -22,7 +22,6 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.security.SecureRandom;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 
 import org.cryptomator.cryptolib.Cryptor;
@@ -33,6 +32,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import com.google.common.collect.ImmutableMap;
 
 public class CryptoFileSystemProviderTest {
 
@@ -73,8 +74,8 @@ public class CryptoFileSystemProviderTest {
 
 	@Test
 	public void testGetFsViaNioApi() throws IOException {
-		URI fsUri = URI.create("cryptomator://foo:bar@localhost/" + tmpPath.toString());
-		FileSystem fs = FileSystems.newFileSystem(fsUri, Collections.emptyMap());
+		URI fsUri = URI.create("cryptomator://" + tmpPath.toString());
+		FileSystem fs = FileSystems.newFileSystem(fsUri, ImmutableMap.of(CryptoFileSystemProvider.FS_ENV_PW, "asd"));
 		Assert.assertTrue(fs instanceof CryptoFileSystem);
 		FileSystem fs2 = FileSystems.getFileSystem(fsUri);
 		Assert.assertSame(fs, fs2);

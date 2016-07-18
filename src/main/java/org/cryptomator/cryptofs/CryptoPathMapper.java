@@ -35,7 +35,7 @@ class CryptoPathMapper {
 		return getCiphertextDir(cleartextPath).path;
 	}
 
-	private Directory getCiphertextDir(Path cleartextPath) throws IOException {
+	public Directory getCiphertextDir(Path cleartextPath) throws IOException {
 		String dirId = ROOT_DIR_ID;
 		Path dirPath = resolveDirectory(dirId);
 		for (int i = 0; i < cleartextPath.getNameCount(); i++) {
@@ -53,7 +53,7 @@ class CryptoPathMapper {
 		return dataRoot.resolve(dirHash.substring(0, 2)).resolve(dirHash.substring(2));
 	}
 
-	private static class Directory {
+	public static class Directory {
 		public final String dirId;
 		public final Path path;
 

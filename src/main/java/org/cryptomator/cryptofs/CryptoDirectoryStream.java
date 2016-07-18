@@ -1,0 +1,78 @@
+package org.cryptomator.cryptofs;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Path;
+import java.util.Iterator;
+import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
+import org.cryptomator.cryptolib.AuthenticationFailedException;
+import org.cryptomator.cryptolib.FileNameCryptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Iterators;
+
+class CryptoDirectoryStream implements DirectoryStream<Path> {
+
+	private static final Pattern BASE32_PATTERN = Pattern.compile("^0?(([A-Z2-7]{8})*[A-Z2-7=]{8})");
+	private static final Logger LOG = LoggerFactory.getLogger(CryptoDirectoryStream.class);
+
+	private final String directoryId;
+	private final DirectoryStream<Path> ciphertextDirStream;
+	private final Path cleartextDir;
+	private final FileNameCryptor filenameCryptor;
+	private final DirectoryStream.Filter<? super Path> filter;
+
+	public CryptoDirectoryStream(Directory ciphertextDir, Path cleartextDir, FileNameCryptor filenameCryptor, DirectoryStream.Filter<? super Path> filter) throws IOException {
+		this.directoryId = ciphertextDir.dirId;
+		this.ciphertextDirStream = ciphertextDir.path.getFileSystem().provider().newDirectoryStream(ciphertextDir.path, p -> true);
+		this.cleartextDir = cleartextDir;
+		this.filenameCryptor = filenameCryptor;
+		this.filter = filter;
+	}
+
+	@Override
+	public Iterator<Path> iterator() {
+		Iterator<Path> ciphertextPathIter = ciphertextDirStream.iterator();
+		Iterator<Path> cleartextPathOrNullIter = Iterators.transform(ciphertextPathIter, this::decrypt);
+		Iterator<Path> cleartextPathIter = Iterators.filter(cleartextPathOrNullIter, Objects::nonNull);
+		return Iterators.filter(cleartextPathIter, this::isAcceptableByFilter);
+	}
+
+	private Path decrypt(Path ciphertextPath) {
+		String ciphertextFileName = ciphertextPath.getFileName().toString();
+		Matcher m = BASE32_PATTERN.matcher(ciphertextFileName);
+		if (m.find()) {
+			String ciphertext = m.group(1);
+			try {
+				String cleartext = filenameCryptor.decryptFilename(ciphertext, directoryId.getBytes(StandardCharsets.UTF_8));
+				return cleartextDir.resolve(cleartext);
+			} catch (AuthenticationFailedException e) {
+				LOG.warn(ciphertextPath + " not decryptable.", e);
+				return null;
+			}
+		} else {
+			return null;
+		}
+	}
+
+	private boolean isAcceptableByFilter(Path path) {
+		try {
+			return filter.accept(path);
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	@Override
+	public void close() throws IOException {
+		ciphertextDirStream.close();
+	}
+
+}

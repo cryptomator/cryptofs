@@ -27,9 +27,11 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.DosFileAttributeView;
+import java.nio.file.attribute.DosFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.spi.FileSystemProvider;
 import java.security.NoSuchAlgorithmException;
@@ -39,15 +41,19 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
+import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
 import org.cryptomator.cryptolib.CryptorProvider;
 import org.cryptomator.cryptolib.ReseedingSecureRandom;
 
 public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	/**
-	 * example: cryptomator://user:pass@localhost/Path/to/vault#/path/inside/vault
+	 * example: cryptomator://Path/to/vault#/path/inside/vault
 	 */
 	private static final String URI_SCHEME = "cryptomator";
+	private static final String DIR_PREFIX = "0";
+
+	public static final String FS_ENV_PW = "passphrase";
 
 	private final CryptorProvider cryptorProvider;
 	private final ConcurrentHashMap<Path, CryptoFileSystem> fileSystems = new ConcurrentHashMap<>();
@@ -79,10 +85,14 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public CryptoFileSystem newFileSystem(URI uri, Map<String, ?> env) throws IOException {
+		if (!env.containsKey(FS_ENV_PW) || !(env.get(FS_ENV_PW) instanceof CharSequence)) {
+			throw new IllegalArgumentException("Required environment parameter " + FS_ENV_PW + " not specified.");
+		}
+		CharSequence passphrase = (CharSequence) env.get(FS_ENV_PW);
 		Path pathToVault = FileSystems.getDefault().getPath(uri.getPath());
 		return getFileSystems().compute(pathToVault, (key, value) -> {
 			if (value == null) {
-				return new CryptoFileSystem(this, cryptorProvider, key, extractPassphrase(uri));
+				return new CryptoFileSystem(this, cryptorProvider, key, passphrase);
 			} else {
 				throw new FileSystemAlreadyExistsException();
 			}
@@ -99,39 +109,31 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public Path getPath(URI uri) {
-		Path pathToVault = FileSystems.getDefault().getPath(uri.getPath());
-		CryptoFileSystem fs = getFileSystems().computeIfAbsent(pathToVault, key -> {
-			return new CryptoFileSystem(this, cryptorProvider, key, extractPassphrase(uri));
-		});
-		return fs.getPath(uri.getFragment());
-	}
-
-	private CharSequence extractPassphrase(URI uri) {
-		String userInfo = uri.getUserInfo();
-		return userInfo.substring(userInfo.indexOf(':') + 1);
+		return getFileSystem(uri).getPath(uri.getFragment());
 	}
 
 	@Override
-	public AsynchronousFileChannel newAsynchronousFileChannel(Path path, Set<? extends OpenOption> options, ExecutorService executor, FileAttribute<?>... attrs) throws IOException {
-		return new AsyncDelegatingFileChannel(newFileChannel(path, options, attrs), executor);
+	public AsynchronousFileChannel newAsynchronousFileChannel(Path cleartextPath, Set<? extends OpenOption> options, ExecutorService executor, FileAttribute<?>... attrs) throws IOException {
+		return new AsyncDelegatingFileChannel(newFileChannel(cleartextPath, options, attrs), executor);
 	}
 
 	@Override
-	public FileChannel newFileChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-		CryptoFileSystem fs = CryptoFileSystem.cast(path.getFileSystem());
-		Path ciphertextPath = fs.getCryptoPathMapper().getCiphertextFilePath(path);
+	public FileChannel newFileChannel(Path cleartextPath, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+		CryptoFileSystem fs = CryptoFileSystem.cast(cleartextPath.getFileSystem());
+		Path ciphertextPath = fs.getCryptoPathMapper().getCiphertextFilePath(cleartextPath);
 		return new CryptoFileChannel(fs.getCryptor(), ciphertextPath, options);
 	}
 
 	@Override
-	public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-		return newFileChannel(path, options, attrs);
+	public SeekableByteChannel newByteChannel(Path cleartextPath, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+		return newFileChannel(cleartextPath, options, attrs);
 	}
 
 	@Override
-	public DirectoryStream<Path> newDirectoryStream(Path dir, Filter<? super Path> filter) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+	public DirectoryStream<Path> newDirectoryStream(Path cleartextDir, Filter<? super Path> filter) throws IOException {
+		CryptoFileSystem fs = CryptoFileSystem.cast(cleartextDir.getFileSystem());
+		Directory ciphertextDir = fs.getCryptoPathMapper().getCiphertextDir(cleartextDir);
+		return new CryptoDirectoryStream(ciphertextDir, cleartextDir, fs.getCryptor().fileNameCryptor(), filter);
 	}
 
 	@Override
@@ -164,10 +166,10 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	@Override
-	public boolean isHidden(Path path) throws IOException {
-		FileStore store = getFileStore(path);
+	public boolean isHidden(Path cleartextPath) throws IOException {
+		FileStore store = getFileStore(cleartextPath);
 		if (store.supportsFileAttributeView(DosFileAttributeView.class)) {
-			DosFileAttributeView view = this.getFileAttributeView(path, DosFileAttributeView.class);
+			DosFileAttributeView view = this.getFileAttributeView(cleartextPath, DosFileAttributeView.class);
 			return view.readAttributes().isHidden();
 		} else {
 			return false;
@@ -175,16 +177,16 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	@Override
-	public FileStore getFileStore(Path path) throws IOException {
-		return BasicPath.cast(path).getFileSystem().getFileStore();
+	public FileStore getFileStore(Path cleartextPath) throws IOException {
+		return BasicPath.cast(cleartextPath).getFileSystem().getFileStore();
 	}
 
 	@Override
-	public void checkAccess(Path path, AccessMode... modes) throws IOException {
+	public void checkAccess(Path cleartextPath, AccessMode... modes) throws IOException {
 		// TODO check if file exists first and throw NoSuchFileException, if it doesn't.
-		FileStore store = getFileStore(path);
+		FileStore store = getFileStore(cleartextPath);
 		if (store.supportsFileAttributeView(PosixFileAttributeView.class)) {
-			PosixFileAttributeView view = this.getFileAttributeView(path, PosixFileAttributeView.class);
+			PosixFileAttributeView view = this.getFileAttributeView(cleartextPath, PosixFileAttributeView.class);
 			Set<PosixFilePermission> permissions = view.readAttributes().permissions();
 			boolean accessGranted = true;
 			for (AccessMode accessMode : modes) {
@@ -203,31 +205,53 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 				}
 			}
 			if (!accessGranted) {
-				throw new AccessDeniedException(path.toString());
+				throw new AccessDeniedException(cleartextPath.toString());
 			}
 		}
 	}
 
 	@Override
-	public <V extends FileAttributeView> V getFileAttributeView(Path path, Class<V> type, LinkOption... options) {
+	public <V extends FileAttributeView> V getFileAttributeView(Path cleartextPath, Class<V> type, LinkOption... options) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public <A extends BasicFileAttributes> A readAttributes(Path path, Class<A> type, LinkOption... options) throws IOException {
+	@SuppressWarnings("unchecked")
+	public <A extends BasicFileAttributes> A readAttributes(Path cleartextPath, Class<A> type, LinkOption... options) throws IOException {
+		CryptoFileSystem fs = CryptoFileSystem.cast(cleartextPath.getFileSystem());
+		Path ciphertextPath = fs.getCryptoPathMapper().getCiphertextFilePath(cleartextPath);
+		// TODO isAssignableFrom??
+		if (PosixFileAttributes.class.equals(type)) {
+			PosixFileAttributes ciphertextAttrs = ciphertextPath.getFileSystem().provider().readAttributes(ciphertextPath, PosixFileAttributes.class, options);
+			// TODO externalize to ciphertextfileattributes class?
+			return (A) new DelegatingPosixFileAttributes(ciphertextAttrs) {
+				@Override
+				public boolean isDirectory() {
+					return ciphertextPath.getFileName().toString().startsWith(DIR_PREFIX);
+				}
+			};
+		} else if (DosFileAttributes.class.equals(type)) {
+			DosFileAttributes ciphertextAttrs = ciphertextPath.getFileSystem().provider().readAttributes(ciphertextPath, DosFileAttributes.class, options);
+			return (A) new DelegatingDosFileAttributes(ciphertextAttrs) {
+				@Override
+				public boolean isDirectory() {
+					return ciphertextPath.getFileName().toString().startsWith(DIR_PREFIX);
+				}
+			};
+		} else {
+			throw new UnsupportedOperationException("Unsupported file attribute type: " + type);
+		}
+	}
+
+	@Override
+	public Map<String, Object> readAttributes(Path cleartextPath, String attributes, LinkOption... options) throws IOException {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
+	public void setAttribute(Path cleartextPath, String attribute, Object value, LinkOption... options) throws IOException {
 		// TODO Auto-generated method stub
 
 	}
