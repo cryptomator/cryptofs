@@ -41,14 +41,13 @@ public class CryptoFileSystemTest {
 	public final ExpectedException thrown = ExpectedException.none();
 
 	private Path tmpPath;
-	private ConcurrentHashMap<Path, CryptoFileSystem> openFileSystems;
 	private CryptoFileSystemProvider provider;
 
 	@Before
 	public void setup() throws IOException, ReflectiveOperationException {
 		tmpPath = Files.createTempDirectory("unit-tests");
-		openFileSystems = new ConcurrentHashMap<>();
 		provider = Mockito.mock(CryptoFileSystemProvider.class);
+		ConcurrentHashMap<Path, CryptoFileSystem> openFileSystems = new ConcurrentHashMap<>();
 		Mockito.when(provider.getFileSystems()).thenReturn(openFileSystems);
 	}
 

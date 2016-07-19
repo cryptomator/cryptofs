@@ -20,10 +20,6 @@ import org.cryptomator.cryptolib.FileHeaderCryptor;
 
 class CryptoFileAttributeProvider {
 
-	private static interface AttributeProvider<A extends BasicFileAttributes> {
-		A provide(A delegate, Path ciphertextPath, FileHeaderCryptor headerCryptor);
-	}
-
 	private final Map<Class<? extends BasicFileAttributes>, AttributeProvider<? extends BasicFileAttributes>> attributeProviders = new HashMap<>();
 	private final FileHeaderCryptor headerCryptor;
 
@@ -43,6 +39,10 @@ class CryptoFileAttributeProvider {
 		} else {
 			throw new UnsupportedOperationException("Unsupported file attribute type: " + type);
 		}
+	}
+
+	private static interface AttributeProvider<A extends BasicFileAttributes> {
+		A provide(A delegate, Path ciphertextPath, FileHeaderCryptor headerCryptor);
 	}
 
 }

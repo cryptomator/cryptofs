@@ -26,9 +26,6 @@ public class CryptoFileAttributeProviderTest {
 
 	private FileHeaderCryptor fileHeaderCryptor;
 	private Path ciphertextFilePath;
-	private BasicFileAttributes basicAttr;
-	private PosixFileAttributes posixAttr;
-	private DosFileAttributes dosAttr;
 
 	@Before
 	public void setup() throws IOException {
@@ -38,9 +35,9 @@ public class CryptoFileAttributeProviderTest {
 		Mockito.when(ciphertextFilePath.getFileSystem()).thenReturn(fs);
 		FileSystemProvider provider = Mockito.mock(FileSystemProvider.class);
 		Mockito.when(fs.provider()).thenReturn(provider);
-		basicAttr = Mockito.mock(BasicFileAttributes.class);
-		posixAttr = Mockito.mock(PosixFileAttributes.class);
-		dosAttr = Mockito.mock(DosFileAttributes.class);
+		BasicFileAttributes basicAttr = Mockito.mock(BasicFileAttributes.class);
+		PosixFileAttributes posixAttr = Mockito.mock(PosixFileAttributes.class);
+		DosFileAttributes dosAttr = Mockito.mock(DosFileAttributes.class);
 		Mockito.when(provider.readAttributes(Mockito.same(ciphertextFilePath), Mockito.same(BasicFileAttributes.class), Mockito.any())).thenReturn(basicAttr);
 		Mockito.when(provider.readAttributes(Mockito.same(ciphertextFilePath), Mockito.same(PosixFileAttributes.class), Mockito.any())).thenReturn(posixAttr);
 		Mockito.when(provider.readAttributes(Mockito.same(ciphertextFilePath), Mockito.same(DosFileAttributes.class), Mockito.any())).thenReturn(dosAttr);

@@ -42,14 +42,13 @@ public class BasicPathTest {
 	public final ExpectedException thrown = ExpectedException.none();
 
 	private static final String FS_SCHEME = "MOCK";
-	private FileSystemProvider fsProvider;
 	private BasicFileSystem fs;
 	private BasicPath fsRoot;
 	private BasicPath emptyPath;
 
 	@Before
 	public void setup() {
-		fsProvider = Mockito.mock(FileSystemProvider.class);
+		FileSystemProvider fsProvider = Mockito.mock(FileSystemProvider.class);
 		fs = Mockito.mock(BasicFileSystem.class);
 		fsRoot = new BasicPath(fs, Collections.emptyList(), true);
 		emptyPath = new BasicPath(fs, Collections.emptyList(), false);

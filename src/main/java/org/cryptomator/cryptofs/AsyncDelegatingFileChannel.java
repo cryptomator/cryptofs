@@ -110,7 +110,7 @@ class AsyncDelegatingFileChannel extends AsynchronousFileChannel {
 
 	private <T> Future<T> exceptionalFuture(Throwable exception) {
 		CompletableFuture<T> future = new CompletableFuture<>();
-		future.completeExceptionally(new ClosedChannelException());
+		future.completeExceptionally(exception);
 		return future;
 	}
 
