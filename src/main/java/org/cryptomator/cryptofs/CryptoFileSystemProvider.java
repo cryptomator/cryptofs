@@ -27,11 +27,9 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.DosFileAttributeView;
-import java.nio.file.attribute.DosFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
-import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.spi.FileSystemProvider;
 import java.security.NoSuchAlgorithmException;
@@ -51,7 +49,6 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * example: cryptomator://Path/to/vault#/path/inside/vault
 	 */
 	private static final String URI_SCHEME = "cryptomator";
-	private static final String DIR_PREFIX = "0";
 
 	public static final String FS_ENV_PW = "passphrase";
 
@@ -217,31 +214,10 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public <A extends BasicFileAttributes> A readAttributes(Path cleartextPath, Class<A> type, LinkOption... options) throws IOException {
 		CryptoFileSystem fs = CryptoFileSystem.cast(cleartextPath.getFileSystem());
 		Path ciphertextPath = fs.getCryptoPathMapper().getCiphertextFilePath(cleartextPath);
-		// TODO isAssignableFrom??
-		if (PosixFileAttributes.class.equals(type)) {
-			PosixFileAttributes ciphertextAttrs = ciphertextPath.getFileSystem().provider().readAttributes(ciphertextPath, PosixFileAttributes.class, options);
-			// TODO externalize to ciphertextfileattributes class?
-			return (A) new DelegatingPosixFileAttributes(ciphertextAttrs) {
-				@Override
-				public boolean isDirectory() {
-					return ciphertextPath.getFileName().toString().startsWith(DIR_PREFIX);
-				}
-			};
-		} else if (DosFileAttributes.class.equals(type)) {
-			DosFileAttributes ciphertextAttrs = ciphertextPath.getFileSystem().provider().readAttributes(ciphertextPath, DosFileAttributes.class, options);
-			return (A) new DelegatingDosFileAttributes(ciphertextAttrs) {
-				@Override
-				public boolean isDirectory() {
-					return ciphertextPath.getFileName().toString().startsWith(DIR_PREFIX);
-				}
-			};
-		} else {
-			throw new UnsupportedOperationException("Unsupported file attribute type: " + type);
-		}
+		return fs.getFileAttributeProvider().readAttributes(ciphertextPath, type);
 	}
 
 	@Override

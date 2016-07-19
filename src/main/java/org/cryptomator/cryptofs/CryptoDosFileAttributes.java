@@ -8,31 +8,22 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import java.nio.file.Path;
 import java.nio.file.attribute.DosFileAttributes;
 
-interface DelegatingDosFileAttributes extends DelegatingBasicFileAttributes, DosFileAttributes {
+import org.cryptomator.cryptolib.FileHeaderCryptor;
 
-	@Override
-	DosFileAttributes getDelegate();
+public class CryptoDosFileAttributes extends CryptoBasicFileAttributes implements DelegatingDosFileAttributes {
 
-	@Override
-	default boolean isReadOnly() {
-		return getDelegate().isReadOnly();
+	private DosFileAttributes delegate;
+
+	public CryptoDosFileAttributes(DosFileAttributes delegate, Path ciphertextPath, FileHeaderCryptor headerCryptor) {
+		super(delegate, ciphertextPath, headerCryptor);
 	}
 
 	@Override
-	default boolean isHidden() {
-		return getDelegate().isHidden();
-	}
-
-	@Override
-	default boolean isArchive() {
-		return getDelegate().isArchive();
-	}
-
-	@Override
-	default boolean isSystem() {
-		return getDelegate().isSystem();
+	public DosFileAttributes getDelegate() {
+		return delegate;
 	}
 
 }

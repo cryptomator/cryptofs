@@ -1,0 +1,80 @@
+/*******************************************************************************
+ * Copyright (c) 2016 Sebastian Stenzel and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the accompanying LICENSE.txt.
+ *
+ * Contributors:
+ *     Sebastian Stenzel - initial API and implementation
+ *******************************************************************************/
+package org.cryptomator.cryptofs;
+
+import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.DosFileAttributes;
+import java.nio.file.attribute.PosixFileAttributes;
+import java.nio.file.spi.FileSystemProvider;
+
+import org.cryptomator.cryptolib.FileHeaderCryptor;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mockito;
+
+public class CryptoFileAttributeProviderTest {
+
+	private FileHeaderCryptor fileHeaderCryptor;
+	private Path ciphertextFilePath;
+	private BasicFileAttributes basicAttr;
+	private PosixFileAttributes posixAttr;
+	private DosFileAttributes dosAttr;
+
+	@Before
+	public void setup() throws IOException {
+		fileHeaderCryptor = Mockito.mock(FileHeaderCryptor.class);
+		ciphertextFilePath = Mockito.mock(Path.class);
+		FileSystem fs = Mockito.mock(FileSystem.class);
+		Mockito.when(ciphertextFilePath.getFileSystem()).thenReturn(fs);
+		FileSystemProvider provider = Mockito.mock(FileSystemProvider.class);
+		Mockito.when(fs.provider()).thenReturn(provider);
+		basicAttr = Mockito.mock(BasicFileAttributes.class);
+		posixAttr = Mockito.mock(PosixFileAttributes.class);
+		dosAttr = Mockito.mock(DosFileAttributes.class);
+		Mockito.when(provider.readAttributes(Mockito.same(ciphertextFilePath), Mockito.same(BasicFileAttributes.class), Mockito.any())).thenReturn(basicAttr);
+		Mockito.when(provider.readAttributes(Mockito.same(ciphertextFilePath), Mockito.same(PosixFileAttributes.class), Mockito.any())).thenReturn(posixAttr);
+		Mockito.when(provider.readAttributes(Mockito.same(ciphertextFilePath), Mockito.same(DosFileAttributes.class), Mockito.any())).thenReturn(dosAttr);
+	}
+
+	@Test
+	public void testReadBasicAttributes() throws IOException {
+		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(fileHeaderCryptor);
+		BasicFileAttributes attr = prov.readAttributes(ciphertextFilePath, BasicFileAttributes.class);
+		Assert.assertTrue(attr instanceof BasicFileAttributes);
+	}
+
+	@Test
+	public void testReadPosixAttributes() throws IOException {
+		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(fileHeaderCryptor);
+		PosixFileAttributes attr = prov.readAttributes(ciphertextFilePath, PosixFileAttributes.class);
+		Assert.assertTrue(attr instanceof PosixFileAttributes);
+	}
+
+	@Test
+	public void testReadDosAttributes() throws IOException {
+		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(fileHeaderCryptor);
+		DosFileAttributes attr = prov.readAttributes(ciphertextFilePath, DosFileAttributes.class);
+		Assert.assertTrue(attr instanceof DosFileAttributes);
+	}
+
+	private interface UnsupportedAttributes extends BasicFileAttributes {
+
+	}
+
+	@Test(expected = UnsupportedOperationException.class)
+	public void testReadUnsupportedAttributes() throws IOException {
+		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(fileHeaderCryptor);
+		prov.readAttributes(ciphertextFilePath, UnsupportedAttributes.class);
+	}
+
+}

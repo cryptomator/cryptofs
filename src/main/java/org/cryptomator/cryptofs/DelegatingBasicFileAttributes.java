@@ -10,59 +10,54 @@ package org.cryptomator.cryptofs;
 
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
-import java.util.Objects;
 
-abstract class DelegatingBasicFileAttributes implements BasicFileAttributes {
+interface DelegatingBasicFileAttributes extends BasicFileAttributes {
 
-	private final BasicFileAttributes delegate;
+	BasicFileAttributes getDelegate();
 
-	public DelegatingBasicFileAttributes(BasicFileAttributes delegate) {
-		this.delegate = Objects.requireNonNull(delegate);
+	@Override
+	default FileTime lastModifiedTime() {
+		return getDelegate().lastModifiedTime();
 	}
 
 	@Override
-	public FileTime lastModifiedTime() {
-		return delegate.lastModifiedTime();
+	default FileTime lastAccessTime() {
+		return getDelegate().lastAccessTime();
 	}
 
 	@Override
-	public FileTime lastAccessTime() {
-		return delegate.lastAccessTime();
+	default FileTime creationTime() {
+		return getDelegate().creationTime();
 	}
 
 	@Override
-	public FileTime creationTime() {
-		return delegate.creationTime();
+	default boolean isRegularFile() {
+		return getDelegate().isRegularFile();
 	}
 
 	@Override
-	public boolean isRegularFile() {
-		return delegate.isRegularFile();
+	default boolean isDirectory() {
+		return getDelegate().isDirectory();
 	}
 
 	@Override
-	public boolean isDirectory() {
-		return delegate.isDirectory();
+	default boolean isSymbolicLink() {
+		return getDelegate().isSymbolicLink();
 	}
 
 	@Override
-	public boolean isSymbolicLink() {
-		return delegate.isSymbolicLink();
+	default boolean isOther() {
+		return getDelegate().isOther();
 	}
 
 	@Override
-	public boolean isOther() {
-		return delegate.isOther();
+	default long size() {
+		return getDelegate().size();
 	}
 
 	@Override
-	public long size() {
-		return delegate.size();
-	}
-
-	@Override
-	public Object fileKey() {
-		return delegate.fileKey();
+	default Object fileKey() {
+		return getDelegate().fileKey();
 	}
 
 }

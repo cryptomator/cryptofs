@@ -26,26 +26,23 @@ import org.cryptomator.cryptolib.UnsupportedVaultFormatException;
 
 class CryptoFileSystem extends BasicFileSystem {
 
-	private static final String MASTERKEY_FILE_NAME = "masterkey.cryptomator";
-	private static final String BACKUPKEY_FILE_NAME = "masterkey.cryptomator.bkup";
-	private static final String DATA_DIR_NAME = "d";
-
 	private final CryptoFileSystemProvider provider;
 	private final Path pathToVault;
 	private final Path dataRoot;
 	private final Cryptor cryptor;
 	private final DirectoryIdProvider dirIdProvider;
 	private final CryptoPathMapper cryptoPathMapper;
+	private final CryptoFileAttributeProvider fileAttributeProvider;
 
 	public CryptoFileSystem(CryptoFileSystemProvider provider, CryptorProvider cryptorProvider, Path pathToVault, CharSequence passphrase)
 			throws UnsupportedVaultFormatException, InvalidPassphraseException, UncheckedIOException {
 		this.provider = provider;
 		this.pathToVault = pathToVault;
-		this.dataRoot = pathToVault.resolve(DATA_DIR_NAME);
+		this.dataRoot = pathToVault.resolve(Constants.DATA_DIR_NAME);
 
 		try {
-			Path masterKeyPath = pathToVault.resolve(MASTERKEY_FILE_NAME);
-			Path backupKeyPath = pathToVault.resolve(BACKUPKEY_FILE_NAME);
+			Path masterKeyPath = pathToVault.resolve(Constants.MASTERKEY_FILE_NAME);
+			Path backupKeyPath = pathToVault.resolve(Constants.BACKUPKEY_FILE_NAME);
 			if (Files.isRegularFile(masterKeyPath)) {
 				byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
 				this.cryptor = cryptorProvider.createFromKeyFile(keyFileContents, passphrase);
@@ -61,6 +58,7 @@ class CryptoFileSystem extends BasicFileSystem {
 
 		this.dirIdProvider = new DirectoryIdProvider();
 		this.cryptoPathMapper = new CryptoPathMapper(cryptor, dataRoot, getDirIdProvider());
+		this.fileAttributeProvider = new CryptoFileAttributeProvider(cryptor.fileHeaderCryptor());
 	}
 
 	static CryptoFileSystem cast(FileSystem fileSystem) {
@@ -114,6 +112,10 @@ class CryptoFileSystem extends BasicFileSystem {
 
 	Cryptor getCryptor() {
 		return cryptor;
+	}
+
+	CryptoFileAttributeProvider getFileAttributeProvider() {
+		return fileAttributeProvider;
 	}
 
 }
