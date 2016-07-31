@@ -13,8 +13,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import org.cryptomator.cryptolib.Cryptor;
-import org.cryptomator.cryptolib.FileNameCryptor;
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

@@ -16,7 +16,7 @@ import java.nio.file.attribute.DosFileAttributes;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.spi.FileSystemProvider;
 
-import org.cryptomator.cryptolib.FileHeaderCryptor;
+import org.cryptomator.cryptolib.api.FileHeaderCryptor;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

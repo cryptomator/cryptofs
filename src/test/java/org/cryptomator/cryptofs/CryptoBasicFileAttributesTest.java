@@ -19,9 +19,10 @@ import java.nio.file.spi.FileSystemProvider;
 import java.security.SecureRandom;
 import java.util.Arrays;
 
-import org.cryptomator.cryptolib.CryptorProvider;
-import org.cryptomator.cryptolib.FileHeader;
-import org.cryptomator.cryptolib.FileHeaderCryptor;
+import org.cryptomator.cryptolib.api.CryptorProvider;
+import org.cryptomator.cryptolib.api.FileHeader;
+import org.cryptomator.cryptolib.api.FileHeaderCryptor;
+import org.cryptomator.cryptolib.v1.CryptorProviderImpl;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,7 +36,7 @@ public class CryptoBasicFileAttributesTest {
 			Arrays.fill(bytes, (byte) 0x00);
 		};
 	};
-	private static final CryptorProvider CRYPTOR_PROVIDER = new CryptorProvider(NULL_RANDOM);
+	private static final CryptorProvider CRYPTOR_PROVIDER = new CryptorProviderImpl(NULL_RANDOM);
 
 	private FileHeaderCryptor fileHeaderCryptor;
 	private Path ciphertextFilePath;
@@ -110,7 +111,7 @@ public class CryptoBasicFileAttributesTest {
 	@Test
 	public void testSize() throws IOException {
 		FileHeader header = fileHeaderCryptor.create();
-		header.getPayload().setFilesize(1337l);
+		header.setFilesize(1337l);
 		ByteBuffer headerBuf = fileHeaderCryptor.encryptHeader(header);
 		Mockito.when(fsProvider.newByteChannel(Mockito.same(ciphertextFilePath), Mockito.any())).thenReturn(new SeekableByteChannelMock(headerBuf));
 		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("foo"));
@@ -124,7 +125,7 @@ public class CryptoBasicFileAttributesTest {
 	@Test(expected = UncheckedIOException.class)
 	public void testSizeWithException() throws IOException {
 		FileHeader header = fileHeaderCryptor.create();
-		header.getPayload().setFilesize(1337l);
+		header.setFilesize(1337l);
 		ByteBuffer headerBuf = fileHeaderCryptor.encryptHeader(header);
 		Mockito.when(fsProvider.newByteChannel(Mockito.same(ciphertextFilePath), Mockito.any())).thenThrow(new IOException("fail"));
 		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("foo"));

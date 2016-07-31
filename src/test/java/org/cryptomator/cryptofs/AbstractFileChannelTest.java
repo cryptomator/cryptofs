@@ -16,6 +16,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.spi.AbstractInterruptibleChannel;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -24,7 +25,6 @@ import org.junit.runner.RunWith;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-import org.spongycastle.util.Arrays;
 
 import de.bechte.junit.runners.context.HierarchicalContextRunner;
 

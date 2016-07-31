@@ -23,8 +23,9 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
-import org.cryptomator.cryptolib.CryptorProvider;
-import org.cryptomator.cryptolib.FileNameCryptor;
+import org.cryptomator.cryptolib.api.CryptorProvider;
+import org.cryptomator.cryptolib.api.FileNameCryptor;
+import org.cryptomator.cryptolib.v1.CryptorProviderImpl;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,7 +41,7 @@ public class CryptoDirectoryStreamTest {
 			Arrays.fill(bytes, (byte) 0x00);
 		};
 	};
-	private static final CryptorProvider CRYPTOR_PROVIDER = new CryptorProvider(NULL_RANDOM);
+	private static final CryptorProvider CRYPTOR_PROVIDER = new CryptorProviderImpl(NULL_RANDOM);
 
 	private FileNameCryptor filenameCryptor;
 	private Path ciphertextDirPath;

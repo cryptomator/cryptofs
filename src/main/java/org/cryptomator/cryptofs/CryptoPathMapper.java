@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
-import org.cryptomator.cryptolib.Cryptor;
+import org.cryptomator.cryptolib.api.Cryptor;
 
 class CryptoPathMapper {
 

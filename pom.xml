@@ -92,6 +92,13 @@
 			<version>2.6.1</version>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcprov-jdk15on</artifactId>
+			<version>1.54</version>
+			<!-- not actually needed, but otherwise unit tests fail in Eclipe, if the "cryptolib" project is opened in the same workspace -->
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>

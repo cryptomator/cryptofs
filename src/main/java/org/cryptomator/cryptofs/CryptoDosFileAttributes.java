@@ -11,7 +11,7 @@ package org.cryptomator.cryptofs;
 import java.nio.file.Path;
 import java.nio.file.attribute.DosFileAttributes;
 
-import org.cryptomator.cryptolib.FileHeaderCryptor;
+import org.cryptomator.cryptolib.api.FileHeaderCryptor;
 
 public class CryptoDosFileAttributes extends CryptoBasicFileAttributes implements DelegatingDosFileAttributes {
 

@@ -19,10 +19,11 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Set;
 
-import org.cryptomator.cryptolib.Cryptor;
-import org.cryptomator.cryptolib.CryptorProvider;
-import org.cryptomator.cryptolib.InvalidPassphraseException;
-import org.cryptomator.cryptolib.UnsupportedVaultFormatException;
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.InvalidPassphraseException;
+import org.cryptomator.cryptolib.api.KeyFile;
+import org.cryptomator.cryptolib.api.UnsupportedVaultFormatException;
+import org.cryptomator.cryptolib.v1.CryptorProviderImpl;
 
 class CryptoFileSystem extends BasicFileSystem {
 
@@ -34,7 +35,7 @@ class CryptoFileSystem extends BasicFileSystem {
 	private final CryptoPathMapper cryptoPathMapper;
 	private final CryptoFileAttributeProvider fileAttributeProvider;
 
-	public CryptoFileSystem(CryptoFileSystemProvider provider, CryptorProvider cryptorProvider, Path pathToVault, CharSequence passphrase)
+	public CryptoFileSystem(CryptoFileSystemProvider provider, CryptorProviderImpl cryptorProvider, Path pathToVault, CharSequence passphrase)
 			throws UnsupportedVaultFormatException, InvalidPassphraseException, UncheckedIOException {
 		this.provider = provider;
 		this.pathToVault = pathToVault;
@@ -45,11 +46,11 @@ class CryptoFileSystem extends BasicFileSystem {
 			Path backupKeyPath = pathToVault.resolve(Constants.BACKUPKEY_FILE_NAME);
 			if (Files.isRegularFile(masterKeyPath)) {
 				byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
-				this.cryptor = cryptorProvider.createFromKeyFile(keyFileContents, passphrase);
+				this.cryptor = cryptorProvider.createFromKeyFile(KeyFile.parse(keyFileContents), passphrase, Constants.VAULT_VERSION);
 				Files.copy(masterKeyPath, backupKeyPath, StandardCopyOption.REPLACE_EXISTING);
 			} else {
 				this.cryptor = cryptorProvider.createNew();
-				byte[] keyFileContents = cryptor.writeKeysToMasterkeyFile(passphrase);
+				byte[] keyFileContents = cryptor.writeKeysToMasterkeyFile(passphrase, Constants.VAULT_VERSION).serialize();
 				Files.write(masterKeyPath, keyFileContents);
 			}
 		} catch (IOException e) {

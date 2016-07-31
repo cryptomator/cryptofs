@@ -40,8 +40,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
 import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
-import org.cryptomator.cryptolib.CryptorProvider;
-import org.cryptomator.cryptolib.ReseedingSecureRandom;
+import org.cryptomator.cryptolib.common.ReseedingSecureRandom;
+import org.cryptomator.cryptolib.v1.CryptorProviderImpl;
 
 public class CryptoFileSystemProvider extends FileSystemProvider {
 
@@ -52,11 +52,11 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	public static final String FS_ENV_PW = "passphrase";
 
-	private final CryptorProvider cryptorProvider;
+	private final CryptorProviderImpl cryptorProvider;
 	private final ConcurrentHashMap<Path, CryptoFileSystem> fileSystems = new ConcurrentHashMap<>();
 
 	public CryptoFileSystemProvider(SecureRandom csprng) {
-		this.cryptorProvider = new CryptorProvider(csprng);
+		this.cryptorProvider = new CryptorProviderImpl(csprng);
 	}
 
 	public CryptoFileSystemProvider() {

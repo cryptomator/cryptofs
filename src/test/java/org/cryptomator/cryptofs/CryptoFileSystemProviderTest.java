@@ -24,9 +24,9 @@ import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.HashSet;
 
-import org.cryptomator.cryptolib.Cryptor;
-import org.cryptomator.cryptolib.FileHeader;
-import org.cryptomator.cryptolib.FileHeaderCryptor;
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.FileHeader;
+import org.cryptomator.cryptolib.api.FileHeaderCryptor;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

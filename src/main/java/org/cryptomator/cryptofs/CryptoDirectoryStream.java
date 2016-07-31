@@ -19,8 +19,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
-import org.cryptomator.cryptolib.AuthenticationFailedException;
-import org.cryptomator.cryptolib.FileNameCryptor;
+import org.cryptomator.cryptolib.api.AuthenticationFailedException;
+import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +62,7 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 				String cleartext = filenameCryptor.decryptFilename(ciphertext, directoryId.getBytes(StandardCharsets.UTF_8));
 				return cleartextDir.resolve(cleartext);
 			} catch (AuthenticationFailedException e) {
-				LOG.warn(ciphertextPath + " not decryptable.", e);
+				LOG.warn(ciphertextPath + " not decryptable due to an unauthentic ciphertext.");
 				return null;
 			}
 		} else {

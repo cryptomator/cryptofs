@@ -16,7 +16,7 @@ import java.nio.file.attribute.PosixFileAttributes;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.cryptomator.cryptolib.FileHeaderCryptor;
+import org.cryptomator.cryptolib.api.FileHeaderCryptor;
 
 class CryptoFileAttributeProvider {
 

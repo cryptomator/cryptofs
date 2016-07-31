@@ -17,8 +17,9 @@ import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.HashSet;
 
-import org.cryptomator.cryptolib.Cryptor;
-import org.cryptomator.cryptolib.CryptorProvider;
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.CryptorProvider;
+import org.cryptomator.cryptolib.v1.CryptorProviderImpl;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -32,7 +33,7 @@ public class CryptoFileChannelTest {
 			Arrays.fill(bytes, (byte) 0x00);
 		};
 	};
-	private static final CryptorProvider NULL_CRYPTOR_PROVIDER = new CryptorProvider(NULL_RANDOM);
+	private static final CryptorProvider NULL_CRYPTOR_PROVIDER = new CryptorProviderImpl(NULL_RANDOM);
 
 	private Cryptor cryptor;
 	private Path ciphertextFilePath;

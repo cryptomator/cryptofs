@@ -18,8 +18,8 @@ import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.cryptomator.cryptolib.CryptorProvider;
-import org.cryptomator.cryptolib.InvalidPassphraseException;
+import org.cryptomator.cryptolib.api.InvalidPassphraseException;
+import org.cryptomator.cryptolib.v1.CryptorProviderImpl;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -35,7 +35,7 @@ public class CryptoFileSystemTest {
 			Arrays.fill(bytes, (byte) 0x00);
 		};
 	};
-	private static final CryptorProvider NULL_CRYPTOR_PROVIDER = new CryptorProvider(NULL_RANDOM);
+	private static final CryptorProviderImpl NULL_CRYPTOR_PROVIDER = new CryptorProviderImpl(NULL_RANDOM);
 
 	@Rule
 	public final ExpectedException thrown = ExpectedException.none();

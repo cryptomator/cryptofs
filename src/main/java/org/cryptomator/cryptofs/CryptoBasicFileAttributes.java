@@ -17,8 +17,7 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collections;
 
-import org.cryptomator.cryptolib.FileHeader;
-import org.cryptomator.cryptolib.FileHeaderCryptor;
+import org.cryptomator.cryptolib.api.FileHeaderCryptor;
 
 public class CryptoBasicFileAttributes implements DelegatingBasicFileAttributes {
 
@@ -60,7 +59,7 @@ public class CryptoBasicFileAttributes implements DelegatingBasicFileAttributes 
 
 	@Override
 	public long size() {
-		if (isRegularFile() && getDelegate().size() >= FileHeader.SIZE && size == -1) {
+		if (isRegularFile() && getDelegate().size() >= headerCryptor.headerSize() && size == -1) {
 			size = readSizeFromHeader();
 		}
 		return size;
@@ -68,12 +67,12 @@ public class CryptoBasicFileAttributes implements DelegatingBasicFileAttributes 
 
 	private long readSizeFromHeader() {
 		try {
-			ByteBuffer buf = ByteBuffer.allocate(FileHeader.SIZE);
+			ByteBuffer buf = ByteBuffer.allocate(headerCryptor.headerSize());
 			try (ReadableByteChannel r = ciphertextPath.getFileSystem().provider().newByteChannel(ciphertextPath, Collections.singleton(StandardOpenOption.READ))) {
 				r.read(buf);
 			}
 			buf.flip();
-			return headerCryptor.decryptHeader(buf).getPayload().getFilesize();
+			return headerCryptor.decryptHeader(buf).getFilesize();
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
