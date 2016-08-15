@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
@@ -74,7 +75,7 @@ public class CryptoFileSystemProviderTest {
 
 	@Test
 	public void testGetFsViaNioApi() throws IOException {
-		URI fsUri = URI.create("cryptomator://" + tmpPath.toString());
+		URI fsUri = URI.create("cryptomator://" + URLEncoder.encode(tmpPath.toString(), "UTF-8"));
 		FileSystem fs = FileSystems.newFileSystem(fsUri, ImmutableMap.of(CryptoFileSystemProvider.FS_ENV_PW, "asd"));
 		Assert.assertTrue(fs instanceof CryptoFileSystem);
 		FileSystem fs2 = FileSystems.getFileSystem(fsUri);

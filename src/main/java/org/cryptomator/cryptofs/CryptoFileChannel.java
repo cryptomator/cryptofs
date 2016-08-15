@@ -8,6 +8,9 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import static org.cryptomator.cryptofs.ChunkData.readChunkData;
+import static org.cryptomator.cryptofs.ChunkData.writtenChunkData;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
@@ -36,7 +39,7 @@ import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
 
 /**
- * Not thread-safe.
+ * TODO Not thread-safe.
  */
 class CryptoFileChannel extends AbstractFileChannel {
 
@@ -46,7 +49,7 @@ class CryptoFileChannel extends AbstractFileChannel {
 	private final Cryptor cryptor;
 	private final FileChannel ch;
 	private final FileHeader header;
-	private final LoadingCache<Long, ByteBuffer> cleartextChunks;
+	private final LoadingCache<Long, ChunkData> cleartextChunks;
 	private final Set<OpenOption> openOptions;
 	private final Collection<IOException> ioExceptionsDuringWrite = new ArrayList<>();
 
@@ -104,7 +107,7 @@ class CryptoFileChannel extends AbstractFileChannel {
 			}
 			if (len == payloadSize) {
 				// complete chunk, no need to load and decrypt from file:
-				cleartextChunks.put(chunkIndex, ByteBuffer.allocate(payloadSize));
+				cleartextChunks.put(chunkIndex, writtenChunkData(ByteBuffer.allocate(payloadSize)));
 			}
 			final ByteBuffer chunkBuf = loadCleartextChunk(chunkIndex);
 			chunkBuf.position(offset).limit(Math.max(chunkBuf.limit(), len));
@@ -178,7 +181,7 @@ class CryptoFileChannel extends AbstractFileChannel {
 
 	private ByteBuffer loadCleartextChunk(long chunkIndex) {
 		try {
-			return cleartextChunks.get(chunkIndex);
+			return cleartextChunks.get(chunkIndex).bytes();
 		} catch (ExecutionException e) {
 			if (e.getCause() instanceof AuthenticationFailedException) {
 				// TODO
@@ -189,10 +192,10 @@ class CryptoFileChannel extends AbstractFileChannel {
 		}
 	}
 
-	private class CleartextChunkLoader extends CacheLoader<Long, ByteBuffer> {
+	private class CleartextChunkLoader extends CacheLoader<Long, ChunkData> {
 
 		@Override
-		public ByteBuffer load(Long chunkIndex) throws Exception {
+		public ChunkData load(Long chunkIndex) throws Exception {
 			LOG.debug("load chunk" + chunkIndex);
 			int payloadSize = cryptor.fileContentCryptor().cleartextChunkSize();
 			int chunkSize = cryptor.fileContentCryptor().ciphertextChunkSize();
@@ -201,24 +204,27 @@ class CryptoFileChannel extends AbstractFileChannel {
 			int read = ch.read(ciphertextBuf, ciphertextPos);
 			if (read == -1) {
 				// append
-				return ByteBuffer.allocate(payloadSize);
+				return writtenChunkData(ByteBuffer.allocate(payloadSize));
 			} else {
 				ciphertextBuf.flip();
-				return cryptor.fileContentCryptor().decryptChunk(ciphertextBuf, chunkIndex, header, true);
+				return readChunkData(cryptor.fileContentCryptor().decryptChunk(ciphertextBuf, chunkIndex, header, true));
 			}
 		}
 
 	}
 
-	private class CleartextChunkSaver implements RemovalListener<Long, ByteBuffer> {
+	private class CleartextChunkSaver implements RemovalListener<Long, ChunkData> {
 
 		@Override
-		public void onRemoval(RemovalNotification<Long, ByteBuffer> notification) {
-			long chunkIndex = notification.getKey();
-			if (openOptions.contains(StandardOpenOption.WRITE) && chunkIndex * cryptor.fileContentCryptor().cleartextChunkSize() < size()) {
+		public void onRemoval(RemovalNotification<Long, ChunkData> notification) {
+			onRemoval(notification.getKey(), notification.getValue());
+		}
+
+		private void onRemoval(long chunkIndex, ChunkData chunkData) {
+			if (channelIsWritable() && chunkLiesInFile(chunkIndex) && chunkData.wasWritten()) {
 				LOG.debug("save chunk" + chunkIndex);
 				long ciphertextPos = chunkIndex * cryptor.fileContentCryptor().ciphertextChunkSize() + cryptor.fileHeaderCryptor().headerSize();
-				ByteBuffer cleartextBuf = notification.getValue().asReadOnlyBuffer();
+				ByteBuffer cleartextBuf = chunkData.bytes().asReadOnlyBuffer();
 				cleartextBuf.flip();
 				ByteBuffer ciphertextBuf = cryptor.fileContentCryptor().encryptChunk(cleartextBuf, chunkIndex, header);
 				try {
@@ -227,6 +233,14 @@ class CryptoFileChannel extends AbstractFileChannel {
 					ioExceptionsDuringWrite.add(e);
 				}
 			}
+		}
+
+		private boolean chunkLiesInFile(long chunkIndex) {
+			return chunkIndex * cryptor.fileContentCryptor().cleartextChunkSize() < size();
+		}
+
+		private boolean channelIsWritable() {
+			return openOptions.contains(StandardOpenOption.WRITE);
 		}
 
 	}
