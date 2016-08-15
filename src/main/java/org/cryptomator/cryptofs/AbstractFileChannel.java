@@ -15,7 +15,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 
 /**
- * Not thread-safe.
+ * TODO Not thread-safe.
  */
 abstract class AbstractFileChannel extends FileChannel {
 
