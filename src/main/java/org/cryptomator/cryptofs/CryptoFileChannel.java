@@ -8,8 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static org.cryptomator.cryptofs.ChunkData.readChunkData;
-import static org.cryptomator.cryptofs.ChunkData.writtenChunkData;
+import static java.lang.Math.min;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -75,7 +74,11 @@ class CryptoFileChannel extends AbstractFileChannel {
 	@Override
 	public int read(ByteBuffer dst, long position) throws IOException {
 		int origLimit = dst.limit();
-		dst.limit((int) Math.min(origLimit, size() - position));
+		long limitConsideringEof = size() - position;
+		if (limitConsideringEof < 1) {
+			return -1;
+		}
+		dst.limit((int) Math.min(origLimit, limitConsideringEof));
 		int read = 0;
 		int payloadSize = cryptor.fileContentCryptor().cleartextChunkSize();
 		while (dst.hasRemaining()) {
@@ -83,9 +86,8 @@ class CryptoFileChannel extends AbstractFileChannel {
 			long chunkIndex = pos / payloadSize;
 			int offset = (int) pos % payloadSize;
 			int len = Math.min(dst.remaining(), payloadSize - offset);
-			final ByteBuffer chunkBuf = loadCleartextChunk(chunkIndex);
-			chunkBuf.position(offset).limit(Math.min(chunkBuf.limit(), len));
-			dst.put(chunkBuf);
+			final ChunkData chunkData = loadCleartextChunk(chunkIndex);
+			chunkData.copyDataStartingAt(offset).to(dst);
 			read += len;
 		}
 		dst.limit(origLimit);
@@ -93,31 +95,38 @@ class CryptoFileChannel extends AbstractFileChannel {
 	}
 
 	@Override
-	public int write(ByteBuffer src, long position) throws IOException {
-		int written = 0;
-		int payloadSize = cryptor.fileContentCryptor().cleartextChunkSize();
-		while (src.hasRemaining()) {
-			long pos = position + written;
-			long chunkIndex = pos / payloadSize;
-			int offset = (int) pos % payloadSize;
-			int len = Math.min(src.remaining(), payloadSize - offset);
-			if (pos + len > size()) {
-				// append
-				setSize(pos + len);
-			}
-			if (len == payloadSize) {
-				// complete chunk, no need to load and decrypt from file:
-				cleartextChunks.put(chunkIndex, writtenChunkData(ByteBuffer.allocate(payloadSize)));
-			}
-			final ByteBuffer chunkBuf = loadCleartextChunk(chunkIndex);
-			chunkBuf.position(offset).limit(Math.max(chunkBuf.limit(), len));
-			int origLimit = src.limit();
-			src.limit(src.position() + len);
-			chunkBuf.put(src);
-			src.limit(origLimit);
-			written += len;
+	public int write(ByteBuffer data, long offset) throws IOException {
+		long size = size();
+		int written = data.remaining();
+		if (size < offset) {
+			// fill gap between size and offset with zeroes
+			write(ByteSource.repeatingZeroes(offset - size).followedBy(data), size);
+		} else {
+			write(ByteSource.from(data), offset);
 		}
 		return written;
+	}
+
+	private void write(ByteSource source, long position) {
+		int cleartextChunkSize = cryptor.fileContentCryptor().cleartextChunkSize();
+		int written =  0;
+		while (source.hasRemaining()) {
+			long currentPosition = position + written;
+			long chunkIndex = currentPosition / cleartextChunkSize;
+			int offsetInChunk = (int) currentPosition % cleartextChunkSize;
+			int len = (int)min(source.remaining(), cleartextChunkSize - offsetInChunk);
+			if (currentPosition + len > size()) {
+				// append
+				setSize(currentPosition + len);
+			}
+			if (len == cleartextChunkSize) {
+				// complete chunk, no need to load and decrypt from file:
+				cleartextChunks.put(chunkIndex, ChunkData.emptyWithSize(cleartextChunkSize));
+			}
+			final ChunkData chunkData = loadCleartextChunk(chunkIndex);
+			chunkData.copyDataStartingAt(offsetInChunk).from(source);
+			written += len;
+		}
 	}
 
 	@Override
@@ -179,9 +188,9 @@ class CryptoFileChannel extends AbstractFileChannel {
 		}
 	}
 
-	private ByteBuffer loadCleartextChunk(long chunkIndex) {
+	private ChunkData loadCleartextChunk(long chunkIndex) {
 		try {
-			return cleartextChunks.get(chunkIndex).bytes();
+			return cleartextChunks.get(chunkIndex);
 		} catch (ExecutionException e) {
 			if (e.getCause() instanceof AuthenticationFailedException) {
 				// TODO
@@ -204,10 +213,10 @@ class CryptoFileChannel extends AbstractFileChannel {
 			int read = ch.read(ciphertextBuf, ciphertextPos);
 			if (read == -1) {
 				// append
-				return writtenChunkData(ByteBuffer.allocate(payloadSize));
+				return ChunkData.emptyWithSize(payloadSize);
 			} else {
 				ciphertextBuf.flip();
-				return readChunkData(cryptor.fileContentCryptor().decryptChunk(ciphertextBuf, chunkIndex, header, true));
+				return ChunkData.wrap(cryptor.fileContentCryptor().decryptChunk(ciphertextBuf, chunkIndex, header, true));
 			}
 		}
 
@@ -224,14 +233,13 @@ class CryptoFileChannel extends AbstractFileChannel {
 			if (channelIsWritable() && chunkLiesInFile(chunkIndex) && chunkData.wasWritten()) {
 				LOG.debug("save chunk" + chunkIndex);
 				long ciphertextPos = chunkIndex * cryptor.fileContentCryptor().ciphertextChunkSize() + cryptor.fileHeaderCryptor().headerSize();
-				ByteBuffer cleartextBuf = chunkData.bytes().asReadOnlyBuffer();
-				cleartextBuf.flip();
+				ByteBuffer cleartextBuf = chunkData.asReadOnlyBuffer();
 				ByteBuffer ciphertextBuf = cryptor.fileContentCryptor().encryptChunk(cleartextBuf, chunkIndex, header);
 				try {
 					ch.write(ciphertextBuf, ciphertextPos);
 				} catch (IOException e) {
 					ioExceptionsDuringWrite.add(e);
-				}
+				} // unchecked exceptions will be propagated to the thread causing removal
 			}
 		}
 
