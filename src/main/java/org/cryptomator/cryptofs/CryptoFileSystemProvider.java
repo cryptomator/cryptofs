@@ -54,6 +54,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	private final CryptorProviderImpl cryptorProvider;
 	private final ConcurrentHashMap<Path, CryptoFileSystem> fileSystems = new ConcurrentHashMap<>();
+	private final OpenCryptoFiles openCryptoFiles = new OpenCryptoFiles();
 
 	public CryptoFileSystemProvider(SecureRandom csprng) {
 		this.cryptorProvider = new CryptorProviderImpl(csprng);
@@ -116,13 +117,16 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public FileChannel newFileChannel(Path cleartextPath, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+		validate(options);
 		CryptoFileSystem fs = CryptoFileSystem.cast(cleartextPath.getFileSystem());
 		Path ciphertextPath = fs.getCryptoPathMapper().getCiphertextFilePath(cleartextPath);
-		return new CryptoFileChannel(fs.getCryptor(), ciphertextPath, options);
+		OpenCryptoFile openCryptoFile = openCryptoFiles.get(ciphertextPath, fs.getCryptor(), options);
+		return new CryptoFileChannel(openCryptoFile, options);
 	}
 
 	@Override
 	public SeekableByteChannel newByteChannel(Path cleartextPath, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+		validate(options);
 		return newFileChannel(cleartextPath, options, attrs);
 	}
 
@@ -230,6 +234,10 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	public void setAttribute(Path cleartextPath, String attribute, Object value, LinkOption... options) throws IOException {
 		// TODO Auto-generated method stub
 
+	}
+
+	private void validate(Set<? extends OpenOption> options) {
+		
 	}
 
 }

@@ -14,6 +14,7 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Arrays.asList;
+import static org.cryptomator.cryptofs.OpenCryptoFile.anOpenCryptoFile;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assume.assumeTrue;
 
@@ -27,6 +28,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.cryptomator.cryptofs.OpenCryptoFile.AlreadyClosedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.v1.CryptorProviderImpl;
@@ -210,14 +212,40 @@ public class CryptoFileChannelWriteReadTest {
 	}
 
 	private CryptoFileChannel readableChannel() throws IOException {
-		return new CryptoFileChannel(cryptor, ciphertextFilePath, options(READ));
+		Object id = new Object();
+		Set<OpenOption> options = options(READ);
+		OpenCryptoFile openCryptoFile = anOpenCryptoFile()
+				.withId(id)
+				.withCryptor(cryptor)
+				.withCyphertextPath(ciphertextFilePath)
+				.withOptions(options)
+				.build();
+		try {
+			openCryptoFile.open(options);
+			return new CryptoFileChannel(openCryptoFile, options);
+		} catch (AlreadyClosedException e) {
+			throw new IllegalStateException(e);
+		}
 	}
 
 	private CryptoFileChannel writableChannel() throws IOException {
-		return new CryptoFileChannel(cryptor, ciphertextFilePath, options(CREATE, WRITE));
+		Object id = new Object();
+		Set<OpenOption> options = options(CREATE, WRITE);
+		OpenCryptoFile openCryptoFile = anOpenCryptoFile()
+				.withId(id)
+				.withCryptor(cryptor)
+				.withCyphertextPath(ciphertextFilePath)
+				.withOptions(options)
+				.build();
+		try {
+			openCryptoFile.open(options);
+			return new CryptoFileChannel(openCryptoFile, options);
+		} catch (AlreadyClosedException e) {
+			throw new IllegalStateException(e);
+		}
 	}
 
-	private Set<? extends OpenOption> options(OpenOption ... options) {
+	private Set<OpenOption> options(OpenOption ... options) {
 		return new HashSet<>(asList(options));
 	}
 	

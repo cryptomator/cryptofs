@@ -9,150 +9,181 @@
 package org.cryptomator.cryptofs;
 
 import static java.lang.Math.min;
+import static java.nio.file.StandardOpenOption.WRITE;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.nio.file.OpenOption;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 
-import org.cryptomator.cryptolib.api.AuthenticationFailedException;
-import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.FileHeader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.cryptomator.cryptofs.OpenCryptoFile.AlreadyClosedException;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-import com.google.common.cache.RemovalListener;
-import com.google.common.cache.RemovalNotification;
+class CryptoFileChannel extends FileChannel {
 
-/**
- * TODO Not thread-safe.
- */
-class CryptoFileChannel extends AbstractFileChannel {
+	private static final int BUFFER_SIZE = 4096;
 
-	private static final Logger LOG = LoggerFactory.getLogger(CryptoFileChannel.class);
-	private static final int MAX_CACHED_CLEARTEXT_CHUNKS = 5;
+	private final OpenCryptoFile openCryptoFile;
+	private final boolean writable;
+	private long position = 0;
 
-	private final Cryptor cryptor;
-	private final FileChannel ch;
-	private final FileHeader header;
-	private final LoadingCache<Long, ChunkData> cleartextChunks;
-	private final Set<OpenOption> openOptions;
-	private final Collection<IOException> ioExceptionsDuringWrite = new ArrayList<>();
-
-	public CryptoFileChannel(Cryptor cryptor, Path ciphertextPath, Set<? extends OpenOption> options) throws IOException {
-		this.cryptor = cryptor;
-		Set<OpenOption> adjustedOptions = new HashSet<>(options);
-		adjustedOptions.remove(StandardOpenOption.APPEND);
-		adjustedOptions.add(StandardOpenOption.READ);
-		openOptions = Collections.unmodifiableSet(adjustedOptions);
-		ch = FileChannel.open(ciphertextPath, adjustedOptions);
-		if (adjustedOptions.contains(StandardOpenOption.CREATE_NEW) || adjustedOptions.contains(StandardOpenOption.CREATE) && ch.size() == 0) {
-			header = cryptor.fileHeaderCryptor().create();
-		} else {
-			ByteBuffer existingHeaderBuf = ByteBuffer.allocate(cryptor.fileHeaderCryptor().headerSize());
-			ch.position(0);
-			ch.read(existingHeaderBuf);
-			existingHeaderBuf.flip();
-			header = cryptor.fileHeaderCryptor().decryptHeader(existingHeaderBuf);
-		}
-		cleartextChunks = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_CLEARTEXT_CHUNKS).removalListener(new CleartextChunkSaver()).build(new CleartextChunkLoader());
+	/**
+	 * @throws AlreadyClosedException if the openCryptoFile has already been closed
+	 */
+	public CryptoFileChannel(OpenCryptoFile openCryptoFile, Set<? extends OpenOption> options) throws IOException {
+		this.openCryptoFile = openCryptoFile;
+		this.writable = options.contains(WRITE);
 	}
 
 	@Override
-	public int read(ByteBuffer dst, long position) throws IOException {
-		int origLimit = dst.limit();
-		long limitConsideringEof = size() - position;
-		if (limitConsideringEof < 1) {
-			return -1;
-		}
-		dst.limit((int) Math.min(origLimit, limitConsideringEof));
-		int read = 0;
-		int payloadSize = cryptor.fileContentCryptor().cleartextChunkSize();
-		while (dst.hasRemaining()) {
-			long pos = position + read;
-			long chunkIndex = pos / payloadSize;
-			int offset = (int) pos % payloadSize;
-			int len = Math.min(dst.remaining(), payloadSize - offset);
-			final ChunkData chunkData = loadCleartextChunk(chunkIndex);
-			chunkData.copyDataStartingAt(offset).to(dst);
-			read += len;
-		}
-		dst.limit(origLimit);
-		return read;
+	public synchronized long position() throws IOException {
+		return position;
 	}
 
 	@Override
-	public int write(ByteBuffer data, long offset) throws IOException {
-		long size = size();
-		int written = data.remaining();
-		if (size < offset) {
-			// fill gap between size and offset with zeroes
-			write(ByteSource.repeatingZeroes(offset - size).followedBy(data), size);
-		} else {
-			write(ByteSource.from(data), offset);
-		}
+	public synchronized FileChannel position(long newPosition) throws IOException {
+		position = newPosition;
+		return this;
+	}
+
+	@Override
+	public synchronized int read(ByteBuffer dst) throws IOException {
+		return blockingIo(() -> internalRead(dst));
+	}
+
+	@Override
+	public synchronized int write(ByteBuffer src) throws IOException {
+		assertWritable();
+		return blockingIo(() -> internalWrite(src)).intValue();
+	}
+
+	@Override
+	public synchronized int read(ByteBuffer target, long position) throws IOException {
+		return blockingIo(() -> internalRead(target, position));
+	}
+
+	@Override
+	public synchronized int write(ByteBuffer source, long offset) throws IOException {
+		assertWritable();
+		return blockingIo(() -> internalWrite(source, offset));
+	}
+
+	@Override
+	public synchronized long read(ByteBuffer[] dsts, int offset, int length) throws IOException {
+		return blockingIo(() -> {
+			long totalRead = 0;
+			for (int i = offset; i < length; i++) {
+				int read = internalRead(dsts[i]);
+				if (read == -1 && totalRead == 0) {
+					return -1L;
+				} else if (read == -1) {
+					return totalRead;
+				} else {
+					totalRead += read;
+				}
+			}
+			return totalRead;
+		});
+	}
+
+	@Override
+	public synchronized long write(ByteBuffer[] srcs, int offset, int length) throws IOException {
+		assertWritable();
+		return blockingIo(() -> {
+			long totalWritten = 0;
+			for (int i = offset; i < length; i++) {
+				totalWritten += internalWrite(srcs[i]);
+			}
+			return totalWritten;
+		});
+	}
+
+	@Override
+	public synchronized long transferTo(long position, long count, WritableByteChannel target) throws IOException {
+		return blockingIo(() -> {
+			ByteBuffer buf = ByteBuffer.allocate((int) Math.min(count, BUFFER_SIZE));
+			long transferred = 0;
+			while (transferred < count) {
+				buf.clear();
+				int read = internalRead(buf, position + transferred);
+				if (read == -1) {
+					break;
+				} else {
+					buf.flip();
+					buf.limit((int) Math.min(buf.limit(), count - transferred));
+					transferred += target.write(buf);
+				}
+			}
+			return transferred;
+		});
+	}
+
+	@Override
+	public synchronized long transferFrom(ReadableByteChannel src, long position, long count) throws IOException {
+		assertWritable();
+		return blockingIo(() -> {
+			if (position > size()) {
+				return 0L;
+			}
+			ByteBuffer buf = ByteBuffer.allocate((int) Math.min(count, BUFFER_SIZE));
+			long transferred = 0;
+			while (transferred < count) {
+				buf.clear();
+				int read = src.read(buf);
+				if (read == -1) {
+					break;
+				} else {
+					buf.flip();
+					buf.limit((int) Math.min(buf.limit(), count - transferred));
+					transferred += this.write(buf, position + transferred);
+				}
+			}
+			return transferred;
+		});
+	}
+
+	private long internalWrite(ByteBuffer src) throws IOException {
+		long positionBeforeWrite = position();
+		int written = openCryptoFile.write(src, positionBeforeWrite);
+		position(positionBeforeWrite + written);
 		return written;
 	}
 
-	private void write(ByteSource source, long position) {
-		int cleartextChunkSize = cryptor.fileContentCryptor().cleartextChunkSize();
-		int written =  0;
-		while (source.hasRemaining()) {
-			long currentPosition = position + written;
-			long chunkIndex = currentPosition / cleartextChunkSize;
-			int offsetInChunk = (int) currentPosition % cleartextChunkSize;
-			int len = (int)min(source.remaining(), cleartextChunkSize - offsetInChunk);
-			if (currentPosition + len > size()) {
-				// append
-				setSize(currentPosition + len);
-			}
-			if (len == cleartextChunkSize) {
-				// complete chunk, no need to load and decrypt from file:
-				cleartextChunks.put(chunkIndex, ChunkData.emptyWithSize(cleartextChunkSize));
-			}
-			final ChunkData chunkData = loadCleartextChunk(chunkIndex);
-			chunkData.copyDataStartingAt(offsetInChunk).from(source);
-			written += len;
-		}
+	private int internalRead(ByteBuffer dst) throws IOException {
+		long positionBeforeRead = position();
+		int read = openCryptoFile.read(dst, positionBeforeRead);
+		position(positionBeforeRead + read);
+		return read;
+	}
+
+	private int internalWrite(ByteBuffer source, long position) throws IOException {
+		return openCryptoFile.write(source, position);
+	}
+
+	private int internalRead(ByteBuffer target, long position) throws IOException {
+		return openCryptoFile.read(target, position);
 	}
 
 	@Override
 	public long size() {
-		return header.getFilesize();
-	}
-
-	private void setSize(long size) {
-		header.setFilesize(size);
+		return openCryptoFile.size();
 	}
 
 	@Override
-	public FileChannel truncate(long size) throws IOException {
-		ch.truncate(cryptor.fileHeaderCryptor().headerSize());
-		setSize(Math.min(size, size()));
-		// TODO Auto-generated method stub
-		return null;
+	public synchronized FileChannel truncate(long size) throws IOException {
+		assertWritable();
+		openCryptoFile.truncate(size);
+		position = min(size, position);
+		return this;
 	}
 
 	@Override
 	public void force(boolean metaData) throws IOException {
-		cleartextChunks.invalidateAll();
-		if (openOptions.contains(StandardOpenOption.WRITE)) {
-			ch.write(cryptor.fileHeaderCryptor().encryptHeader(header), 0);
-		}
-		ch.force(metaData);
+		openCryptoFile.force(metaData, writable);
 	}
 
 	@Override
@@ -162,95 +193,59 @@ class CryptoFileChannel extends AbstractFileChannel {
 
 	@Override
 	public FileLock lock(long position, long size, boolean shared) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+		return blockingIo(() -> {
+			FileLock delegate = openCryptoFile.lock(position, size, shared);
+			CryptoFileLock result = CryptoFileLock.builder() //
+					.withDelegate(delegate)
+					.withChannel(this)
+					.withPosition(position)
+					.withSize(size)
+					.thatIsShared(shared)
+					.build();
+			return result;
+		});
 	}
 
 	@Override
 	public FileLock tryLock(long position, long size, boolean shared) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+		return blockingIo(() -> {
+			FileLock delegate = openCryptoFile.lock(position, size, shared);
+			if (delegate == null) {
+				return null;
+			}
+			CryptoFileLock result = CryptoFileLock.builder() //
+					.withDelegate(delegate)
+					.withChannel(this)
+					.withPosition(position)
+					.withSize(size)
+					.thatIsShared(shared)
+					.build();
+			return result;
+		});
+		
 	}
 
 	@Override
 	protected void implCloseChannel() throws IOException {
+		openCryptoFile.close(writable);
+	}
+
+	private void assertWritable() throws IOException {
+		if (!writable) {
+			throw new IOException("Channel not writable");
+		}
+	}
+
+	private <T> T blockingIo(SupplierThrowingException<T,IOException> supplier) throws IOException {
+		boolean completed = false;
 		try {
-			// TODO append size obfuscation padding?
-			force(true);
-			if (!ioExceptionsDuringWrite.isEmpty()) {
-				throw new IOException("Failed to write at least " + ioExceptionsDuringWrite.size() + " chunk(s).");
-			}
-		} catch (IOException e) {
-			ioExceptionsDuringWrite.forEach(e::addSuppressed);
-			throw e;
+			begin();
+			T result = supplier.get();
+			completed = true;
+			return result;
 		} finally {
-			ch.close();
+			end(completed);
 		}
-	}
-
-	private ChunkData loadCleartextChunk(long chunkIndex) {
-		try {
-			return cleartextChunks.get(chunkIndex);
-		} catch (ExecutionException e) {
-			if (e.getCause() instanceof AuthenticationFailedException) {
-				// TODO
-				throw new UnsupportedOperationException("TODO", e);
-			} else {
-				throw new IllegalStateException("Unexpected Exception.", e);
-			}
-		}
-	}
-
-	private class CleartextChunkLoader extends CacheLoader<Long, ChunkData> {
-
-		@Override
-		public ChunkData load(Long chunkIndex) throws Exception {
-			LOG.debug("load chunk" + chunkIndex);
-			int payloadSize = cryptor.fileContentCryptor().cleartextChunkSize();
-			int chunkSize = cryptor.fileContentCryptor().ciphertextChunkSize();
-			long ciphertextPos = chunkIndex * chunkSize + cryptor.fileHeaderCryptor().headerSize();
-			ByteBuffer ciphertextBuf = ByteBuffer.allocate(chunkSize);
-			int read = ch.read(ciphertextBuf, ciphertextPos);
-			if (read == -1) {
-				// append
-				return ChunkData.emptyWithSize(payloadSize);
-			} else {
-				ciphertextBuf.flip();
-				return ChunkData.wrap(cryptor.fileContentCryptor().decryptChunk(ciphertextBuf, chunkIndex, header, true));
-			}
-		}
-
-	}
-
-	private class CleartextChunkSaver implements RemovalListener<Long, ChunkData> {
-
-		@Override
-		public void onRemoval(RemovalNotification<Long, ChunkData> notification) {
-			onRemoval(notification.getKey(), notification.getValue());
-		}
-
-		private void onRemoval(long chunkIndex, ChunkData chunkData) {
-			if (channelIsWritable() && chunkLiesInFile(chunkIndex) && chunkData.wasWritten()) {
-				LOG.debug("save chunk" + chunkIndex);
-				long ciphertextPos = chunkIndex * cryptor.fileContentCryptor().ciphertextChunkSize() + cryptor.fileHeaderCryptor().headerSize();
-				ByteBuffer cleartextBuf = chunkData.asReadOnlyBuffer();
-				ByteBuffer ciphertextBuf = cryptor.fileContentCryptor().encryptChunk(cleartextBuf, chunkIndex, header);
-				try {
-					ch.write(ciphertextBuf, ciphertextPos);
-				} catch (IOException e) {
-					ioExceptionsDuringWrite.add(e);
-				} // unchecked exceptions will be propagated to the thread causing removal
-			}
-		}
-
-		private boolean chunkLiesInFile(long chunkIndex) {
-			return chunkIndex * cryptor.fileContentCryptor().cleartextChunkSize() < size();
-		}
-
-		private boolean channelIsWritable() {
-			return openOptions.contains(StandardOpenOption.WRITE);
-		}
-
 	}
 
 }
