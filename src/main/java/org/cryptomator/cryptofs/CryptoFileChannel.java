@@ -9,7 +9,6 @@
 package org.cryptomator.cryptofs;
 
 import static java.lang.Math.min;
-import static java.nio.file.StandardOpenOption.WRITE;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -18,8 +17,6 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
-import java.nio.file.OpenOption;
-import java.util.Set;
 
 import org.cryptomator.cryptofs.OpenCryptoFile.AlreadyClosedException;
 
@@ -28,15 +25,15 @@ class CryptoFileChannel extends FileChannel {
 	private static final int BUFFER_SIZE = 4096;
 
 	private final OpenCryptoFile openCryptoFile;
-	private final boolean writable;
+	private final EffectiveOpenOptions options;
 	private long position = 0;
 
 	/**
 	 * @throws AlreadyClosedException if the openCryptoFile has already been closed
 	 */
-	public CryptoFileChannel(OpenCryptoFile openCryptoFile, Set<? extends OpenOption> options) throws IOException {
+	public CryptoFileChannel(OpenCryptoFile openCryptoFile, EffectiveOpenOptions options) throws IOException {
 		this.openCryptoFile = openCryptoFile;
-		this.writable = options.contains(WRITE);
+		this.options = options;
 	}
 
 	@Override
@@ -52,6 +49,7 @@ class CryptoFileChannel extends FileChannel {
 
 	@Override
 	public synchronized int read(ByteBuffer dst) throws IOException {
+		assertReadable();
 		return blockingIo(() -> internalRead(dst));
 	}
 
@@ -63,6 +61,7 @@ class CryptoFileChannel extends FileChannel {
 
 	@Override
 	public synchronized int read(ByteBuffer target, long position) throws IOException {
+		assertReadable();
 		return blockingIo(() -> internalRead(target, position));
 	}
 
@@ -74,6 +73,7 @@ class CryptoFileChannel extends FileChannel {
 
 	@Override
 	public synchronized long read(ByteBuffer[] dsts, int offset, int length) throws IOException {
+		assertReadable();
 		return blockingIo(() -> {
 			long totalRead = 0;
 			for (int i = offset; i < length; i++) {
@@ -104,6 +104,7 @@ class CryptoFileChannel extends FileChannel {
 
 	@Override
 	public synchronized long transferTo(long position, long count, WritableByteChannel target) throws IOException {
+		assertReadable();
 		return blockingIo(() -> {
 			ByteBuffer buf = ByteBuffer.allocate((int) Math.min(count, BUFFER_SIZE));
 			long transferred = 0;
@@ -147,10 +148,14 @@ class CryptoFileChannel extends FileChannel {
 	}
 
 	private long internalWrite(ByteBuffer src) throws IOException {
-		long positionBeforeWrite = position();
-		int written = openCryptoFile.write(src, positionBeforeWrite);
-		position(positionBeforeWrite + written);
-		return written;
+		if (options.append()) {
+			return openCryptoFile.append(options, src);
+		} else {
+			long positionBeforeWrite = position();
+			int written = openCryptoFile.write(options, src, positionBeforeWrite);
+			position(positionBeforeWrite + written);
+			return written;
+		}
 	}
 
 	private int internalRead(ByteBuffer dst) throws IOException {
@@ -161,7 +166,7 @@ class CryptoFileChannel extends FileChannel {
 	}
 
 	private int internalWrite(ByteBuffer source, long position) throws IOException {
-		return openCryptoFile.write(source, position);
+		return openCryptoFile.write(options, source, position);
 	}
 
 	private int internalRead(ByteBuffer target, long position) throws IOException {
@@ -183,7 +188,7 @@ class CryptoFileChannel extends FileChannel {
 
 	@Override
 	public void force(boolean metaData) throws IOException {
-		openCryptoFile.force(metaData, writable);
+		openCryptoFile.force(metaData, options.writable());
 	}
 
 	@Override
@@ -208,31 +213,35 @@ class CryptoFileChannel extends FileChannel {
 
 	@Override
 	public FileLock tryLock(long position, long size, boolean shared) throws IOException {
-		return blockingIo(() -> {
-			FileLock delegate = openCryptoFile.lock(position, size, shared);
-			if (delegate == null) {
-				return null;
-			}
-			CryptoFileLock result = CryptoFileLock.builder() //
-					.withDelegate(delegate)
-					.withChannel(this)
-					.withPosition(position)
-					.withSize(size)
-					.thatIsShared(shared)
-					.build();
-			return result;
-		});
+		FileLock delegate = openCryptoFile.tryLock(position, size, shared);
+		if (delegate == null) {
+			return null;
+		}
+		CryptoFileLock result = CryptoFileLock.builder() //
+				.withDelegate(delegate)
+				.withChannel(this)
+				.withPosition(position)
+				.withSize(size)
+				.thatIsShared(shared)
+				.build();
+		return result;
 		
 	}
 
 	@Override
 	protected void implCloseChannel() throws IOException {
-		openCryptoFile.close(writable);
+		openCryptoFile.close(options.writable());
 	}
 
 	private void assertWritable() throws IOException {
-		if (!writable) {
+		if (!options.writable()) {
 			throw new IOException("Channel not writable");
+		}
+	}
+
+	private void assertReadable() throws IOException {
+		if (!options.readable()) {
+			throw new IOException("Channel not readable");
 		}
 	}
 

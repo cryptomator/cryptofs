@@ -25,6 +25,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.FileAttribute;
@@ -112,12 +113,15 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public AsynchronousFileChannel newAsynchronousFileChannel(Path cleartextPath, Set<? extends OpenOption> options, ExecutorService executor, FileAttribute<?>... attrs) throws IOException {
+		if (options.contains(StandardOpenOption.APPEND)) {
+			throw new IllegalArgumentException("AsynchronousFileChannel can not be opened in append mode");
+		}
 		return new AsyncDelegatingFileChannel(newFileChannel(cleartextPath, options, attrs), executor);
 	}
 
 	@Override
-	public FileChannel newFileChannel(Path cleartextPath, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-		validate(options);
+	public FileChannel newFileChannel(Path cleartextPath, Set<? extends OpenOption> optionsSet, FileAttribute<?>... attrs) throws IOException {
+		EffectiveOpenOptions options = EffectiveOpenOptions.from(optionsSet);
 		CryptoFileSystem fs = CryptoFileSystem.cast(cleartextPath.getFileSystem());
 		Path ciphertextPath = fs.getCryptoPathMapper().getCiphertextFilePath(cleartextPath);
 		OpenCryptoFile openCryptoFile = openCryptoFiles.get(ciphertextPath, fs.getCryptor(), options);
@@ -126,7 +130,6 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public SeekableByteChannel newByteChannel(Path cleartextPath, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-		validate(options);
 		return newFileChannel(cleartextPath, options, attrs);
 	}
 
@@ -234,10 +237,6 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	public void setAttribute(Path cleartextPath, String attribute, Object value, LinkOption... options) throws IOException {
 		// TODO Auto-generated method stub
 
-	}
-
-	private void validate(Set<? extends OpenOption> options) {
-		
 	}
 
 }

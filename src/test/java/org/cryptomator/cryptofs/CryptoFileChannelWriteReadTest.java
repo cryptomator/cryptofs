@@ -26,7 +26,6 @@ import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Set;
 
 import org.cryptomator.cryptofs.OpenCryptoFile.AlreadyClosedException;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -213,7 +212,7 @@ public class CryptoFileChannelWriteReadTest {
 
 	private CryptoFileChannel readableChannel() throws IOException {
 		Object id = new Object();
-		Set<OpenOption> options = options(READ);
+		EffectiveOpenOptions options = options(READ);
 		OpenCryptoFile openCryptoFile = anOpenCryptoFile()
 				.withId(id)
 				.withCryptor(cryptor)
@@ -230,7 +229,7 @@ public class CryptoFileChannelWriteReadTest {
 
 	private CryptoFileChannel writableChannel() throws IOException {
 		Object id = new Object();
-		Set<OpenOption> options = options(CREATE, WRITE);
+		EffectiveOpenOptions options = options(CREATE, WRITE);
 		OpenCryptoFile openCryptoFile = anOpenCryptoFile()
 				.withId(id)
 				.withCryptor(cryptor)
@@ -245,8 +244,8 @@ public class CryptoFileChannelWriteReadTest {
 		}
 	}
 
-	private Set<OpenOption> options(OpenOption ... options) {
-		return new HashSet<>(asList(options));
+	private EffectiveOpenOptions options(OpenOption ... options) {
+		return EffectiveOpenOptions.from(new HashSet<>(asList(options)));
 	}
 	
 	public static RepeatWithoutCount repeat(int value) {

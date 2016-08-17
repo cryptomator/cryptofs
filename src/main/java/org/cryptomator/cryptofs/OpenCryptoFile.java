@@ -1,7 +1,6 @@
 package org.cryptomator.cryptofs;
 
 import static java.lang.Math.min;
-import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static org.cryptomator.cryptofs.OpenCounter.OpenState.ALREADY_CLOSED;
 import static org.cryptomator.cryptofs.OpenCounter.OpenState.WAS_OPEN;
 
@@ -9,13 +8,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -52,10 +47,9 @@ class OpenCryptoFile {
 
 	public OpenCryptoFile(Builder builder) throws IOException {
 		this.id = builder.id;
-		this.cryptor = builder.cryptor;
-		Set<OpenOption> adjustedOptions = adjustOptions(builder.options);
-		this.channel = FileChannel.open(builder.ciphertextPath, adjustedOptions);
-		this.header = createOrLoadHeader(adjustedOptions);
+		this.cryptor = builder.cryptor; 
+		this.channel = FileChannel.open(builder.ciphertextPath, builder.options.createOpenOptionsForEncryptedFile());
+		this.header = createOrLoadHeader(builder.options);
 		this.size = new AtomicLong(header.getFilesize());
 		this.cleartextChunks = CacheBuilder.newBuilder() //
 				.maximumSize(MAX_CACHED_CLEARTEXT_CHUNKS) //
@@ -64,16 +58,8 @@ class OpenCryptoFile {
 		this.onClosed = builder.onClosed;
 	}
 
-	private Set<OpenOption> adjustOptions(Set<? extends OpenOption> options) {
-		Set<OpenOption> adjustedOptions = new HashSet<>(options);
-		adjustedOptions.remove(StandardOpenOption.APPEND);
-		adjustedOptions.add(StandardOpenOption.READ);
-		adjustedOptions.add(StandardOpenOption.WRITE);
-		return adjustedOptions;
-	}
-
-	private FileHeader createOrLoadHeader(Set<OpenOption> options) throws IOException {
-		if (options.contains(StandardOpenOption.CREATE_NEW) || options.contains(StandardOpenOption.CREATE) && channel.size() == 0) {
+	private FileHeader createOrLoadHeader(EffectiveOpenOptions options) throws IOException {
+		if (options.truncateExisting() || isNewFile(options)) {
 			return cryptor.fileHeaderCryptor().create();
 		} else {
 			ByteBuffer existingHeaderBuf = ByteBuffer.allocate(cryptor.fileHeaderCryptor().headerSize());
@@ -84,6 +70,10 @@ class OpenCryptoFile {
 		}
 	}
 	
+	private boolean isNewFile(EffectiveOpenOptions options) throws IOException {
+		return options.create() || options.createNew() && channel.size() == 0;
+	}
+
 	public Object id() {
 		return id;
 	}
@@ -110,7 +100,11 @@ class OpenCryptoFile {
 		return read;
 	}
 
-	public synchronized int write(ByteBuffer data, long offset) throws IOException {
+	public synchronized long append(EffectiveOpenOptions options, ByteBuffer src) throws IOException {
+		return write(options, src, size());
+	}
+
+	public synchronized int write(EffectiveOpenOptions options, ByteBuffer data, long offset) throws IOException {
 		long size = size();
 		int written = data.remaining();
 		if (size < offset) {
@@ -119,7 +113,14 @@ class OpenCryptoFile {
 		} else {
 			write(ByteSource.from(data), offset);
 		}
+		handleSync(options);
 		return written;
+	}
+
+	private void handleSync(EffectiveOpenOptions options) throws IOException {
+		if (options.syncData()) {
+			force(options.syncDataAndMetadata(), options.writable());
+		}
 	}
 
 	private void write(ByteSource source, long position) {
@@ -180,7 +181,7 @@ class OpenCryptoFile {
 			return cleartextChunks.get(chunkIndex);
 		} catch (ExecutionException e) {
 			if (e.getCause() instanceof AuthenticationFailedException) {
-				// TODO
+				// TODO provide means to pass an AuthenticationFailedException handler using an OpenOption
 				throw new UnsupportedOperationException("TODO", e);
 			} else {
 				throw new IllegalStateException("Unexpected Exception.", e);
@@ -236,11 +237,11 @@ class OpenCryptoFile {
 
 	}
 
-	public void open(Set<? extends OpenOption> options) throws AlreadyClosedException, IOException {
+	public void open(EffectiveOpenOptions openOptions) throws AlreadyClosedException, IOException {
 		OpenState state = openCounter.countOpen();
 		if (state == ALREADY_CLOSED) {
 			throw new AlreadyClosedException();
-		} else if (state == WAS_OPEN && options.contains(CREATE_NEW)) {
+		} else if (state == WAS_OPEN && openOptions.createNew()) {
 			throw new IOException("Failed to create new file. File exists.");
 		}
 	}
@@ -274,7 +275,7 @@ class OpenCryptoFile {
 		private Object id;
 		private Cryptor cryptor;
 		private Path ciphertextPath;
-		private Set<? extends OpenOption> options;
+		private EffectiveOpenOptions options;
 		private Consumer<OpenCryptoFile> onClosed = ignored -> {};
 		
 		private Builder() {}
@@ -294,7 +295,7 @@ class OpenCryptoFile {
 			return this;
 		}
 		
-		public Builder withOptions(Set<? extends OpenOption> options) {
+		public Builder withOptions(EffectiveOpenOptions options) {
 			this.options = options;
 			return this;
 		}
