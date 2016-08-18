@@ -51,7 +51,7 @@ public class CryptoFileSystemProviderTest {
 	@Before
 	public void setup() throws IOException {
 		tmpPath = Files.createTempDirectory("unit-tests");
-		provider = new CryptoFileSystemProvider(NULL_RANDOM);
+		provider = new CryptoFileSystemProvider(NULL_RANDOM, false);
 	}
 
 	@After

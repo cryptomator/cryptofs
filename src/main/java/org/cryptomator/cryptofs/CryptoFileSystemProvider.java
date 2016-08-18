@@ -58,14 +58,15 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	private final CryptorProviderImpl cryptorProvider;
 	private final ConcurrentHashMap<Path, CryptoFileSystem> fileSystems = new ConcurrentHashMap<>();
-	private final OpenCryptoFiles openCryptoFiles = new OpenCryptoFiles();
+	private final OpenCryptoFiles openCryptoFiles;
 
-	public CryptoFileSystemProvider(SecureRandom csprng) {
+	public CryptoFileSystemProvider(SecureRandom csprng, boolean readonly) {
 		this.cryptorProvider = new CryptorProviderImpl(csprng);
+		this.openCryptoFiles = new OpenCryptoFiles(readonly);
 	}
 
 	public CryptoFileSystemProvider() {
-		this(defaultCsprng());
+		this(defaultCsprng(), false);
 	}
 
 	private static SecureRandom defaultCsprng() {

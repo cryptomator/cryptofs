@@ -6,9 +6,9 @@ import static org.cryptomator.cryptofs.OpenCounter.OpenState.WAS_OPEN;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.ExecutionException;
@@ -34,21 +34,24 @@ class OpenCryptoFile {
 	private static final int MAX_CACHED_CLEARTEXT_CHUNKS = 5;
 
 	private final Cryptor cryptor;
+	private final Object id;
 	private final FileChannel channel;
 	private final FileHeader header;
 	private final LoadingCache<Long, ChunkData> cleartextChunks;
 	private final AtomicLong size;
 	private final Consumer<OpenCryptoFile> onClosed;
-	private final Object id;
-	
 	private final Collection<IOException> ioExceptionsDuringWrite = new ArrayList<>();
-	
 	private final OpenCounter openCounter = new OpenCounter();
 
+	/**
+	 * Only one OpenCryptoFile instance for each file exists at a time.
+	 * Therefore there must not be any reference to any equal instance, when this instance is constructed.
+	 * I.e. immediately after construction the unique ID of this OpenCryptoFile will get cached for future reference.
+	 */
 	public OpenCryptoFile(Builder builder) throws IOException {
+		this.cryptor = builder.cryptor;
 		this.id = builder.id;
-		this.cryptor = builder.cryptor; 
-		this.channel = FileChannel.open(builder.ciphertextPath, builder.options.createOpenOptionsForEncryptedFile());
+		this.channel = builder.channel;
 		this.header = createOrLoadHeader(builder.options);
 		this.size = new AtomicLong(header.getFilesize());
 		this.cleartextChunks = CacheBuilder.newBuilder() //
@@ -69,9 +72,9 @@ class OpenCryptoFile {
 			return cryptor.fileHeaderCryptor().decryptHeader(existingHeaderBuf);
 		}
 	}
-	
+
 	private boolean isNewFile(EffectiveOpenOptions options) throws IOException {
-		return options.create() || options.createNew() && channel.size() == 0;
+		return options.createNew() || options.create() && channel.size() == 0;
 	}
 
 	public Object id() {
@@ -125,12 +128,12 @@ class OpenCryptoFile {
 
 	private void write(ByteSource source, long position) {
 		int cleartextChunkSize = cryptor.fileContentCryptor().cleartextChunkSize();
-		int written =  0;
+		int written = 0;
 		while (source.hasRemaining()) {
 			long currentPosition = position + written;
 			long chunkIndex = currentPosition / cleartextChunkSize;
 			int offsetInChunk = (int) currentPosition % cleartextChunkSize;
-			int len = (int)min(source.remaining(), cleartextChunkSize - offsetInChunk);
+			int len = (int) min(source.remaining(), cleartextChunkSize - offsetInChunk);
 			if (currentPosition + len > size()) {
 				// append
 				setSize(currentPosition + len);
@@ -157,9 +160,9 @@ class OpenCryptoFile {
 		// TODO
 	}
 
-	public synchronized void force(boolean metaData, boolean writable) throws IOException {
+	public synchronized void force(boolean metaData, boolean flushContents) throws IOException {
 		cleartextChunks.invalidateAll();
-		if (writable) {
+		if (flushContents) {
 			header.setFilesize(size.get());
 			channel.write(cryptor.fileHeaderCryptor().encryptHeader(header), 0);
 		}
@@ -237,17 +240,17 @@ class OpenCryptoFile {
 
 	}
 
-	public void open(EffectiveOpenOptions openOptions) throws AlreadyClosedException, IOException {
+	public void open(EffectiveOpenOptions openOptions) throws IOException {
 		OpenState state = openCounter.countOpen();
 		if (state == ALREADY_CLOSED) {
-			throw new AlreadyClosedException();
+			throw new ClosedChannelException();
 		} else if (state == WAS_OPEN && openOptions.createNew()) {
 			throw new IOException("Failed to create new file. File exists.");
 		}
 	}
-	
-	public void close(boolean writable) throws IOException {
-		force(true, writable);
+
+	public void close(boolean flushContents) throws IOException {
+		force(true, flushContents);
 		if (openCounter.countClose()) {
 			try {
 				onClosed.accept(this);
@@ -260,60 +263,57 @@ class OpenCryptoFile {
 			}
 		}
 	}
-	
-	/**
-	 * Notification that an OpenCryptoFile was already closed at the time {@link OpenCryptoFile#open()} has been invoked.
-	 */
-	static class AlreadyClosedException extends Exception {}
-	
+
 	public static Builder anOpenCryptoFile() {
 		return new Builder();
 	}
-	
+
 	public static class Builder {
-		
-		private Object id;
+
 		private Cryptor cryptor;
-		private Path ciphertextPath;
+		private Object id;
+		private FileChannel channel;
 		private EffectiveOpenOptions options;
-		private Consumer<OpenCryptoFile> onClosed = ignored -> {};
-		
-		private Builder() {}
-		
-		public Builder withId(Object id) {
-			this.id = id;
-			return this;
+		private Consumer<OpenCryptoFile> onClosed = ignored -> {
+		};
+
+		private Builder() {
 		}
-		
+
 		public Builder withCryptor(Cryptor cryptor) {
 			this.cryptor = cryptor;
 			return this;
 		}
-		
-		public Builder withCyphertextPath(Path ciphertextPath) {
-			this.ciphertextPath = ciphertextPath;
+
+		public Builder withId(Object id) {
+			this.id = id;
 			return this;
 		}
-		
+
+		public Builder withChannel(FileChannel channel) {
+			this.channel = channel;
+			return this;
+		}
+
 		public Builder withOptions(EffectiveOpenOptions options) {
 			this.options = options;
 			return this;
 		}
-		
+
 		public Builder onClosed(Consumer<OpenCryptoFile> onClosed) {
 			this.onClosed = onClosed;
 			return this;
 		}
-		
+
 		public OpenCryptoFile build() throws IOException {
 			validate();
 			return new OpenCryptoFile(this);
 		}
 
 		private void validate() {
-			assertNonNull(id, "id");
 			assertNonNull(cryptor, "cryptor");
-			assertNonNull(ciphertextPath, "ciphertextPath");
+			assertNonNull(id, "id");
+			assertNonNull(channel, "channel");
 			assertNonNull(options, "options");
 			assertNonNull(onClosed, "onClosed");
 		}
@@ -323,7 +323,7 @@ class OpenCryptoFile {
 				throw new IllegalStateException(name + " must not be empty");
 			}
 		}
-		
+
 	}
-	
+
 }

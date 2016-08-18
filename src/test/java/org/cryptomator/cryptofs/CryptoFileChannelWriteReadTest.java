@@ -20,6 +20,8 @@ import static org.junit.Assume.assumeTrue;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -27,7 +29,6 @@ import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.HashSet;
 
-import org.cryptomator.cryptofs.OpenCryptoFile.AlreadyClosedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.v1.CryptorProviderImpl;
@@ -57,30 +58,28 @@ public class CryptoFileChannelWriteReadTest {
 			Arrays.fill(bytes, (byte) 0x00);
 		};
 	};
-	
+
 	private static final CryptorProvider NULL_CRYPTOR_PROVIDER = new CryptorProviderImpl(NULL_RANDOM);
 
 	private Cryptor cryptor;
 	private Path ciphertextFilePath;
-	
+
 	@DataPoints("dataSizes")
-	public static int[] DATA_SIZES = {
-		0, // nothing
-		372, // nothing < x < full chunk
-		32768, // x = full chunk
-		40287, // full chunk < x < two chunks
-		65536, // x = two chunks
-		72389 // two chunks < x < three chunks
+	public static int[] DATA_SIZES = {0, // nothing
+			372, // nothing < x < full chunk
+			32768, // x = full chunk
+			40287, // full chunk < x < two chunks
+			65536, // x = two chunks
+			72389 // two chunks < x < three chunks
 	};
-	
+
 	@DataPoints("writeOffsets")
-	public static int[] WRITE_OFFSETS = {
-		0, // nothing
-		372, // nothing < x < full chunk
-		32768, // x = full chunk
-		40287, // full chunk < x < two chunks
-		65536, // x = two chunks
-		72389 // two chunks < x < three chunks
+	public static int[] WRITE_OFFSETS = {0, // nothing
+			372, // nothing < x < full chunk
+			32768, // x = full chunk
+			40287, // full chunk < x < two chunks
+			65536, // x = two chunks
+			72389 // two chunks < x < three chunks
 	};
 
 	@Before
@@ -93,30 +92,28 @@ public class CryptoFileChannelWriteReadTest {
 	public void teardown() throws IOException {
 		Files.deleteIfExists(ciphertextFilePath);
 	}
-	
+
 	@Test
 	public void testWriteAndReadNothing() throws IOException {
 		try (CryptoFileChannel channel = writableChannel()) {
 			channel.write(ByteBuffer.allocate(0));
 		}
-				
+
 		assertEquals(HEADER_SIZE, size(ciphertextFilePath));
-		
+
 		try (CryptoFileChannel channel = readableChannel()) {
 			assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
 		}
 	}
 
 	@Theory
-	public void testWithWritingOffset(
-			@FromDataPoints("dataSizes") int dataSize,
-			@FromDataPoints("writeOffsets") int writeOffset) throws IOException {
+	public void testWithWritingOffset(@FromDataPoints("dataSizes") int dataSize, @FromDataPoints("writeOffsets") int writeOffset) throws IOException {
 		assumeTrue(dataSize != 0 || writeOffset != 0);
-		
+
 		int cleartextSize = dataSize + writeOffset;
 		int numChunks = (cleartextSize + CHUNK_SIZE - 1) / CHUNK_SIZE;
 		int ciphertextSize = HEADER_SIZE + numChunks * CHUNK_OVERHEAD + writeOffset + dataSize;
-		
+
 		try (CryptoFileChannel channel = writableChannel()) {
 			assertEquals(0, channel.size());
 			channel.write(repeat(1).times(writeOffset).asByteBuffer());
@@ -124,16 +121,16 @@ public class CryptoFileChannelWriteReadTest {
 			channel.write(repeat(2).times(dataSize).asByteBuffer());
 			assertEquals(cleartextSize, channel.size());
 		}
-				
+
 		assertEquals(ciphertextSize, size(ciphertextFilePath));
-		
+
 		try (CryptoFileChannel channel = readableChannel()) {
 			ByteBuffer buffer = ByteBuffer.allocate(cleartextSize);
 			int result = channel.read(buffer);
 			assertEquals(cleartextSize, result);
 			assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
 			buffer.flip();
-			for (int i=0;i<cleartextSize;i++) {
+			for (int i = 0; i < cleartextSize; i++) {
 				if (i < writeOffset) {
 					assertEquals(format("byte(%d) = 1", i), 1, buffer.get(i));
 				} else {
@@ -144,15 +141,13 @@ public class CryptoFileChannelWriteReadTest {
 	}
 
 	@Theory
-	public void testWithWritingInReverseOrderUsingPositions(
-			@FromDataPoints("dataSizes") int dataSize,
-			@FromDataPoints("writeOffsets") int writeOffset) throws IOException {
+	public void testWithWritingInReverseOrderUsingPositions(@FromDataPoints("dataSizes") int dataSize, @FromDataPoints("writeOffsets") int writeOffset) throws IOException {
 		assumeTrue(dataSize != 0 || writeOffset != 0);
-		
+
 		int cleartextSize = dataSize + writeOffset;
 		int numChunks = (cleartextSize + CHUNK_SIZE - 1) / CHUNK_SIZE;
 		int ciphertextSize = HEADER_SIZE + numChunks * CHUNK_OVERHEAD + writeOffset + dataSize;
-		
+
 		try (CryptoFileChannel channel = writableChannel()) {
 			assertEquals(0, channel.size());
 			channel.write(repeat(2).times(dataSize).asByteBuffer(), writeOffset);
@@ -160,16 +155,16 @@ public class CryptoFileChannelWriteReadTest {
 			channel.write(repeat(1).times(writeOffset).asByteBuffer(), 0);
 			assertEquals(cleartextSize, channel.size());
 		}
-				
+
 		assertEquals(ciphertextSize, size(ciphertextFilePath));
-		
+
 		try (CryptoFileChannel channel = readableChannel()) {
 			ByteBuffer buffer = ByteBuffer.allocate(cleartextSize);
 			int result = channel.read(buffer);
 			assertEquals(cleartextSize, result);
 			assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
 			buffer.flip();
-			for (int i=0;i<cleartextSize;i++) {
+			for (int i = 0; i < cleartextSize; i++) {
 				if (i < writeOffset) {
 					assertEquals(format("byte(%d) = 1", i), 1, buffer.get(i));
 				} else {
@@ -180,31 +175,29 @@ public class CryptoFileChannelWriteReadTest {
 	}
 
 	@Theory
-	public void testWithSkippingOffset(
-			@FromDataPoints("dataSizes") int dataSize,
-			@FromDataPoints("writeOffsets") int writeOffset) throws IOException {
+	public void testWithSkippingOffset(@FromDataPoints("dataSizes") int dataSize, @FromDataPoints("writeOffsets") int writeOffset) throws IOException {
 		assumeTrue(dataSize != 0 && writeOffset != 0);
-		
+
 		int cleartextSize = dataSize + writeOffset;
 		int numChunks = (cleartextSize + CHUNK_SIZE - 1) / CHUNK_SIZE;
 		int ciphertextSize = HEADER_SIZE + numChunks * CHUNK_OVERHEAD + writeOffset + dataSize;
-		
+
 		try (CryptoFileChannel channel = writableChannel()) {
 			assertEquals(0, channel.size());
 			channel.position(writeOffset);
 			channel.write(repeat(2).times(dataSize).asByteBuffer());
 			assertEquals(cleartextSize, channel.size());
 		}
-				
+
 		assertEquals(ciphertextSize, size(ciphertextFilePath));
-		
+
 		try (CryptoFileChannel channel = readableChannel()) {
 			ByteBuffer buffer = ByteBuffer.allocate(cleartextSize);
 			int result = channel.read(buffer);
 			assertEquals(cleartextSize, result);
 			assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
 			buffer.flip();
-			for (int i=writeOffset;i<cleartextSize;i++) {
+			for (int i = writeOffset; i < cleartextSize; i++) {
 				assertEquals(format("byte(%d) = 2", i), 2, buffer.get(i));
 			}
 		}
@@ -213,16 +206,16 @@ public class CryptoFileChannelWriteReadTest {
 	private CryptoFileChannel readableChannel() throws IOException {
 		Object id = new Object();
 		EffectiveOpenOptions options = options(READ);
-		OpenCryptoFile openCryptoFile = anOpenCryptoFile()
-				.withId(id)
-				.withCryptor(cryptor)
-				.withCyphertextPath(ciphertextFilePath)
-				.withOptions(options)
+		FileChannel ch = ciphertextFilePath.getFileSystem().provider().newFileChannel(ciphertextFilePath, options.createOpenOptionsForEncryptedFile());
+		OpenCryptoFile openCryptoFile = anOpenCryptoFile().withId(id) //
+				.withCryptor(cryptor) //
+				.withChannel(ch) //
+				.withOptions(options) //
 				.build();
 		try {
 			openCryptoFile.open(options);
 			return new CryptoFileChannel(openCryptoFile, options);
-		} catch (AlreadyClosedException e) {
+		} catch (ClosedChannelException e) {
 			throw new IllegalStateException(e);
 		}
 	}
@@ -230,45 +223,45 @@ public class CryptoFileChannelWriteReadTest {
 	private CryptoFileChannel writableChannel() throws IOException {
 		Object id = new Object();
 		EffectiveOpenOptions options = options(CREATE, WRITE);
-		OpenCryptoFile openCryptoFile = anOpenCryptoFile()
-				.withId(id)
-				.withCryptor(cryptor)
-				.withCyphertextPath(ciphertextFilePath)
-				.withOptions(options)
+		FileChannel ch = ciphertextFilePath.getFileSystem().provider().newFileChannel(ciphertextFilePath, options.createOpenOptionsForEncryptedFile());
+		OpenCryptoFile openCryptoFile = anOpenCryptoFile().withId(id) //
+				.withCryptor(cryptor) //
+				.withChannel(ch) //
+				.withOptions(options) //
 				.build();
 		try {
 			openCryptoFile.open(options);
 			return new CryptoFileChannel(openCryptoFile, options);
-		} catch (AlreadyClosedException e) {
+		} catch (ClosedChannelException e) {
 			throw new IllegalStateException(e);
 		}
 	}
 
-	private EffectiveOpenOptions options(OpenOption ... options) {
+	private EffectiveOpenOptions options(OpenOption... options) {
 		return EffectiveOpenOptions.from(new HashSet<>(asList(options)));
 	}
-	
+
 	public static RepeatWithoutCount repeat(int value) {
 		return count -> () -> {
 			ByteBuffer buffer = ByteBuffer.allocate(count);
 			while (buffer.hasRemaining()) {
-				buffer.put((byte)value);
+				buffer.put((byte) value);
 			}
 			buffer.flip();
 			return buffer;
 		};
 	}
-		
+
 	public interface RepeatWithoutCount {
-		
+
 		ByteBufferFactory times(int count);
-		
+
 	}
-	
+
 	public interface ByteBufferFactory {
-		
+
 		ByteBuffer asByteBuffer();
-		
+
 	}
-	
+
 }

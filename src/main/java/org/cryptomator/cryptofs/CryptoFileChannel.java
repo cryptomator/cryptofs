@@ -13,12 +13,12 @@ import static java.lang.Math.min;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
-
-import org.cryptomator.cryptofs.OpenCryptoFile.AlreadyClosedException;
+import java.util.Objects;
 
 class CryptoFileChannel extends FileChannel {
 
@@ -29,11 +29,13 @@ class CryptoFileChannel extends FileChannel {
 	private long position = 0;
 
 	/**
-	 * @throws AlreadyClosedException if the openCryptoFile has already been closed
+	 * @throws IOException
+	 * @throws ClosedChannelException if the openCryptoFile has already been closed
 	 */
 	public CryptoFileChannel(OpenCryptoFile openCryptoFile, EffectiveOpenOptions options) throws IOException {
-		this.openCryptoFile = openCryptoFile;
-		this.options = options;
+		this.openCryptoFile = Objects.requireNonNull(openCryptoFile);
+		this.options = Objects.requireNonNull(options);
+		this.openCryptoFile.open(options);
 	}
 
 	@Override
@@ -201,12 +203,7 @@ class CryptoFileChannel extends FileChannel {
 		return blockingIo(() -> {
 			FileLock delegate = openCryptoFile.lock(position, size, shared);
 			CryptoFileLock result = CryptoFileLock.builder() //
-					.withDelegate(delegate)
-					.withChannel(this)
-					.withPosition(position)
-					.withSize(size)
-					.thatIsShared(shared)
-					.build();
+					.withDelegate(delegate).withChannel(this).withPosition(position).withSize(size).thatIsShared(shared).build();
 			return result;
 		});
 	}
@@ -218,14 +215,9 @@ class CryptoFileChannel extends FileChannel {
 			return null;
 		}
 		CryptoFileLock result = CryptoFileLock.builder() //
-				.withDelegate(delegate)
-				.withChannel(this)
-				.withPosition(position)
-				.withSize(size)
-				.thatIsShared(shared)
-				.build();
+				.withDelegate(delegate).withChannel(this).withPosition(position).withSize(size).thatIsShared(shared).build();
 		return result;
-		
+
 	}
 
 	@Override
@@ -245,7 +237,7 @@ class CryptoFileChannel extends FileChannel {
 		}
 	}
 
-	private <T> T blockingIo(SupplierThrowingException<T,IOException> supplier) throws IOException {
+	private <T> T blockingIo(SupplierThrowingException<T, IOException> supplier) throws IOException {
 		boolean completed = false;
 		try {
 			begin();

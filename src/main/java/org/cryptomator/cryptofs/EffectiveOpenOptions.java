@@ -21,45 +21,72 @@ class EffectiveOpenOptions {
 	public static EffectiveOpenOptions from(Set<? extends OpenOption> options) {
 		return new EffectiveOpenOptions(options);
 	}
-	
+
 	private final Set<OpenOption> options;
 
 	private EffectiveOpenOptions(Set<? extends OpenOption> options) {
 		this.options = cleanAndValidate(options);
 	}
-	
+
+	/**
+	 * @see StandardOpenOption#WRITE
+	 */
 	public boolean writable() {
 		return options.contains(WRITE);
 	}
-	
+
+	/**
+	 * @see StandardOpenOption#READ
+	 */
 	public boolean readable() {
 		return options.contains(READ);
 	}
-	
+
+	/**
+	 * @see StandardOpenOption#SYNC
+	 */
 	public boolean syncDataAndMetadata() {
 		return options.contains(SYNC);
 	}
-	
+
+	/**
+	 * @see StandardOpenOption#DSYNC
+	 */
 	public boolean syncData() {
 		return syncDataAndMetadata() || options.contains(DSYNC);
 	}
-	
+
+	/**
+	 * @see StandardOpenOption#APPEND
+	 */
 	public boolean append() {
 		return options.contains(APPEND);
 	}
-	
+
+	/**
+	 * @see StandardOpenOption#CREATE_NEW
+	 */
 	public boolean createNew() {
 		return options.contains(CREATE_NEW);
 	}
-	
+
+	/**
+	 * @see StandardOpenOption#CREATE
+	 */
 	public boolean create() {
 		return options.contains(CREATE);
 	}
-	
+
+	/**
+	 * @see StandardOpenOption#TRUNCATE_EXISTING
+	 */
 	public boolean truncateExisting() {
 		return options.contains(TRUNCATE_EXISTING);
 	}
-	
+
+	/**
+	 * @see StandardOpenOption#DELETE_ON_CLOSE
+	 */
 	public boolean deleteOnClose() {
 		return options.contains(DELETE_ON_CLOSE);
 	}
@@ -125,18 +152,19 @@ class EffectiveOpenOptions {
 	}
 
 	public Set<OpenOption> createOpenOptionsForEncryptedFile() {
-		/*
-		 * TODO add readonly mode
-		 * At the moment the physical file is always opened for writing to allow
-		 * FileChannels opened after the first channel to write to the file.
-		 * If the physical filesystem is read only this will fail. This
-		 * makes it impossible to read data from a readonly filesystem.
-		 */
 		Set<OpenOption> result = new HashSet<>(options);
 		result.removeIf(option -> !StandardOpenOption.class.isInstance(option));
-		result.add(READ);
-		result.add(WRITE);
+		result.add(READ); // also needed during write
 		result.remove(APPEND);
+		return result;
+	}
+
+	/**
+	 * @return Same as {@link #createOpenOptionsForEncryptedFile()} but with StandardOpenOption#CREATE_NEW, i.e. assert file does not exist!
+	 */
+	public Set<OpenOption> createOpenOptionsForNonExistingEncryptedFile() {
+		Set<OpenOption> result = createOpenOptionsForEncryptedFile();
+		result.add(CREATE_NEW);
 		return result;
 	}
 
