@@ -25,6 +25,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.FileAttribute;
@@ -57,6 +58,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	private final CryptorProviderImpl cryptorProvider;
 	private final ConcurrentHashMap<Path, CryptoFileSystem> fileSystems = new ConcurrentHashMap<>();
+	private final OpenCryptoFiles openCryptoFiles = new OpenCryptoFiles();
 
 	public CryptoFileSystemProvider(SecureRandom csprng) {
 		this.cryptorProvider = new CryptorProviderImpl(csprng);
@@ -114,14 +116,19 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public AsynchronousFileChannel newAsynchronousFileChannel(Path cleartextPath, Set<? extends OpenOption> options, ExecutorService executor, FileAttribute<?>... attrs) throws IOException {
+		if (options.contains(StandardOpenOption.APPEND)) {
+			throw new IllegalArgumentException("AsynchronousFileChannel can not be opened in append mode");
+		}
 		return new AsyncDelegatingFileChannel(newFileChannel(cleartextPath, options, attrs), executor);
 	}
 
 	@Override
-	public FileChannel newFileChannel(Path cleartextPath, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+	public FileChannel newFileChannel(Path cleartextPath, Set<? extends OpenOption> optionsSet, FileAttribute<?>... attrs) throws IOException {
+		EffectiveOpenOptions options = EffectiveOpenOptions.from(optionsSet);
 		CryptoFileSystem fs = CryptoFileSystem.cast(cleartextPath.getFileSystem());
 		Path ciphertextPath = fs.getCryptoPathMapper().getCiphertextFilePath(cleartextPath);
-		return new CryptoFileChannel(fs.getCryptor(), ciphertextPath, options);
+		OpenCryptoFile openCryptoFile = openCryptoFiles.get(ciphertextPath, fs.getCryptor(), options);
+		return new CryptoFileChannel(openCryptoFile, options);
 	}
 
 	@Override
