@@ -50,6 +50,9 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 */
 	private static final String URI_SCHEME = "cryptomator";
 
+	/**
+	 * Key identifying the passphrase for a encrypted vault.
+	 */
 	public static final String FS_ENV_PW = "passphrase";
 
 	private final CryptorProviderImpl cryptorProvider;
