@@ -3,13 +3,7 @@ package org.cryptomator.cryptofs;
 import static org.cryptomator.cryptofs.OpenCryptoFile.anOpenCryptoFile;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.channels.FileChannel;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.spi.FileSystemProvider;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -17,67 +11,46 @@ import org.cryptomator.cryptolib.api.Cryptor;
 
 class OpenCryptoFiles {
 
-	private final ConcurrentMap<Object, OpenCryptoFile> openCryptoFiles = new ConcurrentHashMap<>();
+	private final ConcurrentMap<Path, OpenCryptoFile> openCryptoFiles = new ConcurrentHashMap<>();
 	private final boolean readonly;
 
 	public OpenCryptoFiles(boolean readonly) {
 		this.readonly = readonly;
 	}
 
-	public OpenCryptoFile get(Path p, Cryptor cryptor, EffectiveOpenOptions options) throws IOException {
+	public OpenCryptoFile get(Path path, Cryptor cryptor, EffectiveOpenOptions options) throws IOException {
 		if (options.writable() && readonly) {
 			throw new UnsupportedOperationException("read-only file system.");
 		}
 
+		Path normalizedPath = path.toAbsolutePath().normalize();
+		OpenCryptoFile.Builder builder = openCryptoFileBuilder(cryptor, normalizedPath, options);
+
 		try {
-			return getExisting(p, cryptor, options);
-		} catch (NoSuchFileException e) {
-			if (options.writable() && (options.create() || options.createNew())) {
-				return createNew(p, cryptor, options);
-			} else {
-				throw new NoSuchFileException(p.toString());
-			}
+			return openCryptoFiles.computeIfAbsent(normalizedPath, ignored -> IOExceptionWrapper.wrapIOExceptionOf(builder::build));
+		} catch (IOExceptionWrapper e) {
+			throw e.getCause();
 		}
 	}
 
-	/**
-	 * @throws NoSuchFileException If no file for the given path exists.
-	 */
-	private OpenCryptoFile getExisting(Path p, Cryptor cryptor, EffectiveOpenOptions options) throws NoSuchFileException, IOException {
-		FileSystemProvider provider = p.getFileSystem().provider();
-		BasicFileAttributes attr = provider.readAttributes(p, BasicFileAttributes.class);
-		Object id = Optional.ofNullable(attr.fileKey()).orElse(p.toAbsolutePath().normalize());
-		return openCryptoFiles.computeIfAbsent(id, ignored -> wrapIOExceptionOf(() -> {
-			FileChannel ch = provider.newFileChannel(p, options.createOpenOptionsForEncryptedFile());
-			OpenCryptoFile.Builder builder = openCryptoFileBuilder(cryptor, id, ch, options);
-			return builder.build();
-		}));
+	private OpenCryptoFile.Builder openCryptoFileBuilder(Cryptor cryptor, Path path, EffectiveOpenOptions options) {
+		return anOpenCryptoFile().withCryptor(cryptor).withPath(path).withOptions(options).onClosed(closed -> openCryptoFiles.remove(closed.path()));
 	}
 
-	private OpenCryptoFile createNew(Path p, Cryptor cryptor, EffectiveOpenOptions options) throws IOException {
-		synchronized (openCryptoFiles) {
-			FileSystemProvider provider = p.getFileSystem().provider();
-			FileChannel ch = provider.newFileChannel(p, options.createOpenOptionsForNonExistingEncryptedFile());
-			BasicFileAttributes attr = provider.readAttributes(p, BasicFileAttributes.class);
-			Object id = Optional.ofNullable(attr.fileKey()).orElse(p.toAbsolutePath().normalize());
-			OpenCryptoFile.Builder builder = openCryptoFileBuilder(cryptor, id, ch, options);
-			OpenCryptoFile file = builder.build();
-			return openCryptoFiles.compute(id, (key, value) -> {
-				if (value == null) {
-					return file;
-				} else {
-					throw new IllegalStateException("Multiple mappings for newly created file");
-				}
-			});
+	private static class IOExceptionWrapper extends RuntimeException {
+
+		public IOExceptionWrapper(Exception cause) {
+			super(cause);
 		}
-	}
 
-	private OpenCryptoFile.Builder openCryptoFileBuilder(Cryptor cryptor, Object id, FileChannel ch, EffectiveOpenOptions options) {
-		return anOpenCryptoFile().withCryptor(cryptor).withId(id).withChannel(ch).withOptions(options).onClosed(closed -> openCryptoFiles.remove(closed.id()));
-	}
+		@Override
+		public IOException getCause() {
+			return (IOException) super.getCause();
+		}
 
-	private static <T> T wrapIOExceptionOf(SupplierThrowingException<T, IOException> supplier) {
-		return supplier.wrapExceptionUsing(UncheckedIOException::new).get();
+		public static <T> T wrapIOExceptionOf(SupplierThrowingException<T, IOException> supplier) {
+			return supplier.wrapExceptionUsing(IOExceptionWrapper::new).get();
+		}
 	}
 
 }

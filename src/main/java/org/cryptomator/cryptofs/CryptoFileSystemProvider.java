@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
@@ -40,6 +41,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
+import org.apache.commons.lang3.StringUtils;
 import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
 import org.cryptomator.cryptolib.common.ReseedingSecureRandom;
 import org.cryptomator.cryptolib.v1.CryptorProviderImpl;
@@ -85,6 +87,21 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		return URI_SCHEME;
 	}
 
+	/**
+	 * @param pathToVault Absolute path to
+	 * @param pathComponentsInsideVault Path components to node inside vault (optional)
+	 */
+	public static URI createCryptomatorUri(Path pathToVault, String... pathComponentsInsideVault) {
+		if (!pathToVault.isAbsolute()) {
+			throw new IllegalArgumentException(pathToVault + " is not an absolute path.");
+		}
+		try {
+			return new URI(URI_SCHEME, null, StringUtils.prependIfMissing(pathToVault.toString(), "/"), "/" + String.join("/", pathComponentsInsideVault));
+		} catch (URISyntaxException e) {
+			throw new IllegalArgumentException("Can not create URI from given path.", e);
+		}
+	}
+
 	ConcurrentHashMap<Path, CryptoFileSystem> getFileSystems() {
 		return fileSystems;
 	}
@@ -96,7 +113,8 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		}
 		CharSequence passphrase = (CharSequence) env.get(FS_ENV_PW);
 		boolean readonly = Boolean.parseBoolean((String) env.get(FS_ENV_READONLY));
-		Path pathToVault = FileSystems.getDefault().getPath(uri.getPath());
+		Path pathToVault = FileSystems.getDefault().getPath(uri.getPath().toString());
+
 		return getFileSystems().compute(pathToVault, (key, value) -> {
 			if (value == null) {
 				return new CryptoFileSystem(this, cryptorProvider, key, passphrase, readonly);

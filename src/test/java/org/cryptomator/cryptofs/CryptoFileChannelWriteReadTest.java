@@ -21,7 +21,6 @@ import static org.junit.Assume.assumeTrue;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -204,12 +203,10 @@ public class CryptoFileChannelWriteReadTest {
 	}
 
 	private CryptoFileChannel readableChannel() throws IOException {
-		Object id = new Object();
 		EffectiveOpenOptions options = options(READ);
-		FileChannel ch = ciphertextFilePath.getFileSystem().provider().newFileChannel(ciphertextFilePath, options.createOpenOptionsForEncryptedFile());
-		OpenCryptoFile openCryptoFile = anOpenCryptoFile().withId(id) //
+		OpenCryptoFile openCryptoFile = anOpenCryptoFile() //
 				.withCryptor(cryptor) //
-				.withChannel(ch) //
+				.withPath(ciphertextFilePath) //
 				.withOptions(options) //
 				.build();
 		try {
@@ -221,12 +218,10 @@ public class CryptoFileChannelWriteReadTest {
 	}
 
 	private CryptoFileChannel writableChannel() throws IOException {
-		Object id = new Object();
 		EffectiveOpenOptions options = options(CREATE, WRITE);
-		FileChannel ch = ciphertextFilePath.getFileSystem().provider().newFileChannel(ciphertextFilePath, options.createOpenOptionsForEncryptedFile());
-		OpenCryptoFile openCryptoFile = anOpenCryptoFile().withId(id) //
+		OpenCryptoFile openCryptoFile = anOpenCryptoFile() //
 				.withCryptor(cryptor) //
-				.withChannel(ch) //
+				.withPath(ciphertextFilePath) //
 				.withOptions(options) //
 				.build();
 		try {

@@ -10,7 +10,6 @@ package org.cryptomator.cryptofs;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
@@ -77,9 +76,10 @@ public class CryptoFileSystemProviderTest {
 
 	@Test
 	public void testGetFsViaNioApi() throws IOException {
-		URI fsUri = URI.create("cryptomator://" + URLEncoder.encode(tmpPath.toString(), "UTF-8"));
+		URI fsUri = CryptoFileSystemProvider.createCryptomatorUri(tmpPath);
 		FileSystem fs = FileSystems.newFileSystem(fsUri, ImmutableMap.of(CryptoFileSystemProvider.FS_ENV_PW, "asd"));
 		Assert.assertTrue(fs instanceof CryptoFileSystem);
+		Assert.assertTrue(Files.exists(tmpPath.resolve("masterkey.cryptomator")));
 		FileSystem fs2 = FileSystems.getFileSystem(fsUri);
 		Assert.assertSame(fs, fs2);
 	}
@@ -87,13 +87,12 @@ public class CryptoFileSystemProviderTest {
 	@Test
 	public void testOpenAndCloseFileChannel() throws IOException {
 		Path cleartextPath = Mockito.mock(Path.class);
-		Path ciphertextPath = Mockito.mock(Path.class);
+		Path ciphertextPath = tmpPath.resolve("foo");
 		CryptoFileSystem fs = Mockito.mock(CryptoFileSystem.class);
 		Cryptor cryptor = Mockito.mock(Cryptor.class);
 		FileHeaderCryptor headerCryptor = Mockito.mock(FileHeaderCryptor.class);
 		CryptoPathMapper pathMapper = Mockito.mock(CryptoPathMapper.class);
 		OpenCryptoFiles openCryptoFiles = Mockito.mock(OpenCryptoFiles.class);
-		FileChannel fileChannel = Mockito.mock(FileChannel.class);
 		Mockito.when(cleartextPath.getFileSystem()).thenReturn(fs);
 		Mockito.when(fs.getCryptor()).thenReturn(cryptor);
 		Mockito.when(cryptor.fileHeaderCryptor()).thenReturn(headerCryptor);
@@ -106,8 +105,7 @@ public class CryptoFileSystemProviderTest {
 
 			@Override
 			public OpenCryptoFile answer(InvocationOnMock invocation) throws Throwable {
-				return OpenCryptoFile.anOpenCryptoFile().withId("foo").withChannel(fileChannel).withCryptor(cryptor)
-						.withOptions(EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW))).build();
+				return OpenCryptoFile.anOpenCryptoFile().withPath(ciphertextPath).withCryptor(cryptor).withOptions(EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW))).build();
 			}
 		});
 

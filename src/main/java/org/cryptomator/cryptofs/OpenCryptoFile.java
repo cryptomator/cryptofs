@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.ExecutionException;
@@ -34,7 +35,7 @@ class OpenCryptoFile {
 	private static final int MAX_CACHED_CLEARTEXT_CHUNKS = 5;
 
 	private final Cryptor cryptor;
-	private final Object id;
+	private final Path path;
 	private final FileChannel channel;
 	private final FileHeader header;
 	private final LoadingCache<Long, ChunkData> cleartextChunks;
@@ -50,8 +51,8 @@ class OpenCryptoFile {
 	 */
 	public OpenCryptoFile(Builder builder) throws IOException {
 		this.cryptor = builder.cryptor;
-		this.id = builder.id;
-		this.channel = builder.channel;
+		this.path = builder.path;
+		this.channel = path.getFileSystem().provider().newFileChannel(path, builder.options.createOpenOptionsForEncryptedFile());
 		this.header = createOrLoadHeader(builder.options);
 		this.size = new AtomicLong(header.getFilesize());
 		this.cleartextChunks = CacheBuilder.newBuilder() //
@@ -77,8 +78,8 @@ class OpenCryptoFile {
 		return options.createNew() || options.create() && channel.size() == 0;
 	}
 
-	public Object id() {
-		return id;
+	public Path path() {
+		return path;
 	}
 
 	public synchronized int read(ByteBuffer dst, long position) throws IOException {
@@ -271,8 +272,7 @@ class OpenCryptoFile {
 	public static class Builder {
 
 		private Cryptor cryptor;
-		private Object id;
-		private FileChannel channel;
+		private Path path;
 		private EffectiveOpenOptions options;
 		private Consumer<OpenCryptoFile> onClosed = ignored -> {
 		};
@@ -285,13 +285,8 @@ class OpenCryptoFile {
 			return this;
 		}
 
-		public Builder withId(Object id) {
-			this.id = id;
-			return this;
-		}
-
-		public Builder withChannel(FileChannel channel) {
-			this.channel = channel;
+		public Builder withPath(Path path) {
+			this.path = path;
 			return this;
 		}
 
@@ -312,8 +307,7 @@ class OpenCryptoFile {
 
 		private void validate() {
 			assertNonNull(cryptor, "cryptor");
-			assertNonNull(id, "id");
-			assertNonNull(channel, "channel");
+			assertNonNull(path, "path");
 			assertNonNull(options, "options");
 			assertNonNull(onClosed, "onClosed");
 		}
