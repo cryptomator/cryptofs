@@ -23,7 +23,7 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.security.SecureRandom;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.EnumSet;
 
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
@@ -33,6 +33,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 import com.google.common.collect.ImmutableMap;
 
@@ -51,7 +53,7 @@ public class CryptoFileSystemProviderTest {
 	@Before
 	public void setup() throws IOException {
 		tmpPath = Files.createTempDirectory("unit-tests");
-		provider = new CryptoFileSystemProvider(NULL_RANDOM, false);
+		provider = new CryptoFileSystemProvider(NULL_RANDOM);
 	}
 
 	@After
@@ -84,20 +86,32 @@ public class CryptoFileSystemProviderTest {
 
 	@Test
 	public void testOpenAndCloseFileChannel() throws IOException {
-		Path path = Mockito.mock(Path.class);
+		Path cleartextPath = Mockito.mock(Path.class);
+		Path ciphertextPath = Mockito.mock(Path.class);
 		CryptoFileSystem fs = Mockito.mock(CryptoFileSystem.class);
 		Cryptor cryptor = Mockito.mock(Cryptor.class);
 		FileHeaderCryptor headerCryptor = Mockito.mock(FileHeaderCryptor.class);
 		CryptoPathMapper pathMapper = Mockito.mock(CryptoPathMapper.class);
-		Mockito.when(path.getFileSystem()).thenReturn(fs);
+		OpenCryptoFiles openCryptoFiles = Mockito.mock(OpenCryptoFiles.class);
+		FileChannel fileChannel = Mockito.mock(FileChannel.class);
+		Mockito.when(cleartextPath.getFileSystem()).thenReturn(fs);
 		Mockito.when(fs.getCryptor()).thenReturn(cryptor);
 		Mockito.when(cryptor.fileHeaderCryptor()).thenReturn(headerCryptor);
 		Mockito.when(headerCryptor.create()).thenReturn(Mockito.mock(FileHeader.class));
 		Mockito.when(headerCryptor.encryptHeader(Mockito.any())).thenReturn(ByteBuffer.allocate(0));
 		Mockito.when(fs.getCryptoPathMapper()).thenReturn(pathMapper);
-		Mockito.when(pathMapper.getCiphertextFilePath(Mockito.any())).thenReturn(tmpPath.resolve("foo"));
+		Mockito.when(pathMapper.getCiphertextFilePath(Mockito.any())).thenReturn(ciphertextPath);
+		Mockito.when(fs.getOpenCryptoFiles()).thenReturn(openCryptoFiles);
+		Mockito.when(openCryptoFiles.get(Mockito.eq(ciphertextPath), Mockito.eq(cryptor), Mockito.any())).thenAnswer(new Answer<OpenCryptoFile>() {
 
-		try (FileChannel ch = provider.newFileChannel(path, new HashSet<>(Arrays.asList(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW)))) {
+			@Override
+			public OpenCryptoFile answer(InvocationOnMock invocation) throws Throwable {
+				return OpenCryptoFile.anOpenCryptoFile().withId("foo").withChannel(fileChannel).withCryptor(cryptor)
+						.withOptions(EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW))).build();
+			}
+		});
+
+		try (FileChannel ch = provider.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW))) {
 			Assert.assertTrue(ch instanceof CryptoFileChannel);
 		}
 	}

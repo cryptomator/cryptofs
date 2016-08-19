@@ -72,26 +72,26 @@ public class CryptoFileSystemTest {
 
 	@Test
 	public void testConstructorForNewVault() throws IOException {
-		CryptoFileSystem fs = new CryptoFileSystem(provider, NULL_CRYPTOR_PROVIDER, tmpPath, "foo");
+		CryptoFileSystem fs = new CryptoFileSystem(provider, NULL_CRYPTOR_PROVIDER, tmpPath, "foo", false);
 		fs.close();
 	}
 
 	@Test
 	public void testConstructorForExistingVault() throws IOException {
-		CryptoFileSystem fs = new CryptoFileSystem(provider, NULL_CRYPTOR_PROVIDER, tmpPath, "foo");
+		CryptoFileSystem fs = new CryptoFileSystem(provider, NULL_CRYPTOR_PROVIDER, tmpPath, "foo", false);
 		fs.close();
 
-		CryptoFileSystem fs2 = new CryptoFileSystem(provider, NULL_CRYPTOR_PROVIDER, tmpPath, "foo");
+		CryptoFileSystem fs2 = new CryptoFileSystem(provider, NULL_CRYPTOR_PROVIDER, tmpPath, "foo", false);
 		fs2.close();
 	}
 
 	@Test
 	public void testConstructorForExistingVaultWithWrongPw() throws IOException {
-		CryptoFileSystem fs = new CryptoFileSystem(provider, NULL_CRYPTOR_PROVIDER, tmpPath, "foo");
+		CryptoFileSystem fs = new CryptoFileSystem(provider, NULL_CRYPTOR_PROVIDER, tmpPath, "foo", false);
 		fs.close();
 
 		thrown.expect(InvalidPassphraseException.class);
-		CryptoFileSystem fs2 = new CryptoFileSystem(provider, NULL_CRYPTOR_PROVIDER, tmpPath, "bar");
+		CryptoFileSystem fs2 = new CryptoFileSystem(provider, NULL_CRYPTOR_PROVIDER, tmpPath, "bar", false);
 		fs2.close();
 	}
 

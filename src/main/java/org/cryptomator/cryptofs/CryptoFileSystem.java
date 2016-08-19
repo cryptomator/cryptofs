@@ -34,8 +34,9 @@ class CryptoFileSystem extends BasicFileSystem {
 	private final DirectoryIdProvider dirIdProvider;
 	private final CryptoPathMapper cryptoPathMapper;
 	private final CryptoFileAttributeProvider fileAttributeProvider;
+	private final OpenCryptoFiles openCryptoFiles;
 
-	public CryptoFileSystem(CryptoFileSystemProvider provider, CryptorProviderImpl cryptorProvider, Path pathToVault, CharSequence passphrase)
+	public CryptoFileSystem(CryptoFileSystemProvider provider, CryptorProviderImpl cryptorProvider, Path pathToVault, CharSequence passphrase, boolean readonly)
 			throws UnsupportedVaultFormatException, InvalidPassphraseException, UncheckedIOException {
 		this.provider = provider;
 		this.pathToVault = pathToVault;
@@ -60,6 +61,7 @@ class CryptoFileSystem extends BasicFileSystem {
 		this.dirIdProvider = new DirectoryIdProvider();
 		this.cryptoPathMapper = new CryptoPathMapper(cryptor, dataRoot, getDirIdProvider());
 		this.fileAttributeProvider = new CryptoFileAttributeProvider(cryptor.fileHeaderCryptor());
+		this.openCryptoFiles = new OpenCryptoFiles(readonly);
 	}
 
 	static CryptoFileSystem cast(FileSystem fileSystem) {
@@ -117,6 +119,10 @@ class CryptoFileSystem extends BasicFileSystem {
 
 	CryptoFileAttributeProvider getFileAttributeProvider() {
 		return fileAttributeProvider;
+	}
+
+	public OpenCryptoFiles getOpenCryptoFiles() {
+		return openCryptoFiles;
 	}
 
 }

@@ -56,17 +56,20 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 */
 	public static final String FS_ENV_PW = "passphrase";
 
+	/**
+	 * Key identifying the readonly property (<code>true</code> or <code>false</code>) for a vault.
+	 */
+	public static final String FS_ENV_READONLY = "readonly";
+
 	private final CryptorProviderImpl cryptorProvider;
 	private final ConcurrentHashMap<Path, CryptoFileSystem> fileSystems = new ConcurrentHashMap<>();
-	private final OpenCryptoFiles openCryptoFiles;
 
-	public CryptoFileSystemProvider(SecureRandom csprng, boolean readonly) {
+	public CryptoFileSystemProvider(SecureRandom csprng) {
 		this.cryptorProvider = new CryptorProviderImpl(csprng);
-		this.openCryptoFiles = new OpenCryptoFiles(readonly);
 	}
 
 	public CryptoFileSystemProvider() {
-		this(defaultCsprng(), false);
+		this(defaultCsprng());
 	}
 
 	private static SecureRandom defaultCsprng() {
@@ -92,10 +95,11 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 			throw new IllegalArgumentException("Required environment parameter " + FS_ENV_PW + " not specified.");
 		}
 		CharSequence passphrase = (CharSequence) env.get(FS_ENV_PW);
+		boolean readonly = Boolean.parseBoolean((String) env.get(FS_ENV_READONLY));
 		Path pathToVault = FileSystems.getDefault().getPath(uri.getPath());
 		return getFileSystems().compute(pathToVault, (key, value) -> {
 			if (value == null) {
-				return new CryptoFileSystem(this, cryptorProvider, key, passphrase);
+				return new CryptoFileSystem(this, cryptorProvider, key, passphrase, readonly);
 			} else {
 				throw new FileSystemAlreadyExistsException();
 			}
@@ -128,7 +132,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		EffectiveOpenOptions options = EffectiveOpenOptions.from(optionsSet);
 		CryptoFileSystem fs = CryptoFileSystem.cast(cleartextPath.getFileSystem());
 		Path ciphertextPath = fs.getCryptoPathMapper().getCiphertextFilePath(cleartextPath);
-		OpenCryptoFile openCryptoFile = openCryptoFiles.get(ciphertextPath, fs.getCryptor(), options);
+		OpenCryptoFile openCryptoFile = fs.getOpenCryptoFiles().get(ciphertextPath, fs.getCryptor(), options);
 		return new CryptoFileChannel(openCryptoFile, options);
 	}
 
