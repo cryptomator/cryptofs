@@ -163,7 +163,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	public DirectoryStream<Path> newDirectoryStream(Path cleartextDir, Filter<? super Path> filter) throws IOException {
 		CryptoFileSystem fs = CryptoFileSystem.cast(cleartextDir.getFileSystem());
 		Directory ciphertextDir = fs.getCryptoPathMapper().getCiphertextDir(cleartextDir);
-		return new CryptoDirectoryStream(ciphertextDir, cleartextDir, fs.getCryptor().fileNameCryptor(), filter);
+		return new CryptoDirectoryStream(ciphertextDir, cleartextDir, fs.getCryptor().fileNameCryptor(), fs.getLongFileNameProvider(), filter);
 	}
 
 	@Override
@@ -173,26 +173,26 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	@Override
-	public void delete(Path path) throws IOException {
+	public void delete(Path cleartextPath) throws IOException {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public void copy(Path source, Path target, CopyOption... options) throws IOException {
+	public void copy(Path cleartextSource, Path cleartextTarget, CopyOption... options) throws IOException {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public void move(Path source, Path target, CopyOption... options) throws IOException {
+	public void move(Path cleartextSource, Path cleartextTarget, CopyOption... options) throws IOException {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public boolean isSameFile(Path path, Path path2) throws IOException {
-		return path.equals(path2);
+	public boolean isSameFile(Path cleartextPath, Path cleartextPath2) throws IOException {
+		return cleartextPath.equals(cleartextPath2);
 	}
 
 	@Override

@@ -35,22 +35,41 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 	private final DirectoryStream<Path> ciphertextDirStream;
 	private final Path cleartextDir;
 	private final FileNameCryptor filenameCryptor;
+	private final LongFileNameProvider longFileNameProvider;
 	private final DirectoryStream.Filter<? super Path> filter;
 
-	public CryptoDirectoryStream(Directory ciphertextDir, Path cleartextDir, FileNameCryptor filenameCryptor, DirectoryStream.Filter<? super Path> filter) throws IOException {
+	public CryptoDirectoryStream(Directory ciphertextDir, Path cleartextDir, FileNameCryptor filenameCryptor, LongFileNameProvider longFileNameProvider, DirectoryStream.Filter<? super Path> filter) throws IOException {
 		this.directoryId = ciphertextDir.dirId;
 		this.ciphertextDirStream = ciphertextDir.path.getFileSystem().provider().newDirectoryStream(ciphertextDir.path, p -> true);
 		this.cleartextDir = cleartextDir;
 		this.filenameCryptor = filenameCryptor;
+		this.longFileNameProvider = longFileNameProvider;
 		this.filter = filter;
 	}
 
 	@Override
 	public Iterator<Path> iterator() {
 		Iterator<Path> ciphertextPathIter = ciphertextDirStream.iterator();
-		Iterator<Path> cleartextPathOrNullIter = Iterators.transform(ciphertextPathIter, this::decrypt);
+		Iterator<Path> longCiphertextPathOrNullIter = Iterators.transform(ciphertextPathIter, this::inflateIfNeeded);
+		Iterator<Path> longCiphertextPathIter = Iterators.filter(longCiphertextPathOrNullIter, Objects::nonNull);
+		Iterator<Path> cleartextPathOrNullIter = Iterators.transform(longCiphertextPathIter, this::decrypt);
 		Iterator<Path> cleartextPathIter = Iterators.filter(cleartextPathOrNullIter, Objects::nonNull);
 		return Iterators.filter(cleartextPathIter, this::isAcceptableByFilter);
+	}
+
+	private Path inflateIfNeeded(Path ciphertextPath) {
+		String fileName = ciphertextPath.getFileName().toString();
+		if (LongFileNameProvider.isDeflated(fileName)) {
+			try {
+				String longFileName = longFileNameProvider.inflate(fileName);
+				return ciphertextPath.resolveSibling(longFileName);
+			} catch (IOException e) {
+				LOG.warn(ciphertextPath + " could not be inflated.");
+				return null;
+			}
+		} else {
+			return ciphertextPath;
+		}
 	}
 
 	private Path decrypt(Path ciphertextPath) {

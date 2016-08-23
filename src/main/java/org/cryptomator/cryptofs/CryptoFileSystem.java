@@ -30,9 +30,11 @@ class CryptoFileSystem extends BasicFileSystem {
 	private final CryptoFileSystemProvider provider;
 	private final Path pathToVault;
 	private final Path dataRoot;
+	private final Path metadataRoot;
 	private final Cryptor cryptor;
 	private final DirectoryIdProvider dirIdProvider;
 	private final CryptoPathMapper cryptoPathMapper;
+	private final LongFileNameProvider longFileNameProvider;
 	private final CryptoFileAttributeProvider fileAttributeProvider;
 	private final OpenCryptoFiles openCryptoFiles;
 
@@ -41,6 +43,7 @@ class CryptoFileSystem extends BasicFileSystem {
 		this.provider = provider;
 		this.pathToVault = pathToVault;
 		this.dataRoot = pathToVault.resolve(Constants.DATA_DIR_NAME);
+		this.metadataRoot = pathToVault.resolve(Constants.METADATA_DIR_NAME);
 
 		try {
 			Path masterKeyPath = pathToVault.resolve(Constants.MASTERKEY_FILE_NAME);
@@ -60,6 +63,7 @@ class CryptoFileSystem extends BasicFileSystem {
 
 		this.dirIdProvider = new DirectoryIdProvider();
 		this.cryptoPathMapper = new CryptoPathMapper(cryptor, dataRoot, getDirIdProvider());
+		this.longFileNameProvider = new LongFileNameProvider(metadataRoot);
 		this.fileAttributeProvider = new CryptoFileAttributeProvider(cryptor.fileHeaderCryptor());
 		this.openCryptoFiles = new OpenCryptoFiles(readonly);
 	}
@@ -121,8 +125,12 @@ class CryptoFileSystem extends BasicFileSystem {
 		return fileAttributeProvider;
 	}
 
-	public OpenCryptoFiles getOpenCryptoFiles() {
+	OpenCryptoFiles getOpenCryptoFiles() {
 		return openCryptoFiles;
+	}
+
+	LongFileNameProvider getLongFileNameProvider() {
+		return longFileNameProvider;
 	}
 
 }

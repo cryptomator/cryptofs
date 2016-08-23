@@ -14,12 +14,9 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -57,21 +54,7 @@ public class CryptoFileSystemProviderTest {
 
 	@After
 	public void teardown() throws IOException {
-		Files.walkFileTree(tmpPath, new SimpleFileVisitor<Path>() {
-
-			@Override
-			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-				Files.deleteIfExists(file);
-				return FileVisitResult.CONTINUE;
-			}
-
-			@Override
-			public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-				Files.deleteIfExists(dir);
-				return FileVisitResult.CONTINUE;
-			}
-
-		});
+		Files.walkFileTree(tmpPath, new DeletingFileVisitor());
 	}
 
 	@Test
