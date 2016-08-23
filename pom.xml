@@ -59,7 +59,7 @@
 			<artifactId>slf4j-api</artifactId>
 			<version>1.7.21</version>
 		</dependency>
-	
+
 		<!-- Test -->
 		<dependency>
 			<groupId>junit</groupId>
@@ -121,10 +121,24 @@
 			</plugin>
 		</plugins>
 	</build>
-	
+
 	<profiles>
 		<profile>
 			<id>coverage</id>
+			<dependencies>
+				<dependency>
+					<groupId>com.codacy</groupId>
+					<artifactId>codacy-coverage-reporter</artifactId>
+					<version>1.0.10</version>
+					<classifier>assembly</classifier>
+					<exclusions>
+						<exclusion>
+							<groupId>*</groupId>
+							<artifactId>*</artifactId>
+						</exclusion>
+					</exclusions>
+				</dependency>
+			</dependencies>
 			<build>
 				<plugins>
 					<plugin>
@@ -137,6 +151,28 @@
 								<goals>
 									<goal>prepare-agent</goal>
 								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>exec-maven-plugin</artifactId>
+						<version>1.5.0</version>
+						<executions>
+							<execution>
+								<phase>verify</phase>
+								<goals>
+									<goal>java</goal>
+								</goals>
+								<configuration>
+									<mainClass>com.codacy.CodacyCoverageReporter</mainClass>
+									<arguments>
+										<argument>-l</argument>
+										<argument>Java</argument>
+										<argument>-r</argument>
+										<argument>${project.build.directory}/site/jacoco/jacoco.xml</argument>
+									</arguments>
+								</configuration>
 							</execution>
 						</executions>
 					</plugin>
