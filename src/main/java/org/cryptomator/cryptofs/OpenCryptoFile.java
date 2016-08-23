@@ -88,14 +88,14 @@ class OpenCryptoFile {
 		if (limitConsideringEof < 1) {
 			return -1;
 		}
-		dst.limit((int) Math.min(origLimit, limitConsideringEof));
+		dst.limit((int) min(origLimit, limitConsideringEof));
 		int read = 0;
 		int payloadSize = cryptor.fileContentCryptor().cleartextChunkSize();
 		while (dst.hasRemaining()) {
 			long pos = position + read;
 			long chunkIndex = pos / payloadSize;
 			int offset = (int) pos % payloadSize;
-			int len = Math.min(dst.remaining(), payloadSize - offset);
+			int len = min(dst.remaining(), payloadSize - offset);
 			final ChunkData chunkData = loadCleartextChunk(chunkIndex);
 			chunkData.copyDataStartingAt(offset).to(dst);
 			read += len;

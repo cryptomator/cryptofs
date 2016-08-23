@@ -108,7 +108,7 @@ class CryptoFileChannel extends FileChannel {
 	public synchronized long transferTo(long position, long count, WritableByteChannel target) throws IOException {
 		assertReadable();
 		return blockingIo(() -> {
-			ByteBuffer buf = ByteBuffer.allocate((int) Math.min(count, BUFFER_SIZE));
+			ByteBuffer buf = ByteBuffer.allocate((int) min(count, BUFFER_SIZE));
 			long transferred = 0;
 			while (transferred < count) {
 				buf.clear();
@@ -117,7 +117,7 @@ class CryptoFileChannel extends FileChannel {
 					break;
 				} else {
 					buf.flip();
-					buf.limit((int) Math.min(buf.limit(), count - transferred));
+					buf.limit((int) min(buf.limit(), count - transferred));
 					transferred += target.write(buf);
 				}
 			}
@@ -132,7 +132,7 @@ class CryptoFileChannel extends FileChannel {
 			if (position > size()) {
 				return 0L;
 			}
-			ByteBuffer buf = ByteBuffer.allocate((int) Math.min(count, BUFFER_SIZE));
+			ByteBuffer buf = ByteBuffer.allocate((int) min(count, BUFFER_SIZE));
 			long transferred = 0;
 			while (transferred < count) {
 				buf.clear();
@@ -141,7 +141,7 @@ class CryptoFileChannel extends FileChannel {
 					break;
 				} else {
 					buf.flip();
-					buf.limit((int) Math.min(buf.limit(), count - transferred));
+					buf.limit((int) min(buf.limit(), count - transferred));
 					transferred += this.write(buf, position + transferred);
 				}
 			}

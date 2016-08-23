@@ -15,6 +15,7 @@ import org.cryptomator.cryptolib.common.MessageDigestSupplier;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 
 public class LongFileNameProvider {
 
@@ -51,7 +52,7 @@ public class LongFileNameProvider {
 			if (e.getCause() instanceof IOException || e.getCause() instanceof UncheckedIOException) {
 				throw new IOException(e);
 			} else {
-				throw new RuntimeException("Unexpected exception", e);
+				throw new UncheckedExecutionException("Unexpected exception", e);
 			}
 		}
 	}
