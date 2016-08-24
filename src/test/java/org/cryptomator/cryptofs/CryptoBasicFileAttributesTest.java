@@ -51,21 +51,11 @@ public class CryptoBasicFileAttributesTest {
 	public void testIsDirectory() {
 		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor);
 
-		Mockito.when(delegateAttr.isRegularFile()).thenReturn(true);
-		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("foo"));
+		Mockito.when(delegateAttr.isDirectory()).thenReturn(false);
 		Assert.assertFalse(attr.isDirectory());
 
-		Mockito.when(delegateAttr.isRegularFile()).thenReturn(true);
-		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("0foo"));
+		Mockito.when(delegateAttr.isDirectory()).thenReturn(true);
 		Assert.assertTrue(attr.isDirectory());
-
-		Mockito.when(delegateAttr.isRegularFile()).thenReturn(false);
-		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("foo"));
-		Assert.assertFalse(attr.isRegularFile());
-
-		Mockito.when(delegateAttr.isRegularFile()).thenReturn(false);
-		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("0foo"));
-		Assert.assertFalse(attr.isRegularFile());
 	}
 
 	@Test
@@ -73,19 +63,9 @@ public class CryptoBasicFileAttributesTest {
 		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor);
 
 		Mockito.when(delegateAttr.isRegularFile()).thenReturn(true);
-		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("foo"));
 		Assert.assertTrue(attr.isRegularFile());
 
-		Mockito.when(delegateAttr.isRegularFile()).thenReturn(true);
-		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("0foo"));
-		Assert.assertFalse(attr.isRegularFile());
-
 		Mockito.when(delegateAttr.isRegularFile()).thenReturn(false);
-		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("foo"));
-		Assert.assertFalse(attr.isRegularFile());
-
-		Mockito.when(delegateAttr.isRegularFile()).thenReturn(false);
-		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("0foo"));
 		Assert.assertFalse(attr.isRegularFile());
 	}
 

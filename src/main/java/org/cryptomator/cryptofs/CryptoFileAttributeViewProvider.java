@@ -15,9 +15,9 @@ class CryptoFileAttributeViewProvider {
 	private final CryptoFileAttributeProvider fileAttributeProvider;
 
 	public CryptoFileAttributeViewProvider(CryptoFileAttributeProvider fileAttributeProvider) {
-		fileAttributeViewProviders.put(BasicFileAttributeView.class, (FileAttributeViewProvider<BasicFileAttributeView>) CryptoBasicFileAttributeView::new);
-		fileAttributeViewProviders.put(PosixFileAttributeView.class, (FileAttributeViewProvider<PosixFileAttributeView>) CryptoPosixFileAttributeView::new);
-		fileAttributeViewProviders.put(DosFileAttributeView.class, (FileAttributeViewProvider<DosFileAttributeView>) CryptoDosFileAttributeView::new);
+		fileAttributeViewProviders.put(BasicFileAttributeView.class, CryptoBasicFileAttributeView::new);
+		fileAttributeViewProviders.put(PosixFileAttributeView.class, CryptoPosixFileAttributeView::new);
+		fileAttributeViewProviders.put(DosFileAttributeView.class, CryptoDosFileAttributeView::new);
 		this.fileAttributeProvider = fileAttributeProvider;
 	}
 
