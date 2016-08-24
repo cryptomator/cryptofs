@@ -11,20 +11,20 @@ import java.util.Map;
 
 class CryptoFileAttributeViewProvider {
 
-	private final Map<Class<? extends FileAttributeView>, AttributeViewProvider<? extends FileAttributeView>> attributeProviders = new HashMap<>();
+	private final Map<Class<? extends FileAttributeView>, FileAttributeViewProvider<? extends FileAttributeView>> fileAttributeViewProviders = new HashMap<>();
 	private final CryptoFileAttributeProvider fileAttributeProvider;
 
 	public CryptoFileAttributeViewProvider(CryptoFileAttributeProvider fileAttributeProvider) {
-		attributeProviders.put(BasicFileAttributeView.class, (AttributeViewProvider<BasicFileAttributeView>) CryptoBasicFileAttributeView::new);
-		attributeProviders.put(PosixFileAttributeView.class, (AttributeViewProvider<PosixFileAttributeView>) CryptoPosixFileAttributeView::new);
-		attributeProviders.put(DosFileAttributeView.class, (AttributeViewProvider<DosFileAttributeView>) CryptoDosFileAttributeView::new);
+		fileAttributeViewProviders.put(BasicFileAttributeView.class, (FileAttributeViewProvider<BasicFileAttributeView>) CryptoBasicFileAttributeView::new);
+		fileAttributeViewProviders.put(PosixFileAttributeView.class, (FileAttributeViewProvider<PosixFileAttributeView>) CryptoPosixFileAttributeView::new);
+		fileAttributeViewProviders.put(DosFileAttributeView.class, (FileAttributeViewProvider<DosFileAttributeView>) CryptoDosFileAttributeView::new);
 		this.fileAttributeProvider = fileAttributeProvider;
 	}
 
 	@SuppressWarnings("unchecked")
 	public <A extends FileAttributeView> A getAttributeView(Path ciphertextPath, Class<A> type) throws IOException {
-		if (attributeProviders.containsKey(type)) {
-			AttributeViewProvider<A> provider = (AttributeViewProvider<A>) attributeProviders.get(type);
+		if (fileAttributeViewProviders.containsKey(type)) {
+			FileAttributeViewProvider<A> provider = (FileAttributeViewProvider<A>) fileAttributeViewProviders.get(type);
 			return provider.provide(ciphertextPath, fileAttributeProvider);
 		} else {
 			throw new UnsupportedOperationException("Unsupported file attribute type: " + type);
@@ -32,7 +32,7 @@ class CryptoFileAttributeViewProvider {
 	}
 
 	@FunctionalInterface
-	private static interface AttributeViewProvider<A extends FileAttributeView> {
+	private static interface FileAttributeViewProvider<A extends FileAttributeView> {
 		A provide(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider);
 	}
 
