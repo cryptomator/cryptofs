@@ -28,7 +28,6 @@ public class CryptoBasicFileAttributesTest {
 	private Cryptor cryptor;
 	private Path ciphertextFilePath;
 	private BasicFileAttributes delegateAttr;
-	private FileSystemProvider fsProvider;
 
 	@Before
 	public void setup() throws IOException {
@@ -43,7 +42,7 @@ public class CryptoBasicFileAttributesTest {
 		ciphertextFilePath = Mockito.mock(Path.class);
 		FileSystem fs = Mockito.mock(FileSystem.class);
 		Mockito.when(ciphertextFilePath.getFileSystem()).thenReturn(fs);
-		fsProvider = Mockito.mock(FileSystemProvider.class);
+		FileSystemProvider fsProvider = Mockito.mock(FileSystemProvider.class);
 		Mockito.when(fs.provider()).thenReturn(fsProvider);
 		delegateAttr = Mockito.mock(BasicFileAttributes.class);
 	}

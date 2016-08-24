@@ -33,12 +33,12 @@ class CryptoBasicFileAttributes implements DelegatingBasicFileAttributes {
 
 	@Override
 	public boolean isRegularFile() {
-		return getDelegate().isRegularFile() && !isDirectory();
+		return getDelegate().isRegularFile();
 	}
 
 	@Override
 	public boolean isDirectory() {
-		return getDelegate().isRegularFile() && ciphertextPath.getFileName().toString().startsWith(Constants.DIR_PREFIX);
+		return getDelegate().isDirectory();
 	}
 
 	@Override

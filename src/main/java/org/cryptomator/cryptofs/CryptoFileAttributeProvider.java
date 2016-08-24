@@ -9,6 +9,7 @@
 package org.cryptomator.cryptofs;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.DosFileAttributes;
@@ -33,7 +34,7 @@ class CryptoFileAttributeProvider {
 	@SuppressWarnings("unchecked")
 	public <A extends BasicFileAttributes> A readAttributes(Path ciphertextPath, Class<A> type) throws IOException {
 		if (attributeProviders.containsKey(type)) {
-			A ciphertextAttrs = ciphertextPath.getFileSystem().provider().readAttributes(ciphertextPath, type);
+			A ciphertextAttrs = Files.readAttributes(ciphertextPath, type);
 			AttributeProvider<A> provider = (AttributeProvider<A>) attributeProviders.get(type);
 			return provider.provide(ciphertextAttrs, ciphertextPath, cryptor);
 		} else {
@@ -41,6 +42,7 @@ class CryptoFileAttributeProvider {
 		}
 	}
 
+	@FunctionalInterface
 	private static interface AttributeProvider<A extends BasicFileAttributes> {
 		A provide(A delegate, Path ciphertextPath, Cryptor cryptor);
 	}

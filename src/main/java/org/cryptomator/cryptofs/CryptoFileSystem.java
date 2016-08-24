@@ -9,7 +9,6 @@
 package org.cryptomator.cryptofs;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
@@ -34,7 +33,9 @@ class CryptoFileSystem extends BasicFileSystem {
 	private final CryptoPathMapper cryptoPathMapper;
 	private final LongFileNameProvider longFileNameProvider;
 	private final CryptoFileAttributeProvider fileAttributeProvider;
+	private final CryptoFileAttributeViewProvider fileAttributeViewProvider;
 	private final OpenCryptoFiles openCryptoFiles;
+	private final CryptoFileStore fileStore;
 
 	public CryptoFileSystem(CryptoFileSystemProvider provider, CryptorProviderImpl cryptorProvider, Path pathToVault, CharSequence passphrase, boolean readonly)
 			throws UnsupportedVaultFormatException, InvalidPassphraseException, IOException {
@@ -59,9 +60,12 @@ class CryptoFileSystem extends BasicFileSystem {
 		this.cryptoPathMapper = new CryptoPathMapper(cryptor, dataRoot, getDirIdProvider());
 		this.longFileNameProvider = new LongFileNameProvider(metadataRoot);
 		this.fileAttributeProvider = new CryptoFileAttributeProvider(cryptor);
+		this.fileAttributeViewProvider = new CryptoFileAttributeViewProvider(fileAttributeProvider);
 		this.openCryptoFiles = new OpenCryptoFiles(readonly);
+		this.fileStore = new CryptoFileStore(Files.getFileStore(pathToVault));
 
-		Files.createDirectories(cryptoPathMapper.getCiphertextDirPath(getPath("")));
+		Path cleartextRoot = getPath("/");
+		Files.createDirectories(cryptoPathMapper.getCiphertextDirPath(cleartextRoot));
 	}
 
 	static CryptoFileSystem cast(FileSystem fileSystem) {
@@ -90,13 +94,7 @@ class CryptoFileSystem extends BasicFileSystem {
 
 	@Override
 	public FileStore getFileStore() {
-		try {
-			FileStore fileStoreForPathToVault = Files.getFileStore(pathToVault);
-			// TODO do we really need to a delegate? If we don't intercept any methods, just return the original file store.
-			return new DelegatingFileStore(fileStoreForPathToVault);
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
+		return fileStore;
 	}
 
 	@Override
@@ -127,6 +125,10 @@ class CryptoFileSystem extends BasicFileSystem {
 
 	LongFileNameProvider getLongFileNameProvider() {
 		return longFileNameProvider;
+	}
+
+	CryptoFileAttributeViewProvider getFileAttributeViewProvider() {
+		return fileAttributeViewProvider;
 	}
 
 }
