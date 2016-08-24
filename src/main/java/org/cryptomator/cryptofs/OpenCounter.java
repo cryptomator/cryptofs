@@ -26,7 +26,7 @@ class OpenCounter {
 	}
 	
 	public boolean countClose() {
-		return count.updateAndGet(this::countClose) == 0;
+		return count.updateAndGet(this::countClose) <= 0;
 	}
 	
 	private long countClose(long openCount) {

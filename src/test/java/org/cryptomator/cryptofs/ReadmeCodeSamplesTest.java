@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.After;
 import org.junit.Before;
@@ -56,7 +57,9 @@ public class ReadmeCodeSamplesTest {
 
 		// List all files present in a directory
 		List<Path> files = new ArrayList<>();
-		Files.list(testFile.getParent()).forEach(files::add);
+		try (Stream<Path> listing = Files.list(testFile.getParent())) {
+			listing.forEach(files::add);
+		}
 
 		assertEquals(1, files.size());
 		assertEquals("/foo/bar/test", files.get(0).toString());

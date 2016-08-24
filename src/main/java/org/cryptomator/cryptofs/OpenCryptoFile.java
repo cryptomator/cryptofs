@@ -52,7 +52,8 @@ class OpenCryptoFile {
 	public OpenCryptoFile(Builder builder) throws IOException {
 		this.cryptor = builder.cryptor;
 		this.path = builder.path;
-		this.channel = path.getFileSystem().provider().newFileChannel(path, builder.options.createOpenOptionsForEncryptedFile());
+		this.channel = FileChannel.open(path, builder.options.createOpenOptionsForEncryptedFile());
+		LOG.debug("OPEN " + path);
 		this.header = createOrLoadHeader(builder.options);
 		this.size = new AtomicLong(header.getFilesize());
 		this.cleartextChunks = CacheBuilder.newBuilder() //
@@ -258,6 +259,7 @@ class OpenCryptoFile {
 			} finally {
 				try {
 					channel.close();
+					LOG.debug("CLOSE " + path);
 				} finally {
 					cryptor.destroy();
 				}

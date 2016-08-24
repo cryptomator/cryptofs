@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Objects;
@@ -40,7 +41,8 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 
 	public CryptoDirectoryStream(Directory ciphertextDir, Path cleartextDir, FileNameCryptor filenameCryptor, LongFileNameProvider longFileNameProvider, DirectoryStream.Filter<? super Path> filter) throws IOException {
 		this.directoryId = ciphertextDir.dirId;
-		this.ciphertextDirStream = ciphertextDir.path.getFileSystem().provider().newDirectoryStream(ciphertextDir.path, p -> true);
+		this.ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path, p -> true);
+		LOG.debug("OPEN " + directoryId);
 		this.cleartextDir = cleartextDir;
 		this.filenameCryptor = filenameCryptor;
 		this.longFileNameProvider = longFileNameProvider;
@@ -100,6 +102,7 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 	@Override
 	public void close() throws IOException {
 		ciphertextDirStream.close();
+		LOG.debug("CLOSE " + directoryId);
 	}
 
 }
