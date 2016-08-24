@@ -10,7 +10,6 @@ package org.cryptomator.cryptofs;
 
 import java.io.IOException;
 import java.nio.file.FileStore;
-import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileStoreAttributeView;
 import java.util.Objects;
@@ -55,7 +54,7 @@ class DelegatingFileStore extends FileStore {
 
 	@Override
 	public boolean supportsFileAttributeView(Class<? extends FileAttributeView> type) {
-		return delegate.supportsFileAttributeView(BasicFileAttributeView.class);
+		return delegate.supportsFileAttributeView(type);
 	}
 
 	@Override

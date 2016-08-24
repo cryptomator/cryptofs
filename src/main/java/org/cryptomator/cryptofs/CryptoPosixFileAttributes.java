@@ -11,14 +11,15 @@ package org.cryptomator.cryptofs;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFileAttributes;
 
-import org.cryptomator.cryptolib.api.FileHeaderCryptor;
+import org.cryptomator.cryptolib.api.Cryptor;
 
-public class CryptoPosixFileAttributes extends CryptoBasicFileAttributes implements DelegatingPosixFileAttributes {
+class CryptoPosixFileAttributes extends CryptoBasicFileAttributes implements DelegatingPosixFileAttributes {
 
-	private PosixFileAttributes delegate;
+	private final PosixFileAttributes delegate;
 
-	public CryptoPosixFileAttributes(PosixFileAttributes delegate, Path ciphertextPath, FileHeaderCryptor headerCryptor) {
-		super(delegate, ciphertextPath, headerCryptor);
+	public CryptoPosixFileAttributes(PosixFileAttributes delegate, Path ciphertextPath, Cryptor cryptor) {
+		super(delegate, ciphertextPath, cryptor);
+		this.delegate = delegate;
 	}
 
 	@Override

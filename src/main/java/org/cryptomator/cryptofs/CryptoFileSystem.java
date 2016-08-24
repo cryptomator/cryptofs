@@ -37,21 +37,17 @@ class CryptoFileSystem extends BasicFileSystem {
 	private final OpenCryptoFiles openCryptoFiles;
 
 	public CryptoFileSystem(CryptoFileSystemProvider provider, CryptorProviderImpl cryptorProvider, Path pathToVault, CharSequence passphrase, boolean readonly)
-			throws UnsupportedVaultFormatException, InvalidPassphraseException, UncheckedIOException {
-		try {
-			Path masterKeyPath = pathToVault.resolve(Constants.MASTERKEY_FILE_NAME);
-			Path backupKeyPath = pathToVault.resolve(Constants.BACKUPKEY_FILE_NAME);
-			if (Files.isRegularFile(masterKeyPath)) {
-				byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
-				this.cryptor = cryptorProvider.createFromKeyFile(KeyFile.parse(keyFileContents), passphrase, Constants.VAULT_VERSION);
-				Files.copy(masterKeyPath, backupKeyPath, StandardCopyOption.REPLACE_EXISTING);
-			} else {
-				this.cryptor = cryptorProvider.createNew();
-				byte[] keyFileContents = cryptor.writeKeysToMasterkeyFile(passphrase, Constants.VAULT_VERSION).serialize();
-				Files.write(masterKeyPath, keyFileContents);
-			}
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
+			throws UnsupportedVaultFormatException, InvalidPassphraseException, IOException {
+		Path masterKeyPath = pathToVault.resolve(Constants.MASTERKEY_FILE_NAME);
+		Path backupKeyPath = pathToVault.resolve(Constants.BACKUPKEY_FILE_NAME);
+		if (Files.isRegularFile(masterKeyPath)) {
+			byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
+			this.cryptor = cryptorProvider.createFromKeyFile(KeyFile.parse(keyFileContents), passphrase, Constants.VAULT_VERSION);
+			Files.copy(masterKeyPath, backupKeyPath, StandardCopyOption.REPLACE_EXISTING);
+		} else {
+			this.cryptor = cryptorProvider.createNew();
+			byte[] keyFileContents = cryptor.writeKeysToMasterkeyFile(passphrase, Constants.VAULT_VERSION).serialize();
+			Files.write(masterKeyPath, keyFileContents);
 		}
 
 		Path dataRoot = pathToVault.resolve(Constants.DATA_DIR_NAME);
@@ -62,8 +58,10 @@ class CryptoFileSystem extends BasicFileSystem {
 		this.dirIdProvider = new DirectoryIdProvider();
 		this.cryptoPathMapper = new CryptoPathMapper(cryptor, dataRoot, getDirIdProvider());
 		this.longFileNameProvider = new LongFileNameProvider(metadataRoot);
-		this.fileAttributeProvider = new CryptoFileAttributeProvider(cryptor.fileHeaderCryptor());
+		this.fileAttributeProvider = new CryptoFileAttributeProvider(cryptor);
 		this.openCryptoFiles = new OpenCryptoFiles(readonly);
+
+		Files.createDirectories(cryptoPathMapper.getCiphertextDirPath(getPath("")));
 	}
 
 	static CryptoFileSystem cast(FileSystem fileSystem) {

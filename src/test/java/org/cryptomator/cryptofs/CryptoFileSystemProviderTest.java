@@ -8,6 +8,8 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
+
 import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
@@ -31,8 +33,6 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-
-import com.google.common.collect.ImmutableMap;
 
 public class CryptoFileSystemProviderTest {
 
@@ -59,8 +59,8 @@ public class CryptoFileSystemProviderTest {
 
 	@Test
 	public void testGetFsViaNioApi() throws IOException {
-		URI fsUri = CryptoFileSystemProvider.createCryptomatorUri(tmpPath);
-		FileSystem fs = FileSystems.newFileSystem(fsUri, ImmutableMap.of(CryptoFileSystemProvider.FS_ENV_PW, "asd"));
+		URI fsUri = CryptoFileSystemUris.createUri(tmpPath);
+		FileSystem fs = FileSystems.newFileSystem(fsUri, cryptoFileSystemProperties().withPassphrase("asd").build());
 		Assert.assertTrue(fs instanceof CryptoFileSystem);
 		Assert.assertTrue(Files.exists(tmpPath.resolve("masterkey.cryptomator")));
 		FileSystem fs2 = FileSystems.getFileSystem(fsUri);

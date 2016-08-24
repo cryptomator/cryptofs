@@ -104,7 +104,6 @@ public class BasicPathTest {
 
 		Assert.assertEquals(p1, p2.getParent());
 		Assert.assertEquals(fsRoot, p1.getParent());
-		Assert.assertEquals(fsRoot, fsRoot.getParent());
 		Assert.assertNull(emptyPath.getParent());
 	}
 

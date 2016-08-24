@@ -11,14 +11,15 @@ package org.cryptomator.cryptofs;
 import java.nio.file.Path;
 import java.nio.file.attribute.DosFileAttributes;
 
-import org.cryptomator.cryptolib.api.FileHeaderCryptor;
+import org.cryptomator.cryptolib.api.Cryptor;
 
-public class CryptoDosFileAttributes extends CryptoBasicFileAttributes implements DelegatingDosFileAttributes {
+class CryptoDosFileAttributes extends CryptoBasicFileAttributes implements DelegatingDosFileAttributes {
 
-	private DosFileAttributes delegate;
+	private final DosFileAttributes delegate;
 
-	public CryptoDosFileAttributes(DosFileAttributes delegate, Path ciphertextPath, FileHeaderCryptor headerCryptor) {
-		super(delegate, ciphertextPath, headerCryptor);
+	public CryptoDosFileAttributes(DosFileAttributes delegate, Path ciphertextPath, Cryptor cryptor) {
+		super(delegate, ciphertextPath, cryptor);
+		this.delegate = delegate;
 	}
 
 	@Override

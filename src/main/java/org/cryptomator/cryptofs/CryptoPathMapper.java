@@ -8,6 +8,8 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import static org.cryptomator.cryptofs.Constants.DIR_PREFIX;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -17,7 +19,6 @@ import org.cryptomator.cryptolib.api.Cryptor;
 class CryptoPathMapper {
 
 	private static final String ROOT_DIR_ID = "";
-	private static final String DIRECTORY_PREFIX = "0";
 
 	private final Cryptor cryptor;
 	private final Path dataRoot;
@@ -48,7 +49,7 @@ class CryptoPathMapper {
 		Path dirPath = resolveDirectory(dirId);
 		for (int i = 0; i < cleartextPath.getNameCount(); i++) {
 			String cleartextName = cleartextPath.getName(i).toString();
-			String ciphertextName = DIRECTORY_PREFIX + cryptor.fileNameCryptor().encryptFilename(cleartextName, dirId.getBytes(StandardCharsets.UTF_8));
+			String ciphertextName = DIR_PREFIX + cryptor.fileNameCryptor().encryptFilename(cleartextName, dirId.getBytes(StandardCharsets.UTF_8));
 			Path dirFilePath = dirPath.resolve(ciphertextName);
 			dirId = dirIdProvider.load(dirFilePath);
 			dirPath = resolveDirectory(dirId);

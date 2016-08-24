@@ -16,18 +16,18 @@ import java.nio.file.attribute.PosixFileAttributes;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.cryptomator.cryptolib.api.FileHeaderCryptor;
+import org.cryptomator.cryptolib.api.Cryptor;
 
 class CryptoFileAttributeProvider {
 
 	private final Map<Class<? extends BasicFileAttributes>, AttributeProvider<? extends BasicFileAttributes>> attributeProviders = new HashMap<>();
-	private final FileHeaderCryptor headerCryptor;
+	private final Cryptor cryptor;
 
-	public CryptoFileAttributeProvider(FileHeaderCryptor headerCryptor) {
+	public CryptoFileAttributeProvider(Cryptor cryptor) {
 		attributeProviders.put(BasicFileAttributes.class, (AttributeProvider<BasicFileAttributes>) CryptoBasicFileAttributes::new);
 		attributeProviders.put(PosixFileAttributes.class, (AttributeProvider<PosixFileAttributes>) CryptoPosixFileAttributes::new);
 		attributeProviders.put(DosFileAttributes.class, (AttributeProvider<DosFileAttributes>) CryptoDosFileAttributes::new);
-		this.headerCryptor = headerCryptor;
+		this.cryptor = cryptor;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -35,14 +35,14 @@ class CryptoFileAttributeProvider {
 		if (attributeProviders.containsKey(type)) {
 			A ciphertextAttrs = ciphertextPath.getFileSystem().provider().readAttributes(ciphertextPath, type);
 			AttributeProvider<A> provider = (AttributeProvider<A>) attributeProviders.get(type);
-			return provider.provide(ciphertextAttrs, ciphertextPath, headerCryptor);
+			return provider.provide(ciphertextAttrs, ciphertextPath, cryptor);
 		} else {
 			throw new UnsupportedOperationException("Unsupported file attribute type: " + type);
 		}
 	}
 
 	private static interface AttributeProvider<A extends BasicFileAttributes> {
-		A provide(A delegate, Path ciphertextPath, FileHeaderCryptor headerCryptor);
+		A provide(A delegate, Path ciphertextPath, Cryptor cryptor);
 	}
 
 }

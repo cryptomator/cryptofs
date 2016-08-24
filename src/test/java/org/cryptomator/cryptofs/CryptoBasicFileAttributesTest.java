@@ -9,20 +9,15 @@
 package org.cryptomator.cryptofs;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.ByteBuffer;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.spi.FileSystemProvider;
-import java.security.SecureRandom;
-import java.util.Arrays;
 
-import org.cryptomator.cryptolib.api.CryptorProvider;
-import org.cryptomator.cryptolib.api.FileHeader;
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
-import org.cryptomator.cryptolib.v1.CryptorProviderImpl;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -30,22 +25,21 @@ import org.mockito.Mockito;
 
 public class CryptoBasicFileAttributesTest {
 
-	private static final SecureRandom NULL_RANDOM = new SecureRandom() {
-		@Override
-		public synchronized void nextBytes(byte[] bytes) {
-			Arrays.fill(bytes, (byte) 0x00);
-		};
-	};
-	private static final CryptorProvider CRYPTOR_PROVIDER = new CryptorProviderImpl(NULL_RANDOM);
-
-	private FileHeaderCryptor fileHeaderCryptor;
+	private Cryptor cryptor;
 	private Path ciphertextFilePath;
 	private BasicFileAttributes delegateAttr;
 	private FileSystemProvider fsProvider;
 
 	@Before
 	public void setup() throws IOException {
-		fileHeaderCryptor = CRYPTOR_PROVIDER.createNew().fileHeaderCryptor();
+		cryptor = Mockito.mock(Cryptor.class);
+		FileHeaderCryptor headerCryptor = Mockito.mock(FileHeaderCryptor.class);
+		FileContentCryptor contentCryptor = Mockito.mock(FileContentCryptor.class);
+		Mockito.when(cryptor.fileHeaderCryptor()).thenReturn(headerCryptor);
+		Mockito.when(headerCryptor.headerSize()).thenReturn(88);
+		Mockito.when(cryptor.fileContentCryptor()).thenReturn(contentCryptor);
+		Mockito.when(contentCryptor.cleartextChunkSize()).thenReturn(32 * 1024);
+		Mockito.when(contentCryptor.ciphertextChunkSize()).thenReturn(16 + 32 * 1024 + 32);
 		ciphertextFilePath = Mockito.mock(Path.class);
 		FileSystem fs = Mockito.mock(FileSystem.class);
 		Mockito.when(ciphertextFilePath.getFileSystem()).thenReturn(fs);
@@ -56,7 +50,7 @@ public class CryptoBasicFileAttributesTest {
 
 	@Test
 	public void testIsDirectory() {
-		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, fileHeaderCryptor);
+		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor);
 
 		Mockito.when(delegateAttr.isRegularFile()).thenReturn(true);
 		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("foo"));
@@ -77,7 +71,7 @@ public class CryptoBasicFileAttributesTest {
 
 	@Test
 	public void testIsRegularFile() {
-		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, fileHeaderCryptor);
+		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor);
 
 		Mockito.when(delegateAttr.isRegularFile()).thenReturn(true);
 		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("foo"));
@@ -98,41 +92,36 @@ public class CryptoBasicFileAttributesTest {
 
 	@Test
 	public void testIsOther() {
-		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, fileHeaderCryptor);
+		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor);
 		Assert.assertFalse(attr.isOther());
 	}
 
 	@Test
 	public void testIsSymbolicLink() {
-		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, fileHeaderCryptor);
+		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor);
 		Assert.assertFalse(attr.isSymbolicLink());
 	}
 
 	@Test
 	public void testSize() throws IOException {
-		FileHeader header = fileHeaderCryptor.create();
-		header.setFilesize(1337l);
-		ByteBuffer headerBuf = fileHeaderCryptor.encryptHeader(header);
-		Mockito.when(fsProvider.newByteChannel(Mockito.same(ciphertextFilePath), Mockito.any())).thenReturn(new SeekableByteChannelMock(headerBuf));
-		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("foo"));
-		Mockito.when(delegateAttr.size()).thenReturn((long) headerBuf.capacity());
+		Mockito.when(delegateAttr.size()).thenReturn(88l + 16 + 1337 + 32);
 		Mockito.when(delegateAttr.isRegularFile()).thenReturn(true);
+		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("foo"));
 
-		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, fileHeaderCryptor);
+		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor);
 		Assert.assertEquals(1337l, attr.size());
+
+		Mockito.when(delegateAttr.isRegularFile()).thenReturn(false);
+		Assert.assertEquals(-1l, attr.size());
 	}
 
-	@Test(expected = UncheckedIOException.class)
+	@Test(expected = IllegalArgumentException.class)
 	public void testSizeWithException() throws IOException {
-		FileHeader header = fileHeaderCryptor.create();
-		header.setFilesize(1337l);
-		ByteBuffer headerBuf = fileHeaderCryptor.encryptHeader(header);
-		Mockito.when(fsProvider.newByteChannel(Mockito.same(ciphertextFilePath), Mockito.any())).thenThrow(new IOException("fail"));
-		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("foo"));
-		Mockito.when(delegateAttr.size()).thenReturn((long) headerBuf.capacity());
+		Mockito.when(delegateAttr.size()).thenReturn(88l + 20l);
 		Mockito.when(delegateAttr.isRegularFile()).thenReturn(true);
+		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("foo"));
 
-		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, fileHeaderCryptor);
+		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor);
 		attr.size();
 	}
 

@@ -8,9 +8,16 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.nio.file.Files.exists;
+import static org.cryptomator.cryptofs.Constants.DIR_PREFIX;
+import static org.cryptomator.cryptofs.Constants.NAME_SHORTENING_THRESHOLD;
+import static org.cryptomator.cryptofs.CryptoFileSystemUris.createUri;
+
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URI;
-import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
@@ -19,11 +26,15 @@ import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryStream;
 import java.nio.file.DirectoryStream.Filter;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileStore;
+import java.nio.file.FileSystem;
 import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -32,36 +43,51 @@ import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.spi.FileSystemProvider;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
-import org.apache.commons.lang3.StringUtils;
+import org.cryptomator.cryptofs.CryptoFileSystemUris.ParsedUri;
 import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
 import org.cryptomator.cryptolib.common.ReseedingSecureRandom;
 import org.cryptomator.cryptolib.v1.CryptorProviderImpl;
 
+/**
+ * <p>
+ * A {@link FileSystemProvider} for CryptoFileSystems.
+ * <p>
+ * A CryptoFileSystem encrypts/decrypts data read/stored from/to it and uses a storage location for the encrypted data. The storage location is denoted by a {@link Path} and can thus be any location
+ * itself accessbile via a java.nio.FileSystem.
+ * <p>
+ * A CryptoFileSystem can be used as any other java.nio.FileSystem, e.g. by using the operations from {@link Files}.
+ * <p>
+ * <b>Usage</b>
+ * 
+ * We recommend to use {@link CryptoFileSystemProvider#newFileSystem(Path, CryptoFileSystemProperties)} to create a CryptoFileSystem. To do this:
+ * 
+ * <blockquote><pre>
+ * Path storageLocation = Paths.get("/home/cryptobot/vault");
+ * FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(
+ * 	storageLocation,
+ * 	{@link CryptoFileSystemProperties cryptoFileSystemProperties()}
+ * 		.withPassword("password")
+ * 		.withReadonlyFlag().build());
+ * </pre></blockquote>
+ * 
+ * Afterwards you can use the created {@code FileSystem} to create paths, do directory listings, create files and so on.
+ * 
+ * <p>To create a new FileSystem from a URI using {@link FileSystems#newFileSystem(URI, Map)} you may have a look at {@link CryptoFileSystemUris}.
+ *  
+ * @see {@link CryptoFileSystemUris}, {@link CryptoFileSystemProperties}, {@link FileSystems}, {@link FileSystem}
+ */
 public class CryptoFileSystemProvider extends FileSystemProvider {
-
-	/**
-	 * example: cryptomator://Path/to/vault#/path/inside/vault
-	 */
-	private static final String URI_SCHEME = "cryptomator";
-
-	/**
-	 * Key identifying the passphrase for a encrypted vault.
-	 */
-	public static final String FS_ENV_PW = "passphrase";
-
-	/**
-	 * Key identifying the readonly property (<code>true</code> or <code>false</code>) for a vault.
-	 */
-	public static final String FS_ENV_READONLY = "readonly";
 
 	private final CryptorProviderImpl cryptorProvider;
 	private final ConcurrentHashMap<Path, CryptoFileSystem> fileSystems = new ConcurrentHashMap<>();
@@ -82,24 +108,13 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		}
 	}
 
-	@Override
-	public String getScheme() {
-		return URI_SCHEME;
+	public static FileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
+		return FileSystems.newFileSystem(createUri(pathToVault.toAbsolutePath()), properties);
 	}
 
-	/**
-	 * @param pathToVault Absolute path to
-	 * @param pathComponentsInsideVault Path components to node inside vault (optional)
-	 */
-	public static URI createCryptomatorUri(Path pathToVault, String... pathComponentsInsideVault) {
-		if (!pathToVault.isAbsolute()) {
-			throw new IllegalArgumentException(pathToVault + " is not an absolute path.");
-		}
-		try {
-			return new URI(URI_SCHEME, null, StringUtils.prependIfMissing(pathToVault.toString(), "/"), "/" + String.join("/", pathComponentsInsideVault));
-		} catch (URISyntaxException e) {
-			throw new IllegalArgumentException("Can not create URI from given path.", e);
-		}
+	@Override
+	public String getScheme() {
+		return CryptoFileSystemUris.URI_SCHEME;
 	}
 
 	ConcurrentHashMap<Path, CryptoFileSystem> getFileSystems() {
@@ -107,34 +122,43 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	@Override
-	public CryptoFileSystem newFileSystem(URI uri, Map<String, ?> env) throws IOException {
-		if (!env.containsKey(FS_ENV_PW) || !(env.get(FS_ENV_PW) instanceof CharSequence)) {
-			throw new IllegalArgumentException("Required environment parameter " + FS_ENV_PW + " not specified.");
+	public FileSystem newFileSystem(URI uri, Map<String, ?> rawProperties) throws IOException {
+		ParsedUri parsedUri = CryptoFileSystemUris.parseUri(uri);
+		CryptoFileSystemProperties properties = CryptoFileSystemProperties.wrap(rawProperties);
+		try {
+			return getFileSystems().compute(parsedUri.pathToVault(), (key, value) -> {
+				if (value == null) {
+					try {
+						return new CryptoFileSystem(this, cryptorProvider, key, properties.passphrase(), properties.readonly());
+					} catch (IOException e) {
+						// TODO use specific wrapper
+						throw new UncheckedIOException(e);
+					}
+				} else {
+					throw new FileSystemAlreadyExistsException();
+				}
+			});
+		} catch (UncheckedIOException e) {
+			throw e.getCause();
 		}
-		CharSequence passphrase = (CharSequence) env.get(FS_ENV_PW);
-		boolean readonly = Boolean.parseBoolean((String) env.get(FS_ENV_READONLY));
-		Path pathToVault = FileSystems.getDefault().getPath(uri.getPath().toString());
-
-		return getFileSystems().compute(pathToVault, (key, value) -> {
-			if (value == null) {
-				return new CryptoFileSystem(this, cryptorProvider, key, passphrase, readonly);
-			} else {
-				throw new FileSystemAlreadyExistsException();
-			}
-		});
 	}
 
 	@Override
 	public CryptoFileSystem getFileSystem(URI uri) {
-		Path pathToVault = FileSystems.getDefault().getPath(uri.getPath());
-		return getFileSystems().computeIfAbsent(pathToVault, key -> {
-			throw new FileSystemNotFoundException();
-		});
+		ParsedUri parsedUri = CryptoFileSystemUris.parseUri(uri);
+		return getFileSystem(parsedUri);
 	}
 
 	@Override
 	public Path getPath(URI uri) {
-		return getFileSystem(uri).getPath(uri.getFragment());
+		ParsedUri parsedUri = CryptoFileSystemUris.parseUri(uri);
+		return getFileSystem(parsedUri).getPath(parsedUri.pathInsideVault());
+	}
+
+	private CryptoFileSystem getFileSystem(ParsedUri parsedUri) {
+		return getFileSystems().computeIfAbsent(parsedUri.pathToVault(), key -> {
+			throw new FileSystemNotFoundException();
+		});
 	}
 
 	@Override
@@ -167,9 +191,39 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	@Override
-	public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
-		// TODO Auto-generated method stub
-
+	public void createDirectory(Path cleartextDir, FileAttribute<?>... attrs) throws IOException {
+		CryptoFileSystem fs = CryptoFileSystem.cast(cleartextDir.getFileSystem());
+		Path cleartextParentDir = cleartextDir.getParent();
+		if (cleartextParentDir == null) {
+			return;
+		}
+		Directory ciphertextParentDir = fs.getCryptoPathMapper().getCiphertextDir(cleartextParentDir);
+		if (!exists(ciphertextParentDir.path)) {
+			throw new NoSuchFileException(cleartextParentDir.toString());
+		}
+		String cleartextDirName = cleartextDir.getFileName().toString();
+		String ciphertextName = fs.getCryptor().fileNameCryptor().encryptFilename(cleartextDirName, ciphertextParentDir.dirId.getBytes(UTF_8));
+		if (exists(ciphertextParentDir.path.resolve(ciphertextName))) {
+			throw new FileAlreadyExistsException(cleartextDir.toString());
+		}
+		String ciphertextDirName = DIR_PREFIX + ciphertextName;
+		if (ciphertextDirName.length() >= NAME_SHORTENING_THRESHOLD) {
+			ciphertextDirName = fs.getLongFileNameProvider().deflate(ciphertextDirName);
+		}
+		Path dirFile = ciphertextParentDir.path.resolve(ciphertextDirName);
+		Directory ciphertextDir = fs.getCryptoPathMapper().getCiphertextDir(cleartextDir);
+		try (FileChannel channel = FileChannel.open(dirFile, EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), attrs)) {
+			channel.write(ByteBuffer.wrap(ciphertextDir.dirId.getBytes(UTF_8)));
+		}
+		boolean success = false;
+		try {
+			Files.createDirectories(ciphertextDir.path);
+			success = true;
+		} finally {
+			if (!success) {
+				Files.delete(dirFile);
+			}
+		}
 	}
 
 	@Override
@@ -213,11 +267,9 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public void checkAccess(Path cleartextPath, AccessMode... modes) throws IOException {
-		// TODO check if file exists first and throw NoSuchFileException, if it doesn't.
 		FileStore store = getFileStore(cleartextPath);
 		if (store.supportsFileAttributeView(PosixFileAttributeView.class)) {
-			PosixFileAttributeView view = this.getFileAttributeView(cleartextPath, PosixFileAttributeView.class);
-			Set<PosixFilePermission> permissions = view.readAttributes().permissions();
+			Set<PosixFilePermission> permissions = readAttributes(cleartextPath, PosixFileAttributes.class).permissions();
 			boolean accessGranted = true;
 			for (AccessMode accessMode : modes) {
 				switch (accessMode) {
@@ -237,20 +289,40 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 			if (!accessGranted) {
 				throw new AccessDeniedException(cleartextPath.toString());
 			}
+		} else {
+			// read attributes to check for file existence / throws IOException if file does not exist
+			readAttributes(cleartextPath, BasicFileAttributes.class);
 		}
 	}
 
 	@Override
 	public <V extends FileAttributeView> V getFileAttributeView(Path cleartextPath, Class<V> type, LinkOption... options) {
-		// TODO Auto-generated method stub
-		return null;
+		// TODO wrap FileAttributeView und so
+		try {
+			CryptoFileSystem fs = CryptoFileSystem.cast(cleartextPath.getFileSystem());
+			Path ciphertextDirPath = fs.getCryptoPathMapper().getCiphertextDirPath(cleartextPath);
+			if (Files.notExists(ciphertextDirPath) && cleartextPath.getNameCount() > 0) {
+				Path ciphertextFilePath = fs.getCryptoPathMapper().getCiphertextFilePath(cleartextPath);
+				return Files.getFileAttributeView(ciphertextFilePath, type);
+			} else {
+				return Files.getFileAttributeView(ciphertextDirPath, type);
+			}
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 	}
 
 	@Override
 	public <A extends BasicFileAttributes> A readAttributes(Path cleartextPath, Class<A> type, LinkOption... options) throws IOException {
+		// TODO wrap FileAttribute und so
 		CryptoFileSystem fs = CryptoFileSystem.cast(cleartextPath.getFileSystem());
-		Path ciphertextPath = fs.getCryptoPathMapper().getCiphertextFilePath(cleartextPath);
-		return fs.getFileAttributeProvider().readAttributes(ciphertextPath, type);
+		Path ciphertextDirPath = fs.getCryptoPathMapper().getCiphertextDirPath(cleartextPath);
+		if (Files.notExists(ciphertextDirPath) && cleartextPath.getNameCount() > 0) {
+			Path ciphertextFilePath = fs.getCryptoPathMapper().getCiphertextFilePath(cleartextPath);
+			return fs.getFileAttributeProvider().readAttributes(ciphertextFilePath, type);
+		} else {
+			return fs.getFileAttributeProvider().readAttributes(ciphertextDirPath, type);
+		}
 	}
 
 	@Override

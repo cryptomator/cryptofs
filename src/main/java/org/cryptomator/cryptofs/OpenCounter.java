@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * <p>Counter for pairwise open/close operations.
  * <p>After an OpenCounter has finally been closed (openCount == closeCount && openCount > 0) no open operation will succeed.
  */
-public class OpenCounter {
+class OpenCounter {
 	
 	private final AtomicLong count = new AtomicLong(0);
 	

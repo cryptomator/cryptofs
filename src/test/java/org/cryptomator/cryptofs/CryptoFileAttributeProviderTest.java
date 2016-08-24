@@ -16,7 +16,7 @@ import java.nio.file.attribute.DosFileAttributes;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.spi.FileSystemProvider;
 
-import org.cryptomator.cryptolib.api.FileHeaderCryptor;
+import org.cryptomator.cryptolib.api.Cryptor;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -24,12 +24,12 @@ import org.mockito.Mockito;
 
 public class CryptoFileAttributeProviderTest {
 
-	private FileHeaderCryptor fileHeaderCryptor;
+	private Cryptor cryptor;
 	private Path ciphertextFilePath;
 
 	@Before
 	public void setup() throws IOException {
-		fileHeaderCryptor = Mockito.mock(FileHeaderCryptor.class);
+		cryptor = Mockito.mock(Cryptor.class);
 		ciphertextFilePath = Mockito.mock(Path.class);
 		FileSystem fs = Mockito.mock(FileSystem.class);
 		Mockito.when(ciphertextFilePath.getFileSystem()).thenReturn(fs);
@@ -45,21 +45,21 @@ public class CryptoFileAttributeProviderTest {
 
 	@Test
 	public void testReadBasicAttributes() throws IOException {
-		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(fileHeaderCryptor);
+		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor);
 		BasicFileAttributes attr = prov.readAttributes(ciphertextFilePath, BasicFileAttributes.class);
 		Assert.assertTrue(attr instanceof BasicFileAttributes);
 	}
 
 	@Test
 	public void testReadPosixAttributes() throws IOException {
-		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(fileHeaderCryptor);
+		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor);
 		PosixFileAttributes attr = prov.readAttributes(ciphertextFilePath, PosixFileAttributes.class);
 		Assert.assertTrue(attr instanceof PosixFileAttributes);
 	}
 
 	@Test
 	public void testReadDosAttributes() throws IOException {
-		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(fileHeaderCryptor);
+		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor);
 		DosFileAttributes attr = prov.readAttributes(ciphertextFilePath, DosFileAttributes.class);
 		Assert.assertTrue(attr instanceof DosFileAttributes);
 	}
@@ -70,7 +70,7 @@ public class CryptoFileAttributeProviderTest {
 
 	@Test(expected = UnsupportedOperationException.class)
 	public void testReadUnsupportedAttributes() throws IOException {
-		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(fileHeaderCryptor);
+		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor);
 		prov.readAttributes(ciphertextFilePath, UnsupportedAttributes.class);
 	}
 

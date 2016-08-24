@@ -77,10 +77,10 @@ class BasicPath implements Path {
 	@Override
 	public Path getParent() {
 		int elementCount = getNameCount();
-		if (elementCount >= 1) {
+		if (elementCount > 1) {
 			List<String> elems = elements.subList(0, elementCount - 1);
 			return createPath(fileSystem, elems, absolute);
-		} else if (isAbsolute()) {
+		} else if (elementCount == 1 && isAbsolute()) {
 			return getRoot();
 		} else {
 			return null;
