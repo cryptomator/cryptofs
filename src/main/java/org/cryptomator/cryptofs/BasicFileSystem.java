@@ -99,7 +99,7 @@ abstract class BasicFileSystem extends FileSystem {
 	public PathMatcher getPathMatcher(String syntaxAndPattern) {
 		final Pattern pattern;
 		if (syntaxAndPattern.startsWith("glob:")) {
-			pattern = Pattern.compile(GlobToRegex.toRegex(syntaxAndPattern.substring(5), "/"));
+			pattern = Pattern.compile(GlobToRegex.toRegex(syntaxAndPattern.substring(5), '/'));
 		} else if (syntaxAndPattern.startsWith("regex:")) {
 			pattern = Pattern.compile(syntaxAndPattern.substring(6));
 		} else {

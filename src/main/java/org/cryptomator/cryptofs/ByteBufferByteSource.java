@@ -1,7 +1,5 @@
 package org.cryptomator.cryptofs;
 
-import static java.lang.Math.min;
-
 import java.nio.ByteBuffer;
 
 class ByteBufferByteSource implements ByteSource {
@@ -24,11 +22,14 @@ class ByteBufferByteSource implements ByteSource {
 
 	@Override
 	public void copyTo(ByteBuffer target) {
-		int originalLimit = source.limit();
-		int limit = min(source.limit(), source.position() + target.remaining());
-		source.limit(limit);
-		target.put(source);
-		source.limit(originalLimit);
+		if (source.remaining() > target.remaining()) {
+			int originalLimit = source.limit();
+			source.limit(source.position() + target.remaining());
+			target.put(source);
+			source.limit(originalLimit);
+		} else {
+			target.put(source);
+		}
 	}
 	
 }

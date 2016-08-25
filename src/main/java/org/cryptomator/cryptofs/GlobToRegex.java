@@ -50,24 +50,24 @@ final class GlobToRegex {
 	 * }
 	 * </pre>
 	 */
-	public static String toRegex(String glob, String separators) {
-		return new GlobToRegex(glob, separators).convert();
+	public static String toRegex(String glob, char separator) {
+		return new GlobToRegex(glob, separator).convert();
 	}
 
 	private static final CharMatcher REGEX_RESERVED = CharMatcher.anyOf("^$.?+*\\[]{}()");
 
 	private final String glob;
-	private final String separators;
+	private final char separator;
 	private final CharMatcher separatorMatcher;
 
 	private final StringBuilder builder = new StringBuilder();
 	private final Deque<State> states = new ArrayDeque<>();
 	private int index;
 
-	private GlobToRegex(String glob, String separators) {
+	private GlobToRegex(String glob, char separator) {
 		this.glob = checkNotNull(glob);
-		this.separators = separators;
-		this.separatorMatcher = CharMatcher.anyOf(separators);
+		this.separator = separator;
+		this.separatorMatcher = CharMatcher.anyOf(String.valueOf(separator));
 	}
 
 	/**
@@ -146,15 +146,7 @@ final class GlobToRegex {
 	 * Appends the regex form matching the separators for the path type.
 	 */
 	private void appendSeparator() {
-		if (separators.length() == 1) {
-			appendNormal(separators.charAt(0));
-		} else {
-			builder.append('[');
-			for (int i = 0; i < separators.length(); i++) {
-				appendInBracket(separators.charAt(i));
-			}
-			builder.append("]");
-		}
+		appendNormal(separator);
 	}
 
 	/**
@@ -162,9 +154,7 @@ final class GlobToRegex {
 	 */
 	private void appendNonSeparator() {
 		builder.append("[^");
-		for (int i = 0; i < separators.length(); i++) {
-			appendInBracket(separators.charAt(i));
-		}
+		appendInBracket(separator);
 		builder.append(']');
 	}
 

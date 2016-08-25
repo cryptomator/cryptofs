@@ -215,7 +215,11 @@ class CryptoFileChannel extends FileChannel {
 			return null;
 		}
 		CryptoFileLock result = CryptoFileLock.builder() //
-				.withDelegate(delegate).withChannel(this).withPosition(position).withSize(size).thatIsShared(shared).build();
+				.withDelegate(delegate) //
+				.withChannel(this) //
+				.withPosition(position) //
+				.withSize(size) //
+				.thatIsShared(shared).build();
 		return result;
 
 	}
