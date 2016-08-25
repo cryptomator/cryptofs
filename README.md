@@ -8,7 +8,7 @@ This project is in an early stage and not ready for production use. We recommend
 
 ## Features
 
-- Access Cryptomator encrypted vaults from without your Java application
+- Access Cryptomator encrypted vaults from within your Java application
 - Uses a ``java.nio.file.FileSystem`` so code written against the java.nio.file API can easily be adapted to work with encrypted data 
 - Open Source means: No backdoors, control is better than trust
 
@@ -17,6 +17,8 @@ This project is in an early stage and not ready for production use. We recommend
 For more information on the security details visit [cryptomator.org](https://cryptomator.org/architecture/).
 
 ## Usage
+
+CryptoFS depends on a Java 8 JRE/JDK. In addition the JCE unlimited strength policy files (needed for 256-bit keys) must be installed.
 
 ### Construction
 
@@ -32,7 +34,7 @@ FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(
 		.build());
 ```
 
-or to use on of the standard methods from ``FileSystems#newFileSystem``:
+or to use one of the standard methods from ``FileSystems#newFileSystem``:
 
 ```
 Path storageLocation = Paths.get("/home/cryptobot/vault");
