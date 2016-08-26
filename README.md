@@ -1,6 +1,6 @@
 ![cryptomator](cryptomator.png)
 
-[![Build Status](https://travis-ci.org/cryptomator/cryptofs.svg?branch=master)](https://travis-ci.org/cryptomator/cryptofs)
+[![Build Status](https://travis-ci.org/cryptomator/cryptofs.svg?branch=develop)](https://travis-ci.org/cryptomator/cryptofs)
 [![codecov](https://codecov.io/gh/cryptomator/cryptofs/branch/develop/graph/badge.svg)](https://codecov.io/gh/cryptomator/cryptofs)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/7248ca7d466843f785f79f33374302c2)](https://www.codacy.com/app/cryptomator/cryptofs)
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/10006/badge.svg)](https://scan.coverity.com/projects/cryptomator-cryptofs)
