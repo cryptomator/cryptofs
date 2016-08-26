@@ -1,5 +1,10 @@
 ![cryptomator](cryptomator.png)
 
+[![Build Status](https://travis-ci.org/cryptomator/cryptofs.svg?branch=master)](https://travis-ci.org/cryptomator/cryptofs)
+[![codecov](https://codecov.io/gh/cryptomator/cryptofs/branch/develop/graph/badge.svg)](https://codecov.io/gh/cryptomator/cryptofs)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/7248ca7d466843f785f79f33374302c2)](https://www.codacy.com/app/cryptomator/cryptofs)
+[![Coverity Scan Build Status](https://scan.coverity.com/projects/10006/badge.svg)](https://scan.coverity.com/projects/cryptomator-cryptofs)
+
 **CryptoFS** - Implementation of the [Cryptomator](https://github.com/cryptomator/cryptomator) encryption scheme.
 
 ## Disclaimer
@@ -9,7 +14,7 @@ This project is in an early stage and not ready for production use. We recommend
 ## Features
 
 - Access Cryptomator encrypted vaults from within your Java application
-- Uses a ``java.nio.file.FileSystem`` so code written against the java.nio.file API can easily be adapted to work with encrypted data 
+- Uses a ``java.nio.file.FileSystem`` so code written against the java.nio.file API can easily be adapted to work with encrypted data
 - Open Source means: No backdoors, control is better than trust
 
 ### Security Architecture
@@ -44,7 +49,7 @@ FileSystem fileSystem = FileSystems.newFileSystem(
 		CryptoFileSystemProperties.cryptoFileSystemProperties()
 			.withPassphrase("password")
 			.withReadonlyFlag() // readonly flag is optional of course
-			.build()); 
+			.build());
 ```
 
 **Note** - Instead of CryptoFileSystemProperties you can always pass in a ``java.util.Map`` with entries set accordingly.
