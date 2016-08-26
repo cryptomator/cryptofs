@@ -24,7 +24,7 @@ CryptoFS depends on a Java 8 JRE/JDK. In addition the JCE unlimited strength pol
 
 You have the option to use the convenience method ``CryptoFileSystemProvider#newFileSystem`` as follows:  
 
-```
+```java
 Path storageLocation = Paths.get("/home/cryptobot/vault");
 FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(
 	storageLocation,
@@ -36,7 +36,7 @@ FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(
 
 or to use one of the standard methods from ``FileSystems#newFileSystem``:
 
-```
+```java
 Path storageLocation = Paths.get("/home/cryptobot/vault");
 URI uri = CryptoFileSystemUris.createUri(storageLocation);
 FileSystem fileSystem = FileSystems.newFileSystem(
@@ -53,7 +53,7 @@ For more details on construction have a look at the javadoc of ``CryptoFileSytem
 
 ### Using the constructed file system
 
-```
+```java
 FileSystem fileSystem = ...; // see above
 
 // obtain a path to a test file
@@ -82,7 +82,7 @@ For more details on how to use the constructed file system you may consult the [
 
 ### Run Maven
 
-```
+```bash
 mvn clean install
 ```
 
