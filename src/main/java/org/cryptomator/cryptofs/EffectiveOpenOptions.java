@@ -153,7 +153,6 @@ class EffectiveOpenOptions {
 
 	public Set<OpenOption> createOpenOptionsForEncryptedFile() {
 		Set<OpenOption> result = new HashSet<>(options);
-		result.removeIf(option -> !StandardOpenOption.class.isInstance(option));
 		result.add(READ); // also needed during write
 		result.remove(APPEND);
 		return result;
@@ -163,6 +162,9 @@ class EffectiveOpenOptions {
 	 * @return Same as {@link #createOpenOptionsForEncryptedFile()} but with StandardOpenOption#CREATE_NEW, i.e. assert file does not exist!
 	 */
 	public Set<OpenOption> createOpenOptionsForNonExistingEncryptedFile() {
+		if (!writable()) {
+			throw new IllegalStateException("Can not create open options for non existing file if not writable");
+		}
 		Set<OpenOption> result = createOpenOptionsForEncryptedFile();
 		result.add(CREATE_NEW);
 		return result;

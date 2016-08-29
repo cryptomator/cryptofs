@@ -12,6 +12,10 @@ class CryptoFileLock extends FileLock {
 		super(builder.channel, builder.position, builder.size, builder.shared);
 		this.delegate = builder.delegate;
 	}
+	
+	FileLock delegate() {
+		return delegate;
+	}
 
 	@Override
 	public boolean isValid() {

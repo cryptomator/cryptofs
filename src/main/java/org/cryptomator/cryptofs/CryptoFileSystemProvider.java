@@ -111,7 +111,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		try {
 			return new ReseedingSecureRandom(SecureRandom.getInstanceStrong(), SecureRandom.getInstance("SHA1PRNG"), 1 << 30, 55);
 		} catch (NoSuchAlgorithmException e) {
-			throw new IllegalStateException("Java platform is required to support used instances.", e);
+			throw new IllegalStateException("Java platform is required to support a strong SecureRandom and SHA1PRNG SecureRandom.", e);
 		}
 	}
 

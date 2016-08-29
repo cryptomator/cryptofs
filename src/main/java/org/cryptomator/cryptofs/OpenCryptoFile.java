@@ -124,7 +124,7 @@ class OpenCryptoFile {
 
 	private void handleSync(EffectiveOpenOptions options) throws IOException {
 		if (options.syncData()) {
-			force(options.syncDataAndMetadata(), options.writable());
+			force(options.syncDataAndMetadata(), options);
 		}
 	}
 
@@ -162,9 +162,9 @@ class OpenCryptoFile {
 		// TODO
 	}
 
-	public synchronized void force(boolean metaData, boolean flushContents) throws IOException {
+	public synchronized void force(boolean metaData, EffectiveOpenOptions options) throws IOException {
 		cleartextChunks.invalidateAll();
-		if (flushContents) {
+		if (options.writable()) {
 			header.setFilesize(size.get());
 			channel.write(cryptor.fileHeaderCryptor().encryptHeader(header), 0);
 		}
@@ -251,8 +251,8 @@ class OpenCryptoFile {
 		}
 	}
 
-	public void close(boolean flushContents) throws IOException {
-		force(true, flushContents);
+	public void close(EffectiveOpenOptions options) throws IOException {
+		force(true, options);
 		if (openCounter.countClose()) {
 			try {
 				onClosed.accept(this);

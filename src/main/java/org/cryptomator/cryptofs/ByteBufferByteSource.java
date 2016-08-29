@@ -9,6 +9,10 @@ class ByteBufferByteSource implements ByteSource {
 	public ByteBufferByteSource(ByteBuffer source) {
 		this.source = source;
 	}
+	
+	ByteBuffer getBuffer() {
+		return source;
+	}
 
 	@Override
 	public boolean hasRemaining() {
