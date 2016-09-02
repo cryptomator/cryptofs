@@ -238,7 +238,7 @@ class BasicPath implements Path {
 
 	@Override
 	public File toFile() {
-		return new File(toUri());
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
@@ -248,7 +248,7 @@ class BasicPath implements Path {
 
 	@Override
 	public WatchKey register(WatchService watcher, WatchEvent.Kind<?>... events) throws IOException {
-		return register(watcher, events, new WatchEvent.Modifier[0]);
+		throw new UnsupportedOperationException("Method not implemented.");
 	}
 
 	@Override
@@ -271,7 +271,7 @@ class BasicPath implements Path {
 
 	@Override
 	public int compareTo(Path path) {
-		BasicPath other = cast(path);
+		BasicPath other = (BasicPath) path;
 		if (this.isAbsolute() != other.isAbsolute()) {
 			return this.isAbsolute() ? -1 : 1;
 		}

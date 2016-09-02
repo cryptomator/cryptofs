@@ -136,7 +136,7 @@ class OpenCryptoFile {
 		}
 	}
 
-	private void write(ByteSource source, long position) {
+	private void write(ByteSource source, long position) throws IOException {
 		int cleartextChunkSize = cryptor.fileContentCryptor().cleartextChunkSize();
 		int written = 0;
 		while (source.hasRemaining()) {
@@ -189,15 +189,17 @@ class OpenCryptoFile {
 		return channel.tryLock(position, size, shared);
 	}
 
-	private ChunkData loadCleartextChunk(long chunkIndex) {
+	private ChunkData loadCleartextChunk(long chunkIndex) throws IOException {
 		try {
 			return cleartextChunks.get(chunkIndex);
 		} catch (ExecutionException e) {
 			if (e.getCause() instanceof AuthenticationFailedException) {
 				// TODO provide means to pass an AuthenticationFailedException handler using an OpenOption
-				throw new UnsupportedOperationException("TODO", e);
+				throw new IOException(e.getCause());
+			} else if (e.getCause() instanceof IOException) {
+				throw (IOException) e.getCause();
 			} else {
-				throw new IllegalStateException("Unexpected Exception.", e);
+				throw new IllegalStateException("Unexpected Exception", e);
 			}
 		}
 	}
@@ -205,7 +207,7 @@ class OpenCryptoFile {
 	private class CleartextChunkLoader extends CacheLoader<Long, ChunkData> {
 
 		@Override
-		public ChunkData load(Long chunkIndex) throws Exception {
+		public ChunkData load(Long chunkIndex) throws IOException {
 			LOG.debug("load chunk" + chunkIndex);
 			int payloadSize = cryptor.fileContentCryptor().cleartextChunkSize();
 			int chunkSize = cryptor.fileContentCryptor().ciphertextChunkSize();

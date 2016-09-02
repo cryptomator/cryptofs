@@ -26,32 +26,33 @@ public class EffectiveOpenOptionsTest {
 
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
-	
+
 	@Test
 	public void testFailIfAppendIsUsedWithRead() {
 		thrown.expect(IllegalArgumentException.class);
-		
+
 		EffectiveOpenOptions.from(new HashSet<>(asList(APPEND, READ)));
 	}
-	
+
 	@Test
 	public void testFailIfAppendIsUsedWithTruncateExisting() {
 		thrown.expect(IllegalArgumentException.class);
-		
+
 		EffectiveOpenOptions.from(new HashSet<>(asList(APPEND, TRUNCATE_EXISTING)));
 	}
-	
+
 	@Test
 	public void testUnsupportedOption() {
 		thrown.expect(IllegalArgumentException.class);
-		
-		EffectiveOpenOptions.from(new HashSet<>(asList(new OpenOption() {})));
+
+		EffectiveOpenOptions.from(new HashSet<>(asList(new OpenOption() {
+		})));
 	}
-	
+
 	@Test
 	public void testEmpty() {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList()));
-		
+
 		assertFalse(inTest.append());
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
@@ -61,16 +62,14 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.syncDataAndMetadata());
 		assertFalse(inTest.truncateExisting());
 		assertFalse(inTest.writable());
-		
+
 		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
-		thrown.expect(IllegalStateException.class);
-		inTest.createOpenOptionsForNonExistingEncryptedFile();
 	}
-	
+
 	@Test
 	public void testAppend() {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(APPEND)));
-		
+
 		assertTrue(inTest.append());
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
@@ -80,15 +79,14 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.syncDataAndMetadata());
 		assertFalse(inTest.truncateExisting());
 		assertTrue(inTest.writable());
-		
+
 		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
-		assertThat(inTest.createOpenOptionsForNonExistingEncryptedFile(), containsInAnyOrder(CREATE_NEW, READ, WRITE));
 	}
-	
+
 	@Test
 	public void testCreate() {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE)));
-		
+
 		assertFalse(inTest.append());
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
@@ -98,16 +96,14 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.syncDataAndMetadata());
 		assertFalse(inTest.truncateExisting());
 		assertFalse(inTest.writable());
-		
+
 		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
-		thrown.expect(IllegalStateException.class);
-		inTest.createOpenOptionsForNonExistingEncryptedFile();
 	}
-	
+
 	@Test
 	public void testCreateWithWrite() {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE, WRITE)));
-		
+
 		assertFalse(inTest.append());
 		assertTrue(inTest.create());
 		assertFalse(inTest.createNew());
@@ -117,15 +113,14 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.syncDataAndMetadata());
 		assertFalse(inTest.truncateExisting());
 		assertTrue(inTest.writable());
-		
+
 		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(CREATE, READ, WRITE));
-		assertThat(inTest.createOpenOptionsForNonExistingEncryptedFile(), containsInAnyOrder(CREATE_NEW, CREATE, READ, WRITE));
 	}
-	
+
 	@Test
 	public void testCreateNew() {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE_NEW)));
-		
+
 		assertFalse(inTest.append());
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
@@ -135,16 +130,14 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.syncDataAndMetadata());
 		assertFalse(inTest.truncateExisting());
 		assertFalse(inTest.writable());
-		
+
 		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
-		thrown.expect(IllegalStateException.class);
-		inTest.createOpenOptionsForNonExistingEncryptedFile();
 	}
-	
+
 	@Test
 	public void testCreateNewWithWrite() {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE_NEW, WRITE)));
-		
+
 		assertFalse(inTest.append());
 		assertFalse(inTest.create());
 		assertTrue(inTest.createNew());
@@ -154,15 +147,14 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.syncDataAndMetadata());
 		assertFalse(inTest.truncateExisting());
 		assertTrue(inTest.writable());
-		
+
 		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(CREATE_NEW, READ, WRITE));
-		assertThat(inTest.createOpenOptionsForNonExistingEncryptedFile(), containsInAnyOrder(CREATE_NEW, READ, WRITE));
 	}
-	
+
 	@Test
 	public void testCreateNewWithWriteAndCreate() {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE, CREATE_NEW, WRITE)));
-		
+
 		assertFalse(inTest.append());
 		assertFalse(inTest.create());
 		assertTrue(inTest.createNew());
@@ -172,15 +164,14 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.syncDataAndMetadata());
 		assertFalse(inTest.truncateExisting());
 		assertTrue(inTest.writable());
-		
+
 		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(CREATE_NEW, READ, WRITE));
-		assertThat(inTest.createOpenOptionsForNonExistingEncryptedFile(), containsInAnyOrder(CREATE_NEW, READ, WRITE));
 	}
-	
+
 	@Test
 	public void testDeleteOnClose() {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(DELETE_ON_CLOSE)));
-		
+
 		assertFalse(inTest.append());
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
@@ -190,16 +181,14 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.syncDataAndMetadata());
 		assertFalse(inTest.truncateExisting());
 		assertFalse(inTest.writable());
-		
+
 		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, DELETE_ON_CLOSE));
-		thrown.expect(IllegalStateException.class);
-		inTest.createOpenOptionsForNonExistingEncryptedFile();
 	}
-	
+
 	@Test
 	public void testRead() {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(READ)));
-		
+
 		assertFalse(inTest.append());
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
@@ -209,16 +198,14 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.syncDataAndMetadata());
 		assertFalse(inTest.truncateExisting());
 		assertFalse(inTest.writable());
-		
+
 		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
-		thrown.expect(IllegalStateException.class);
-		inTest.createOpenOptionsForNonExistingEncryptedFile();
 	}
-	
+
 	@Test
 	public void testSync() {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(SYNC)));
-		
+
 		assertFalse(inTest.append());
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
@@ -228,16 +215,14 @@ public class EffectiveOpenOptionsTest {
 		assertTrue(inTest.syncDataAndMetadata());
 		assertFalse(inTest.truncateExisting());
 		assertFalse(inTest.writable());
-		
+
 		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, SYNC));
-		thrown.expect(IllegalStateException.class);
-		inTest.createOpenOptionsForNonExistingEncryptedFile();
 	}
-	
+
 	@Test
 	public void testDSync() {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(DSYNC)));
-		
+
 		assertFalse(inTest.append());
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
@@ -247,16 +232,14 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.syncDataAndMetadata());
 		assertFalse(inTest.truncateExisting());
 		assertFalse(inTest.writable());
-		
+
 		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, DSYNC));
-		thrown.expect(IllegalStateException.class);
-		inTest.createOpenOptionsForNonExistingEncryptedFile();
 	}
-	
+
 	@Test
 	public void testTruncateExisting() {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(TRUNCATE_EXISTING)));
-		
+
 		assertFalse(inTest.append());
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
@@ -266,16 +249,14 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.syncDataAndMetadata());
 		assertFalse(inTest.truncateExisting());
 		assertFalse(inTest.writable());
-		
+
 		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
-		thrown.expect(IllegalStateException.class);
-		inTest.createOpenOptionsForNonExistingEncryptedFile();
 	}
-	
+
 	@Test
 	public void testWrite() {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(WRITE)));
-		
+
 		assertFalse(inTest.append());
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
@@ -285,9 +266,8 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.syncDataAndMetadata());
 		assertFalse(inTest.truncateExisting());
 		assertTrue(inTest.writable());
-		
+
 		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
-		assertThat(inTest.createOpenOptionsForNonExistingEncryptedFile(), containsInAnyOrder(CREATE_NEW, READ, WRITE));
 	}
-	
+
 }

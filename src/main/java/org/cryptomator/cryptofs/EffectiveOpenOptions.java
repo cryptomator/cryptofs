@@ -166,16 +166,4 @@ class EffectiveOpenOptions {
 		return result;
 	}
 
-	/**
-	 * @return Same as {@link #createOpenOptionsForEncryptedFile()} but with StandardOpenOption#CREATE_NEW, i.e. assert file does not exist!
-	 */
-	public Set<OpenOption> createOpenOptionsForNonExistingEncryptedFile() {
-		if (!writable()) {
-			throw new IllegalStateException("Can not create open options for non existing file if not writable");
-		}
-		Set<OpenOption> result = createOpenOptionsForEncryptedFile();
-		result.add(CREATE_NEW);
-		return result;
-	}
-
 }

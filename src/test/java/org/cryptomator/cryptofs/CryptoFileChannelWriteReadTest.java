@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs;
 
 import static java.lang.String.format;
 import static java.nio.file.Files.size;
+import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
@@ -202,6 +203,42 @@ public class CryptoFileChannelWriteReadTest {
 		}
 	}
 
+	@Theory
+	public void testAppend(@FromDataPoints("dataSizes") int dataSize, @FromDataPoints("writeOffsets") int writeOffset) throws IOException {
+		assumeTrue(dataSize != 0 || writeOffset != 0);
+
+		int cleartextSize = dataSize + writeOffset;
+		int numChunks = (cleartextSize + CHUNK_SIZE - 1) / CHUNK_SIZE;
+		int ciphertextSize = HEADER_SIZE + numChunks * CHUNK_OVERHEAD + writeOffset + dataSize;
+
+		try (CryptoFileChannel channel = writableChannelInAppendMode()) {
+			assertEquals(0, channel.size());
+			if (writeOffset > 0) {
+				channel.write(repeat(1).times(1).asByteBuffer(), writeOffset - 1);
+				assertEquals(writeOffset, channel.size());
+			}
+			channel.write(repeat(2).times(dataSize).asByteBuffer());
+			assertEquals(cleartextSize, channel.size());
+		}
+
+		assertEquals(ciphertextSize, size(ciphertextFilePath));
+
+		try (CryptoFileChannel channel = readableChannel()) {
+			ByteBuffer buffer = ByteBuffer.allocate(cleartextSize);
+			int result = channel.read(buffer);
+			assertEquals(cleartextSize, result);
+			assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
+			buffer.flip();
+			for (int i = 0; i < cleartextSize; i++) {
+				if (i >= writeOffset) {
+					assertEquals(format("byte(%d) = 2", i), 2, buffer.get(i));
+				} else if (i == writeOffset - 1) {
+					assertEquals(format("byte(%d) = 1", i), 1, buffer.get(i));
+				}
+			}
+		}
+	}
+
 	private CryptoFileChannel readableChannel() throws IOException {
 		EffectiveOpenOptions options = options(READ);
 		OpenCryptoFile openCryptoFile = anOpenCryptoFile() //
@@ -219,6 +256,21 @@ public class CryptoFileChannelWriteReadTest {
 
 	private CryptoFileChannel writableChannel() throws IOException {
 		EffectiveOpenOptions options = options(CREATE, WRITE);
+		OpenCryptoFile openCryptoFile = anOpenCryptoFile() //
+				.withCryptor(cryptor) //
+				.withPath(ciphertextFilePath) //
+				.withOptions(options) //
+				.build();
+		try {
+			openCryptoFile.open(options);
+			return new CryptoFileChannel(openCryptoFile, options);
+		} catch (ClosedChannelException e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
+	private CryptoFileChannel writableChannelInAppendMode() throws IOException {
+		EffectiveOpenOptions options = options(CREATE, WRITE, APPEND);
 		OpenCryptoFile openCryptoFile = anOpenCryptoFile() //
 				.withCryptor(cryptor) //
 				.withPath(ciphertextFilePath) //

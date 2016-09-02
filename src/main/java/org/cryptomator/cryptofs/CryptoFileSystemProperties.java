@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs;
 
 import static java.lang.Boolean.TRUE;
 import static java.util.Arrays.asList;
+import static java.util.Collections.unmodifiableSet;
 
 import java.net.URI;
 import java.nio.file.FileSystems;
@@ -23,8 +24,8 @@ import java.util.function.Consumer;
 /**
  * Properties to pass to
  * <ul>
- *   <li>{@link FileSystems#newFileSystem(URI, Map)} or
- *   <li>{@link CryptoFileSystemProvider#newFileSystem(Path, CryptoFileSystemProperties)}.
+ * <li>{@link FileSystems#newFileSystem(URI, Map)} or
+ * <li>{@link CryptoFileSystemProvider#newFileSystem(Path, CryptoFileSystemProperties)}.
  * </ul>
  * 
  * @author Markus Kreusch
@@ -44,9 +45,9 @@ public final class CryptoFileSystemProperties extends AbstractMap<String, Object
 	private final Set<Entry<String, Object>> entries;
 
 	private CryptoFileSystemProperties(Builder builder) {
-		this.entries = new HashSet<>(asList( //
+		this.entries = unmodifiableSet(new HashSet<>(asList( //
 				entry(PROPERTY_PASSPHRASE, builder.passphrase), //
-				entry(PROPERTY_READONLY, builder.readonly)));
+				entry(PROPERTY_READONLY, builder.readonly))));
 	}
 
 	CharSequence passphrase() {
@@ -99,7 +100,7 @@ public final class CryptoFileSystemProperties extends AbstractMap<String, Object
 	public static Builder cryptoFileSystemPropertiesFrom(Map<String, ?> properties) {
 		return new Builder(properties);
 	}
-	
+
 	/**
 	 * Constructs {@code CryptoFileSystemProperties} from a {@link Map}.
 	 * 
@@ -109,7 +110,7 @@ public final class CryptoFileSystemProperties extends AbstractMap<String, Object
 	 */
 	public static CryptoFileSystemProperties wrap(Map<String, ?> properties) {
 		if (properties instanceof CryptoFileSystemProperties) {
-			return (CryptoFileSystemProperties)properties;
+			return (CryptoFileSystemProperties) properties;
 		} else {
 			try {
 				return cryptoFileSystemPropertiesFrom(properties).build();
@@ -137,10 +138,10 @@ public final class CryptoFileSystemProperties extends AbstractMap<String, Object
 					withReadonlyFlag();
 				}
 			});
-			
+
 		}
 
-		private <T> void checkedSet(Class<T> type, String key, Map<String,?> properties, Consumer<T> setter) {
+		private <T> void checkedSet(Class<T> type, String key, Map<String, ?> properties, Consumer<T> setter) {
 			Object value = properties.get(key);
 			if (value == null) {
 				return;
