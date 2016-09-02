@@ -33,7 +33,7 @@ import java.util.function.Consumer;
 public final class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	/**
-	 * Key identifying the passphrase for a encrypted vault.
+	 * Key identifying the passphrase for an encrypted vault.
 	 */
 	public static final String PROPERTY_PASSPHRASE = "passphrase";
 
