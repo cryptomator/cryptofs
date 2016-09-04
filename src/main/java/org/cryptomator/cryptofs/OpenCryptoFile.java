@@ -19,7 +19,7 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -40,7 +40,7 @@ import com.google.common.cache.RemovalNotification;
 class OpenCryptoFile {
 
 	private static final Logger LOG = LoggerFactory.getLogger(CryptoFileChannel.class);
-	private static final int MAX_CACHED_CLEARTEXT_CHUNKS = 5;
+	static final int MAX_CACHED_CLEARTEXT_CHUNKS = 5;
 
 	private final Cryptor cryptor;
 	private final Path path;
@@ -49,7 +49,7 @@ class OpenCryptoFile {
 	private final LoadingCache<Long, ChunkData> cleartextChunks;
 	private final AtomicLong size;
 	private final Consumer<OpenCryptoFile> onClosed;
-	private final Collection<IOException> ioExceptionsDuringWrite = new ArrayList<>();
+	private final List<IOException> ioExceptionsDuringWrite = new ArrayList<>(); // todo handle / deliver exception
 	private final OpenCounter openCounter = new OpenCounter();
 
 	/**
@@ -57,10 +57,10 @@ class OpenCryptoFile {
 	 * Therefore there must not be any reference to any equal instance, when this instance is constructed.
 	 * I.e. immediately after construction the unique ID of this OpenCryptoFile will get cached for future reference.
 	 */
-	public OpenCryptoFile(Builder builder) throws IOException {
+	private OpenCryptoFile(Builder builder) throws IOException {
 		this.cryptor = builder.cryptor;
 		this.path = builder.path;
-		this.channel = FileChannel.open(path, builder.options.createOpenOptionsForEncryptedFile());
+		this.channel = path.getFileSystem().provider().newFileChannel(path, builder.options.createOpenOptionsForEncryptedFile());
 		LOG.debug("OPEN " + path);
 		this.header = createOrLoadHeader(builder.options);
 		this.size = new AtomicLong(header.getFilesize());
@@ -171,7 +171,7 @@ class OpenCryptoFile {
 	}
 
 	public synchronized void force(boolean metaData, EffectiveOpenOptions options) throws IOException {
-		cleartextChunks.invalidateAll();
+		cleartextChunks.invalidateAll(); // TODO increase performance by writing chunks but keeping them cached
 		if (options.writable()) {
 			header.setFilesize(size.get());
 			channel.write(cryptor.fileHeaderCryptor().encryptHeader(header), 0);

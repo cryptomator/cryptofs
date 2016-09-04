@@ -29,6 +29,13 @@
 			<organization>cryptomator.org</organization>
 			<organizationUrl>http://cryptomator.org</organizationUrl>
 		</developer>
+		<developer>
+			<name>Markus Kreusch</name>
+			<email>mail@markuskreusch.de</email>
+			<timezone>+1</timezone>
+			<organization>cryptomator.org</organization>
+			<organizationUrl>http://cryptomator.org</organizationUrl>
+		</developer>
 	</developers>
 
 	<dependencies>

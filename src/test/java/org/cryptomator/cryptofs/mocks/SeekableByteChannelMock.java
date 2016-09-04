@@ -6,7 +6,7 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.mocks;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
