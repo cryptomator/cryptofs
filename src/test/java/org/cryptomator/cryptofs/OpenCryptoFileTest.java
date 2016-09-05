@@ -1,6 +1,6 @@
 package org.cryptomator.cryptofs;
 
-import static org.cryptomator.cryptofs.OpenCryptoFile.anOpenCryptoFile;
+import static org.cryptomator.cryptofs.UncheckedThrows.allowUncheckedThrowsOf;
 import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
@@ -21,7 +21,6 @@ import java.nio.file.Path;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Random;
 import java.util.Set;
-import java.util.function.Consumer;
 
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
@@ -59,8 +58,7 @@ public class OpenCryptoFileTest {
 	private FileSystemProvider fileSystemProvider = mock(FileSystemProvider.class);
 	private FileChannel channel = spy(FileChannel.class);
 
-	@SuppressWarnings("unchecked")
-	private Consumer<OpenCryptoFile> onClosed = mock(Consumer.class);
+	private Runnable onClosed = mock(Runnable.class);
 
 	@Before
 	public void setUp() throws IOException {
@@ -80,23 +78,15 @@ public class OpenCryptoFileTest {
 
 	@Test
 	public void testConstructionOpensChannelUsingOpenOptions() throws IOException {
-		anOpenCryptoFile() //
-				.withCryptor(cryptor) //
-				.withOptions(options) //
-				.withPath(path) //
-				.build();
+		createOpenCryptoFile();
 
-		fileSystemProvider.newFileChannel(path, openOptionsForEncryptedFile);
+		verify(fileSystemProvider).newFileChannel(path, openOptionsForEncryptedFile);
 	}
 
 	@Test
 	public void testConstructionCreatesHeaderIfTruncatedExistingFile() throws IOException {
 		when(options.truncateExisting()).thenReturn(true);
-		anOpenCryptoFile() //
-				.withCryptor(cryptor) //
-				.withOptions(options) //
-				.withPath(path) //
-				.build();
+		createOpenCryptoFile();
 
 		verify(headerCryptor).create();
 	}
@@ -104,11 +94,7 @@ public class OpenCryptoFileTest {
 	@Test
 	public void testConstructionCreatesHeaderIfCreateNewFlagIsPresent() throws IOException {
 		when(options.createNew()).thenReturn(true);
-		anOpenCryptoFile() //
-				.withCryptor(cryptor) //
-				.withOptions(options) //
-				.withPath(path) //
-				.build();
+		createOpenCryptoFile();
 
 		verify(headerCryptor).create();
 	}
@@ -117,11 +103,7 @@ public class OpenCryptoFileTest {
 	public void testConstructionCreatesHeaderIfCreateFlagIsPresentAndChannelIsEmpty() throws IOException {
 		when(options.create()).thenReturn(true);
 		when(channel.size()).thenReturn(0L);
-		anOpenCryptoFile() //
-				.withCryptor(cryptor) //
-				.withOptions(options) //
-				.withPath(path) //
-				.build();
+		createOpenCryptoFile();
 
 		verify(headerCryptor).create();
 	}
@@ -135,11 +117,7 @@ public class OpenCryptoFileTest {
 			invocation.getArgumentAt(0, ByteBuffer.class).put(headerData);
 			return headerData.length;
 		});
-		anOpenCryptoFile() //
-				.withCryptor(cryptor) //
-				.withOptions(options) //
-				.withPath(path) //
-				.build();
+		createOpenCryptoFile();
 
 		verify(headerCryptor).decryptHeader(argThat(contains(headerData)));
 	}
@@ -151,24 +129,9 @@ public class OpenCryptoFileTest {
 			invocation.getArgumentAt(0, ByteBuffer.class).put(headerData);
 			return headerData.length;
 		});
-		anOpenCryptoFile() //
-				.withCryptor(cryptor) //
-				.withOptions(options) //
-				.withPath(path) //
-				.build();
+		createOpenCryptoFile();
 
 		verify(headerCryptor).decryptHeader(argThat(contains(headerData)));
-	}
-
-	@Test
-	public void testGetPathReturnsPath() throws IOException {
-		OpenCryptoFile inTest = anOpenCryptoFile() //
-				.withCryptor(cryptor) //
-				.withOptions(options) //
-				.withPath(path) //
-				.build();
-
-		assertThat(inTest.path(), is(path));
 	}
 
 	@Test
@@ -176,11 +139,7 @@ public class OpenCryptoFileTest {
 		long sizeFromHeader = 43L;
 		when(createdHeader.getFilesize()).thenReturn(sizeFromHeader);
 		when(options.createNew()).thenReturn(true);
-		OpenCryptoFile inTest = anOpenCryptoFile() //
-				.withCryptor(cryptor) //
-				.withOptions(options) //
-				.withPath(path) //
-				.build();
+		OpenCryptoFile inTest = createOpenCryptoFile();
 
 		assertThat(inTest.size(), is(sizeFromHeader));
 	}
@@ -189,11 +148,7 @@ public class OpenCryptoFileTest {
 	public void testSizeAfterConstructionWithLoadedHeaderIsSizeFromHeader() throws IOException {
 		long sizeFromHeader = 43L;
 		when(decryptedHeader.getFilesize()).thenReturn(sizeFromHeader);
-		OpenCryptoFile inTest = anOpenCryptoFile() //
-				.withCryptor(cryptor) //
-				.withOptions(options) //
-				.withPath(path) //
-				.build();
+		OpenCryptoFile inTest = createOpenCryptoFile();
 
 		assertThat(inTest.size(), is(sizeFromHeader));
 	}
@@ -265,57 +220,37 @@ public class OpenCryptoFileTest {
 
 	@Test
 	public void testCloseInvokesOnCloseHandler() throws IOException {
-		OpenCryptoFile openCryptoFile = anOpenCryptoFile() //
-				.withCryptor(cryptor) //
-				.withOptions(options) //
-				.withPath(path) //
-				.onClosed(onClosed) //
-				.build();
+		OpenCryptoFile openCryptoFile = createOpenCryptoFile();
 		openCryptoFile.open(options);
 
 		openCryptoFile.close(options);
-		verify(onClosed).accept(openCryptoFile);
+		verify(onClosed).run();
 	}
 
 	@Test
 	public void testCloseAfterMoreOpenCallsDoesNotInvokeOnCloseHandler() throws IOException {
-		OpenCryptoFile openCryptoFile = anOpenCryptoFile() //
-				.withCryptor(cryptor) //
-				.withOptions(options) //
-				.withPath(path) //
-				.onClosed(onClosed) //
-				.build();
+		OpenCryptoFile openCryptoFile = createOpenCryptoFile();
 		openCryptoFile.open(options);
 		openCryptoFile.open(options);
 
 		openCryptoFile.close(options);
-		verify(onClosed, never()).accept(openCryptoFile);
+		verify(onClosed, never()).run();
 	}
 
 	@Test
 	public void testLastCloseAfterMultipleOpenCallsInvokesOnCloseHandler() throws IOException {
-		OpenCryptoFile openCryptoFile = anOpenCryptoFile() //
-				.withCryptor(cryptor) //
-				.withOptions(options) //
-				.withPath(path) //
-				.onClosed(onClosed) //
-				.build();
+		OpenCryptoFile openCryptoFile = createOpenCryptoFile();
 		openCryptoFile.open(options);
 		openCryptoFile.open(options);
 
 		openCryptoFile.close(options);
 		openCryptoFile.close(options);
-		verify(onClosed).accept(openCryptoFile);
+		verify(onClosed).run();
 	}
 
 	@Test
 	public void testCloseWithoutOpenFails() throws IOException {
-		OpenCryptoFile openCryptoFile = anOpenCryptoFile() //
-				.withCryptor(cryptor) //
-				.withOptions(options) //
-				.withPath(path) //
-				.onClosed(onClosed) //
-				.build();
+		OpenCryptoFile openCryptoFile = createOpenCryptoFile();
 
 		thrown.expect(IllegalStateException.class);
 
@@ -324,18 +259,17 @@ public class OpenCryptoFileTest {
 
 	@Test
 	public void testCloseAfterLessOpenCallsInvokesOnCloseHandlerOnlyOnce() throws IOException {
-		OpenCryptoFile openCryptoFile = anOpenCryptoFile() //
-				.withCryptor(cryptor) //
-				.withOptions(options) //
-				.withPath(path) //
-				.onClosed(onClosed) //
-				.build();
+		OpenCryptoFile openCryptoFile = createOpenCryptoFile();
 		openCryptoFile.open(options);
 		openCryptoFile.open(options);
 		openCryptoFile.close(options);
 
 		openCryptoFile.close(options);
-		verify(onClosed).accept(openCryptoFile);
+		verify(onClosed).run();
+	}
+
+	private OpenCryptoFile createOpenCryptoFile() throws IOException {
+		return allowUncheckedThrowsOf(IOException.class).from(() -> new OpenCryptoFile(path, options, cryptor, new OpenCounter(), new CryptoFileChannelFactory(), onClosed));
 	}
 
 	@Test

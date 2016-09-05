@@ -14,14 +14,23 @@ import static org.cryptomator.cryptofs.OpenCounter.OpenState.WAS_OPEN;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import javax.inject.Inject;
+
 /**
- * <p>Counter for pairwise open/close operations.
- * <p>After an OpenCounter has finally been closed (openCount == closeCount && openCount > 0) no open operation will succeed.
+ * <p>
+ * Counter for pairwise open/close operations.
+ * <p>
+ * After an OpenCounter has finally been closed (openCount == closeCount && openCount > 0) no open operation will succeed.
  */
+@PerOpenFile
 class OpenCounter {
-	
+
 	private final AtomicLong count = new AtomicLong(0);
-	
+
+	@Inject
+	public OpenCounter() {
+	}
+
 	public OpenState countOpen() {
 		long value = count.getAndIncrement();
 		if (value > 0) {
@@ -32,11 +41,11 @@ class OpenCounter {
 			return ALREADY_CLOSED;
 		}
 	}
-	
+
 	public boolean countClose() {
 		return count.updateAndGet(this::countClose) <= 0;
 	}
-	
+
 	private long countClose(long openCount) {
 		if (openCount < 1) {
 			throw new IllegalStateException("Close without corresponding open");
@@ -49,11 +58,9 @@ class OpenCounter {
 			}
 		}
 	}
-	
+
 	public static enum OpenState {
-		JUST_OPENED,
-		WAS_OPEN,
-		ALREADY_CLOSED
+		JUST_OPENED, WAS_OPEN, ALREADY_CLOSED
 	}
 
 }

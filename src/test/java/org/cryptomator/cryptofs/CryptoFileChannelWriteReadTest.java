@@ -15,7 +15,7 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Arrays.asList;
-import static org.cryptomator.cryptofs.OpenCryptoFile.anOpenCryptoFile;
+import static org.cryptomator.cryptofs.UncheckedThrows.allowUncheckedThrowsOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assume.assumeTrue;
 
@@ -43,6 +43,9 @@ import org.junit.runner.RunWith;
 
 @RunWith(Theories.class)
 public class CryptoFileChannelWriteReadTest {
+
+	private static final Runnable NO_OP_RUNNABLE = () -> {
+	};
 
 	private static final int HEADER_SIZE = 88;
 
@@ -241,11 +244,7 @@ public class CryptoFileChannelWriteReadTest {
 
 	private CryptoFileChannel readableChannel() throws IOException {
 		EffectiveOpenOptions options = options(READ);
-		OpenCryptoFile openCryptoFile = anOpenCryptoFile() //
-				.withCryptor(cryptor) //
-				.withPath(ciphertextFilePath) //
-				.withOptions(options) //
-				.build();
+		OpenCryptoFile openCryptoFile = allowUncheckedThrowsOf(IOException.class).from(() -> new OpenCryptoFile(ciphertextFilePath, options, cryptor, new OpenCounter(), new CryptoFileChannelFactory(), NO_OP_RUNNABLE));
 		try {
 			openCryptoFile.open(options);
 			return new CryptoFileChannel(openCryptoFile, options);
@@ -256,11 +255,7 @@ public class CryptoFileChannelWriteReadTest {
 
 	private CryptoFileChannel writableChannel() throws IOException {
 		EffectiveOpenOptions options = options(CREATE, WRITE);
-		OpenCryptoFile openCryptoFile = anOpenCryptoFile() //
-				.withCryptor(cryptor) //
-				.withPath(ciphertextFilePath) //
-				.withOptions(options) //
-				.build();
+		OpenCryptoFile openCryptoFile = allowUncheckedThrowsOf(IOException.class).from(() -> new OpenCryptoFile(ciphertextFilePath, options, cryptor, new OpenCounter(), new CryptoFileChannelFactory(), NO_OP_RUNNABLE));
 		try {
 			openCryptoFile.open(options);
 			return new CryptoFileChannel(openCryptoFile, options);
@@ -271,11 +266,7 @@ public class CryptoFileChannelWriteReadTest {
 
 	private CryptoFileChannel writableChannelInAppendMode() throws IOException {
 		EffectiveOpenOptions options = options(CREATE, WRITE, APPEND);
-		OpenCryptoFile openCryptoFile = anOpenCryptoFile() //
-				.withCryptor(cryptor) //
-				.withPath(ciphertextFilePath) //
-				.withOptions(options) //
-				.build();
+		OpenCryptoFile openCryptoFile = allowUncheckedThrowsOf(IOException.class).from(() -> new OpenCryptoFile(ciphertextFilePath, options, cryptor, new OpenCounter(), new CryptoFileChannelFactory(), NO_OP_RUNNABLE));
 		try {
 			openCryptoFile.open(options);
 			return new CryptoFileChannel(openCryptoFile, options);
