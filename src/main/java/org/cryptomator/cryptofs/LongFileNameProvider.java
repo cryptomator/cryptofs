@@ -9,12 +9,15 @@
 package org.cryptomator.cryptofs;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.cryptomator.cryptofs.Constants.METADATA_DIR_NAME;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutionException;
+
+import javax.inject.Inject;
 
 import org.apache.commons.codec.binary.Base32;
 import org.apache.commons.codec.binary.BaseNCodec;
@@ -25,7 +28,8 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 
-public class LongFileNameProvider {
+@PerFileSystem
+class LongFileNameProvider {
 
 	private static final BaseNCodec BASE32 = new Base32();
 	private static final int MAX_CACHE_SIZE = 5000;
@@ -34,8 +38,9 @@ public class LongFileNameProvider {
 	private final Path metadataRoot;
 	private final LoadingCache<String, String> ids;
 
-	public LongFileNameProvider(Path metadataRoot) {
-		this.metadataRoot = metadataRoot;
+	@Inject
+	public LongFileNameProvider(@PathToVault Path pathToVault) {
+		this.metadataRoot = pathToVault.resolve(METADATA_DIR_NAME);
 		this.ids = CacheBuilder.newBuilder().maximumSize(MAX_CACHE_SIZE).build(new Loader());
 	}
 

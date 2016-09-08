@@ -8,14 +8,18 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import static org.cryptomator.cryptofs.Constants.DATA_DIR_NAME;
 import static org.cryptomator.cryptofs.Constants.DIR_PREFIX;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
+import javax.inject.Inject;
+
 import org.cryptomator.cryptolib.api.Cryptor;
 
+@PerFileSystem
 class CryptoPathMapper {
 
 	private static final String ROOT_DIR_ID = "";
@@ -24,9 +28,10 @@ class CryptoPathMapper {
 	private final Path dataRoot;
 	private final DirectoryIdProvider dirIdProvider;
 
-	public CryptoPathMapper(Cryptor cryptor, Path dataRoot, DirectoryIdProvider dirIdProvider) {
+	@Inject
+	public CryptoPathMapper(@PathToVault Path pathToVault, Cryptor cryptor, DirectoryIdProvider dirIdProvider) {
+		this.dataRoot = pathToVault.resolve(DATA_DIR_NAME);
 		this.cryptor = cryptor;
-		this.dataRoot = dataRoot;
 		this.dirIdProvider = dirIdProvider;
 	}
 

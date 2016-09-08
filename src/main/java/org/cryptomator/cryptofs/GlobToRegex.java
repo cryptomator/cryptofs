@@ -29,7 +29,7 @@ import com.google.common.base.CharMatcher;
  *
  * @author Colin Decker
  */
-final class GlobToRegex {
+class GlobToRegex {
 
 	/**
 	 * Converts the given glob to a regular expression pattern. The given separators determine what

@@ -17,13 +17,17 @@ import java.nio.file.attribute.PosixFileAttributes;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.inject.Inject;
+
 import org.cryptomator.cryptolib.api.Cryptor;
 
+@PerFileSystem
 class CryptoFileAttributeProvider {
 
 	private final Map<Class<? extends BasicFileAttributes>, AttributeProvider<? extends BasicFileAttributes>> attributeProviders = new HashMap<>();
 	private final Cryptor cryptor;
 
+	@Inject
 	public CryptoFileAttributeProvider(Cryptor cryptor) {
 		attributeProviders.put(BasicFileAttributes.class, (AttributeProvider<BasicFileAttributes>) CryptoBasicFileAttributes::new);
 		attributeProviders.put(PosixFileAttributes.class, (AttributeProvider<PosixFileAttributes>) CryptoPosixFileAttributes::new);

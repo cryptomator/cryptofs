@@ -14,9 +14,7 @@ import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.spi.FileSystemProvider;
-import java.security.SecureRandom;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -24,11 +22,12 @@ import java.util.NoSuchElementException;
 
 import org.apache.commons.lang3.StringUtils;
 import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
+import org.cryptomator.cryptolib.DaggerCryptoLibComponent;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
-import org.cryptomator.cryptolib.v1.CryptorProviderImpl;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
@@ -38,13 +37,15 @@ import com.google.common.collect.Iterators;
 
 public class CryptoDirectoryStreamTest {
 
-	private static final SecureRandom NULL_RANDOM = new SecureRandom() {
-		@Override
-		public synchronized void nextBytes(byte[] bytes) {
-			Arrays.fill(bytes, (byte) 0x00);
-		};
-	};
-	private static final CryptorProvider CRYPTOR_PROVIDER = new CryptorProviderImpl(NULL_RANDOM);
+	private static CryptorProvider cryptorProvider;
+
+	@BeforeClass
+	public static void setupClass() {
+		cryptorProvider = DaggerCryptoLibComponent.builder() //
+				.secureRandomModule(new TestSecureRandomModule()) //
+				.build() //
+				.version1();
+	}
 
 	private FileNameCryptor filenameCryptor;
 	private Path ciphertextDirPath;
@@ -54,7 +55,7 @@ public class CryptoDirectoryStreamTest {
 	@Before
 	@SuppressWarnings("unchecked")
 	public void setup() throws IOException {
-		filenameCryptor = CRYPTOR_PROVIDER.createNew().fileNameCryptor();
+		filenameCryptor = cryptorProvider.createNew().fileNameCryptor();
 
 		ciphertextDirPath = Mockito.mock(Path.class);
 		FileSystem fs = Mockito.mock(FileSystem.class);

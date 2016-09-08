@@ -18,4 +18,6 @@ final class Constants {
 	public static final int NAME_SHORTENING_THRESHOLD = 80; // TODO set correct value
 	public static final int VAULT_VERSION = 4;
 
+	public static final String SEPARATOR = "/";
+
 }

@@ -10,21 +10,16 @@ package org.cryptomator.cryptofs;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
+import static java.lang.String.format;
 
 import java.nio.ByteBuffer;
 
 class ChunkData {
-	
+
 	private final ByteBuffer bytes;
 	private boolean written;
 	private int length;
-	
-	private ChunkData(ByteBuffer bytes, int length) {
-		this.bytes = bytes;
-		this.written = false;
-		this.length = length;
-	}
-	
+
 	public static ChunkData wrap(ByteBuffer bytes) {
 		return new ChunkData(bytes, bytes.limit());
 	}
@@ -32,15 +27,21 @@ class ChunkData {
 	public static ChunkData emptyWithSize(int size) {
 		return new ChunkData(ByteBuffer.allocate(size), 0);
 	}
-	
+
+	private ChunkData(ByteBuffer bytes, int length) {
+		this.bytes = bytes;
+		this.written = false;
+		this.length = length;
+	}
+
 	public boolean wasWritten() {
 		return written;
 	}
-	
+
 	public CopyWithoutDirection copyData() {
 		return copyDataStartingAt(0);
 	}
-	
+
 	public CopyWithoutDirection copyDataStartingAt(int offset) {
 		return new CopyWithoutDirection() {
 			@Override
@@ -49,10 +50,12 @@ class ChunkData {
 				bytes.position(offset);
 				target.put(bytes);
 			}
+
 			@Override
 			public void from(ByteBuffer source) {
 				from(ByteSource.from(source));
 			}
+
 			@Override
 			public void from(ByteSource source) {
 				written = true;
@@ -70,15 +73,20 @@ class ChunkData {
 		readOnlyBuffer.limit(length);
 		return readOnlyBuffer;
 	}
-	
+
 	public interface CopyWithoutDirection {
-		
+
 		void to(ByteBuffer target);
-		
+
 		void from(ByteBuffer source);
 
 		void from(ByteSource source);
-		
+
 	}
-	
+
+	@Override
+	public String toString() {
+		return format("ChunkData(written: %s, length: %d, capacity: %d)", written, length, bytes.capacity());
+	}
+
 }

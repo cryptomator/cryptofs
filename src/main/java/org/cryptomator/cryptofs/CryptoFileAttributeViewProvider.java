@@ -17,11 +17,15 @@ import java.nio.file.attribute.PosixFileAttributeView;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.inject.Inject;
+
+@PerFileSystem
 class CryptoFileAttributeViewProvider {
 
 	private final Map<Class<? extends FileAttributeView>, FileAttributeViewProvider<? extends FileAttributeView>> fileAttributeViewProviders = new HashMap<>();
 	private final CryptoFileAttributeProvider fileAttributeProvider;
 
+	@Inject
 	public CryptoFileAttributeViewProvider(CryptoFileAttributeProvider fileAttributeProvider) {
 		fileAttributeViewProviders.put(BasicFileAttributeView.class, CryptoBasicFileAttributeView::new);
 		fileAttributeViewProviders.put(PosixFileAttributeView.class, CryptoPosixFileAttributeView::new);

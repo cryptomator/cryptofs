@@ -15,8 +15,14 @@ public class ByteBufferMatcher {
 		return matcher("bytes remaining", greaterThanOrEqualTo(remaining), ByteBuffer::remaining);
 	}
 
-	public static Matcher<ByteBuffer> contains(byte[] headerData) {
-		return matcher("remaining data", is(headerData), buffer -> {
+	public static Matcher<ByteBuffer> contains(ByteBuffer data) {
+		byte[] arrayData = new byte[data.remaining()];
+		data.get(arrayData);
+		return contains(arrayData);
+	}
+
+	public static Matcher<ByteBuffer> contains(byte[] data) {
+		return matcher("remaining data", is(data), buffer -> {
 			int position = buffer.position();
 			byte[] remaining = new byte[buffer.remaining()];
 			buffer.get(remaining);

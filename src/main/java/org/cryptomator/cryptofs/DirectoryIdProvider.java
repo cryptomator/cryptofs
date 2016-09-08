@@ -15,16 +15,20 @@ import java.nio.file.Path;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
+import javax.inject.Inject;
+
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 
+@PerFileSystem
 class DirectoryIdProvider {
 
 	private static final int MAX_CACHE_SIZE = 5000;
 
 	private final LoadingCache<Path, String> ids;
 
+	@Inject
 	public DirectoryIdProvider() {
 		ids = CacheBuilder.newBuilder().maximumSize(MAX_CACHE_SIZE).build(new Loader());
 	}

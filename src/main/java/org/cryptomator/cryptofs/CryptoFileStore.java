@@ -8,7 +8,11 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import java.nio.file.FileStore;
+import static org.cryptomator.cryptofs.UncheckedThrows.rethrowUnchecked;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.FileAttributeView;
@@ -17,10 +21,13 @@ import java.nio.file.attribute.PosixFileAttributeView;
 import java.util.Collection;
 import java.util.Map;
 
+import javax.inject.Inject;
+
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
-public class CryptoFileStore extends DelegatingFileStore {
+@PerFileSystem
+class CryptoFileStore extends DelegatingFileStore {
 
 	private static final Map<String, Class<? extends FileAttributeView>> SUPPORTED_ATTRVIEW_NAMES = ImmutableMap.of( //
 			"basic", BasicFileAttributeView.class, //
@@ -29,8 +36,9 @@ public class CryptoFileStore extends DelegatingFileStore {
 			"dos", DosFileAttributeView.class);
 	private static final Collection<Class<?>> SUPPORTED_ATTRVIEW_CLASSES = ImmutableSet.of(PosixFileAttributeView.class, DosFileAttributeView.class);
 
-	public CryptoFileStore(FileStore delegate) {
-		super(delegate);
+	@Inject
+	public CryptoFileStore(@PathToVault Path pathToVault) {
+		super(rethrowUnchecked(IOException.class).from(() -> Files.getFileStore(pathToVault)));
 	}
 
 	@Override
