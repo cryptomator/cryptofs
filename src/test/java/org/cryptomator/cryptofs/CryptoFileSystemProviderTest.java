@@ -18,8 +18,6 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.security.SecureRandom;
-import java.util.Arrays;
 import java.util.EnumSet;
 
 import org.junit.After;
@@ -29,20 +27,11 @@ import org.junit.Test;
 
 public class CryptoFileSystemProviderTest {
 
-	private static final SecureRandom NULL_RANDOM = new SecureRandom() {
-		@Override
-		public synchronized void nextBytes(byte[] bytes) {
-			Arrays.fill(bytes, (byte) 0x00);
-		};
-	};
-
 	private Path tmpPath;
-	private CryptoFileSystemProvider provider;
 
 	@Before
 	public void setup() throws IOException {
 		tmpPath = Files.createTempDirectory("unit-tests");
-		provider = new CryptoFileSystemProvider(NULL_RANDOM);
 	}
 
 	@After
@@ -63,7 +52,7 @@ public class CryptoFileSystemProviderTest {
 	@Test
 	public void testOpenAndCloseFileChannel() throws IOException {
 		FileSystem fs = CryptoFileSystemProvider.newFileSystem(tmpPath, cryptoFileSystemProperties().withPassphrase("asd").build());
-		try (FileChannel ch = provider.newFileChannel(fs.getPath("/foo"), EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW))) {
+		try (FileChannel ch = FileChannel.open(fs.getPath("/foo"), EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW))) {
 			Assert.assertTrue(ch instanceof CryptoFileChannel);
 		}
 	}

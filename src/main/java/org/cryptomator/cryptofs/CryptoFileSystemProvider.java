@@ -32,7 +32,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
-import java.security.SecureRandom;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -84,17 +83,6 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		CryptoFileSystemProviderComponent component = DaggerCryptoFileSystemProviderComponent.builder() //
 				.cryptoFileSystemProviderModule(CryptoFileSystemProviderModule.builder() //
 						.withCrytpoFileSystemProvider(this) //
-						.build()) //
-				.build();
-
-		this.fileSystems = component.fileSystems();
-	}
-
-	public CryptoFileSystemProvider(SecureRandom secureRandom) {
-		CryptoFileSystemProviderComponent component = DaggerCryptoFileSystemProviderComponent.builder() //
-				.cryptoFileSystemProviderModule(CryptoFileSystemProviderModule.builder() //
-						.withCrytpoFileSystemProvider(this) //
-						.withSecureRandom(secureRandom) //
 						.build()) //
 				.build();
 

@@ -8,6 +8,8 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import static org.cryptomator.cryptofs.Constants.SEPARATOR;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -23,34 +25,31 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-/**
- * A path based on a singleton root per fileSystem.
- */
-class BasicPath implements Path {
+class CryptoPath implements Path {
 
 	private static final String CURRENT_DIR = ".";
 	private static final String PARENT_DIR = "..";
 
-	private final BasicFileSystem fileSystem;
+	private final CryptoFileSystem fileSystem;
 	private final List<String> elements;
 	private final boolean absolute;
 
-	public BasicPath(BasicFileSystem fileSystem, List<String> elements, boolean absolute) {
+	public CryptoPath(CryptoFileSystem fileSystem, List<String> elements, boolean absolute) {
 		this.fileSystem = fileSystem;
 		this.elements = Collections.unmodifiableList(elements);
 		this.absolute = absolute;
 	}
 
-	static BasicPath cast(Path path) {
-		if (path instanceof BasicPath) {
-			return (BasicPath) path;
+	public static CryptoPath cast(Path path) {
+		if (path instanceof CryptoPath) {
+			return (CryptoPath) path;
 		} else {
 			throw new ProviderMismatchException();
 		}
 	}
 
 	@Override
-	public BasicFileSystem getFileSystem() {
+	public CryptoFileSystem getFileSystem() {
 		return fileSystem;
 	}
 
@@ -61,7 +60,7 @@ class BasicPath implements Path {
 
 	@Override
 	public Path getRoot() {
-		return absolute ? fileSystem.getRootDirectory() : null;
+		return absolute ? fileSystem.getRootPath() : null;
 	}
 
 	@Override
@@ -79,7 +78,7 @@ class BasicPath implements Path {
 		int elementCount = getNameCount();
 		if (elementCount > 1) {
 			List<String> elems = elements.subList(0, elementCount - 1);
-			return createPath(fileSystem, elems, absolute);
+			return copyWithElements(elems);
 		} else if (elementCount == 1 && isAbsolute()) {
 			return getRoot();
 		} else {
@@ -98,22 +97,13 @@ class BasicPath implements Path {
 	}
 
 	@Override
-	public BasicPath subpath(int beginIndex, int endIndex) {
-		return createPath(fileSystem, elements.subList(beginIndex, endIndex), false);
-	}
-
-	/**
-	 * @param fileSystem The filesystem this path refers to.
-	 * @param elements The components of the path ordered from root to leaf.
-	 * @return New (or cached) path instance.
-	 */
-	protected BasicPath createPath(BasicFileSystem fileSystem, List<String> elements, boolean absolute) {
-		return new BasicPath(fileSystem, elements, absolute);
+	public CryptoPath subpath(int beginIndex, int endIndex) {
+		return new CryptoPath(fileSystem, elements.subList(beginIndex, endIndex), false);
 	}
 
 	@Override
 	public boolean startsWith(Path path) {
-		BasicPath other = cast(path);
+		CryptoPath other = cast(path);
 		boolean matchesAbsolute = this.isAbsolute() == other.isAbsolute();
 		if (matchesAbsolute && other.elements.size() <= this.elements.size()) {
 			return this.elements.subList(0, other.elements.size()).equals(other.elements);
@@ -129,7 +119,7 @@ class BasicPath implements Path {
 
 	@Override
 	public boolean endsWith(Path path) {
-		BasicPath other = cast(path);
+		CryptoPath other = cast(path);
 		if (other.elements.size() <= this.elements.size()) {
 			return this.elements.subList(this.elements.size() - other.elements.size(), this.elements.size()).equals(other.elements);
 		} else {
@@ -143,7 +133,7 @@ class BasicPath implements Path {
 	}
 
 	@Override
-	public BasicPath normalize() {
+	public CryptoPath normalize() {
 		LinkedList<String> normalized = new LinkedList<>();
 		for (String elem : elements) {
 			String lastElem = normalized.peekLast();
@@ -155,19 +145,19 @@ class BasicPath implements Path {
 				normalized.add(elem);
 			}
 		}
-		return createPath(fileSystem, normalized, absolute);
+		return copyWithElements(normalized);
 	}
 
 	@Override
 	public Path resolve(Path path) {
-		BasicPath other = cast(path);
+		CryptoPath other = cast(path);
 		if (other.isAbsolute()) {
 			return other;
 		} else {
 			List<String> joined = new ArrayList<>();
 			joined.addAll(this.elements);
 			joined.addAll(other.elements);
-			return createPath(fileSystem, joined, absolute);
+			return copyWithElements(joined);
 		}
 	}
 
@@ -193,21 +183,21 @@ class BasicPath implements Path {
 
 	@Override
 	public Path relativize(Path path) {
-		BasicPath normalized = this.normalize();
-		BasicPath other = cast(path).normalize();
+		CryptoPath normalized = this.normalize();
+		CryptoPath other = cast(path).normalize();
 		if (normalized.isAbsolute() == other.isAbsolute()) {
 			int commonPrefix = countCommonPrefixElements(normalized, other);
 			int stepsUp = this.getNameCount() - commonPrefix;
 			List<String> elems = new ArrayList<>();
 			elems.addAll(Collections.nCopies(stepsUp, PARENT_DIR));
 			elems.addAll(other.elements.subList(commonPrefix, other.getNameCount()));
-			return createPath(fileSystem, elems, false);
+			return copyWithElementsAndAbsolute(elems, false);
 		} else {
 			throw new IllegalArgumentException("Can't relativize an absolute path relative to a relative path.");
 		}
 	}
 
-	private int countCommonPrefixElements(BasicPath p1, BasicPath p2) {
+	private int countCommonPrefixElements(CryptoPath p1, CryptoPath p2) {
 		int n = Math.min(p1.getNameCount(), p2.getNameCount());
 		for (int i = 0; i < n; i++) {
 			if (!p1.elements.get(i).equals(p2.elements.get(i))) {
@@ -219,7 +209,7 @@ class BasicPath implements Path {
 
 	@Override
 	public URI toUri() {
-		return fileSystem.toUri(this);
+		return CryptoFileSystemUris.createUri(fileSystem.getPathToVault(), elements.toArray(new String[elements.size()]));
 	}
 
 	@Override
@@ -227,7 +217,7 @@ class BasicPath implements Path {
 		if (isAbsolute()) {
 			return this;
 		} else {
-			return createPath(fileSystem, elements, true);
+			return copyWithAbsolute(true);
 		}
 	}
 
@@ -271,7 +261,7 @@ class BasicPath implements Path {
 
 	@Override
 	public int compareTo(Path path) {
-		BasicPath other = (BasicPath) path;
+		CryptoPath other = (CryptoPath) path;
 		if (this.isAbsolute() != other.isAbsolute()) {
 			return this.isAbsolute() ? -1 : 1;
 		}
@@ -295,8 +285,8 @@ class BasicPath implements Path {
 
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof BasicPath) {
-			BasicPath other = (BasicPath) obj;
+		if (obj instanceof CryptoPath) {
+			CryptoPath other = (CryptoPath) obj;
 			return this.fileSystem.equals(other.fileSystem) //
 					&& this.compareTo(other) == 0;
 		} else {
@@ -306,9 +296,20 @@ class BasicPath implements Path {
 
 	@Override
 	public String toString() {
-		String sep = fileSystem.getSeparator();
-		String prefix = isAbsolute() ? sep : "";
-		return prefix + String.join(sep, elements);
+		String prefix = isAbsolute() ? SEPARATOR : "";
+		return prefix + String.join(SEPARATOR, elements);
+	}
+
+	public CryptoPath copyWithElements(List<String> elements) {
+		return new CryptoPath(fileSystem, elements, absolute);
+	}
+
+	public CryptoPath copyWithAbsolute(boolean absolute) {
+		return new CryptoPath(fileSystem, elements, absolute);
+	}
+
+	public CryptoPath copyWithElementsAndAbsolute(List<String> elements, boolean absolute) {
+		return new CryptoPath(fileSystem, elements, absolute);
 	}
 
 }
