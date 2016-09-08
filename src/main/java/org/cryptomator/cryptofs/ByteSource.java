@@ -50,10 +50,6 @@ interface ByteSource {
 			this.source = source;
 		}
 
-		ByteBuffer getBuffer() {
-			return source;
-		}
-
 		@Override
 		public boolean hasRemaining() {
 			return source.hasRemaining();

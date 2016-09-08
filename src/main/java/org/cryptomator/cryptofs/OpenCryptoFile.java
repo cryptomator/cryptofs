@@ -72,7 +72,6 @@ class OpenCryptoFile {
 			int offset = (int) pos % payloadSize;
 			int len = min(dst.remaining(), payloadSize - offset);
 			final ChunkData chunkData = chunkCache.get(chunkIndex);
-			// TODO locking or similar to prevent changes of chunkData while written
 			chunkData.copyDataStartingAt(offset).to(dst);
 			read += len;
 		}

@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import org.cryptomator.cryptolib.api.CryptoLibVersion;
+import org.cryptomator.cryptolib.api.CryptoLibVersion.Version;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.KeyFile;
@@ -21,7 +23,7 @@ class CryptoFileSystemFactoryModule {
 
 	@Provides
 	@PerFileSystem
-	public Cryptor provideCryptor(CryptorProvider cryptorProvider, @PathToVault Path pathToVault, CryptoFileSystemProperties properties) {
+	public Cryptor provideCryptor(@CryptoLibVersion(Version.ONE) CryptorProvider cryptorProvider, @PathToVault Path pathToVault, CryptoFileSystemProperties properties) {
 		return rethrowUnchecked(IOException.class).from(() -> {
 			Path masterKeyPath = pathToVault.resolve(Constants.MASTERKEY_FILE_NAME);
 			Path backupKeyPath = pathToVault.resolve(Constants.BACKUPKEY_FILE_NAME);

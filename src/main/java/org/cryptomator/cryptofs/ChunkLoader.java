@@ -9,10 +9,8 @@ import javax.inject.Inject;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
 
-import com.google.common.cache.CacheLoader;
-
 @PerOpenFile
-class ChunkLoader extends CacheLoader<Long, ChunkData> {
+class ChunkLoader {
 
 	private final Cryptor cryptor;
 	private final FileChannel channel;
@@ -25,7 +23,6 @@ class ChunkLoader extends CacheLoader<Long, ChunkData> {
 		this.header = header;
 	}
 
-	@Override
 	public ChunkData load(Long chunkIndex) throws IOException {
 		int payloadSize = cryptor.fileContentCryptor().cleartextChunkSize();
 		int chunkSize = cryptor.fileContentCryptor().ciphertextChunkSize();

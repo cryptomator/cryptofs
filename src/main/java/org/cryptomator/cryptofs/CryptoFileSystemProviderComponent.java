@@ -3,7 +3,7 @@ package org.cryptomator.cryptofs;
 import dagger.Component;
 
 @PerProvider
-@Component(modules = {CryptoFileSystemProviderModule.class, CryptoFileSystemProviderFactoryModule.class})
+@Component(modules = {CryptoFileSystemProviderModule.class})
 interface CryptoFileSystemProviderComponent {
 
 	CryptoFileSystems fileSystems();

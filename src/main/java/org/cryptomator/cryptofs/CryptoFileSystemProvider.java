@@ -32,11 +32,14 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import org.cryptomator.cryptofs.CryptoFileSystemUris.ParsedUri;
+import org.cryptomator.cryptolib.common.SecureRandomModule;
 
 /**
  * <p>
@@ -80,11 +83,17 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	public CryptoFileSystemProvider() {
-		CryptoFileSystemProviderComponent component = DaggerCryptoFileSystemProviderComponent.builder() //
-				.cryptoFileSystemProviderModule(CryptoFileSystemProviderModule.builder() //
-						.withCrytpoFileSystemProvider(this) //
-						.build()) //
-				.build();
+		CryptoFileSystemProviderComponent component;
+		try {
+			component = DaggerCryptoFileSystemProviderComponent.builder() //
+					.secureRandomModule(new SecureRandomModule(SecureRandom.getInstanceStrong())) //
+					.cryptoFileSystemProviderModule(CryptoFileSystemProviderModule.builder() //
+							.withCrytpoFileSystemProvider(this) //
+							.build()) //
+					.build();
+		} catch (NoSuchAlgorithmException e) {
+			throw new IllegalStateException("A strong algorithm must exist in every Java platform.", e);
+		}
 
 		this.fileSystems = component.fileSystems();
 	}

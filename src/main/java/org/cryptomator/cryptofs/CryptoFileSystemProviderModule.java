@@ -1,9 +1,11 @@
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptolib.CryptoLibModule;
+
 import dagger.Module;
 import dagger.Provides;
 
-@Module
+@Module(includes = CryptoLibModule.class)
 class CryptoFileSystemProviderModule {
 
 	private final CryptoFileSystemProvider cryptoFileSystemProvider;

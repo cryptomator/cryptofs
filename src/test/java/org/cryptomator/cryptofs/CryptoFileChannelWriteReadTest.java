@@ -16,6 +16,7 @@ import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.cryptomator.cryptofs.CryptoFileSystemUris.createUri;
+import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assume.assumeTrue;
 
@@ -211,29 +212,6 @@ public class CryptoFileChannelWriteReadTest {
 
 	private FileChannel writableChannelInAppendMode() throws IOException {
 		return FileChannel.open(fileSystem.getPath("/test.file"), CREATE, WRITE, APPEND);
-	}
-
-	public static RepeatWithoutCount repeat(int value) {
-		return count -> () -> {
-			ByteBuffer buffer = ByteBuffer.allocate(count);
-			while (buffer.hasRemaining()) {
-				buffer.put((byte) value);
-			}
-			buffer.flip();
-			return buffer;
-		};
-	}
-
-	public interface RepeatWithoutCount {
-
-		ByteBufferFactory times(int count);
-
-	}
-
-	public interface ByteBufferFactory {
-
-		ByteBuffer asByteBuffer();
-
 	}
 
 }

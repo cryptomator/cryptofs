@@ -10,11 +10,8 @@ import javax.inject.Inject;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
 
-import com.google.common.cache.RemovalListener;
-import com.google.common.cache.RemovalNotification;
-
 @PerOpenFile
-class ChunkSaver implements RemovalListener<Long, ChunkData> {
+class ChunkSaver {
 
 	private final Cryptor cryptor;
 	private final FileChannel channel;
@@ -31,12 +28,7 @@ class ChunkSaver implements RemovalListener<Long, ChunkData> {
 		this.size = size;
 	}
 
-	@Override
-	public void onRemoval(RemovalNotification<Long, ChunkData> notification) {
-		onRemoval(notification.getKey(), notification.getValue());
-	}
-
-	private void onRemoval(long chunkIndex, ChunkData chunkData) {
+	public void save(long chunkIndex, ChunkData chunkData) {
 		if (chunkLiesInFile(chunkIndex) && chunkData.wasWritten()) {
 			long ciphertextPos = chunkIndex * cryptor.fileContentCryptor().ciphertextChunkSize() + cryptor.fileHeaderCryptor().headerSize();
 			ByteBuffer cleartextBuf = chunkData.asReadOnlyBuffer();

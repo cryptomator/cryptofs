@@ -20,18 +20,18 @@ class ChunkData {
 	private boolean written;
 	private int length;
 
-	private ChunkData(ByteBuffer bytes, int length) {
-		this.bytes = bytes;
-		this.written = false;
-		this.length = length;
-	}
-
 	public static ChunkData wrap(ByteBuffer bytes) {
 		return new ChunkData(bytes, bytes.limit());
 	}
 
 	public static ChunkData emptyWithSize(int size) {
 		return new ChunkData(ByteBuffer.allocate(size), 0);
+	}
+
+	private ChunkData(ByteBuffer bytes, int length) {
+		this.bytes = bytes;
+		this.written = false;
+		this.length = length;
 	}
 
 	public boolean wasWritten() {
@@ -86,7 +86,7 @@ class ChunkData {
 
 	@Override
 	public String toString() {
-		return format("ChunkData(written: %s, length: %s", written, length);
+		return format("ChunkData(written: %s, length: %d, capacity: %d)", written, length, bytes.capacity());
 	}
 
 }
