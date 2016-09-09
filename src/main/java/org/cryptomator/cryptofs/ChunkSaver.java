@@ -32,7 +32,6 @@ class ChunkSaver {
 		if (chunkLiesInFile(chunkIndex) && chunkData.wasWritten()) {
 			long ciphertextPos = chunkIndex * cryptor.fileContentCryptor().ciphertextChunkSize() + cryptor.fileHeaderCryptor().headerSize();
 			ByteBuffer cleartextBuf = chunkData.asReadOnlyBuffer();
-			// TODO write only part of chunk that lies in file, or is this handled by encryptChunk?
 			ByteBuffer ciphertextBuf = cryptor.fileContentCryptor().encryptChunk(cleartextBuf, chunkIndex, header);
 			try {
 				channel.write(ciphertextBuf, ciphertextPos);

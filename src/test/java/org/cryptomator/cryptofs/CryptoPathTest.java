@@ -240,18 +240,11 @@ public class CryptoPathTest {
 	}
 
 	@Test
-	public void testToRealPathReturnsThisIfAlreadyAbsolute() throws IOException {
-		Path inTest = new CryptoPath(fileSystem, asList("a", "b"), true);
+	public void testToRealPathReturnsNormalizedAndAbsolutePath() throws IOException {
+		Path inTest = new CryptoPath(fileSystem, asList("a", ".", "b", "b", ".."), false);
+		Path normalizedAndAbsolute = new CryptoPath(fileSystem, asList("a", "b"), true);
 
-		assertThat(inTest.toRealPath(), is(sameInstance(inTest)));
-	}
-
-	@Test
-	public void testToRealPathReturnsAbsolutePathIfNotAlreadyAbsolute() throws IOException {
-		Path inTest = new CryptoPath(fileSystem, asList("a", "b"), false);
-		Path absolutePath = new CryptoPath(fileSystem, asList("a", "b"), true);
-
-		assertThat(inTest.toRealPath(), is(absolutePath));
+		assertThat(inTest.toRealPath(), is(normalizedAndAbsolute));
 	}
 
 	@Test

@@ -13,7 +13,6 @@ import static java.nio.file.Files.exists;
 import static org.cryptomator.cryptofs.Constants.DIR_PREFIX;
 import static org.cryptomator.cryptofs.Constants.NAME_SHORTENING_THRESHOLD;
 import static org.cryptomator.cryptofs.Constants.SEPARATOR;
-import static org.cryptomator.cryptofs.UncheckedThrows.rethrowUnchecked;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -78,7 +77,7 @@ class CryptoFileSystem extends FileSystem {
 	@Inject
 	public CryptoFileSystem(@PathToVault Path pathToVault, CryptoFileSystemProperties properties, Cryptor cryptor, CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, CryptoFileStore fileStore,
 			OpenCryptoFiles openCryptoFiles, CryptoPathMapper cryptoPathMapper, LongFileNameProvider longFileNameProvider, CryptoFileAttributeProvider fileAttributeProvider,
-			CryptoFileAttributeViewProvider fileAttributeViewProvider, PathMatcherFactory pathMatcherFactory, CryptoPathFactory cryptoPathFactory) {
+			CryptoFileAttributeViewProvider fileAttributeViewProvider, PathMatcherFactory pathMatcherFactory, CryptoPathFactory cryptoPathFactory, RootDirectoryInitializer rootDirectoryInitializer) {
 		this.cryptor = cryptor;
 		this.provider = provider;
 		this.cryptoFileSystems = cryptoFileSystems;
@@ -94,15 +93,7 @@ class CryptoFileSystem extends FileSystem {
 		this.rootPath = cryptoPathFactory.rootFor(this);
 		this.emptyPath = cryptoPathFactory.emptyFor(this);
 
-		initializeRootDirectory();
-	}
-
-	private void initializeRootDirectory() {
-		rethrowUnchecked(IOException.class).from(() -> {
-			CryptoPath cleartextRootDirectory = getPath("/");
-			Path ciphertextRootDirectory = cryptoPathMapper.getCiphertextDirPath(cleartextRootDirectory);
-			Files.createDirectories(ciphertextRootDirectory);
-		});
+		rootDirectoryInitializer.initialize(rootPath);
 	}
 
 	/* java.nio.file.FileSystem API */
@@ -207,7 +198,7 @@ class CryptoFileSystem extends FileSystem {
 		}
 	}
 
-	public void checkAccess(Path cleartextPath, AccessMode[] modes) throws IOException {
+	public void checkAccess(Path cleartextPath, AccessMode... modes) throws IOException {
 		if (fileStore.supportsFileAttributeView(PosixFileAttributeView.class)) {
 			Set<PosixFilePermission> permissions = readAttributes(cleartextPath, PosixFileAttributes.class).permissions();
 			boolean accessGranted = true;
@@ -249,7 +240,7 @@ class CryptoFileSystem extends FileSystem {
 		}
 	}
 
-	public void createDirectory(Path cleartextDir, FileAttribute<?>[] attrs) throws IOException {
+	public void createDirectory(Path cleartextDir, FileAttribute<?>... attrs) throws IOException {
 		Path cleartextParentDir = cleartextDir.getParent();
 		if (cleartextParentDir == null) {
 			return;

@@ -34,7 +34,16 @@ class ChunkLoader {
 			return ChunkData.emptyWithSize(payloadSize);
 		} else {
 			ciphertextBuf.flip();
-			return ChunkData.wrap(cryptor.fileContentCryptor().decryptChunk(ciphertextBuf, chunkIndex, header, true));
+			ByteBuffer cleartextBuf = cryptor.fileContentCryptor().decryptChunk(ciphertextBuf, chunkIndex, header, true);
+			ByteBuffer cleartextBufWhichCanHoldFullChunk;
+			if (cleartextBuf.capacity() < payloadSize) {
+				cleartextBufWhichCanHoldFullChunk = ByteBuffer.allocate(payloadSize);
+				cleartextBufWhichCanHoldFullChunk.put(cleartextBuf);
+				cleartextBufWhichCanHoldFullChunk.flip();
+			} else {
+				cleartextBufWhichCanHoldFullChunk = cleartextBuf;
+			}
+			return ChunkData.wrap(cleartextBufWhichCanHoldFullChunk);
 		}
 	}
 

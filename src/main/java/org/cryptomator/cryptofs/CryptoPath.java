@@ -223,7 +223,7 @@ class CryptoPath implements Path {
 
 	@Override
 	public Path toRealPath(LinkOption... options) throws IOException {
-		return toAbsolutePath();
+		return normalize().toAbsolutePath();
 	}
 
 	@Override

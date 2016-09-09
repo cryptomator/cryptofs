@@ -42,7 +42,7 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 	public CryptoDirectoryStream(Directory ciphertextDir, Path cleartextDir, FileNameCryptor filenameCryptor, LongFileNameProvider longFileNameProvider, DirectoryStream.Filter<? super Path> filter) throws IOException {
 		this.directoryId = ciphertextDir.dirId;
 		this.ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path, p -> true);
-		LOG.debug("OPEN " + directoryId);
+		LOG.trace("OPEN " + directoryId);
 		this.cleartextDir = cleartextDir;
 		this.filenameCryptor = filenameCryptor;
 		this.longFileNameProvider = longFileNameProvider;
@@ -102,7 +102,7 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 	@Override
 	public void close() throws IOException {
 		ciphertextDirStream.close();
-		LOG.debug("CLOSE " + directoryId);
+		LOG.trace("CLOSE " + directoryId);
 	}
 
 }

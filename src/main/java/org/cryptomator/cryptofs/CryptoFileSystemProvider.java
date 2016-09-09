@@ -83,19 +83,37 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	public CryptoFileSystemProvider() {
-		CryptoFileSystemProviderComponent component;
+		this.fileSystems = DaggerCryptoFileSystemProviderComponent.builder() //
+				.secureRandomModule(new SecureRandomModule(strongSecureRandom())) //
+				.cryptoFileSystemProviderModule(CryptoFileSystemProviderModule.builder() //
+						.withCrytpoFileSystemProvider(this) //
+						.build()) //
+				.build() //
+				.fileSystems();
+	}
+
+	private static SecureRandom strongSecureRandom() {
 		try {
-			component = DaggerCryptoFileSystemProviderComponent.builder() //
-					.secureRandomModule(new SecureRandomModule(SecureRandom.getInstanceStrong())) //
-					.cryptoFileSystemProviderModule(CryptoFileSystemProviderModule.builder() //
-							.withCrytpoFileSystemProvider(this) //
-							.build()) //
-					.build();
+			return SecureRandom.getInstanceStrong();
 		} catch (NoSuchAlgorithmException e) {
 			throw new IllegalStateException("A strong algorithm must exist in every Java platform.", e);
 		}
+	}
 
-		this.fileSystems = component.fileSystems();
+	/**
+	 * @deprecated only for testing
+	 */
+	@Deprecated
+	CryptoFileSystemProvider(CryptoFileSystems fileSystems) {
+		this.fileSystems = fileSystems;
+	}
+
+	/**
+	 * @deprecated only for testing
+	 */
+	@Deprecated
+	CryptoFileSystems getCryptoFileSystems() {
+		return fileSystems;
 	}
 
 	@Override
@@ -167,7 +185,8 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public boolean isSameFile(Path cleartextPath, Path cleartextPath2) throws IOException {
-		return cleartextPath.equals(cleartextPath2); // TODO normalize paths, fail with invalid paths and fail on closed file systems
+		return cleartextPath.getFileSystem() == cleartextPath2.getFileSystem() //
+				&& cleartextPath.toRealPath().equals(cleartextPath2.toRealPath());
 	}
 
 	@Override
@@ -205,12 +224,12 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		fileSystem(cleartextPath).setAttribute(cleartextPath, attribute, value, options);
 	}
 
-	private static CryptoFileSystem fileSystem(Path path) {
+	private CryptoFileSystem fileSystem(Path path) {
 		FileSystem fileSystem = path.getFileSystem();
-		if (fileSystem instanceof CryptoFileSystem) {
+		if (fileSystem.provider() == this) {
 			return (CryptoFileSystem) fileSystem;
 		} else {
-			throw new ProviderMismatchException();
+			throw new ProviderMismatchException("Used a path from FileSystem:" + fileSystem.provider() + " with FileSystem:" + this);
 		}
 	}
 
