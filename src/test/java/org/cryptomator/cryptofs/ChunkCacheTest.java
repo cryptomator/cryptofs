@@ -16,6 +16,7 @@ import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
@@ -27,10 +28,10 @@ public class ChunkCacheTest {
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
 
-	private ChunkLoader chunkLoader = mock(ChunkLoader.class);
-	private ChunkSaver chunkSaver = mock(ChunkSaver.class);
-
-	private ChunkCache inTest = new ChunkCache(chunkLoader, chunkSaver);
+	private final ChunkLoader chunkLoader = mock(ChunkLoader.class);
+	private final ChunkSaver chunkSaver = mock(ChunkSaver.class);
+	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
+	private final ChunkCache inTest = new ChunkCache(chunkLoader, chunkSaver, stats);
 
 	@Test
 	public void testGetInvokesLoaderIfEntryNotInCache() throws IOException {
@@ -39,6 +40,7 @@ public class ChunkCacheTest {
 		when(chunkLoader.load(index)).thenReturn(data);
 
 		assertThat(inTest.get(index), is(data));
+		verify(stats).addChunkCacheAccess();
 	}
 
 	@Test
@@ -49,6 +51,7 @@ public class ChunkCacheTest {
 		inTest.get(index);
 
 		assertThat(inTest.get(index), is(data));
+		verify(stats, Mockito.times(2)).addChunkCacheAccess();
 		verify(chunkLoader).load(index);
 	}
 
@@ -59,6 +62,7 @@ public class ChunkCacheTest {
 		inTest.set(index, data);
 
 		assertThat(inTest.get(index), is(data));
+		verify(stats).addChunkCacheAccess();
 	}
 
 	@Test
@@ -74,6 +78,7 @@ public class ChunkCacheTest {
 
 		inTest.get(indexNotInCache);
 
+		verify(stats).addChunkCacheAccess();
 		verify(chunkSaver).save(firstIndex, firstData);
 		verifyNoMoreInteractions(chunkSaver);
 	}

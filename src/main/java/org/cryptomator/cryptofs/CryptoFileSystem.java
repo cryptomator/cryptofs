@@ -71,13 +71,15 @@ class CryptoFileSystem extends FileSystem {
 	private final CryptoFileAttributeViewProvider fileAttributeViewProvider;
 	private final OpenCryptoFiles openCryptoFiles;
 	private final CryptoFileStore fileStore;
-	private PathMatcherFactory pathMatcherFactory;
-	private CryptoPathFactory cryptoPathFactory;
+	private final PathMatcherFactory pathMatcherFactory;
+	private final CryptoPathFactory cryptoPathFactory;
+	private final CryptoFileSystemStats stats;
 
 	@Inject
 	public CryptoFileSystem(@PathToVault Path pathToVault, CryptoFileSystemProperties properties, Cryptor cryptor, CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, CryptoFileStore fileStore,
 			OpenCryptoFiles openCryptoFiles, CryptoPathMapper cryptoPathMapper, LongFileNameProvider longFileNameProvider, CryptoFileAttributeProvider fileAttributeProvider,
-			CryptoFileAttributeViewProvider fileAttributeViewProvider, PathMatcherFactory pathMatcherFactory, CryptoPathFactory cryptoPathFactory, RootDirectoryInitializer rootDirectoryInitializer) {
+			CryptoFileAttributeViewProvider fileAttributeViewProvider, PathMatcherFactory pathMatcherFactory, CryptoPathFactory cryptoPathFactory, CryptoFileSystemStats stats,
+			RootDirectoryInitializer rootDirectoryInitializer) {
 		this.cryptor = cryptor;
 		this.provider = provider;
 		this.cryptoFileSystems = cryptoFileSystems;
@@ -90,6 +92,7 @@ class CryptoFileSystem extends FileSystem {
 		this.fileStore = fileStore;
 		this.pathMatcherFactory = pathMatcherFactory;
 		this.cryptoPathFactory = cryptoPathFactory;
+		this.stats = stats;
 		this.rootPath = cryptoPathFactory.rootFor(this);
 		this.emptyPath = cryptoPathFactory.emptyFor(this);
 
@@ -313,6 +316,10 @@ class CryptoFileSystem extends FileSystem {
 
 	public Path getPathToVault() {
 		return pathToVault;
+	}
+
+	public CryptoFileSystemStats getStats() {
+		return stats;
 	}
 
 }

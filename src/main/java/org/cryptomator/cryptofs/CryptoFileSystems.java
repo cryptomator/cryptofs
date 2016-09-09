@@ -5,7 +5,6 @@ import static org.cryptomator.cryptofs.CryptoFileSystemModule.cryptoFileSystemMo
 import static org.cryptomator.cryptofs.UncheckedThrows.allowUncheckedThrowsOf;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Path;
@@ -51,14 +50,10 @@ class CryptoFileSystems {
 	}
 
 	public CryptoFileSystem get(Path pathToVault) {
-		try {
-			Path normalizedPathToVault = pathToVault.toRealPath(); // TODO use real path or absolute path?
-			return fileSystems.computeIfAbsent(normalizedPathToVault, key -> {
-				throw new FileSystemNotFoundException(format("CryptoFileSystem at %s not initialized", pathToVault));
-			});
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
+		Path normalizedPathToVault = pathToVault.normalize();
+		return fileSystems.computeIfAbsent(normalizedPathToVault, key -> {
+			throw new FileSystemNotFoundException(format("CryptoFileSystem at %s not initialized", pathToVault));
+		});
 	}
 
 }

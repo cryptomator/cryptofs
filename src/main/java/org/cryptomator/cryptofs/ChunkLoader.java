@@ -15,15 +15,18 @@ class ChunkLoader {
 	private final Cryptor cryptor;
 	private final FileChannel channel;
 	private final FileHeader header;
+	private final CryptoFileSystemStats stats;
 
 	@Inject
-	public ChunkLoader(Cryptor cryptor, FileChannel channel, FileHeader header) {
+	public ChunkLoader(Cryptor cryptor, FileChannel channel, FileHeader header, CryptoFileSystemStats stats) {
 		this.cryptor = cryptor;
 		this.channel = channel;
 		this.header = header;
+		this.stats = stats;
 	}
 
 	public ChunkData load(Long chunkIndex) throws IOException {
+		stats.addChunkCacheMiss();
 		int payloadSize = cryptor.fileContentCryptor().cleartextChunkSize();
 		int chunkSize = cryptor.fileContentCryptor().ciphertextChunkSize();
 		long ciphertextPos = chunkIndex * chunkSize + cryptor.fileHeaderCryptor().headerSize();
@@ -35,6 +38,7 @@ class ChunkLoader {
 		} else {
 			ciphertextBuf.flip();
 			ByteBuffer cleartextBuf = cryptor.fileContentCryptor().decryptChunk(ciphertextBuf, chunkIndex, header, true);
+			stats.addBytesDecrypted(cleartextBuf.remaining());
 			ByteBuffer cleartextBufWhichCanHoldFullChunk;
 			if (cleartextBuf.capacity() < payloadSize) {
 				cleartextBufWhichCanHoldFullChunk = ByteBuffer.allocate(payloadSize);

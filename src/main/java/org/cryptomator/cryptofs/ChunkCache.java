@@ -17,10 +17,12 @@ class ChunkCache {
 
 	public static final int MAX_CACHED_CLEARTEXT_CHUNKS = 5;
 
+	private final CryptoFileSystemStats stats;
 	private final LoadingCache<Long, ChunkData> chunks;
 
 	@Inject
-	public ChunkCache(ChunkLoader chunkLoader, ChunkSaver chunkSaver) {
+	public ChunkCache(ChunkLoader chunkLoader, ChunkSaver chunkSaver, CryptoFileSystemStats stats) {
+		this.stats = stats;
 		this.chunks = CacheBuilder.newBuilder() //
 				.maximumSize(MAX_CACHED_CLEARTEXT_CHUNKS) //
 				.removalListener(removal -> chunkSaver.save((Long) removal.getKey(), (ChunkData) removal.getValue())) //
@@ -34,6 +36,7 @@ class ChunkCache {
 
 	public ChunkData get(long chunkIndex) throws IOException {
 		try {
+			stats.addChunkCacheAccess();
 			return chunks.get(chunkIndex);
 		} catch (ExecutionException e) {
 			throw (IOException) e.getCause();

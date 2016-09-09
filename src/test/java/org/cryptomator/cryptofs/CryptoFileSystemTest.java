@@ -33,23 +33,24 @@ public class CryptoFileSystemTest {
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
 
-	private Path pathToVault = mock(Path.class);
-	private CryptoFileSystemProperties properties = mock(CryptoFileSystemProperties.class);
-	private Cryptor cryptor = mock(Cryptor.class);
-	private CryptoFileSystemProvider provider = mock(CryptoFileSystemProvider.class);
-	private CryptoFileSystems cryptoFileSystems = mock(CryptoFileSystems.class);
-	private CryptoFileStore fileStore = mock(CryptoFileStore.class);
-	private OpenCryptoFiles openCryptoFiles = mock(OpenCryptoFiles.class);
-	private CryptoPathMapper cryptoPathMapper = mock(CryptoPathMapper.class);
-	private LongFileNameProvider longFileNameProvider = mock(LongFileNameProvider.class);
-	private CryptoFileAttributeProvider fileAttributeProvider = mock(CryptoFileAttributeProvider.class);
-	private CryptoFileAttributeViewProvider fileAttributeViewProvider = mock(CryptoFileAttributeViewProvider.class);
-	private PathMatcherFactory pathMatcherFactory = mock(PathMatcherFactory.class);
-	private CryptoPathFactory cryptoPathFactory = mock(CryptoPathFactory.class);
-	private RootDirectoryInitializer rootDirectoryInitializer = mock(RootDirectoryInitializer.class);
+	private final Path pathToVault = mock(Path.class);
+	private final CryptoFileSystemProperties properties = mock(CryptoFileSystemProperties.class);
+	private final Cryptor cryptor = mock(Cryptor.class);
+	private final CryptoFileSystemProvider provider = mock(CryptoFileSystemProvider.class);
+	private final CryptoFileSystems cryptoFileSystems = mock(CryptoFileSystems.class);
+	private final CryptoFileStore fileStore = mock(CryptoFileStore.class);
+	private final OpenCryptoFiles openCryptoFiles = mock(OpenCryptoFiles.class);
+	private final CryptoPathMapper cryptoPathMapper = mock(CryptoPathMapper.class);
+	private final LongFileNameProvider longFileNameProvider = mock(LongFileNameProvider.class);
+	private final CryptoFileAttributeProvider fileAttributeProvider = mock(CryptoFileAttributeProvider.class);
+	private final CryptoFileAttributeViewProvider fileAttributeViewProvider = mock(CryptoFileAttributeViewProvider.class);
+	private final PathMatcherFactory pathMatcherFactory = mock(PathMatcherFactory.class);
+	private final CryptoPathFactory cryptoPathFactory = mock(CryptoPathFactory.class);
+	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
+	private final RootDirectoryInitializer rootDirectoryInitializer = mock(RootDirectoryInitializer.class);
 
-	private CryptoPath root = mock(CryptoPath.class);
-	private CryptoPath empty = mock(CryptoPath.class);
+	private final CryptoPath root = mock(CryptoPath.class);
+	private final CryptoPath empty = mock(CryptoPath.class);
 
 	private CryptoFileSystem inTest;
 
@@ -59,7 +60,7 @@ public class CryptoFileSystemTest {
 		when(cryptoPathFactory.emptyFor(any())).thenReturn(empty);
 
 		inTest = new CryptoFileSystem(pathToVault, properties, cryptor, provider, cryptoFileSystems, fileStore, openCryptoFiles, cryptoPathMapper, longFileNameProvider, fileAttributeProvider, fileAttributeViewProvider,
-				pathMatcherFactory, cryptoPathFactory, rootDirectoryInitializer);
+				pathMatcherFactory, cryptoPathFactory, stats, rootDirectoryInitializer);
 	}
 
 	@Test

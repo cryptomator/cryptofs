@@ -37,10 +37,11 @@ class OpenCryptoFile {
 	private final Runnable onClose;
 	private final OpenCounter openCounter;
 	private final CryptoFileChannelFactory cryptoFileChannelFactory;
+	private final CryptoFileSystemStats stats;
 
 	@Inject
 	public OpenCryptoFile(EffectiveOpenOptions options, Cryptor cryptor, FileChannel channel, FileHeader header, @OpenFileSize AtomicLong size, OpenCounter openCounter, CryptoFileChannelFactory cryptoFileChannelFactory,
-			ChunkCache chunkCache, @OpenFileOnCloseHandler Runnable onClose) {
+			ChunkCache chunkCache, @OpenFileOnCloseHandler Runnable onClose, CryptoFileSystemStats stats) {
 		this.cryptor = cryptor;
 		this.chunkCache = chunkCache;
 		this.openCounter = openCounter;
@@ -49,6 +50,7 @@ class OpenCryptoFile {
 		this.channel = channel;
 		this.header = header;
 		this.size = size;
+		this.stats = stats;
 
 		size.set(header.getFilesize());
 	}
@@ -76,6 +78,7 @@ class OpenCryptoFile {
 			read += len;
 		}
 		dst.limit(origLimit);
+		stats.addBytesRead(read);
 		return read;
 	}
 
@@ -93,6 +96,7 @@ class OpenCryptoFile {
 			write(ByteSource.from(data), offset);
 		}
 		handleSync(options);
+		stats.addBytesWritten(written);
 		return written;
 	}
 

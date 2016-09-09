@@ -7,6 +7,7 @@ import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.argThat;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
@@ -34,15 +35,14 @@ public class ChunkLoaderTest {
 	@Rule
 	public MockitoRule mockitoRule = MockitoJUnit.rule();
 
-	private FileChannel channel = mock(FileChannel.class);
+	private final FileChannel channel = mock(FileChannel.class);
 
-	private FileContentCryptor fileContentCryptor = mock(FileContentCryptor.class);
-	private FileHeaderCryptor fileHeaderCryptor = mock(FileHeaderCryptor.class);
-	private Cryptor cryptor = mock(Cryptor.class);
-
-	private FileHeader header = mock(FileHeader.class);
-
-	private ChunkLoader inTest = new ChunkLoader(cryptor, channel, header);
+	private final FileContentCryptor fileContentCryptor = mock(FileContentCryptor.class);
+	private final FileHeaderCryptor fileHeaderCryptor = mock(FileHeaderCryptor.class);
+	private final Cryptor cryptor = mock(Cryptor.class);
+	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
+	private final FileHeader header = mock(FileHeader.class);
+	private final ChunkLoader inTest = new ChunkLoader(cryptor, channel, header, stats);
 
 	@Before
 	public void setup() {
@@ -61,6 +61,7 @@ public class ChunkLoaderTest {
 
 		ChunkData data = inTest.load(chunkIndex);
 
+		verify(stats).addChunkCacheMiss();
 		assertThat(data.asReadOnlyBuffer(), contains(ByteBuffer.allocate(0)));
 		data.copyData().from(repeat(9).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer());
 		assertThat(data.asReadOnlyBuffer(), contains(repeat(9).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer())); // asserts that data has at least CLEARTEXT_CHUNK_SIZE capacity
@@ -79,6 +80,8 @@ public class ChunkLoaderTest {
 
 		ChunkData data = inTest.load(chunkIndex);
 
+		verify(stats).addChunkCacheMiss();
+		verify(stats).addBytesDecrypted(data.asReadOnlyBuffer().remaining());
 		assertThat(data.asReadOnlyBuffer(), contains(decryptedData.get()));
 	}
 
@@ -95,6 +98,8 @@ public class ChunkLoaderTest {
 
 		ChunkData data = inTest.load(chunkIndex);
 
+		verify(stats).addChunkCacheMiss();
+		verify(stats).addBytesDecrypted(data.asReadOnlyBuffer().remaining());
 		assertThat(data.asReadOnlyBuffer(), contains(decryptedData.get()));
 		data.copyData().from(repeat(9).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer());
 		assertThat(data.asReadOnlyBuffer(), contains(repeat(9).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer())); // asserts that data has at least CLEARTEXT_CHUNK_SIZE capacity

@@ -22,6 +22,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
@@ -39,19 +40,16 @@ public class ChunkSaverTest {
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
 
-	private FileChannel channel = mock(FileChannel.class);
+	private final FileChannel channel = mock(FileChannel.class);
 
-	private FileContentCryptor fileContentCryptor = mock(FileContentCryptor.class);
-	private FileHeaderCryptor fileHeaderCryptor = mock(FileHeaderCryptor.class);
-	private Cryptor cryptor = mock(Cryptor.class);
-
-	private AtomicLong size = new AtomicLong(0L);
-
-	private FileHeader header = mock(FileHeader.class);
-
-	private ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
-
-	private ChunkSaver inTest = new ChunkSaver(cryptor, channel, header, exceptionsDuringWrite, size);
+	private final FileContentCryptor fileContentCryptor = mock(FileContentCryptor.class);
+	private final FileHeaderCryptor fileHeaderCryptor = mock(FileHeaderCryptor.class);
+	private final Cryptor cryptor = mock(Cryptor.class);
+	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
+	private final AtomicLong size = new AtomicLong(0L);
+	private final FileHeader header = mock(FileHeader.class);
+	private final ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
+	private final ChunkSaver inTest = new ChunkSaver(cryptor, channel, header, exceptionsDuringWrite, size, stats);
 
 	@Before
 	public void setup() {
@@ -76,6 +74,7 @@ public class ChunkSaverTest {
 		inTest.save(chunkIndex, chunkData);
 
 		verify(channel).write(argThat(contains(ciphertext.get())), eq(expectedPosition));
+		verify(stats).addBytesEncrypted(Mockito.anyLong());
 	}
 
 	@Test
@@ -92,6 +91,7 @@ public class ChunkSaverTest {
 		inTest.save(chunkIndex, chunkData);
 
 		verify(channel).write(argThat(contains(ciphertext.get())), eq(expectedPosition));
+		verify(stats).addBytesEncrypted(Mockito.anyLong());
 	}
 
 	@Test
@@ -103,6 +103,7 @@ public class ChunkSaverTest {
 		inTest.save(chunkIndex, irrelevant);
 
 		verifyZeroInteractions(channel);
+		verifyZeroInteractions(stats);
 	}
 
 	@Test
@@ -114,6 +115,7 @@ public class ChunkSaverTest {
 		inTest.save(chunkIndex, chunkData);
 
 		verifyZeroInteractions(channel);
+		verifyZeroInteractions(stats);
 	}
 
 	@Test

@@ -18,20 +18,23 @@ class ChunkSaver {
 	private final FileHeader header;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
 	private final AtomicLong size;
+	private final CryptoFileSystemStats stats;
 
 	@Inject
-	public ChunkSaver(Cryptor cryptor, FileChannel channel, FileHeader header, ExceptionsDuringWrite exceptionsDuringWrite, @OpenFileSize AtomicLong size) {
+	public ChunkSaver(Cryptor cryptor, FileChannel channel, FileHeader header, ExceptionsDuringWrite exceptionsDuringWrite, @OpenFileSize AtomicLong size, CryptoFileSystemStats stats) {
 		this.cryptor = cryptor;
 		this.channel = channel;
 		this.header = header;
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
 		this.size = size;
+		this.stats = stats;
 	}
 
 	public void save(long chunkIndex, ChunkData chunkData) {
 		if (chunkLiesInFile(chunkIndex) && chunkData.wasWritten()) {
 			long ciphertextPos = chunkIndex * cryptor.fileContentCryptor().ciphertextChunkSize() + cryptor.fileHeaderCryptor().headerSize();
 			ByteBuffer cleartextBuf = chunkData.asReadOnlyBuffer();
+			stats.addBytesEncrypted(cleartextBuf.remaining());
 			ByteBuffer ciphertextBuf = cryptor.fileContentCryptor().encryptChunk(cleartextBuf, chunkIndex, header);
 			try {
 				channel.write(ciphertextBuf, ciphertextPos);
