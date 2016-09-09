@@ -9,15 +9,14 @@
 package org.cryptomator.cryptofs;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.DosFileAttributes;
 
-class CryptoDosFileAttributeView extends CryptoBasicFileAttributeView implements DosFileAttributeView {
+class CryptoDosFileAttributeView extends AbstractCryptoFileAttributeView<DosFileAttributeView> implements DosFileAttributeView {
 
 	public CryptoDosFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider) {
-		super(ciphertextPath, fileAttributeProvider);
+		super(ciphertextPath, fileAttributeProvider, DosFileAttributeView.class);
 	}
 
 	@Override
@@ -32,22 +31,22 @@ class CryptoDosFileAttributeView extends CryptoBasicFileAttributeView implements
 
 	@Override
 	public void setReadOnly(boolean value) throws IOException {
-		Files.getFileAttributeView(ciphertextPath, DosFileAttributeView.class).setReadOnly(value);
+		delegate.setReadOnly(value);
 	}
 
 	@Override
 	public void setHidden(boolean value) throws IOException {
-		Files.getFileAttributeView(ciphertextPath, DosFileAttributeView.class).setHidden(value);
+		delegate.setHidden(value);
 	}
 
 	@Override
 	public void setSystem(boolean value) throws IOException {
-		Files.getFileAttributeView(ciphertextPath, DosFileAttributeView.class).setSystem(value);
+		delegate.setSystem(value);
 	}
 
 	@Override
 	public void setArchive(boolean value) throws IOException {
-		Files.getFileAttributeView(ciphertextPath, DosFileAttributeView.class).setArchive(value);
+		delegate.setArchive(value);
 	}
 
 }

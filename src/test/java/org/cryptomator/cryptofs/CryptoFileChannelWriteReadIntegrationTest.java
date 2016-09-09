@@ -9,7 +9,6 @@
 package org.cryptomator.cryptofs;
 
 import static java.lang.String.format;
-import static java.nio.file.Files.walkFileTree;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.READ;
@@ -24,17 +23,18 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoints;
 import org.junit.experimental.theories.FromDataPoints;
 import org.junit.experimental.theories.Theories;
 import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
+
+import com.google.common.jimfs.Jimfs;
 
 @RunWith(Theories.class)
 public class CryptoFileChannelWriteReadIntegrationTest {
@@ -59,28 +59,31 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			72389 // two chunks < x < three chunks
 	};
 
-	private Path pathToVault;
-	private FileSystem fileSystem;
+	private static FileSystem inMemoryFs;
+	private static Path pathToVault;
+	private static FileSystem fileSystem;
 
-	@Before
-	public void setup() throws IOException {
-		CryptoFileSystemProvider provider = new CryptoFileSystemProvider();
-		pathToVault = Files.createTempDirectory("CryptoFileChannelWriteReadTest").toAbsolutePath();
-		fileSystem = provider.newFileSystem(createUri(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
+	@BeforeClass
+	public static void setupClass() throws IOException {
+		inMemoryFs = Jimfs.newFileSystem();
+		pathToVault = inMemoryFs.getRootDirectories().iterator().next().resolve("vault");
+		fileSystem = new CryptoFileSystemProvider().newFileSystem(createUri(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
 	}
 
-	@After
-	public void teardown() throws IOException {
-		walkFileTree(pathToVault, new DeletingFileVisitor());
+	@AfterClass
+	public static void teardownClass() throws IOException {
+		inMemoryFs.close();
 	}
 
 	@Test
 	public void testWriteAndReadNothing() throws IOException {
-		try (FileChannel channel = writableChannel()) {
+		long fileId = nextFileId();
+
+		try (FileChannel channel = writableChannel(fileId)) {
 			channel.write(ByteBuffer.allocate(0));
 		}
 
-		try (FileChannel channel = readableChannel()) {
+		try (FileChannel channel = readableChannel(fileId)) {
 			assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
 		}
 	}
@@ -89,9 +92,11 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 	public void testWithWritingOffset(@FromDataPoints("dataSizes") int dataSize, @FromDataPoints("writeOffsets") int writeOffset) throws IOException {
 		assumeTrue(dataSize != 0 || writeOffset != 0);
 
+		long fileId = nextFileId();
+
 		int cleartextSize = dataSize + writeOffset;
 
-		try (FileChannel channel = writableChannel()) {
+		try (FileChannel channel = writableChannel(fileId)) {
 			assertEquals(0, channel.size());
 			channel.write(repeat(1).times(writeOffset).asByteBuffer());
 			assertEquals(writeOffset, channel.size());
@@ -99,7 +104,7 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			assertEquals(cleartextSize, channel.size());
 		}
 
-		try (FileChannel channel = readableChannel()) {
+		try (FileChannel channel = readableChannel(fileId)) {
 			ByteBuffer buffer = ByteBuffer.allocate(cleartextSize);
 			int result = channel.read(buffer);
 			assertEquals(cleartextSize, result);
@@ -119,9 +124,11 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 	public void testWithWritingInReverseOrderUsingPositions(@FromDataPoints("dataSizes") int dataSize, @FromDataPoints("writeOffsets") int writeOffset) throws IOException {
 		assumeTrue(dataSize != 0 || writeOffset != 0);
 
+		long fileId = nextFileId();
+
 		int cleartextSize = dataSize + writeOffset;
 
-		try (FileChannel channel = writableChannel()) {
+		try (FileChannel channel = writableChannel(fileId)) {
 			assertEquals(0, channel.size());
 			channel.write(repeat(2).times(dataSize).asByteBuffer(), writeOffset);
 			assertEquals(cleartextSize, channel.size());
@@ -129,7 +136,7 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			assertEquals(cleartextSize, channel.size());
 		}
 
-		try (FileChannel channel = readableChannel()) {
+		try (FileChannel channel = readableChannel(fileId)) {
 			ByteBuffer buffer = ByteBuffer.allocate(cleartextSize);
 			int result = channel.read(buffer);
 			assertEquals(cleartextSize, result);
@@ -149,16 +156,18 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 	public void testWithSkippingOffset(@FromDataPoints("dataSizes") int dataSize, @FromDataPoints("writeOffsets") int writeOffset) throws IOException {
 		assumeTrue(dataSize != 0 && writeOffset != 0);
 
+		long fileId = nextFileId();
+
 		int cleartextSize = dataSize + writeOffset;
 
-		try (FileChannel channel = writableChannel()) {
+		try (FileChannel channel = writableChannel(fileId)) {
 			assertEquals(0, channel.size());
 			channel.position(writeOffset);
 			channel.write(repeat(2).times(dataSize).asByteBuffer());
 			assertEquals(cleartextSize, channel.size());
 		}
 
-		try (FileChannel channel = readableChannel()) {
+		try (FileChannel channel = readableChannel(fileId)) {
 			ByteBuffer buffer = ByteBuffer.allocate(cleartextSize);
 			int result = channel.read(buffer);
 			assertEquals(cleartextSize, result);
@@ -174,9 +183,11 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 	public void testAppend(@FromDataPoints("dataSizes") int dataSize, @FromDataPoints("writeOffsets") int writeOffset) throws IOException {
 		assumeTrue(dataSize != 0 || writeOffset != 0);
 
+		long fileId = nextFileId();
+
 		int cleartextSize = dataSize + writeOffset;
 
-		try (FileChannel channel = writableChannelInAppendMode()) {
+		try (FileChannel channel = writableChannelInAppendMode(fileId)) {
 			assertEquals(0, channel.size());
 			if (writeOffset > 0) {
 				channel.write(repeat(1).times(1).asByteBuffer(), writeOffset - 1);
@@ -186,7 +197,7 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			assertEquals(cleartextSize, channel.size());
 		}
 
-		try (FileChannel channel = readableChannel()) {
+		try (FileChannel channel = readableChannel(fileId)) {
 			ByteBuffer buffer = ByteBuffer.allocate(cleartextSize);
 			int result = channel.read(buffer);
 			assertEquals(cleartextSize, result);
@@ -202,16 +213,22 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		}
 	}
 
-	private FileChannel readableChannel() throws IOException {
-		return FileChannel.open(fileSystem.getPath("/test.file"), READ);
+	private static long nextFileId = 1;
+
+	private long nextFileId() {
+		return nextFileId++;
 	}
 
-	private FileChannel writableChannel() throws IOException {
-		return FileChannel.open(fileSystem.getPath("/test.file"), CREATE, WRITE);
+	private FileChannel readableChannel(long fileId) throws IOException {
+		return FileChannel.open(fileSystem.getPath("/test" + fileId + ".file"), READ);
 	}
 
-	private FileChannel writableChannelInAppendMode() throws IOException {
-		return FileChannel.open(fileSystem.getPath("/test.file"), CREATE, WRITE, APPEND);
+	private FileChannel writableChannel(long fileId) throws IOException {
+		return FileChannel.open(fileSystem.getPath("/test" + fileId + ".file"), CREATE, WRITE);
+	}
+
+	private FileChannel writableChannelInAppendMode(long fileId) throws IOException {
+		return FileChannel.open(fileSystem.getPath("/test" + fileId + ".file"), CREATE, WRITE, APPEND);
 	}
 
 }

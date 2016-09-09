@@ -27,7 +27,7 @@ class CryptoFileSystems {
 	}
 
 	public CryptoFileSystem create(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
-		Path normalizedPathToVault = pathToVault.toRealPath(); // TODO use real path or absolute path?
+		Path normalizedPathToVault = pathToVault.normalize();
 		return allowUncheckedThrowsOf(IOException.class).from(() -> fileSystems.compute(normalizedPathToVault, (key, value) -> {
 			if (value == null) {
 				return cryptoFileSystemProviderComponent //

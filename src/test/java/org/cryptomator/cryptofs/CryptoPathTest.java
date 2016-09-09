@@ -143,12 +143,12 @@ public class CryptoPathTest {
 	@Test
 	public void testToUri() throws URISyntaxException {
 		Path pathToVault = mock(Path.class);
-		when(pathToVault.isAbsolute()).thenReturn(true);
+		when(pathToVault.toUri()).thenReturn(new URI("http://cryptomator.org/"));
 		when(fileSystem.getPathToVault()).thenReturn(pathToVault);
 
 		URI uri = path("/foo/bar").toUri();
 
-		assertEquals(new URI("cryptomator", null, "/" + pathToVault.toString(), "/foo/bar"), uri);
+		assertEquals(new URI("cryptomator", "http://cryptomator.org/", "/foo/bar", null, null), uri);
 	}
 
 	@Test

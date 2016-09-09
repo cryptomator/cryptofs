@@ -35,6 +35,7 @@ class CryptoFileSystemFactoryModule {
 			} else {
 				cryptor = cryptorProvider.createNew();
 				byte[] keyFileContents = cryptor.writeKeysToMasterkeyFile(properties.passphrase(), Constants.VAULT_VERSION).serialize();
+				Files.createDirectories(masterKeyPath.getParent());
 				Files.write(masterKeyPath, keyFileContents, CREATE_NEW, WRITE);
 			}
 			return cryptor;

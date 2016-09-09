@@ -2,6 +2,7 @@ package org.cryptomator.cryptofs;
 
 import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
 import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
@@ -55,6 +56,14 @@ public class ChunkDataTest {
 		inTest.copyData().from(repeat(3).times(200).asByteBuffer());
 
 		assertTrue(inTest.wasWritten());
+	}
+
+	@Test
+	public void testToString() {
+		ChunkData inTest = ChunkData.emptyWithSize(150);
+		inTest.copyDataStartingAt(50).from(repeat(3).times(50).asByteBuffer());
+
+		assertThat(inTest.toString(), is("ChunkData(written: true, length: 100, capacity: 150)"));
 	}
 
 	@Theory

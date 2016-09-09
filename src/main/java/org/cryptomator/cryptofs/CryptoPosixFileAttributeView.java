@@ -9,7 +9,6 @@
 package org.cryptomator.cryptofs;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFileAttributeView;
@@ -18,10 +17,10 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.util.Set;
 
-class CryptoPosixFileAttributeView extends CryptoBasicFileAttributeView implements PosixFileAttributeView {
+class CryptoPosixFileAttributeView extends AbstractCryptoFileAttributeView<PosixFileAttributeView> implements PosixFileAttributeView {
 
 	public CryptoPosixFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider) {
-		super(ciphertextPath, fileAttributeProvider);
+		super(ciphertextPath, fileAttributeProvider, PosixFileAttributeView.class);
 	}
 
 	@Override
@@ -36,22 +35,22 @@ class CryptoPosixFileAttributeView extends CryptoBasicFileAttributeView implemen
 
 	@Override
 	public UserPrincipal getOwner() throws IOException {
-		return readAttributes().owner();
+		return delegate.getOwner();
 	}
 
 	@Override
 	public void setOwner(UserPrincipal owner) throws IOException {
-		Files.getFileAttributeView(ciphertextPath, PosixFileAttributeView.class).setOwner(owner);
+		delegate.setOwner(owner);
 	}
 
 	@Override
 	public void setPermissions(Set<PosixFilePermission> perms) throws IOException {
-		Files.getFileAttributeView(ciphertextPath, PosixFileAttributeView.class).setPermissions(perms);
+		delegate.setPermissions(perms);
 	}
 
 	@Override
 	public void setGroup(GroupPrincipal group) throws IOException {
-		Files.getFileAttributeView(ciphertextPath, PosixFileAttributeView.class).setGroup(group);
+		delegate.setGroup(group);
 	}
 
 }
