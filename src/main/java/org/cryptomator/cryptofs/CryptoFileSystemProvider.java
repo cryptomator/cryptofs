@@ -170,17 +170,19 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public void delete(Path cleartextPath) throws IOException {
-		fileSystem(cleartextPath).delete(cleartextPath);
+		fileSystem(cleartextPath).delete(CryptoPath.cast(cleartextPath));
 	}
 
 	@Override
 	public void copy(Path cleartextSource, Path cleartextTarget, CopyOption... options) throws IOException {
-		fileSystem(cleartextSource).copy(cleartextSource, cleartextTarget, options);
+		// from javadoc: "both the source and target paths must be associated with this provider"
+		fileSystem(cleartextSource).copy(CryptoPath.cast(cleartextSource), CryptoPath.cast(cleartextTarget), options);
 	}
 
 	@Override
 	public void move(Path cleartextSource, Path cleartextTarget, CopyOption... options) throws IOException {
-		fileSystem(cleartextSource).move(cleartextSource, cleartextTarget, options);
+		// from javadoc: "both the source and target paths must be associated with this provider"
+		fileSystem(cleartextSource).move(CryptoPath.cast(cleartextSource), CryptoPath.cast(cleartextTarget), options);
 	}
 
 	@Override

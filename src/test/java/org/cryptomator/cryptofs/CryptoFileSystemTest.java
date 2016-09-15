@@ -12,19 +12,28 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.FileSystem;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.nio.file.spi.FileSystemProvider;
 import java.util.Set;
 
+import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.junit.runner.RunWith;
+import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
+import de.bechte.junit.runners.context.HierarchicalContextRunner;
+
+@RunWith(HierarchicalContextRunner.class)
 public class CryptoFileSystemTest {
 
 	@Rule
@@ -158,6 +167,93 @@ public class CryptoFileSystemTest {
 		thrown.expect(UnsupportedOperationException.class);
 
 		inTest.newWatchService();
+	}
+
+	public class Delete {
+
+		@Test
+		public void testDeleteExistingFile() throws IOException {
+			Path ciphertextFilePath = Mockito.mock(Path.class, "ciphertextFile");
+			FileSystem physicalFs = Mockito.mock(FileSystem.class);
+			FileSystemProvider physicalFsProv = Mockito.mock(FileSystemProvider.class);
+			when(ciphertextFilePath.getFileSystem()).thenReturn(physicalFs);
+			when(physicalFs.provider()).thenReturn(physicalFsProv);
+			when(physicalFsProv.deleteIfExists(ciphertextFilePath)).thenReturn(true);
+
+			CryptoPath cleartextPath = Mockito.mock(CryptoPath.class, "cleartext");
+			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE)).thenReturn(ciphertextFilePath);
+			inTest.delete(cleartextPath);
+
+			verify(physicalFsProv).deleteIfExists(ciphertextFilePath);
+		}
+
+		@Test
+		public void testDeleteExistingDirectory() throws IOException {
+			Path ciphertextFilePath = Mockito.mock(Path.class, "ciphertextFile");
+			Path ciphertextDirFilePath = Mockito.mock(Path.class, "ciphertextDirFile");
+			Path ciphertextDirPath = Mockito.mock(Path.class, "ciphertextDir");
+			FileSystem physicalFs = Mockito.mock(FileSystem.class);
+			FileSystemProvider physicalFsProv = Mockito.mock(FileSystemProvider.class);
+			when(ciphertextFilePath.getFileSystem()).thenReturn(physicalFs);
+			when(ciphertextDirFilePath.getFileSystem()).thenReturn(physicalFs);
+			when(ciphertextDirPath.getFileSystem()).thenReturn(physicalFs);
+			when(physicalFs.provider()).thenReturn(physicalFsProv);
+			when(physicalFsProv.deleteIfExists(ciphertextFilePath)).thenReturn(false);
+			CryptoPath cleartextPath = Mockito.mock(CryptoPath.class, "cleartext");
+			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE)).thenReturn(ciphertextFilePath);
+			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY)).thenReturn(ciphertextDirFilePath);
+			when(cryptoPathMapper.getCiphertextDirPath(cleartextPath)).thenReturn(ciphertextDirPath);
+			inTest.delete(cleartextPath);
+
+			verify(physicalFsProv).delete(ciphertextDirPath);
+			verify(physicalFsProv).deleteIfExists(ciphertextDirFilePath);
+		}
+
+		@Test
+		public void testDeleteNonExistingFileOrDir() throws IOException {
+			Path ciphertextFilePath = Mockito.mock(Path.class, "ciphertextFile");
+			Path ciphertextDirFilePath = Mockito.mock(Path.class, "ciphertextDirFile");
+			Path ciphertextDirPath = Mockito.mock(Path.class, "ciphertextDir");
+			FileSystem physicalFs = Mockito.mock(FileSystem.class);
+			FileSystemProvider physicalFsProv = Mockito.mock(FileSystemProvider.class);
+			when(ciphertextFilePath.getFileSystem()).thenReturn(physicalFs);
+			when(ciphertextDirFilePath.getFileSystem()).thenReturn(physicalFs);
+			when(ciphertextDirPath.getFileSystem()).thenReturn(physicalFs);
+			when(physicalFs.provider()).thenReturn(physicalFsProv);
+			when(physicalFsProv.deleteIfExists(ciphertextFilePath)).thenReturn(false);
+			CryptoPath cleartextPath = Mockito.mock(CryptoPath.class, "cleartext");
+			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE)).thenReturn(ciphertextFilePath);
+			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY)).thenReturn(ciphertextDirFilePath);
+			when(cryptoPathMapper.getCiphertextDirPath(cleartextPath)).thenReturn(ciphertextDirPath);
+
+			Mockito.when(cleartextPath.toString()).thenReturn("clear/text/path");
+			Mockito.doThrow(new NoSuchFileException("cleartext")).when(physicalFsProv).delete(ciphertextDirPath);
+			thrown.expect(NoSuchFileException.class);
+			inTest.delete(cleartextPath);
+		}
+
+		@Test
+		public void testDeleteNonEmptyDir() throws IOException {
+			Path ciphertextFilePath = Mockito.mock(Path.class, "ciphertextFile");
+			Path ciphertextDirFilePath = Mockito.mock(Path.class, "ciphertextDirFile");
+			Path ciphertextDirPath = Mockito.mock(Path.class, "ciphertextDir");
+			FileSystem physicalFs = Mockito.mock(FileSystem.class);
+			FileSystemProvider physicalFsProv = Mockito.mock(FileSystemProvider.class);
+			when(ciphertextFilePath.getFileSystem()).thenReturn(physicalFs);
+			when(ciphertextDirFilePath.getFileSystem()).thenReturn(physicalFs);
+			when(ciphertextDirPath.getFileSystem()).thenReturn(physicalFs);
+			when(physicalFs.provider()).thenReturn(physicalFsProv);
+			when(physicalFsProv.deleteIfExists(ciphertextFilePath)).thenReturn(false);
+			CryptoPath cleartextPath = Mockito.mock(CryptoPath.class, "cleartext");
+			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE)).thenReturn(ciphertextFilePath);
+			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY)).thenReturn(ciphertextDirFilePath);
+			when(cryptoPathMapper.getCiphertextDirPath(cleartextPath)).thenReturn(ciphertextDirPath);
+
+			Mockito.doThrow(new DirectoryNotEmptyException("ciphertextDir")).when(physicalFsProv).delete(ciphertextDirPath);
+			thrown.expect(DirectoryNotEmptyException.class);
+			inTest.delete(cleartextPath);
+		}
+
 	}
 
 }
