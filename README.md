@@ -101,4 +101,4 @@ Help us keep Cryptomator open and inclusive. Please read and follow our [Code of
 
 ## License
 
-Distributed under the GPLv3. See the `LICENSE.txt` file for more info.
+Distributed under the AGPLv3. See the `LICENSE.txt` file for more info.
