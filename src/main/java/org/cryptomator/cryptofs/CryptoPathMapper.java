@@ -58,7 +58,7 @@ class CryptoPathMapper {
 		String ciphertextName = cryptor.fileNameCryptor().encryptFilename(cleartextName, dirId.getBytes(StandardCharsets.UTF_8));
 		switch (fileType) {
 		case DIRECTORY:
-			return Constants.DIR_PREFIX + ciphertextName;
+			return DIR_PREFIX + ciphertextName;
 		default:
 			return ciphertextName;
 		}
