@@ -34,11 +34,13 @@ import java.nio.file.PathMatcher;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.WatchService;
+import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.DosFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
+import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
@@ -149,8 +151,7 @@ class CryptoFileSystem extends FileSystem {
 
 	@Override
 	public Set<String> supportedFileAttributeViews() {
-		// essentially we support posix or dos, if we need to intercept the attribute views. otherwise we support just anything
-		return pathToVault.getFileSystem().supportedFileAttributeViews();
+		return fileStore.supportedFileAttributeViewNames();
 	}
 
 	@Override
@@ -181,6 +182,7 @@ class CryptoFileSystem extends FileSystem {
 
 	Map<String, Object> readAttributes(Path cleartextPath, String attributes, LinkOption... options) {
 		// TODO
+		// TODO if we read attrs from Dir, everything is fine. If we read them from DirFile, we need to adjust CryptoBasicFileAttributes#isDirectory
 		return null;
 	}
 
@@ -255,8 +257,8 @@ class CryptoFileSystem extends FileSystem {
 		if (cleartextParentDir == null) {
 			return;
 		}
-		Directory ciphertextParentDir = cryptoPathMapper.getCiphertextDir(cleartextParentDir);
-		if (!Files.exists(ciphertextParentDir.path)) {
+		Path ciphertextParentDir = cryptoPathMapper.getCiphertextDirPath(cleartextParentDir);
+		if (!Files.exists(ciphertextParentDir)) {
 			throw new NoSuchFileException(cleartextParentDir.toString());
 		}
 		Path ciphertextFile = cryptoPathMapper.getCiphertextFilePath(cleartextDir, CiphertextFileType.FILE);
@@ -264,12 +266,12 @@ class CryptoFileSystem extends FileSystem {
 			throw new FileAlreadyExistsException(cleartextDir.toString());
 		}
 		Path ciphertextDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextDir, CiphertextFileType.DIRECTORY);
-		Directory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
-		try (FileChannel channel = FileChannel.open(ciphertextDirFile, EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), attrs)) {
-			channel.write(ByteBuffer.wrap(ciphertextDir.dirId.getBytes(UTF_8)));
-		}
 		boolean success = false;
 		try {
+			Directory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
+			try (FileChannel channel = FileChannel.open(ciphertextDirFile, EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), attrs)) {
+				channel.write(ByteBuffer.wrap(ciphertextDir.dirId.getBytes(UTF_8)));
+			}
 			Files.createDirectories(ciphertextDir.path);
 			success = true;
 		} finally {
@@ -315,17 +317,69 @@ class CryptoFileSystem extends FileSystem {
 		}
 	}
 
-	/**
-	 * @see FileSystemProvider#copy(Path, Path, CopyOption...)
-	 */
-	void copy(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption... options) {
-		// TODO
+	void copy(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption... options) throws IOException {
+		if (cleartextSource.equals(cleartextTarget)) {
+			return;
+		}
+		Path ciphertextSourceFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource, CiphertextFileType.FILE);
+		Path ciphertextSourceDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource, CiphertextFileType.DIRECTORY);
+		if (Files.exists(ciphertextSourceFile)) {
+			// FILE:
+			Path ciphertextTargetFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.FILE);
+			Files.copy(ciphertextSourceFile, ciphertextTargetFile, options);
+		} else if (Files.exists(ciphertextSourceDirFile)) {
+			// DIRECTORY (non-recursive as per contract):
+			Path ciphertextTargetDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.DIRECTORY);
+			if (!Files.exists(ciphertextTargetDirFile)) {
+				// create new:
+				createDirectory(cleartextTarget);
+			} else if (ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
+				// keep existing (if empty):
+				Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDirPath(cleartextTarget);
+				try (DirectoryStream<Path> ds = Files.newDirectoryStream(ciphertextTargetDir)) {
+					if (ds.iterator().hasNext()) {
+						throw new DirectoryNotEmptyException(cleartextTarget.toString());
+					}
+				}
+			} else {
+				throw new FileAlreadyExistsException(cleartextTarget.toString());
+			}
+			if (ArrayUtils.contains(options, StandardCopyOption.COPY_ATTRIBUTES)) {
+				copyAttributes(ciphertextSourceDirFile, ciphertextTargetDirFile);
+			}
+		} else {
+			throw new NoSuchFileException(cleartextSource.toString());
+		}
 	}
 
-	/**
-	 * @see FileSystemProvider#move(Path, Path, CopyOption...)
-	 * @see Files#move(Path, Path, CopyOption...)
-	 */
+	private void copyAttributes(Path src, Path dst) throws IOException {
+		Set<Class<? extends FileAttributeView>> supportedAttributeViewTypes = fileStore.supportedFileAttributeViewTypes();
+		if (supportedAttributeViewTypes.contains(BasicFileAttributeView.class)) {
+			BasicFileAttributes srcAttrs = Files.readAttributes(src, BasicFileAttributes.class);
+			BasicFileAttributeView dstAttrView = Files.getFileAttributeView(dst, BasicFileAttributeView.class);
+			dstAttrView.setTimes(srcAttrs.lastModifiedTime(), srcAttrs.lastAccessTime(), srcAttrs.creationTime());
+		}
+		if (supportedAttributeViewTypes.contains(FileOwnerAttributeView.class)) {
+			FileOwnerAttributeView srcAttrView = Files.getFileAttributeView(src, FileOwnerAttributeView.class);
+			FileOwnerAttributeView dstAttrView = Files.getFileAttributeView(dst, FileOwnerAttributeView.class);
+			dstAttrView.setOwner(srcAttrView.getOwner());
+		}
+		if (supportedAttributeViewTypes.contains(PosixFileAttributeView.class)) {
+			PosixFileAttributes srcAttrs = Files.readAttributes(src, PosixFileAttributes.class);
+			PosixFileAttributeView dstAttrView = Files.getFileAttributeView(dst, PosixFileAttributeView.class);
+			dstAttrView.setGroup(srcAttrs.group());
+			dstAttrView.setPermissions(srcAttrs.permissions());
+		}
+		if (supportedAttributeViewTypes.contains(DosFileAttributeView.class)) {
+			DosFileAttributes srcAttrs = Files.readAttributes(src, DosFileAttributes.class);
+			DosFileAttributeView dstAttrView = Files.getFileAttributeView(dst, DosFileAttributeView.class);
+			dstAttrView.setArchive(srcAttrs.isArchive());
+			dstAttrView.setHidden(srcAttrs.isHidden());
+			dstAttrView.setReadOnly(srcAttrs.isReadOnly());
+			dstAttrView.setSystem(srcAttrs.isSystem());
+		}
+	}
+
 	void move(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption... options) throws IOException {
 		if (cleartextSource.equals(cleartextTarget)) {
 			return;
@@ -351,13 +405,13 @@ class CryptoFileSystem extends FileSystem {
 				assert ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING);
 				assert !ArrayUtils.contains(options, StandardCopyOption.ATOMIC_MOVE);
 				if (Files.exists(ciphertextTargetDirFile)) {
-					Directory ciphertextTargetDir = cryptoPathMapper.getCiphertextDir(cleartextTarget);
-					try (DirectoryStream<Path> ds = Files.newDirectoryStream(ciphertextTargetDir.path)) {
+					Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDirPath(cleartextTarget);
+					try (DirectoryStream<Path> ds = Files.newDirectoryStream(ciphertextTargetDir)) {
 						if (ds.iterator().hasNext()) {
 							throw new DirectoryNotEmptyException(cleartextTarget.toString());
 						}
 					}
-					Files.delete(ciphertextTargetDir.path);
+					Files.delete(ciphertextTargetDir);
 					dirIdProvider.invalidate(ciphertextTargetDirFile);
 				}
 				Files.move(ciphertextSourceDirFile, ciphertextTargetDirFile, options);

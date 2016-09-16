@@ -20,6 +20,8 @@ import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
@@ -34,7 +36,7 @@ class CryptoFileStore extends DelegatingFileStore {
 			"owner", FileOwnerAttributeView.class, //
 			"posix", PosixFileAttributeView.class, //
 			"dos", DosFileAttributeView.class);
-	private static final Collection<Class<?>> SUPPORTED_ATTRVIEW_CLASSES = ImmutableSet.of(PosixFileAttributeView.class, DosFileAttributeView.class);
+	private static final Collection<Class<? extends FileAttributeView>> SUPPORTED_ATTRVIEW_CLASSES = ImmutableSet.of(PosixFileAttributeView.class, DosFileAttributeView.class);
 
 	@Inject
 	public CryptoFileStore(@PathToVault Path pathToVault) {
@@ -59,6 +61,14 @@ class CryptoFileStore extends DelegatingFileStore {
 		} else {
 			return supportsFileAttributeView(type);
 		}
+	}
+
+	Set<Class<? extends FileAttributeView>> supportedFileAttributeViewTypes() {
+		return SUPPORTED_ATTRVIEW_NAMES.values().stream().filter(this::supportsFileAttributeView).collect(Collectors.toSet());
+	}
+
+	Set<String> supportedFileAttributeViewNames() {
+		return SUPPORTED_ATTRVIEW_NAMES.keySet().stream().filter(this::supportsFileAttributeView).collect(Collectors.toSet());
 	}
 
 }
