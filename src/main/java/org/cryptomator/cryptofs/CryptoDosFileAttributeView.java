@@ -13,20 +13,15 @@ import java.nio.file.Path;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.DosFileAttributes;
 
-class CryptoDosFileAttributeView extends AbstractCryptoFileAttributeView<DosFileAttributeView> implements DosFileAttributeView {
+class CryptoDosFileAttributeView extends AbstractCryptoFileAttributeView<DosFileAttributes, DosFileAttributeView> implements DosFileAttributeView {
 
 	public CryptoDosFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider) {
-		super(ciphertextPath, fileAttributeProvider, DosFileAttributeView.class);
+		super(ciphertextPath, fileAttributeProvider, DosFileAttributes.class, DosFileAttributeView.class);
 	}
 
 	@Override
 	public String name() {
 		return "dos";
-	}
-
-	@Override
-	public DosFileAttributes readAttributes() throws IOException {
-		return fileAttributeProvider.readAttributes(ciphertextPath, DosFileAttributes.class);
 	}
 
 	@Override

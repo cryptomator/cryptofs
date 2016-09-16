@@ -15,26 +15,23 @@ import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 
-abstract class AbstractCryptoFileAttributeView<T extends BasicFileAttributeView> implements BasicFileAttributeView {
+abstract class AbstractCryptoFileAttributeView<S extends BasicFileAttributes, T extends BasicFileAttributeView> implements BasicFileAttributeView {
 
 	protected final Path ciphertextPath;
 	protected final CryptoFileAttributeProvider fileAttributeProvider;
 	protected final T delegate;
+	private final Class<S> attributesType;
 
-	public AbstractCryptoFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, Class<T> delegateType) {
+	public AbstractCryptoFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, Class<S> attributesType, Class<T> delegateType) {
 		this.ciphertextPath = ciphertextPath;
 		this.fileAttributeProvider = fileAttributeProvider;
+		this.attributesType = attributesType;
 		this.delegate = Files.getFileAttributeView(ciphertextPath, delegateType);
 	}
 
 	@Override
-	public String name() {
-		return delegate.name();
-	}
-
-	@Override
-	public BasicFileAttributes readAttributes() throws IOException {
-		return fileAttributeProvider.readAttributes(ciphertextPath, BasicFileAttributes.class);
+	public final S readAttributes() throws IOException {
+		return fileAttributeProvider.readAttributes(ciphertextPath, attributesType);
 	}
 
 	@Override

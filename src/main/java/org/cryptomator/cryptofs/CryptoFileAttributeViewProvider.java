@@ -14,8 +14,10 @@ import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import javax.inject.Inject;
 
@@ -41,6 +43,10 @@ class CryptoFileAttributeViewProvider {
 		} else {
 			throw new UnsupportedOperationException("Unsupported file attribute type: " + type);
 		}
+	}
+
+	Set<Class<? extends FileAttributeView>> knownFileAttributeViewTypes() {
+		return Collections.unmodifiableSet(fileAttributeViewProviders.keySet());
 	}
 
 	@FunctionalInterface

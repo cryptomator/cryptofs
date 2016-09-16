@@ -10,11 +10,17 @@ package org.cryptomator.cryptofs;
 
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.BasicFileAttributes;
 
-class CryptoBasicFileAttributeView extends AbstractCryptoFileAttributeView<BasicFileAttributeView> implements BasicFileAttributeView {
+class CryptoBasicFileAttributeView extends AbstractCryptoFileAttributeView<BasicFileAttributes, BasicFileAttributeView> implements BasicFileAttributeView {
 
 	public CryptoBasicFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider) {
-		super(ciphertextPath, fileAttributeProvider, BasicFileAttributeView.class);
+		super(ciphertextPath, fileAttributeProvider, BasicFileAttributes.class, BasicFileAttributeView.class);
+	}
+
+	@Override
+	public String name() {
+		return "basic";
 	}
 
 }

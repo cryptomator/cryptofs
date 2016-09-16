@@ -17,20 +17,15 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.util.Set;
 
-class CryptoPosixFileAttributeView extends AbstractCryptoFileAttributeView<PosixFileAttributeView> implements PosixFileAttributeView {
+class CryptoPosixFileAttributeView extends AbstractCryptoFileAttributeView<PosixFileAttributes, PosixFileAttributeView> implements PosixFileAttributeView {
 
 	public CryptoPosixFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider) {
-		super(ciphertextPath, fileAttributeProvider, PosixFileAttributeView.class);
+		super(ciphertextPath, fileAttributeProvider, PosixFileAttributes.class, PosixFileAttributeView.class);
 	}
 
 	@Override
 	public String name() {
 		return "posix";
-	}
-
-	@Override
-	public PosixFileAttributes readAttributes() throws IOException {
-		return fileAttributeProvider.readAttributes(ciphertextPath, PosixFileAttributes.class);
 	}
 
 	@Override

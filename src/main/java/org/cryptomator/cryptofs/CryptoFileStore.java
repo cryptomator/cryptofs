@@ -18,57 +18,56 @@ import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
-import java.util.Collection;
-import java.util.Map;
+import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-
 @PerFileSystem
 class CryptoFileStore extends DelegatingFileStore {
 
-	private static final Map<String, Class<? extends FileAttributeView>> SUPPORTED_ATTRVIEW_NAMES = ImmutableMap.of( //
-			"basic", BasicFileAttributeView.class, //
-			"owner", FileOwnerAttributeView.class, //
-			"posix", PosixFileAttributeView.class, //
-			"dos", DosFileAttributeView.class);
-	private static final Collection<Class<? extends FileAttributeView>> SUPPORTED_ATTRVIEW_CLASSES = ImmutableSet.of(PosixFileAttributeView.class, DosFileAttributeView.class);
+	private static final String VIEW_NAME_BASIC = "basic";
+	private static final String VIEW_NAME_OWNER = "owner";
+	private static final String VIEW_NAME_POSIX = "posix";
+	private static final String VIEW_NAME_DOS = "dos";
+	private static final String[] VIEW_NAMES = {VIEW_NAME_BASIC, VIEW_NAME_OWNER, VIEW_NAME_POSIX, VIEW_NAME_DOS};
+
+	private final Set<Class<? extends FileAttributeView>> supportedFileAttributeViewTypes;
 
 	@Inject
-	public CryptoFileStore(@PathToVault Path pathToVault) {
+	public CryptoFileStore(@PathToVault Path pathToVault, CryptoFileAttributeViewProvider attributeViewProvider) {
 		super(rethrowUnchecked(IOException.class).from(() -> Files.getFileStore(pathToVault)));
+		this.supportedFileAttributeViewTypes = attributeViewProvider.knownFileAttributeViewTypes().stream().filter(super::supportsFileAttributeView).collect(Collectors.toSet());
 	}
 
 	@Override
 	public boolean supportsFileAttributeView(Class<? extends FileAttributeView> type) {
-		for (Class<?> clazz : SUPPORTED_ATTRVIEW_CLASSES) {
-			if (type.isAssignableFrom(clazz)) {
-				return super.supportsFileAttributeView(type);
-			}
-		}
-		return false;
+		return supportedFileAttributeViewTypes.stream().filter(type::isAssignableFrom).findAny().isPresent();
 	}
 
 	@Override
 	public boolean supportsFileAttributeView(String name) {
-		Class<? extends FileAttributeView> type = SUPPORTED_ATTRVIEW_NAMES.get(name);
-		if (type == null) {
+		switch (name) {
+		case VIEW_NAME_BASIC:
+			return supportsFileAttributeView(BasicFileAttributeView.class);
+		case VIEW_NAME_OWNER:
+			return supportsFileAttributeView(FileOwnerAttributeView.class);
+		case VIEW_NAME_POSIX:
+			return supportsFileAttributeView(PosixFileAttributeView.class);
+		case VIEW_NAME_DOS:
+			return supportsFileAttributeView(DosFileAttributeView.class);
+		default:
 			return false;
-		} else {
-			return supportsFileAttributeView(type);
 		}
 	}
 
 	Set<Class<? extends FileAttributeView>> supportedFileAttributeViewTypes() {
-		return SUPPORTED_ATTRVIEW_NAMES.values().stream().filter(this::supportsFileAttributeView).collect(Collectors.toSet());
+		return supportedFileAttributeViewTypes;
 	}
 
 	Set<String> supportedFileAttributeViewNames() {
-		return SUPPORTED_ATTRVIEW_NAMES.keySet().stream().filter(this::supportsFileAttributeView).collect(Collectors.toSet());
+		return Arrays.stream(VIEW_NAMES).filter(this::supportsFileAttributeView).collect(Collectors.toSet());
 	}
 
 }
