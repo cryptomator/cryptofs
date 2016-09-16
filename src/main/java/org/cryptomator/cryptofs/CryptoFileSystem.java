@@ -71,6 +71,7 @@ class CryptoFileSystem extends FileSystem {
 	private final Path pathToVault;
 	private final Cryptor cryptor;
 	private final CryptoPathMapper cryptoPathMapper;
+	private final DirectoryIdProvider dirIdProvider;
 	private final LongFileNameProvider longFileNameProvider;
 	private final CryptoFileAttributeProvider fileAttributeProvider;
 	private final CryptoFileAttributeViewProvider fileAttributeViewProvider;
@@ -82,7 +83,7 @@ class CryptoFileSystem extends FileSystem {
 
 	@Inject
 	public CryptoFileSystem(@PathToVault Path pathToVault, CryptoFileSystemProperties properties, Cryptor cryptor, CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, CryptoFileStore fileStore,
-			OpenCryptoFiles openCryptoFiles, CryptoPathMapper cryptoPathMapper, LongFileNameProvider longFileNameProvider, CryptoFileAttributeProvider fileAttributeProvider,
+			OpenCryptoFiles openCryptoFiles, CryptoPathMapper cryptoPathMapper, DirectoryIdProvider dirIdProvider, LongFileNameProvider longFileNameProvider, CryptoFileAttributeProvider fileAttributeProvider,
 			CryptoFileAttributeViewProvider fileAttributeViewProvider, PathMatcherFactory pathMatcherFactory, CryptoPathFactory cryptoPathFactory, CryptoFileSystemStats stats,
 			RootDirectoryInitializer rootDirectoryInitializer) {
 		this.cryptor = cryptor;
@@ -90,6 +91,7 @@ class CryptoFileSystem extends FileSystem {
 		this.cryptoFileSystems = cryptoFileSystems;
 		this.pathToVault = pathToVault;
 		this.cryptoPathMapper = cryptoPathMapper;
+		this.dirIdProvider = dirIdProvider;
 		this.longFileNameProvider = longFileNameProvider;
 		this.fileAttributeProvider = fileAttributeProvider;
 		this.fileAttributeViewProvider = fileAttributeViewProvider;
@@ -273,7 +275,7 @@ class CryptoFileSystem extends FileSystem {
 		} finally {
 			if (!success) {
 				Files.delete(ciphertextDirFile);
-				// TODO overheadhunter dirIdProvider.invalidate(ciphertextDir.dirId);
+				dirIdProvider.invalidate(ciphertextDirFile);
 			}
 		}
 	}
@@ -302,6 +304,7 @@ class CryptoFileSystem extends FileSystem {
 					// should not happen. Nevertheless this is a valid state, so who no big deal...
 					LOG.warn("Successfully deleted dir {}, but didn't find corresponding dir file {}", ciphertextDir, ciphertextDirFile);
 				}
+				dirIdProvider.invalidate(ciphertextDirFile);
 			} catch (NoSuchFileException e) {
 				// translate ciphertext path to cleartext path
 				throw new NoSuchFileException(cleartextPath.toString());
@@ -355,10 +358,11 @@ class CryptoFileSystem extends FileSystem {
 						}
 					}
 					Files.delete(ciphertextTargetDir.path);
-					// TODO overheadhunter dirIdProvider.invalidate(ciphertextTargetDir.dirId);
+					dirIdProvider.invalidate(ciphertextTargetDirFile);
 				}
 				Files.move(ciphertextSourceDirFile, ciphertextTargetDirFile, options);
 			}
+			dirIdProvider.invalidate(ciphertextSourceDirFile);
 		} else {
 			throw new NoSuchFileException(cleartextSource.toString());
 		}
