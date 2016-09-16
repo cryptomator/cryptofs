@@ -12,12 +12,18 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.CopyOption;
 import java.nio.file.DirectoryNotEmptyException;
+import java.nio.file.DirectoryStream;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystem;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.Iterator;
 import java.util.Set;
 
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
@@ -171,87 +177,183 @@ public class CryptoFileSystemTest {
 
 	public class Delete {
 
+		private CryptoPath cleartextPath;
+		private Path ciphertextFilePath;
+		private Path ciphertextDirFilePath;
+		private Path ciphertextDirPath;
+		private FileSystem physicalFs;
+		private FileSystemProvider physicalFsProv;
+
+		@Before
+		public void setup() throws IOException {
+			cleartextPath = Mockito.mock(CryptoPath.class, "cleartext");
+			ciphertextFilePath = Mockito.mock(Path.class, "ciphertextFile");
+			ciphertextDirFilePath = Mockito.mock(Path.class, "ciphertextDirFile");
+			ciphertextDirPath = Mockito.mock(Path.class, "ciphertextDir");
+			physicalFs = Mockito.mock(FileSystem.class);
+			physicalFsProv = Mockito.mock(FileSystemProvider.class);
+			when(ciphertextFilePath.getFileSystem()).thenReturn(physicalFs);
+			when(ciphertextDirFilePath.getFileSystem()).thenReturn(physicalFs);
+			when(ciphertextDirPath.getFileSystem()).thenReturn(physicalFs);
+			when(physicalFs.provider()).thenReturn(physicalFsProv);
+			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE)).thenReturn(ciphertextFilePath);
+			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY)).thenReturn(ciphertextDirFilePath);
+			when(cryptoPathMapper.getCiphertextDirPath(cleartextPath)).thenReturn(ciphertextDirPath);
+		}
+
 		@Test
 		public void testDeleteExistingFile() throws IOException {
-			Path ciphertextFilePath = Mockito.mock(Path.class, "ciphertextFile");
-			FileSystem physicalFs = Mockito.mock(FileSystem.class);
-			FileSystemProvider physicalFsProv = Mockito.mock(FileSystemProvider.class);
-			when(ciphertextFilePath.getFileSystem()).thenReturn(physicalFs);
-			when(physicalFs.provider()).thenReturn(physicalFsProv);
 			when(physicalFsProv.deleteIfExists(ciphertextFilePath)).thenReturn(true);
 
-			CryptoPath cleartextPath = Mockito.mock(CryptoPath.class, "cleartext");
-			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE)).thenReturn(ciphertextFilePath);
 			inTest.delete(cleartextPath);
-
 			verify(physicalFsProv).deleteIfExists(ciphertextFilePath);
 		}
 
 		@Test
 		public void testDeleteExistingDirectory() throws IOException {
-			Path ciphertextFilePath = Mockito.mock(Path.class, "ciphertextFile");
-			Path ciphertextDirFilePath = Mockito.mock(Path.class, "ciphertextDirFile");
-			Path ciphertextDirPath = Mockito.mock(Path.class, "ciphertextDir");
-			FileSystem physicalFs = Mockito.mock(FileSystem.class);
-			FileSystemProvider physicalFsProv = Mockito.mock(FileSystemProvider.class);
-			when(ciphertextFilePath.getFileSystem()).thenReturn(physicalFs);
-			when(ciphertextDirFilePath.getFileSystem()).thenReturn(physicalFs);
-			when(ciphertextDirPath.getFileSystem()).thenReturn(physicalFs);
-			when(physicalFs.provider()).thenReturn(physicalFsProv);
 			when(physicalFsProv.deleteIfExists(ciphertextFilePath)).thenReturn(false);
-			CryptoPath cleartextPath = Mockito.mock(CryptoPath.class, "cleartext");
-			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE)).thenReturn(ciphertextFilePath);
-			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY)).thenReturn(ciphertextDirFilePath);
-			when(cryptoPathMapper.getCiphertextDirPath(cleartextPath)).thenReturn(ciphertextDirPath);
-			inTest.delete(cleartextPath);
 
+			inTest.delete(cleartextPath);
 			verify(physicalFsProv).delete(ciphertextDirPath);
 			verify(physicalFsProv).deleteIfExists(ciphertextDirFilePath);
 		}
 
 		@Test
 		public void testDeleteNonExistingFileOrDir() throws IOException {
-			Path ciphertextFilePath = Mockito.mock(Path.class, "ciphertextFile");
-			Path ciphertextDirFilePath = Mockito.mock(Path.class, "ciphertextDirFile");
-			Path ciphertextDirPath = Mockito.mock(Path.class, "ciphertextDir");
-			FileSystem physicalFs = Mockito.mock(FileSystem.class);
-			FileSystemProvider physicalFsProv = Mockito.mock(FileSystemProvider.class);
-			when(ciphertextFilePath.getFileSystem()).thenReturn(physicalFs);
-			when(ciphertextDirFilePath.getFileSystem()).thenReturn(physicalFs);
-			when(ciphertextDirPath.getFileSystem()).thenReturn(physicalFs);
-			when(physicalFs.provider()).thenReturn(physicalFsProv);
 			when(physicalFsProv.deleteIfExists(ciphertextFilePath)).thenReturn(false);
-			CryptoPath cleartextPath = Mockito.mock(CryptoPath.class, "cleartext");
-			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE)).thenReturn(ciphertextFilePath);
-			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY)).thenReturn(ciphertextDirFilePath);
-			when(cryptoPathMapper.getCiphertextDirPath(cleartextPath)).thenReturn(ciphertextDirPath);
-
-			Mockito.when(cleartextPath.toString()).thenReturn("clear/text/path");
 			Mockito.doThrow(new NoSuchFileException("cleartext")).when(physicalFsProv).delete(ciphertextDirPath);
+
 			thrown.expect(NoSuchFileException.class);
 			inTest.delete(cleartextPath);
 		}
 
 		@Test
 		public void testDeleteNonEmptyDir() throws IOException {
-			Path ciphertextFilePath = Mockito.mock(Path.class, "ciphertextFile");
-			Path ciphertextDirFilePath = Mockito.mock(Path.class, "ciphertextDirFile");
-			Path ciphertextDirPath = Mockito.mock(Path.class, "ciphertextDir");
-			FileSystem physicalFs = Mockito.mock(FileSystem.class);
-			FileSystemProvider physicalFsProv = Mockito.mock(FileSystemProvider.class);
-			when(ciphertextFilePath.getFileSystem()).thenReturn(physicalFs);
-			when(ciphertextDirFilePath.getFileSystem()).thenReturn(physicalFs);
-			when(ciphertextDirPath.getFileSystem()).thenReturn(physicalFs);
-			when(physicalFs.provider()).thenReturn(physicalFsProv);
 			when(physicalFsProv.deleteIfExists(ciphertextFilePath)).thenReturn(false);
-			CryptoPath cleartextPath = Mockito.mock(CryptoPath.class, "cleartext");
-			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE)).thenReturn(ciphertextFilePath);
-			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY)).thenReturn(ciphertextDirFilePath);
-			when(cryptoPathMapper.getCiphertextDirPath(cleartextPath)).thenReturn(ciphertextDirPath);
-
 			Mockito.doThrow(new DirectoryNotEmptyException("ciphertextDir")).when(physicalFsProv).delete(ciphertextDirPath);
+
 			thrown.expect(DirectoryNotEmptyException.class);
 			inTest.delete(cleartextPath);
+		}
+
+	}
+
+	public class Move {
+
+		private CryptoPath cleartextSource;
+		private CryptoPath cleartextTarget;
+		private Path ciphertextSourceFile;
+		private Path ciphertextSourceDirFile;
+		private FileSystem physicalFs;
+		private FileSystemProvider physicalFsProv;
+		private Path ciphertextTargetFile;
+		private Path ciphertextTargetDirFile;
+		private Path ciphertextTargetDir;
+
+		@Before
+		public void setup() throws IOException {
+			cleartextSource = Mockito.mock(CryptoPath.class, "cleartextSource");
+			cleartextTarget = Mockito.mock(CryptoPath.class, "cleartextTarget");
+			ciphertextSourceFile = Mockito.mock(Path.class, "ciphertextSourceFile");
+			ciphertextSourceDirFile = Mockito.mock(Path.class, "ciphertextSourceDirFile");
+			ciphertextTargetFile = Mockito.mock(Path.class, "ciphertextTargetFile");
+			ciphertextTargetDirFile = Mockito.mock(Path.class, "ciphertextTargetDirFile");
+			ciphertextTargetDir = Mockito.mock(Path.class, "ciphertextTargetDir");
+			physicalFs = Mockito.mock(FileSystem.class);
+			physicalFsProv = Mockito.mock(FileSystemProvider.class);
+			when(ciphertextSourceFile.getFileSystem()).thenReturn(physicalFs);
+			when(ciphertextSourceDirFile.getFileSystem()).thenReturn(physicalFs);
+			when(ciphertextTargetFile.getFileSystem()).thenReturn(physicalFs);
+			when(ciphertextTargetDirFile.getFileSystem()).thenReturn(physicalFs);
+			when(ciphertextTargetDir.getFileSystem()).thenReturn(physicalFs);
+			when(physicalFs.provider()).thenReturn(physicalFsProv);
+			when(cryptoPathMapper.getCiphertextFilePath(cleartextSource, CiphertextFileType.FILE)).thenReturn(ciphertextSourceFile);
+			when(cryptoPathMapper.getCiphertextFilePath(cleartextSource, CiphertextFileType.DIRECTORY)).thenReturn(ciphertextSourceDirFile);
+			when(cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.FILE)).thenReturn(ciphertextTargetFile);
+			when(cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.DIRECTORY)).thenReturn(ciphertextTargetDirFile);
+			when(cryptoPathMapper.getCiphertextDir(cleartextTarget)).thenReturn(new CryptoPathMapper.Directory("42", ciphertextTargetDir));
+		}
+
+		@Test
+		public void moveNonExistingFile() throws IOException {
+			Mockito.doThrow(new NoSuchFileException("ciphertextSourceFile")).when(physicalFsProv).checkAccess(ciphertextSourceFile);
+			Mockito.doThrow(new NoSuchFileException("ciphertextSourceDirFile")).when(physicalFsProv).checkAccess(ciphertextSourceDirFile);
+
+			thrown.expect(NoSuchFileException.class);
+			inTest.move(cleartextSource, cleartextTarget);
+		}
+
+		@Test
+		public void moveToAlreadyExistingFile() throws IOException {
+			Mockito.doThrow(new FileAlreadyExistsException("ciphertextTargetFile")).when(physicalFsProv).move(ciphertextSourceFile, ciphertextTargetFile);
+
+			thrown.expect(FileAlreadyExistsException.class);
+			inTest.move(cleartextSource, cleartextTarget);
+		}
+
+		@Test
+		public void moveFile() throws IOException {
+			Mockito.doThrow(new NoSuchFileException("ciphertextSourceDirFile")).when(physicalFsProv).checkAccess(ciphertextSourceDirFile);
+
+			CopyOption option1 = Mockito.mock(CopyOption.class);
+			CopyOption option2 = Mockito.mock(CopyOption.class);
+			inTest.move(cleartextSource, cleartextTarget, option1, option2);
+			verify(physicalFsProv).move(ciphertextSourceFile, ciphertextTargetFile, option1, option2);
+		}
+
+		@Test
+		public void moveDirectoryDontReplaceExisting() throws IOException {
+			Mockito.doThrow(new NoSuchFileException("ciphertextSourceFile")).when(physicalFsProv).checkAccess(ciphertextSourceFile);
+
+			CopyOption option1 = Mockito.mock(CopyOption.class);
+			CopyOption option2 = Mockito.mock(CopyOption.class);
+			inTest.move(cleartextSource, cleartextTarget, option1, option2);
+			verify(physicalFsProv).move(ciphertextSourceDirFile, ciphertextTargetDirFile, option1, option2);
+		}
+
+		@Test
+		@SuppressWarnings("unchecked")
+		public void moveDirectoryReplaceExisting() throws IOException {
+			Mockito.doThrow(new NoSuchFileException("ciphertextSourceFile")).when(physicalFsProv).checkAccess(ciphertextSourceFile);
+			DirectoryStream<Path> ds = Mockito.mock(DirectoryStream.class);
+			Iterator<Path> iter = Mockito.mock(Iterator.class);
+			when(physicalFsProv.newDirectoryStream(Mockito.same(ciphertextTargetDir), Mockito.any())).thenReturn(ds);
+			when(ds.iterator()).thenReturn(iter);
+			when(iter.hasNext()).thenReturn(false);
+
+			inTest.move(cleartextSource, cleartextTarget, StandardCopyOption.REPLACE_EXISTING);
+			verify(physicalFsProv).delete(ciphertextTargetDir);
+			verify(physicalFsProv).move(ciphertextSourceDirFile, ciphertextTargetDirFile, StandardCopyOption.REPLACE_EXISTING);
+		}
+
+		@Test
+		@SuppressWarnings("unchecked")
+		public void moveDirectoryReplaceExistingNonEmpty() throws IOException {
+			Mockito.doThrow(new NoSuchFileException("ciphertextSourceFile")).when(physicalFsProv).checkAccess(ciphertextSourceFile);
+			DirectoryStream<Path> ds = Mockito.mock(DirectoryStream.class);
+			Iterator<Path> iter = Mockito.mock(Iterator.class);
+			when(physicalFsProv.newDirectoryStream(Mockito.same(ciphertextTargetDir), Mockito.any())).thenReturn(ds);
+			when(ds.iterator()).thenReturn(iter);
+			when(iter.hasNext()).thenReturn(true);
+
+			try {
+				thrown.expect(DirectoryNotEmptyException.class);
+				inTest.move(cleartextSource, cleartextTarget, StandardCopyOption.REPLACE_EXISTING);
+			} finally {
+				verify(physicalFsProv, Mockito.never()).move(Mockito.any(), Mockito.any(), Mockito.anyVararg());
+			}
+		}
+
+		@Test
+		public void moveDirectoryReplaceExistingAtomically() throws IOException {
+			Mockito.doThrow(new NoSuchFileException("ciphertextSourceFile")).when(physicalFsProv).checkAccess(ciphertextSourceFile);
+
+			try {
+				thrown.expect(AtomicMoveNotSupportedException.class);
+				inTest.move(cleartextSource, cleartextTarget, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+			} finally {
+				verify(physicalFsProv, Mockito.never()).move(Mockito.any(), Mockito.any(), Mockito.anyVararg());
+			}
 		}
 
 	}
