@@ -49,7 +49,7 @@ public class CryptoFileStoreTest {
 	private final FileSystem fileSystem = mock(FileSystem.class);
 	private final FileStore delegate = mock(FileStore.class);
 	@SuppressWarnings("unchecked")
-	private final Set<Class<? extends FileAttributeView>> knownFileAttributeViewTypes = Sets.newSet(PosixFileAttributeView.class, DosFileAttributeView.class);
+	private final Set<Class<? extends FileAttributeView>> knownFileAttributeViewTypes = Sets.newSet(BasicFileAttributeView.class, FileOwnerAttributeView.class, PosixFileAttributeView.class, DosFileAttributeView.class);
 
 	@Before
 	public void setUp() throws IOException {
@@ -57,6 +57,39 @@ public class CryptoFileStoreTest {
 		when(fileSystem.provider()).thenReturn(provider);
 		when(provider.getFileStore(path)).thenReturn(delegate);
 		when(attributeViewProvider.knownFileAttributeViewTypes()).thenReturn(knownFileAttributeViewTypes);
+
+	}
+
+	@Test
+	public void testSupportedFileAttributeViewTypes() throws IOException {
+		when(delegate.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(true);
+		when(delegate.supportsFileAttributeView(FileOwnerAttributeView.class)).thenReturn(true);
+		when(delegate.supportsFileAttributeView(BasicFileAttributeView.class)).thenReturn(true);
+		when(delegate.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(false);
+
+		CryptoFileStore inTest = allowUncheckedThrowsOf(IOException.class).from(() -> new CryptoFileStore(path, attributeViewProvider));
+
+		Set<Class<? extends FileAttributeView>> result = inTest.supportedFileAttributeViewTypes();
+		assertTrue(result.contains(PosixFileAttributeView.class));
+		assertTrue(result.contains(FileOwnerAttributeView.class));
+		assertTrue(result.contains(BasicFileAttributeView.class));
+		assertFalse(result.contains(DosFileAttributeView.class));
+	}
+
+	@Test
+	public void testSupportedFileAttributeViewNames() throws IOException {
+		when(delegate.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(true);
+		when(delegate.supportsFileAttributeView(FileOwnerAttributeView.class)).thenReturn(true);
+		when(delegate.supportsFileAttributeView(BasicFileAttributeView.class)).thenReturn(true);
+		when(delegate.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(false);
+
+		CryptoFileStore inTest = allowUncheckedThrowsOf(IOException.class).from(() -> new CryptoFileStore(path, attributeViewProvider));
+
+		Set<String> result = inTest.supportedFileAttributeViewNames();
+		assertTrue(result.contains("posix"));
+		assertTrue(result.contains("owner"));
+		assertTrue(result.contains("basic"));
+		assertFalse(result.contains("dos"));
 	}
 
 	@Test
