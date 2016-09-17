@@ -345,7 +345,9 @@ class CryptoFileSystem extends FileSystem {
 				throw new FileAlreadyExistsException(cleartextTarget.toString());
 			}
 			if (ArrayUtils.contains(options, StandardCopyOption.COPY_ATTRIBUTES)) {
-				copyAttributes(ciphertextSourceDirFile, ciphertextTargetDirFile);
+				Path ciphertextSourceDir = cryptoPathMapper.getCiphertextDirPath(cleartextSource);
+				Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDirPath(cleartextTarget);
+				copyAttributes(ciphertextSourceDir, ciphertextTargetDir);
 			}
 		} else {
 			throw new NoSuchFileException(cleartextSource.toString());

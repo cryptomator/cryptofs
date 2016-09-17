@@ -55,6 +55,7 @@ class CryptoPathMapper {
 	}
 
 	private String getCiphertextFileName(String dirId, String cleartextName, CiphertextFileType fileType) {
+		// TODO overheadhunter: cache ciphertext names
 		String ciphertextName = cryptor.fileNameCryptor().encryptFilename(cleartextName, dirId.getBytes(StandardCharsets.UTF_8));
 		switch (fileType) {
 		case DIRECTORY:
@@ -69,11 +70,12 @@ class CryptoPathMapper {
 	}
 
 	public Directory getCiphertextDir(Path cleartextPath) throws IOException {
+		// TODO overheadhunter: refactor to recursive method, facilitating cached parent paths
 		String dirId = ROOT_DIR_ID;
 		Path dirPath = resolveDirectory(dirId);
 		for (int i = 0; i < cleartextPath.getNameCount(); i++) {
 			String cleartextName = cleartextPath.getName(i).toString();
-			String ciphertextName = DIR_PREFIX + cryptor.fileNameCryptor().encryptFilename(cleartextName, dirId.getBytes(StandardCharsets.UTF_8));
+			String ciphertextName = getCiphertextFileName(dirId, cleartextName, CiphertextFileType.DIRECTORY);
 			Path dirFilePath = dirPath.resolve(ciphertextName);
 			dirId = dirIdProvider.load(dirFilePath);
 			dirPath = resolveDirectory(dirId);
@@ -82,6 +84,7 @@ class CryptoPathMapper {
 	}
 
 	private Path resolveDirectory(String dirId) {
+		// TODO overheadhunter: cache hashes
 		String dirHash = cryptor.fileNameCryptor().hashDirectoryId(dirId);
 		return dataRoot.resolve(dirHash.substring(0, 2)).resolve(dirHash.substring(2));
 	}
