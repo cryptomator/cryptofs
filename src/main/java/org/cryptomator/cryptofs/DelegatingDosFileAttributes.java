@@ -10,33 +10,29 @@ package org.cryptomator.cryptofs;
 
 import java.nio.file.attribute.DosFileAttributes;
 
-class DelegatingDosFileAttributes extends DelegatingBasicFileAttributes implements DosFileAttributes {
+interface DelegatingDosFileAttributes extends DelegatingBasicFileAttributes, DosFileAttributes {
 
-	private final DosFileAttributes delegate;
+	@Override
+	DosFileAttributes getDelegate();
 
-	public DelegatingDosFileAttributes(DosFileAttributes delegate) {
-		super(delegate);
-		this.delegate = delegate;
+	@Override
+	default boolean isReadOnly() {
+		return getDelegate().isReadOnly();
 	}
 
 	@Override
-	public boolean isReadOnly() {
-		return delegate.isReadOnly();
+	default boolean isHidden() {
+		return getDelegate().isHidden();
 	}
 
 	@Override
-	public boolean isHidden() {
-		return delegate.isHidden();
+	default boolean isArchive() {
+		return getDelegate().isArchive();
 	}
 
 	@Override
-	public boolean isArchive() {
-		return delegate.isArchive();
-	}
-
-	@Override
-	public boolean isSystem() {
-		return delegate.isSystem();
+	default boolean isSystem() {
+		return getDelegate().isSystem();
 	}
 
 }

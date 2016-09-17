@@ -8,198 +8,234 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import static org.cryptomator.cryptofs.CryptoFileSystemUris.createUri;
+
 import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
-import java.nio.file.AccessDeniedException;
 import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryStream;
 import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
-import java.nio.file.FileSystemAlreadyExistsException;
-import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.nio.file.ProviderMismatchException;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
-import java.nio.file.attribute.PosixFileAttributeView;
-import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.spi.FileSystemProvider;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
+import org.cryptomator.cryptofs.CryptoFileSystemUris.ParsedUri;
+import org.cryptomator.cryptolib.common.SecureRandomModule;
+
+/**
+ * <p>
+ * A {@link FileSystemProvider} for CryptoFileSystems.
+ * <p>
+ * A CryptoFileSystem encrypts/decrypts data read/stored from/to it and uses a storage location for the encrypted data. The storage location is denoted by a {@link Path} and can thus be any location
+ * itself accessbile via a java.nio.FileSystem.
+ * <p>
+ * A CryptoFileSystem can be used as any other java.nio.FileSystem, e.g. by using the operations from {@link Files}.
+ * <p>
+ * <b>Usage</b>
+ * 
+ * We recommend to use {@link CryptoFileSystemProvider#newFileSystem(Path, CryptoFileSystemProperties)} to create a CryptoFileSystem. To do this:
+ * 
+ * <blockquote>
+ * 
+ * <pre>
+ * Path storageLocation = Paths.get("/home/cryptobot/vault");
+ * FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(
+ * 	storageLocation,
+ * 	{@link CryptoFileSystemProperties cryptoFileSystemProperties()}
+ * 		.withPassword("password")
+ * 		.withReadonlyFlag().build());
+ * </pre>
+ * 
+ * </blockquote>
+ * 
+ * Afterwards you can use the created {@code FileSystem} to create paths, do directory listings, create files and so on.
+ * 
+ * <p>
+ * To create a new FileSystem from a URI using {@link FileSystems#newFileSystem(URI, Map)} you may have a look at {@link CryptoFileSystemUris}.
+ * 
+ * @see CryptoFileSystemUris
+ * @see CryptoFileSystemProperties
+ * @see FileSystems
+ * @see FileSystem
+ */
 public class CryptoFileSystemProvider extends FileSystemProvider {
 
-	/**
-	 * example: cryptomator:///Path/to/vault#/path/inside/vault
-	 */
-	private static final String URI_SCHEME = "cryptomator";
+	private final CryptoFileSystems fileSystems;
 
-	final ConcurrentHashMap<Path, CryptoFileSystem> fileSystems = new ConcurrentHashMap<>();
+	public static FileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
+		return FileSystems.newFileSystem(createUri(pathToVault.toAbsolutePath()), properties);
+	}
+
+	public CryptoFileSystemProvider() {
+		this.fileSystems = DaggerCryptoFileSystemProviderComponent.builder() //
+				.secureRandomModule(new SecureRandomModule(strongSecureRandom())) //
+				.cryptoFileSystemProviderModule(CryptoFileSystemProviderModule.builder() //
+						.withCrytpoFileSystemProvider(this) //
+						.build()) //
+				.build() //
+				.fileSystems();
+	}
+
+	private static SecureRandom strongSecureRandom() {
+		try {
+			return SecureRandom.getInstanceStrong();
+		} catch (NoSuchAlgorithmException e) {
+			throw new IllegalStateException("A strong algorithm must exist in every Java platform.", e);
+		}
+	}
+
+	/**
+	 * @deprecated only for testing
+	 */
+	@Deprecated
+	CryptoFileSystemProvider(CryptoFileSystems fileSystems) {
+		this.fileSystems = fileSystems;
+	}
+
+	/**
+	 * @deprecated only for testing
+	 */
+	@Deprecated
+	CryptoFileSystems getCryptoFileSystems() {
+		return fileSystems;
+	}
 
 	@Override
 	public String getScheme() {
-		return URI_SCHEME;
+		return CryptoFileSystemUris.URI_SCHEME;
 	}
 
 	@Override
-	public FileSystem newFileSystem(URI uri, Map<String, ?> env) throws IOException {
-		Path pathToVault = FileSystems.getDefault().getPath(uri.getPath());
-		return fileSystems.compute(pathToVault, (key, value) -> {
-			if (value == null) {
-				return new CryptoFileSystem(this, key);
-			} else {
-				throw new FileSystemAlreadyExistsException();
-			}
-		});
+	public FileSystem newFileSystem(URI uri, Map<String, ?> rawProperties) throws IOException {
+		ParsedUri parsedUri = CryptoFileSystemUris.parseUri(uri);
+		CryptoFileSystemProperties properties = CryptoFileSystemProperties.wrap(rawProperties);
+		return fileSystems.create(parsedUri.pathToVault(), properties);
 	}
 
 	@Override
-	public FileSystem getFileSystem(URI uri) {
-		Path pathToVault = FileSystems.getDefault().getPath(uri.getPath());
-		return fileSystems.computeIfAbsent(pathToVault, key -> {
-			throw new FileSystemNotFoundException();
-		});
+	public CryptoFileSystem getFileSystem(URI uri) {
+		ParsedUri parsedUri = CryptoFileSystemUris.parseUri(uri);
+		return fileSystems.get(parsedUri.pathToVault());
 	}
 
 	@Override
 	public Path getPath(URI uri) {
-		Path pathToVault = FileSystems.getDefault().getPath(uri.getPath());
-		CryptoFileSystem fs = fileSystems.computeIfAbsent(pathToVault, key -> {
-			return new CryptoFileSystem(this, key);
-		});
-		return fs.getPath(uri.getFragment());
+		ParsedUri parsedUri = CryptoFileSystemUris.parseUri(uri);
+		return fileSystems.get(parsedUri.pathToVault()).getPath(parsedUri.pathInsideVault());
 	}
 
 	@Override
-	public AsynchronousFileChannel newAsynchronousFileChannel(Path path, Set<? extends OpenOption> options, ExecutorService executor, FileAttribute<?>... attrs) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+	public AsynchronousFileChannel newAsynchronousFileChannel(Path cleartextPath, Set<? extends OpenOption> options, ExecutorService executor, FileAttribute<?>... attrs) throws IOException {
+		if (options.contains(StandardOpenOption.APPEND)) {
+			throw new IllegalArgumentException("AsynchronousFileChannel can not be opened in append mode");
+		}
+		return new AsyncDelegatingFileChannel(newFileChannel(cleartextPath, options, attrs), executor);
 	}
 
 	@Override
-	public FileChannel newFileChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+	public FileChannel newFileChannel(Path cleartextPath, Set<? extends OpenOption> optionsSet, FileAttribute<?>... attrs) throws IOException {
+		return fileSystem(cleartextPath).newFileChannel(CryptoPath.cast(cleartextPath), optionsSet, attrs);
 	}
 
 	@Override
-	public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-		return newFileChannel(path, options, attrs);
+	public SeekableByteChannel newByteChannel(Path cleartextPath, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+		return newFileChannel(cleartextPath, options, attrs);
 	}
 
 	@Override
-	public DirectoryStream<Path> newDirectoryStream(Path dir, Filter<? super Path> filter) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
+	public DirectoryStream<Path> newDirectoryStream(Path cleartextDir, Filter<? super Path> filter) throws IOException {
+		return fileSystem(cleartextDir).newDirectoryStream(CryptoPath.cast(cleartextDir), filter);
 	}
 
 	@Override
-	public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
-		// TODO Auto-generated method stub
-
+	public void createDirectory(Path cleartextDir, FileAttribute<?>... attrs) throws IOException {
+		fileSystem(cleartextDir).createDirectory(CryptoPath.cast(cleartextDir), attrs);
 	}
 
 	@Override
-	public void delete(Path path) throws IOException {
-		// TODO Auto-generated method stub
-
+	public void delete(Path cleartextPath) throws IOException {
+		fileSystem(cleartextPath).delete(CryptoPath.cast(cleartextPath));
 	}
 
 	@Override
-	public void copy(Path source, Path target, CopyOption... options) throws IOException {
-		// TODO Auto-generated method stub
-
+	public void copy(Path cleartextSource, Path cleartextTarget, CopyOption... options) throws IOException {
+		// from javadoc: "both the source and target paths must be associated with this provider"
+		fileSystem(cleartextSource).copy(CryptoPath.cast(cleartextSource), CryptoPath.cast(cleartextTarget), options);
 	}
 
 	@Override
-	public void move(Path source, Path target, CopyOption... options) throws IOException {
-		// TODO Auto-generated method stub
-
+	public void move(Path cleartextSource, Path cleartextTarget, CopyOption... options) throws IOException {
+		// from javadoc: "both the source and target paths must be associated with this provider"
+		fileSystem(cleartextSource).move(CryptoPath.cast(cleartextSource), CryptoPath.cast(cleartextTarget), options);
 	}
 
 	@Override
-	public boolean isSameFile(Path path, Path path2) throws IOException {
-		return path.equals(path2);
+	public boolean isSameFile(Path cleartextPath, Path cleartextPath2) throws IOException {
+		return cleartextPath.getFileSystem() == cleartextPath2.getFileSystem() //
+				&& cleartextPath.toRealPath().equals(cleartextPath2.toRealPath());
 	}
 
 	@Override
-	public boolean isHidden(Path path) throws IOException {
-		FileStore store = getFileStore(path);
-		if (store.supportsFileAttributeView(DosFileAttributeView.class)) {
-			DosFileAttributeView view = this.getFileAttributeView(path, DosFileAttributeView.class);
-			return view.readAttributes().isHidden();
+	public boolean isHidden(Path cleartextPath) throws IOException {
+		return fileSystem(cleartextPath).isHidden(CryptoPath.cast(cleartextPath));
+	}
+
+	@Override
+	public FileStore getFileStore(Path cleartextPath) throws IOException {
+		return fileSystem(cleartextPath).getFileStore();
+	}
+
+	@Override
+	public void checkAccess(Path cleartextPath, AccessMode... modes) throws IOException {
+		fileSystem(cleartextPath).checkAccess(CryptoPath.cast(cleartextPath), modes);
+	}
+
+	@Override
+	public <V extends FileAttributeView> V getFileAttributeView(Path cleartextPath, Class<V> type, LinkOption... options) {
+		return fileSystem(cleartextPath).getFileAttributeView(CryptoPath.cast(cleartextPath), type, options);
+	}
+
+	@Override
+	public <A extends BasicFileAttributes> A readAttributes(Path cleartextPath, Class<A> type, LinkOption... options) throws IOException {
+		return fileSystem(cleartextPath).readAttributes(CryptoPath.cast(cleartextPath), type, options);
+	}
+
+	@Override
+	public Map<String, Object> readAttributes(Path cleartextPath, String attributes, LinkOption... options) throws IOException {
+		return fileSystem(cleartextPath).readAttributes(CryptoPath.cast(cleartextPath), attributes, options);
+	}
+
+	@Override
+	public void setAttribute(Path cleartextPath, String attribute, Object value, LinkOption... options) throws IOException {
+		fileSystem(cleartextPath).setAttribute(CryptoPath.cast(cleartextPath), attribute, value, options);
+	}
+
+	private CryptoFileSystem fileSystem(Path path) {
+		FileSystem fileSystem = path.getFileSystem();
+		if (fileSystem.provider() == this) {
+			return (CryptoFileSystem) fileSystem;
 		} else {
-			return false;
+			throw new ProviderMismatchException("Used a path from FileSystem:" + fileSystem.provider() + " with FileSystem:" + this);
 		}
-	}
-
-	@Override
-	public FileStore getFileStore(Path path) throws IOException {
-		return BasicPath.cast(path).getFileSystem().getFileStore();
-	}
-
-	@Override
-	public void checkAccess(Path path, AccessMode... modes) throws IOException {
-		// TODO check if file exists first and throw NoSuchFileException, if it doesn't.
-		FileStore store = getFileStore(path);
-		if (store.supportsFileAttributeView(PosixFileAttributeView.class)) {
-			PosixFileAttributeView view = this.getFileAttributeView(path, PosixFileAttributeView.class);
-			Set<PosixFilePermission> permissions = view.readAttributes().permissions();
-			boolean accessGranted = true;
-			for (AccessMode accessMode : modes) {
-				switch (accessMode) {
-				case READ:
-					accessGranted &= permissions.contains(PosixFilePermission.OWNER_READ);
-					break;
-				case WRITE:
-					accessGranted &= permissions.contains(PosixFilePermission.OWNER_WRITE);
-					break;
-				case EXECUTE:
-					accessGranted &= permissions.contains(PosixFilePermission.OWNER_EXECUTE);
-					break;
-				default:
-					throw new UnsupportedOperationException("AccessMode " + accessMode + " not supported.");
-				}
-			}
-			if (!accessGranted) {
-				throw new AccessDeniedException(path.toString());
-			}
-		}
-	}
-
-	@Override
-	public <V extends FileAttributeView> V getFileAttributeView(Path path, Class<V> type, LinkOption... options) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public <A extends BasicFileAttributes> A readAttributes(Path path, Class<A> type, LinkOption... options) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
-		// TODO Auto-generated method stub
-
 	}
 
 }

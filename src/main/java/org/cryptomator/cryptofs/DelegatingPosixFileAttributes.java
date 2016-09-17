@@ -14,28 +14,24 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.util.Set;
 
-class DelegatingPosixFileAttributes extends DelegatingBasicFileAttributes implements PosixFileAttributes {
+interface DelegatingPosixFileAttributes extends DelegatingBasicFileAttributes, PosixFileAttributes {
 
-	private final PosixFileAttributes delegate;
+	@Override
+	PosixFileAttributes getDelegate();
 
-	public DelegatingPosixFileAttributes(PosixFileAttributes delegate) {
-		super(delegate);
-		this.delegate = delegate;
+	@Override
+	default UserPrincipal owner() {
+		return getDelegate().owner();
 	}
 
 	@Override
-	public UserPrincipal owner() {
-		return delegate.owner();
+	default GroupPrincipal group() {
+		return getDelegate().group();
 	}
 
 	@Override
-	public GroupPrincipal group() {
-		return delegate.group();
-	}
-
-	@Override
-	public Set<PosixFilePermission> permissions() {
-		return delegate.permissions();
+	default Set<PosixFilePermission> permissions() {
+		return getDelegate().permissions();
 	}
 
 }

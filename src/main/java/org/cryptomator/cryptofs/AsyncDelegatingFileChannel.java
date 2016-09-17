@@ -32,6 +32,22 @@ class AsyncDelegatingFileChannel extends AsynchronousFileChannel {
 		this.executor = executor;
 	}
 
+	/**
+	 * @deprecated only for testing
+	 */
+	@Deprecated
+	FileChannel getChannel() {
+		return channel;
+	}
+
+	/**
+	 * @deprecated only for testing
+	 */
+	@Deprecated
+	ExecutorService getExecutor() {
+		return executor;
+	}
+
 	@Override
 	public void close() throws IOException {
 		channel.close();
@@ -110,7 +126,7 @@ class AsyncDelegatingFileChannel extends AsynchronousFileChannel {
 
 	private <T> Future<T> exceptionalFuture(Throwable exception) {
 		CompletableFuture<T> future = new CompletableFuture<>();
-		future.completeExceptionally(new ClosedChannelException());
+		future.completeExceptionally(exception);
 		return future;
 	}
 
