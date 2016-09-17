@@ -52,7 +52,9 @@ class CryptoPathMapper {
 		if (cleartextPath.getNameCount() == 0) {
 			throw new IllegalArgumentException("Invalid file path " + cleartextPath);
 		}
-		Directory dir = getCiphertextDir(cleartextPath.getParent());
+		CryptoPath dirPath = cleartextPath.getParent();
+		assert dirPath != null : "namecount > 0";
+		Directory dir = getCiphertextDir(dirPath);
 		String cleartextName = cleartextPath.getFileName().toString();
 		String ciphertextName = getCiphertextFileName(dir.dirId, cleartextName, fileType);
 		return dir.path.resolve(ciphertextName);
@@ -78,7 +80,9 @@ class CryptoPathMapper {
 		if (cleartextPath.getNameCount() == 0) {
 			return new Directory(ROOT_DIR_ID, directoryPathCache.getUnchecked(ROOT_DIR_ID));
 		} else {
-			Directory parent = getCiphertextDir(cleartextPath.getParent());
+			CryptoPath parentPath = cleartextPath.getParent();
+			assert parentPath != null : "namecount > 0";
+			Directory parent = getCiphertextDir(parentPath);
 			String cleartextName = cleartextPath.getFileName().toString();
 			String ciphertextName = getCiphertextFileName(parent.dirId, cleartextName, CiphertextFileType.DIRECTORY);
 			String dirId = dirIdProvider.load(parent.path.resolve(ciphertextName));

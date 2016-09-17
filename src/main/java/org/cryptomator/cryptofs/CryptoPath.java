@@ -79,10 +79,8 @@ class CryptoPath implements Path {
 		if (elementCount > 1) {
 			List<String> elems = elements.subList(0, elementCount - 1);
 			return copyWithElements(elems);
-		} else if (elementCount == 1 && isAbsolute()) {
-			return getRoot();
 		} else {
-			return null;
+			return getRoot();
 		}
 	}
 

@@ -15,65 +15,68 @@ import java.nio.channels.FileLock;
 class CryptoFileLock extends FileLock {
 
 	private final FileLock delegate;
-	
+
 	private CryptoFileLock(Builder builder) {
 		super(builder.channel, builder.position, builder.size, builder.shared);
 		this.delegate = builder.delegate;
 	}
-	
+
 	FileLock delegate() {
 		return delegate;
 	}
 
 	@Override
 	public boolean isValid() {
-		return delegate.isValid() && channel().isOpen();
+		FileChannel channel = channel();
+		assert channel != null : "final field initialized with non-null value in super constructor";
+		return delegate.isValid() && channel.isOpen();
 	}
 
 	@Override
 	public void release() throws IOException {
 		delegate.release();
 	}
-	
+
 	public static Builder builder() {
 		return new Builder();
 	}
-	
+
 	public static class Builder {
-		
+
 		private FileLock delegate;
 		private FileChannel channel;
 		private Long position;
 		private Long size;
 		private Boolean shared;
-		
-		private Builder() {}
-		
+
+		private Builder() {
+		}
+
 		public Builder withDelegate(FileLock delegate) {
 			this.delegate = delegate;
 			return this;
 		}
-		
+
 		public Builder withChannel(FileChannel channel) {
 			this.channel = channel;
-			return this;	
+			return this;
 		}
-		
+
 		public Builder withPosition(long position) {
 			this.position = position;
 			return this;
 		}
-		
+
 		public Builder withSize(long size) {
 			this.size = size;
 			return this;
 		}
-		
+
 		public Builder thatIsShared(boolean shared) {
 			this.shared = shared;
 			return this;
 		}
-		
+
 		public CryptoFileLock build() {
 			validate();
 			return new CryptoFileLock(this);
@@ -92,7 +95,7 @@ class CryptoFileLock extends FileLock {
 				throw new IllegalStateException(name + " must be set");
 			}
 		}
-		
+
 	}
 
 }

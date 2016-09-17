@@ -79,7 +79,9 @@ class LongFileNameProvider {
 			// TODO markuskreusch, overheadhunter: do we really want to persist this at this point?...
 			// ...maybe the caller only wanted to know if a file exists but didn't creat it.
 			Path file = resolveMetadataFile(shortName);
-			Files.createDirectories(file.getParent());
+			Path fileDir = file.getParent();
+			assert fileDir != null : "resolveMetadataFile returned path to a file";
+			Files.createDirectories(fileDir);
 			Files.write(file, longFileNameBytes);
 		}
 		return shortName;
