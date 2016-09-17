@@ -32,7 +32,7 @@ addons:
     build_command: "mvn compile -DskipTests=true"
     branch_pattern: release.*
 before_deploy:
-- gpg --import 34C80F11.gpg
+- "if gpg --list-secret-keys 34C80F11; then gpg --import 34C80F11.gpg; fi"
 deploy:
 - provider: script # SNAPSHOTS
   script: mvn clean deploy -DskipTests -Prelease --settings settings.xml
