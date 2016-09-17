@@ -78,7 +78,9 @@ class CryptoPathMapper {
 		if (cleartextPath.getNameCount() == 0) {
 			return new Directory(ROOT_DIR_ID, directoryPathCache.getUnchecked(ROOT_DIR_ID));
 		} else {
-			Directory parent = getCiphertextDir(cleartextPath.getParent());
+			CryptoPath parentPath = cleartextPath.getParent();
+			assert parentPath != null : "namecount > 0";
+			Directory parent = getCiphertextDir(parentPath);
 			String cleartextName = cleartextPath.getFileName().toString();
 			String ciphertextName = getCiphertextFileName(parent.dirId, cleartextName, CiphertextFileType.DIRECTORY);
 			String dirId = dirIdProvider.load(parent.path.resolve(ciphertextName));
