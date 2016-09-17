@@ -14,7 +14,7 @@ install:
 - mvn dependency:go-offline -Pcoverage
 - mvn dependency:go-offline -Prelease
 before_script:
-- mvn --update-snapshots dependency-check:check -Pdependency-check
+- "if [[ ${TRAVIS_BRANCH} == 'develop' && ${TRAVIS_PULL_REQUEST} == 'false' ]]; then mvn dependency-check:check -Pdependency-check; fi"
 script:
 - mvn clean test jacoco:report verify -Pcoverage
 after_success:
@@ -32,7 +32,7 @@ addons:
     build_command: "mvn compile -DskipTests=true"
     branch_pattern: release.*
 before_deploy:
-- gpg --import 34C80F11.gpg
+- "if gpg --list-secret-keys 34C80F11; then gpg --import 34C80F11.gpg; fi"
 deploy:
 - provider: script # SNAPSHOTS
   script: mvn clean deploy -DskipTests -Prelease --settings settings.xml
