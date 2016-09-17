@@ -47,3 +47,14 @@ deploy:
   on:
     repo: cryptomator/cryptofs
     tags: true
+- provider: releases
+  api_key:
+    secure: WuMAkgK9xZVCA4Fm5VCorHN7YwIKkb7bu1wn4/OarpbG20tnUJqrK/2hZpQtq5trHLydM5zRzTYxr1W/WgzoqSeiXwjr1cIqS69SRvCIowv3GPO1J4/ikxGB8Ggh4E9bpbprOpWJ9jBbDIRANSxE2MsX27xuQ6+9jK3+gM/UE8z7wIi9vNYzKBOHcjf57nQVVFzodCJWaMrJMdmGfD3YJM+R9F9jCOm3kg2QGNxNyOPahQWMfCDA2aRKjmqBoYEp+OPrUA2Ck2VPgu0EZTqqL3zwdRtferEhxf2p+Z0PPrVCH/F61VcMwTQbdVx+vJLa6pKkt/PIqPT6xtgrcr6fWCOPkCpQr9g1WFv9MOKF0I3o2DRjLb1dOek8VKVWQ+aNTdiOWMXa+0+szVAH3CtlrLG1ewxvJ4rGqKF61oNrZFWepKDokBCxHbXf8m3rCxFS+hNEtBSI6u9aBrLCuIkbZFr35BXkHomnvpPDoQVZ+Cbm2G3O7mj9r7N6RGfws5xIWSmLK4xlIjdFTGiGZzzhZzutrdxgzmd40pAbSrmYZK5XxtLMDpQvD5ZEsJYuiYekMip6PYB+viNNmxa5mvMOWF06RtWL5PGx0UkScTDRxRPW/cf+nnx5P9beduqqizr9sEJEwS+dQDoZ2UgLFYBiVw9H9tJNbabyTIVN/Cxmu7g=
+  file_glob: true
+  file:
+  - "target/dependency-list.txt"
+  - "target/*.jar"
+  skip_cleanup: true
+  on:
+    repo: cryptomator/cryptofs
+    tags: true
