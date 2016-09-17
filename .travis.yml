@@ -14,7 +14,7 @@ install:
 - mvn dependency:go-offline -Pcoverage
 - mvn dependency:go-offline -Prelease
 before_script:
-- mvn --update-snapshots dependency-check:check -Pdependency-check
+- "if [[ ${TRAVIS_BRANCH} == 'develop' && ${TRAVIS_PULL_REQUEST} == 'false' ]]; then mvn dependency-check:check -Pdependency-check; fi"
 script:
 - mvn clean test jacoco:report verify -Pcoverage
 after_success:
