@@ -41,7 +41,7 @@ class CryptoPathMapper {
 		FILE, DIRECTORY
 	};
 
-	public Path getCiphertextFilePath(Path cleartextPath, CiphertextFileType fileType) throws IOException {
+	public Path getCiphertextFilePath(CryptoPath cleartextPath, CiphertextFileType fileType) throws IOException {
 		if (cleartextPath.getNameCount() == 0) {
 			throw new IllegalArgumentException("Invalid file path " + cleartextPath);
 		}
@@ -65,22 +65,21 @@ class CryptoPathMapper {
 		}
 	}
 
-	public Path getCiphertextDirPath(Path cleartextPath) throws IOException {
+	public Path getCiphertextDirPath(CryptoPath cleartextPath) throws IOException {
 		return getCiphertextDir(cleartextPath).path;
 	}
 
-	public Directory getCiphertextDir(Path cleartextPath) throws IOException {
-		// TODO overheadhunter: refactor to recursive method, facilitating cached parent paths
-		String dirId = ROOT_DIR_ID;
-		Path dirPath = resolveDirectory(dirId);
-		for (int i = 0; i < cleartextPath.getNameCount(); i++) {
-			String cleartextName = cleartextPath.getName(i).toString();
-			String ciphertextName = getCiphertextFileName(dirId, cleartextName, CiphertextFileType.DIRECTORY);
-			Path dirFilePath = dirPath.resolve(ciphertextName);
-			dirId = dirIdProvider.load(dirFilePath);
-			dirPath = resolveDirectory(dirId);
+	public Directory getCiphertextDir(CryptoPath cleartextPath) throws IOException {
+		assert cleartextPath.isAbsolute();
+		if (cleartextPath.getNameCount() == 0) {
+			return new Directory(ROOT_DIR_ID, resolveDirectory(ROOT_DIR_ID));
+		} else {
+			Directory parent = getCiphertextDir(cleartextPath.getParent());
+			String cleartextName = cleartextPath.getFileName().toString();
+			String ciphertextName = getCiphertextFileName(parent.dirId, cleartextName, CiphertextFileType.DIRECTORY);
+			String dirId = dirIdProvider.load(parent.path.resolve(ciphertextName));
+			return new Directory(dirId, resolveDirectory(dirId));
 		}
-		return new Directory(dirId, dirPath);
 	}
 
 	private Path resolveDirectory(String dirId) {

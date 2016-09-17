@@ -9,14 +9,11 @@
 package org.cryptomator.cryptofs;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -24,86 +21,113 @@ import org.mockito.Mockito;
 
 public class CryptoPathMapperTest {
 
-	private Path tmpPath;
-	private Cryptor cryptor;
-	private FileNameCryptor nameCryptor;
-	private DirectoryIdProvider dirIdProvider;
-	private LongFileNameProvider longFileNameProvider;
+	private final Path pathToVault = Mockito.mock(Path.class, "pathToVault");
+	private final Path dataRoot = Mockito.mock(Path.class, "pathToVault/d/");
+	private final Cryptor cryptor = Mockito.mock(Cryptor.class);
+	private final FileNameCryptor fileNameCryptor = Mockito.mock(FileNameCryptor.class);
+	private final DirectoryIdProvider dirIdProvider = Mockito.mock(DirectoryIdProvider.class);
+	private final LongFileNameProvider longFileNameProvider = Mockito.mock(LongFileNameProvider.class);
+	private final CryptoFileSystem fileSystem = Mockito.mock(CryptoFileSystem.class);
 
 	@Before
 	public void setup() throws IOException {
-		tmpPath = Files.createTempDirectory("unit-tests");
-		cryptor = Mockito.mock(Cryptor.class);
-		nameCryptor = Mockito.mock(FileNameCryptor.class);
-		Mockito.when(cryptor.fileNameCryptor()).thenReturn(nameCryptor);
-		dirIdProvider = Mockito.mock(DirectoryIdProvider.class);
-		longFileNameProvider = Mockito.mock(LongFileNameProvider.class);
-	}
-
-	@After
-	public void teardown() throws IOException {
-		Files.delete(tmpPath);
+		Mockito.when(cryptor.fileNameCryptor()).thenReturn(fileNameCryptor);
+		Mockito.when(pathToVault.resolve("d")).thenReturn(dataRoot);
+		TestHelper.prepareMockForPathCreation(fileSystem, pathToVault);
 	}
 
 	@Test
 	public void testPathEncryptionForRoot() throws IOException {
-		Mockito.when(nameCryptor.hashDirectoryId("")).thenReturn("0000");
+		Path d00 = Mockito.mock(Path.class);
+		Mockito.when(dataRoot.resolve("00")).thenReturn(d00);
+		Mockito.when(fileNameCryptor.hashDirectoryId("")).thenReturn("0000");
 
-		CryptoPathMapper mapper = new CryptoPathMapper(tmpPath, cryptor, dirIdProvider, longFileNameProvider);
-		Path path = mapper.getCiphertextDirPath(Paths.get("/"));
-		Assert.assertEquals(tmpPath.resolve("d/00/00"), path);
+		Path d0000 = Mockito.mock(Path.class);
+		Mockito.when(d00.resolve("00")).thenReturn(d0000);
+
+		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider);
+		Path path = mapper.getCiphertextDirPath(fileSystem.getRootPath());
+		Assert.assertEquals(d0000, path);
 	}
 
 	@Test
 	public void testPathEncryptionForFoo() throws IOException {
-		Mockito.when(nameCryptor.hashDirectoryId("")).thenReturn("0000");
+		Path d00 = Mockito.mock(Path.class);
+		Mockito.when(dataRoot.resolve("00")).thenReturn(d00);
+		Mockito.when(fileNameCryptor.hashDirectoryId("")).thenReturn("0000");
 
-		Mockito.when(nameCryptor.encryptFilename("foo", "".getBytes())).thenReturn("oof");
-		Mockito.when(dirIdProvider.load(tmpPath.resolve("d/00/00/0oof"))).thenReturn("1");
-		Mockito.when(nameCryptor.hashDirectoryId("1")).thenReturn("0001");
+		Path d0000 = Mockito.mock(Path.class);
+		Mockito.when(d00.resolve("00")).thenReturn(d0000);
+		Mockito.when(fileNameCryptor.encryptFilename("foo", "".getBytes())).thenReturn("oof");
+		Mockito.when(dirIdProvider.load(pathToVault.resolve("d/00/00/0oof"))).thenReturn("1");
+		Mockito.when(fileNameCryptor.hashDirectoryId("1")).thenReturn("0001");
 
-		CryptoPathMapper mapper = new CryptoPathMapper(tmpPath, cryptor, dirIdProvider, longFileNameProvider);
-		Path path = mapper.getCiphertextDirPath(Paths.get("/foo"));
-		Assert.assertEquals(tmpPath.resolve("d/00/01/"), path);
+		Path d0001 = Mockito.mock(Path.class);
+		Mockito.when(d00.resolve("01")).thenReturn(d0001);
+
+		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider);
+		Path path = mapper.getCiphertextDirPath(fileSystem.getPath("/foo"));
+		Assert.assertEquals(d0001, path);
 	}
 
 	@Test
 	public void testPathEncryptionForFooBar() throws IOException {
-		Mockito.when(nameCryptor.hashDirectoryId("")).thenReturn("0000");
+		Path d00 = Mockito.mock(Path.class);
+		Mockito.when(dataRoot.resolve("00")).thenReturn(d00);
+		Mockito.when(fileNameCryptor.hashDirectoryId("")).thenReturn("0000");
 
-		Mockito.when(nameCryptor.encryptFilename("foo", "".getBytes())).thenReturn("oof");
-		Mockito.when(dirIdProvider.load(tmpPath.resolve("d/00/00/0oof"))).thenReturn("1");
-		Mockito.when(nameCryptor.hashDirectoryId("1")).thenReturn("0001");
+		Path d0000 = Mockito.mock(Path.class);
+		Mockito.when(d00.resolve("00")).thenReturn(d0000);
+		Mockito.when(fileNameCryptor.encryptFilename("foo", "".getBytes())).thenReturn("oof");
+		Mockito.when(dirIdProvider.load(pathToVault.resolve("d/00/00/0oof"))).thenReturn("1");
+		Mockito.when(fileNameCryptor.hashDirectoryId("1")).thenReturn("0001");
 
-		Mockito.when(nameCryptor.encryptFilename("bar", "1".getBytes())).thenReturn("rab");
-		Mockito.when(dirIdProvider.load(tmpPath.resolve("d/00/01/0rab"))).thenReturn("2");
-		Mockito.when(nameCryptor.hashDirectoryId("2")).thenReturn("0002");
+		Path d0001 = Mockito.mock(Path.class);
+		Mockito.when(d00.resolve("01")).thenReturn(d0001);
+		Mockito.when(fileNameCryptor.encryptFilename("bar", "1".getBytes())).thenReturn("rab");
+		Mockito.when(dirIdProvider.load(pathToVault.resolve("d/00/01/0rab"))).thenReturn("2");
+		Mockito.when(fileNameCryptor.hashDirectoryId("2")).thenReturn("0002");
 
-		CryptoPathMapper mapper = new CryptoPathMapper(tmpPath, cryptor, dirIdProvider, longFileNameProvider);
-		Path path = mapper.getCiphertextDirPath(Paths.get("/foo/bar"));
-		Assert.assertEquals(tmpPath.resolve("d/00/02/"), path);
+		Path d0002 = Mockito.mock(Path.class);
+		Mockito.when(d00.resolve("02")).thenReturn(d0002);
+
+		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider);
+		Path path = mapper.getCiphertextDirPath(fileSystem.getPath("/foo/bar"));
+		Assert.assertEquals(d0002, path);
 	}
 
 	@Test
 	public void testPathEncryptionForFooBarBaz() throws IOException {
-		Mockito.when(nameCryptor.hashDirectoryId("")).thenReturn("0000");
+		Path d00 = Mockito.mock(Path.class);
+		Mockito.when(dataRoot.resolve("00")).thenReturn(d00);
+		Mockito.when(fileNameCryptor.hashDirectoryId("")).thenReturn("0000");
 
-		Mockito.when(nameCryptor.encryptFilename("foo", "".getBytes())).thenReturn("oof");
-		Mockito.when(dirIdProvider.load(tmpPath.resolve("d/00/00/0oof"))).thenReturn("1");
-		Mockito.when(nameCryptor.hashDirectoryId("1")).thenReturn("0001");
+		Path d0000 = Mockito.mock(Path.class);
+		Mockito.when(d00.resolve("00")).thenReturn(d0000);
+		Mockito.when(fileNameCryptor.encryptFilename("foo", "".getBytes())).thenReturn("oof");
+		Mockito.when(dirIdProvider.load(pathToVault.resolve("d/00/00/0oof"))).thenReturn("1");
+		Mockito.when(fileNameCryptor.hashDirectoryId("1")).thenReturn("0001");
 
-		Mockito.when(nameCryptor.encryptFilename("bar", "1".getBytes())).thenReturn("rab");
-		Mockito.when(dirIdProvider.load(tmpPath.resolve("d/00/01/0rab"))).thenReturn("2");
-		Mockito.when(nameCryptor.hashDirectoryId("2")).thenReturn("0002");
+		Path d0001 = Mockito.mock(Path.class);
+		Mockito.when(d00.resolve("01")).thenReturn(d0001);
+		Mockito.when(fileNameCryptor.encryptFilename("bar", "1".getBytes())).thenReturn("rab");
+		Mockito.when(dirIdProvider.load(pathToVault.resolve("d/00/01/0rab"))).thenReturn("2");
+		Mockito.when(fileNameCryptor.hashDirectoryId("2")).thenReturn("0002");
 
-		Mockito.when(nameCryptor.encryptFilename("baz", "2".getBytes())).thenReturn("zab");
+		Path d0002 = Mockito.mock(Path.class);
+		Mockito.when(d00.resolve("02")).thenReturn(d0002);
+		Mockito.when(fileNameCryptor.encryptFilename("baz", "2".getBytes())).thenReturn("zab");
 
-		CryptoPathMapper mapper = new CryptoPathMapper(tmpPath, cryptor, dirIdProvider, longFileNameProvider);
-		Path path = mapper.getCiphertextFilePath(Paths.get("/foo/bar/baz"), CiphertextFileType.FILE);
-		Assert.assertEquals(tmpPath.resolve("d/00/02/zab"), path);
+		Path d0002zab = Mockito.mock(Path.class);
+		Path d00020zab = Mockito.mock(Path.class);
+		Mockito.when(d0002.resolve("zab")).thenReturn(d0002zab);
+		Mockito.when(d0002.resolve("0zab")).thenReturn(d00020zab);
 
-		Path path2 = mapper.getCiphertextFilePath(Paths.get("/foo/bar/baz"), CiphertextFileType.DIRECTORY);
-		Assert.assertEquals(tmpPath.resolve("d/00/02/0zab"), path2);
+		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider);
+		Path path = mapper.getCiphertextFilePath(fileSystem.getPath("/foo/bar/baz"), CiphertextFileType.FILE);
+		Assert.assertEquals(d0002zab, path);
+		Path path2 = mapper.getCiphertextFilePath(fileSystem.getPath("/foo/bar/baz"), CiphertextFileType.DIRECTORY);
+		Assert.assertEquals(d00020zab, path2);
 	}
 
 }

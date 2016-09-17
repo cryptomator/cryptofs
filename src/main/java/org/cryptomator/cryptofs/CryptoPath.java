@@ -59,7 +59,7 @@ class CryptoPath implements Path {
 	}
 
 	@Override
-	public Path getRoot() {
+	public CryptoPath getRoot() {
 		return absolute ? fileSystem.getRootPath() : null;
 	}
 
@@ -74,7 +74,7 @@ class CryptoPath implements Path {
 	}
 
 	@Override
-	public Path getParent() {
+	public CryptoPath getParent() {
 		int elementCount = getNameCount();
 		if (elementCount > 1) {
 			List<String> elems = elements.subList(0, elementCount - 1);

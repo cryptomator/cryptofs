@@ -373,7 +373,7 @@ public class CryptoFileSystemTest {
 
 		public class Copy {
 
-			private final Path cleartextTargetParent = mock(Path.class, "cleartextTargetParent");
+			private final CryptoPath cleartextTargetParent = mock(CryptoPath.class, "cleartextTargetParent");
 			private final Path ciphertextTargetParent = mock(Path.class, "ciphertextTargetParent");
 			private final Path ciphertextTargetDirParent = mock(Path.class, "ciphertextTargetDirParent");
 			private final FileChannel ciphertextTargetDirFileChannel = mock(FileChannel.class);

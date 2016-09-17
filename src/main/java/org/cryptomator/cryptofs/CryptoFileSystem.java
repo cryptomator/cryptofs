@@ -186,7 +186,7 @@ class CryptoFileSystem extends FileSystem {
 		return null;
 	}
 
-	<A extends BasicFileAttributes> A readAttributes(Path cleartextPath, Class<A> type, LinkOption... options) throws IOException {
+	<A extends BasicFileAttributes> A readAttributes(CryptoPath cleartextPath, Class<A> type, LinkOption... options) throws IOException {
 		Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
 		if (Files.notExists(ciphertextDirPath) && cleartextPath.getNameCount() > 0) {
 			Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
@@ -196,7 +196,7 @@ class CryptoFileSystem extends FileSystem {
 		}
 	}
 
-	<V extends FileAttributeView> V getFileAttributeView(Path cleartextPath, Class<V> type, LinkOption... options) {
+	<V extends FileAttributeView> V getFileAttributeView(CryptoPath cleartextPath, Class<V> type, LinkOption... options) {
 		try {
 			Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
 			if (Files.notExists(ciphertextDirPath) && cleartextPath.getNameCount() > 0) {
@@ -210,7 +210,7 @@ class CryptoFileSystem extends FileSystem {
 		}
 	}
 
-	void checkAccess(Path cleartextPath, AccessMode... modes) throws IOException {
+	void checkAccess(CryptoPath cleartextPath, AccessMode... modes) throws IOException {
 		if (fileStore.supportsFileAttributeView(PosixFileAttributeView.class)) {
 			Set<PosixFilePermission> permissions = readAttributes(cleartextPath, PosixFileAttributes.class).permissions();
 			boolean accessGranted = true;
@@ -243,7 +243,7 @@ class CryptoFileSystem extends FileSystem {
 		}
 	}
 
-	boolean isHidden(Path cleartextPath) throws IOException {
+	boolean isHidden(CryptoPath cleartextPath) throws IOException {
 		if (fileStore.supportsFileAttributeView(DosFileAttributeView.class)) {
 			DosFileAttributeView view = this.getFileAttributeView(cleartextPath, DosFileAttributeView.class);
 			return view.readAttributes().isHidden();
@@ -252,8 +252,8 @@ class CryptoFileSystem extends FileSystem {
 		}
 	}
 
-	void createDirectory(Path cleartextDir, FileAttribute<?>... attrs) throws IOException {
-		Path cleartextParentDir = cleartextDir.getParent();
+	void createDirectory(CryptoPath cleartextDir, FileAttribute<?>... attrs) throws IOException {
+		CryptoPath cleartextParentDir = cleartextDir.getParent();
 		if (cleartextParentDir == null) {
 			return;
 		}
@@ -282,12 +282,12 @@ class CryptoFileSystem extends FileSystem {
 		}
 	}
 
-	DirectoryStream<Path> newDirectoryStream(Path cleartextDir, Filter<? super Path> filter) throws IOException {
+	DirectoryStream<Path> newDirectoryStream(CryptoPath cleartextDir, Filter<? super Path> filter) throws IOException {
 		Directory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
 		return new CryptoDirectoryStream(ciphertextDir, cleartextDir, cryptor.fileNameCryptor(), longFileNameProvider, filter);
 	}
 
-	FileChannel newFileChannel(Path cleartextPath, Set<? extends OpenOption> optionsSet, FileAttribute<?>... attrs) throws IOException {
+	FileChannel newFileChannel(CryptoPath cleartextPath, Set<? extends OpenOption> optionsSet, FileAttribute<?>... attrs) throws IOException {
 		EffectiveOpenOptions options = EffectiveOpenOptions.from(optionsSet);
 		Path ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
 		return openCryptoFiles.get(ciphertextPath, options).newFileChannel(options);
