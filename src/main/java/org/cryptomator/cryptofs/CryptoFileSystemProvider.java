@@ -72,7 +72,10 @@ import org.cryptomator.cryptolib.common.SecureRandomModule;
  * <p>
  * To create a new FileSystem from a URI using {@link FileSystems#newFileSystem(URI, Map)} you may have a look at {@link CryptoFileSystemUris}.
  * 
- * @see {@link CryptoFileSystemUris}, {@link CryptoFileSystemProperties}, {@link FileSystems}, {@link FileSystem}
+ * @see CryptoFileSystemUris
+ * @see CryptoFileSystemProperties
+ * @see FileSystems
+ * @see FileSystem
  */
 public class CryptoFileSystemProvider extends FileSystemProvider {
 
