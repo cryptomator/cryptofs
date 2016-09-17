@@ -76,6 +76,8 @@ class LongFileNameProvider {
 		String shortName = BASE32.encodeAsString(hash) + LONG_NAME_FILE_EXT;
 		if (ids.getIfPresent(shortName) == null) {
 			ids.put(shortName, longFileName);
+			// TODO markuskreusch, overheadhunter: do we really want to persist this at this point?...
+			// ...maybe the caller only wanted to know if a file exists but didn't creat it.
 			Path file = resolveMetadataFile(shortName);
 			Files.createDirectories(file.getParent());
 			Files.write(file, longFileNameBytes);

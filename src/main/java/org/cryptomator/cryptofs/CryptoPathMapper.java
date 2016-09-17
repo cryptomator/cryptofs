@@ -19,15 +19,21 @@ import javax.inject.Inject;
 
 import org.cryptomator.cryptolib.api.Cryptor;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+
 @PerFileSystem
 class CryptoPathMapper {
 
 	private static final String ROOT_DIR_ID = "";
+	private static final int MAX_CACHED_DIR_PATHS = 1000;
 
 	private final Cryptor cryptor;
 	private final Path dataRoot;
 	private final DirectoryIdProvider dirIdProvider;
 	private final LongFileNameProvider longFileNameProvider;
+	private final LoadingCache<String, Path> directoryPathCache;
 
 	@Inject
 	public CryptoPathMapper(@PathToVault Path pathToVault, Cryptor cryptor, DirectoryIdProvider dirIdProvider, LongFileNameProvider longFileNameProvider) {
@@ -35,6 +41,7 @@ class CryptoPathMapper {
 		this.cryptor = cryptor;
 		this.dirIdProvider = dirIdProvider;
 		this.longFileNameProvider = longFileNameProvider;
+		this.directoryPathCache = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_DIR_PATHS).build(CacheLoader.from(this::resolveDirectory));
 	}
 
 	public enum CiphertextFileType {
@@ -48,19 +55,16 @@ class CryptoPathMapper {
 		Directory dir = getCiphertextDir(cleartextPath.getParent());
 		String cleartextName = cleartextPath.getFileName().toString();
 		String ciphertextName = getCiphertextFileName(dir.dirId, cleartextName, fileType);
-		if (ciphertextName.length() >= Constants.NAME_SHORTENING_THRESHOLD) {
-			ciphertextName = longFileNameProvider.deflate(ciphertextName);
-		}
 		return dir.path.resolve(ciphertextName);
 	}
 
-	private String getCiphertextFileName(String dirId, String cleartextName, CiphertextFileType fileType) {
+	private String getCiphertextFileName(String dirId, String cleartextName, CiphertextFileType fileType) throws IOException {
 		// TODO overheadhunter: cache ciphertext names
-		String ciphertextName = cryptor.fileNameCryptor().encryptFilename(cleartextName, dirId.getBytes(StandardCharsets.UTF_8));
-		switch (fileType) {
-		case DIRECTORY:
-			return DIR_PREFIX + ciphertextName;
-		default:
+		String prefix = (fileType == CiphertextFileType.DIRECTORY) ? DIR_PREFIX : "";
+		String ciphertextName = prefix + cryptor.fileNameCryptor().encryptFilename(cleartextName, dirId.getBytes(StandardCharsets.UTF_8));
+		if (ciphertextName.length() >= Constants.NAME_SHORTENING_THRESHOLD) {
+			return longFileNameProvider.deflate(ciphertextName);
+		} else {
 			return ciphertextName;
 		}
 	}
@@ -72,18 +76,17 @@ class CryptoPathMapper {
 	public Directory getCiphertextDir(CryptoPath cleartextPath) throws IOException {
 		assert cleartextPath.isAbsolute();
 		if (cleartextPath.getNameCount() == 0) {
-			return new Directory(ROOT_DIR_ID, resolveDirectory(ROOT_DIR_ID));
+			return new Directory(ROOT_DIR_ID, directoryPathCache.getUnchecked(ROOT_DIR_ID));
 		} else {
 			Directory parent = getCiphertextDir(cleartextPath.getParent());
 			String cleartextName = cleartextPath.getFileName().toString();
 			String ciphertextName = getCiphertextFileName(parent.dirId, cleartextName, CiphertextFileType.DIRECTORY);
 			String dirId = dirIdProvider.load(parent.path.resolve(ciphertextName));
-			return new Directory(dirId, resolveDirectory(dirId));
+			return new Directory(dirId, directoryPathCache.getUnchecked(dirId));
 		}
 	}
 
 	private Path resolveDirectory(String dirId) {
-		// TODO overheadhunter: cache hashes
 		String dirHash = cryptor.fileNameCryptor().hashDirectoryId(dirId);
 		return dataRoot.resolve(dirHash.substring(0, 2)).resolve(dirHash.substring(2));
 	}
