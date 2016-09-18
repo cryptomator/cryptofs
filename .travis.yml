@@ -20,8 +20,8 @@ script:
 after_success:
 - "bash <(curl -s https://codecov.io/bash)"
 - "if ! gpg --list-secret-keys 34C80F11; then gpg --import 34C80F11.gpg; fi"
-- "if [[ ${TRAVIS_TAG} == '' ]]; then mvn clean install -DskipTests -Prelease; fi" # SNAPSHOTS
-- "if [[ ${TRAVIS_TAG} != '' ]]; then mvn clean versions:set -DnewVersion=${TRAVIS_TAG} install -DskipTests -Prelease; fi" # RELEASES
+- "if [[ ${TRAVIS_TAG} == '' ]]; then mvn clean install -DskipTests -Prelease --settings settings.xml; fi" # SNAPSHOTS
+- "if [[ ${TRAVIS_TAG} != '' ]]; then mvn clean versions:set -DnewVersion=${TRAVIS_TAG} install -DskipTests -Prelease --settings settings.xml; fi" # RELEASES
 cache:
   directories:
   - $HOME/.m2
