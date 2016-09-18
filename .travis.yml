@@ -12,16 +12,16 @@ env:
 install:
 - mvn dependency:go-offline -Pdependency-check
 - mvn dependency:go-offline -Pcoverage
-- mvn dependency:go-offline -Prelease
+- mvn source:help javadoc:help dependency:go-offline -Prelease
 before_script:
 - "if [[ ${TRAVIS_BRANCH} == 'develop' && ${TRAVIS_PULL_REQUEST} == 'false' ]]; then mvn dependency-check:check -Pdependency-check; fi"
+- "if ! gpg --list-secret-keys 34C80F11; then gpg --import 34C80F11.gpg; fi"
 script:
-- mvn clean test jacoco:report verify -Pcoverage
+- "mvn clean test jacoco:report verify -Pcoverage"
 after_success:
 - "bash <(curl -s https://codecov.io/bash)"
-- "if ! gpg --list-secret-keys 34C80F11; then gpg --import 34C80F11.gpg; fi"
-- "if [[ ${TRAVIS_TAG} == '' ]]; then mvn clean install -DskipTests -Prelease --settings settings.xml; fi" # SNAPSHOTS
-- "if [[ ${TRAVIS_TAG} != '' ]]; then mvn clean versions:set -DnewVersion=${TRAVIS_TAG} install -DskipTests -Prelease --settings settings.xml; fi" # RELEASES
+- "if [[ ${TRAVIS_BRANCH} == 'develop' ]]; then mvn clean deploy -DskipTests -Prelease --settings settings.xml; fi" # Deploy snapshots
+- "if [[ ${TRAVIS_TAG} != '' ]]; then mvn clean versions:set -DnewVersion=${TRAVIS_TAG} deploy -DskipTests -Prelease --settings settings.xml; fi" # Deploy releases
 cache:
   directories:
   - $HOME/.m2
@@ -37,13 +37,6 @@ addons:
 before_deploy:
 - "ls -la target"
 deploy:
-- provider: script
-  script: mvn deploy -Prelease --settings settings.xml
-  skip_cleanup: true
-  on:
-    repo: cryptomator/cryptofs
-    all_branches: true
-    condition: ${TRAVIS_BRANCH} == 'develop' || ${TRAVIS_TAG} != '' # snapshots from develop branch as well as tagged releases
 - provider: releases
   api_key:
     secure: WuMAkgK9xZVCA4Fm5VCorHN7YwIKkb7bu1wn4/OarpbG20tnUJqrK/2hZpQtq5trHLydM5zRzTYxr1W/WgzoqSeiXwjr1cIqS69SRvCIowv3GPO1J4/ikxGB8Ggh4E9bpbprOpWJ9jBbDIRANSxE2MsX27xuQ6+9jK3+gM/UE8z7wIi9vNYzKBOHcjf57nQVVFzodCJWaMrJMdmGfD3YJM+R9F9jCOm3kg2QGNxNyOPahQWMfCDA2aRKjmqBoYEp+OPrUA2Ck2VPgu0EZTqqL3zwdRtferEhxf2p+Z0PPrVCH/F61VcMwTQbdVx+vJLa6pKkt/PIqPT6xtgrcr6fWCOPkCpQr9g1WFv9MOKF0I3o2DRjLb1dOek8VKVWQ+aNTdiOWMXa+0+szVAH3CtlrLG1ewxvJ4rGqKF61oNrZFWepKDokBCxHbXf8m3rCxFS+hNEtBSI6u9aBrLCuIkbZFr35BXkHomnvpPDoQVZ+Cbm2G3O7mj9r7N6RGfws5xIWSmLK4xlIjdFTGiGZzzhZzutrdxgzmd40pAbSrmYZK5XxtLMDpQvD5ZEsJYuiYekMip6PYB+viNNmxa5mvMOWF06RtWL5PGx0UkScTDRxRPW/cf+nnx5P9beduqqizr9sEJEwS+dQDoZ2UgLFYBiVw9H9tJNbabyTIVN/Cxmu7g=
