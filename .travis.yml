@@ -33,7 +33,6 @@ addons:
     branch_pattern: release.*
 before_deploy:
 - "if ! gpg --list-secret-keys 34C80F11; then gpg --import 34C80F11.gpg; fi"
-- "ls -la target"
 deploy:
 - provider: script # SNAPSHOTS
   script: mvn clean deploy -DskipTests -Prelease --settings settings.xml
