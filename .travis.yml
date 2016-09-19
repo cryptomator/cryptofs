@@ -55,6 +55,7 @@ deploy:
   - "target/dependency-list.txt"
   - "target/*.jar"
   skip_cleanup: true
+  prerelease: true
   on:
     repo: cryptomator/cryptofs
     tags: true
