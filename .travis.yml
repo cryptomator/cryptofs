@@ -15,13 +15,10 @@ install:
 - mvn source:help javadoc:help dependency:go-offline -Prelease
 before_script:
 - "if [[ ${TRAVIS_BRANCH} == 'develop' && ${TRAVIS_PULL_REQUEST} == 'false' ]]; then mvn dependency-check:check -Pdependency-check; fi"
-- "if ! gpg --list-secret-keys 34C80F11; then gpg --import 34C80F11.gpg; fi"
 script:
 - "mvn clean test jacoco:report verify -Pcoverage"
 after_success:
 - "bash <(curl -s https://codecov.io/bash)"
-- "if [[ ${TRAVIS_BRANCH} == 'develop' ]]; then mvn clean deploy -DskipTests -Prelease --settings settings.xml; fi" # Deploy snapshots
-- "if [[ ${TRAVIS_TAG} != '' ]]; then mvn clean versions:set -DnewVersion=${TRAVIS_TAG} deploy -DskipTests -Prelease --settings settings.xml; fi" # Deploy releases
 cache:
   directories:
   - $HOME/.m2
@@ -35,8 +32,22 @@ addons:
     build_command: "mvn compile -DskipTests=true"
     branch_pattern: release.*
 before_deploy:
+- "if ! gpg --list-secret-keys 34C80F11; then gpg --import 34C80F11.gpg; fi"
 - "ls -la target"
 deploy:
+- provider: script # SNAPSHOTS
+  script: mvn clean deploy -DskipTests -Prelease --settings settings.xml
+  skip_cleanup: true
+  on:
+    repo: cryptomator/cryptofs
+    branch: develop
+    condition: $TRAVIS_TAG = ''
+- provider: script # RELEASES
+  script: mvn clean versions:set -DnewVersion=${TRAVIS_TAG} deploy -DskipTests -Prelease --settings settings.xml
+  skip_cleanup: true
+  on:
+    repo: cryptomator/cryptofs
+    tags: true
 - provider: releases
   api_key:
     secure: MuPqDpIJweuPZnZN2jVPPeiYc56r5Hr1TP+7s+caH+/Z0ToQQbsewRZtwvN1/vsf34XGH+tPTZfzkvakNbKuqgy1H94Mtz7yEyn3zo5RvQGxe2/aI3mX//CR4EuJBBrAxqcrJgyyuElE1WrtJC/2Lc0vGStOV34bZUMpXil2MPd3vNTC1Vufp/qJDYknAXka5S+oRsogKmKvXrdtsAsfn9iRwRflMtDe7y6qD18vQPl6LkIxq+BV68z/CEgHBvaO9TlxabYcOwFCFhwVDye0XIvoewS+UZpgc1zxTOcNeRfjYzKuBwsgpa2/aE500pfHaWqwA/1vHsY0yrEIqYN7V+kA8D+QAHmMzrtbJ68nrH59et++IE/BTBND4bd5BE8IUf5Knsr1OYlP8QIUNG69sYka1Wms8sZqQiTW3hKfg6zCcB85fUY7TwVZGlRBDimj0DDcNlItuTdLMjMWn86NsxCk33r2cgy6isY9xCK+KNu7sBBbd5hOTLvmOgtSMi8+txiKth+/3DuUqj4s6kjldUUAeJv7KZ8UkbBn30E8Vl7cGPELVH6slcpcSv0xxgVNkehzYJjx0OAN5LomxJEfuVy8FFjWx8cffY/NJcNuqem0s36rNZEA5NEdYqIWL9XCLrUGytO4eBxVjfQNXjnAYUy5AKpcRrVaPswsHYQ7/XI=
