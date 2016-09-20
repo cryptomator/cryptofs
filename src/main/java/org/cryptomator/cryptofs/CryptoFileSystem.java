@@ -76,6 +76,7 @@ class CryptoFileSystem extends FileSystem {
 	private final DirectoryIdProvider dirIdProvider;
 	private final LongFileNameProvider longFileNameProvider;
 	private final CryptoFileAttributeProvider fileAttributeProvider;
+	private final CryptoFileAttributeByNameProvider fileAttributeByNameProvider;
 	private final CryptoFileAttributeViewProvider fileAttributeViewProvider;
 	private final OpenCryptoFiles openCryptoFiles;
 	private final CryptoFileStore fileStore;
@@ -87,7 +88,7 @@ class CryptoFileSystem extends FileSystem {
 	public CryptoFileSystem(@PathToVault Path pathToVault, CryptoFileSystemProperties properties, Cryptor cryptor, CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, CryptoFileStore fileStore,
 			OpenCryptoFiles openCryptoFiles, CryptoPathMapper cryptoPathMapper, DirectoryIdProvider dirIdProvider, LongFileNameProvider longFileNameProvider, CryptoFileAttributeProvider fileAttributeProvider,
 			CryptoFileAttributeViewProvider fileAttributeViewProvider, PathMatcherFactory pathMatcherFactory, CryptoPathFactory cryptoPathFactory, CryptoFileSystemStats stats,
-			RootDirectoryInitializer rootDirectoryInitializer) {
+			RootDirectoryInitializer rootDirectoryInitializer, CryptoFileAttributeByNameProvider fileAttributeByNameProvider) {
 		this.cryptor = cryptor;
 		this.provider = provider;
 		this.cryptoFileSystems = cryptoFileSystems;
@@ -96,6 +97,7 @@ class CryptoFileSystem extends FileSystem {
 		this.dirIdProvider = dirIdProvider;
 		this.longFileNameProvider = longFileNameProvider;
 		this.fileAttributeProvider = fileAttributeProvider;
+		this.fileAttributeByNameProvider = fileAttributeByNameProvider;
 		this.fileAttributeViewProvider = fileAttributeViewProvider;
 		this.openCryptoFiles = openCryptoFiles;
 		this.fileStore = fileStore;
@@ -176,14 +178,24 @@ class CryptoFileSystem extends FileSystem {
 
 	/* methods delegated to by CryptoFileSystemProvider */
 
-	void setAttribute(Path cleartextPath, String attribute, Object value, LinkOption... options) {
-		// TODO
+	void setAttribute(CryptoPath cleartextPath, String attribute, Object value, LinkOption... options) throws IOException {
+		Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
+		if (Files.notExists(ciphertextDirPath) && cleartextPath.getNameCount() > 0) {
+			Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
+			fileAttributeByNameProvider.setAttribute(ciphertextFilePath, attribute, value);
+		} else {
+			fileAttributeByNameProvider.setAttribute(ciphertextDirPath, attribute, value);
+		}
 	}
 
-	Map<String, Object> readAttributes(Path cleartextPath, String attributes, LinkOption... options) {
-		// TODO
-		// TODO if we read attrs from Dir, everything is fine. If we read them from DirFile, we need to adjust CryptoBasicFileAttributes#isDirectory
-		return null;
+	Map<String, Object> readAttributes(CryptoPath cleartextPath, String attributes, LinkOption... options) throws IOException {
+		Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
+		if (Files.notExists(ciphertextDirPath) && cleartextPath.getNameCount() > 0) {
+			Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
+			return fileAttributeByNameProvider.readAttributes(ciphertextFilePath, attributes);
+		} else {
+			return fileAttributeByNameProvider.readAttributes(ciphertextDirPath, attributes);
+		}
 	}
 
 	<A extends BasicFileAttributes> A readAttributes(CryptoPath cleartextPath, Class<A> type, LinkOption... options) throws IOException {
