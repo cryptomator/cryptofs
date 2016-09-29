@@ -64,13 +64,13 @@ public class CryptoFileSystemProviderTest {
 	private CryptoPath cryptoPath = mock(CryptoPath.class);
 	private CryptoPath secondCryptoPath = mock(CryptoPath.class);
 	private CryptoFileSystem cryptoFileSystem = mock(CryptoFileSystem.class);
+	private CopyAndMoveOperations copyAndMoveOperations = mock(CopyAndMoveOperations.class);
 
 	private Path otherPath = mock(Path.class);
 	private FileSystem otherFileSystem = mock(FileSystem.class);
 	private FileSystemProvider otherProvider = mock(FileSystemProvider.class);
 
-	@SuppressWarnings("deprecation")
-	private CryptoFileSystemProvider inTest = new CryptoFileSystemProvider(fileSystems);
+	private CryptoFileSystemProvider inTest;
 
 	@DataPoints
 	@SuppressWarnings("unchecked")
@@ -93,7 +93,13 @@ public class CryptoFileSystemProviderTest {
 	);
 
 	@Before
+	@SuppressWarnings("deprecation")
 	public void setup() {
+		CryptoFileSystemProviderComponent component = mock(CryptoFileSystemProviderComponent.class);
+		when(component.fileSystems()).thenReturn(fileSystems);
+		when(component.copyAndMoveOperations()).thenReturn(copyAndMoveOperations);
+		inTest = new CryptoFileSystemProvider(component);
+
 		when(cryptoPath.getFileSystem()).thenReturn(cryptoFileSystem);
 		when(secondCryptoPath.getFileSystem()).thenReturn(cryptoFileSystem);
 		when(cryptoFileSystem.provider()).thenReturn(inTest);
@@ -237,21 +243,21 @@ public class CryptoFileSystemProviderTest {
 	}
 
 	@Test
-	public void testCopyDelegatesToFileSystem() throws IOException {
+	public void testCopyDelegatesToCopyAndMoveOperations() throws IOException {
 		CopyOption option = mock(CopyOption.class);
 
 		inTest.copy(cryptoPath, secondCryptoPath, option);
 
-		verify(cryptoFileSystem).copy(cryptoPath, secondCryptoPath, option);
+		verify(copyAndMoveOperations).copy(cryptoPath, secondCryptoPath, option);
 	}
 
 	@Test
-	public void testMoveDelegatesToFileSystem() throws IOException {
+	public void testMoveDelegatesToCopyAndMoveOperations() throws IOException {
 		CopyOption option = mock(CopyOption.class);
 
 		inTest.move(cryptoPath, secondCryptoPath, option);
 
-		verify(cryptoFileSystem).move(cryptoPath, secondCryptoPath, option);
+		verify(copyAndMoveOperations).move(cryptoPath, secondCryptoPath, option);
 	}
 
 	@Test

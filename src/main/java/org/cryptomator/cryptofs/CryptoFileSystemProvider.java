@@ -80,19 +80,21 @@ import org.cryptomator.cryptolib.common.SecureRandomModule;
 public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	private final CryptoFileSystems fileSystems;
+	private final CopyAndMoveOperations copyAndMoveOperations;
 
 	public static FileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
 		return FileSystems.newFileSystem(createUri(pathToVault.toAbsolutePath()), properties);
 	}
 
 	public CryptoFileSystemProvider() {
-		this.fileSystems = DaggerCryptoFileSystemProviderComponent.builder() //
+		CryptoFileSystemProviderComponent component = DaggerCryptoFileSystemProviderComponent.builder() //
 				.secureRandomModule(new SecureRandomModule(strongSecureRandom())) //
 				.cryptoFileSystemProviderModule(CryptoFileSystemProviderModule.builder() //
 						.withCrytpoFileSystemProvider(this) //
 						.build()) //
-				.build() //
-				.fileSystems();
+				.build();
+		this.fileSystems = component.fileSystems();
+		this.copyAndMoveOperations = component.copyAndMoveOperations();
 	}
 
 	private static SecureRandom strongSecureRandom() {
@@ -107,8 +109,9 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @deprecated only for testing
 	 */
 	@Deprecated
-	CryptoFileSystemProvider(CryptoFileSystems fileSystems) {
-		this.fileSystems = fileSystems;
+	CryptoFileSystemProvider(CryptoFileSystemProviderComponent component) {
+		this.fileSystems = component.fileSystems();
+		this.copyAndMoveOperations = component.copyAndMoveOperations();
 	}
 
 	/**
@@ -178,14 +181,12 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public void copy(Path cleartextSource, Path cleartextTarget, CopyOption... options) throws IOException {
-		// from javadoc: "both the source and target paths must be associated with this provider"
-		fileSystem(cleartextSource).copy(CryptoPath.cast(cleartextSource), CryptoPath.cast(cleartextTarget), options);
+		copyAndMoveOperations.copy(CryptoPath.cast(cleartextSource), CryptoPath.cast(cleartextTarget), options);
 	}
 
 	@Override
 	public void move(Path cleartextSource, Path cleartextTarget, CopyOption... options) throws IOException {
-		// from javadoc: "both the source and target paths must be associated with this provider"
-		fileSystem(cleartextSource).move(CryptoPath.cast(cleartextSource), CryptoPath.cast(cleartextTarget), options);
+		copyAndMoveOperations.move(CryptoPath.cast(cleartextSource), CryptoPath.cast(cleartextTarget), options);
 	}
 
 	@Override
@@ -234,7 +235,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		if (fileSystem.provider() == this) {
 			return (CryptoFileSystem) fileSystem;
 		} else {
-			throw new ProviderMismatchException("Used a path from FileSystem:" + fileSystem.provider() + " with FileSystem:" + this);
+			throw new ProviderMismatchException("Used a path from provider " + fileSystem.provider() + " with provider " + this);
 		}
 	}
 

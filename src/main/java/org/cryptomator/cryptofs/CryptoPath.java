@@ -44,7 +44,7 @@ class CryptoPath implements Path {
 		if (path instanceof CryptoPath) {
 			return (CryptoPath) path;
 		} else {
-			throw new ProviderMismatchException();
+			throw new ProviderMismatchException("Used a path from different provider: " + path);
 		}
 	}
 
