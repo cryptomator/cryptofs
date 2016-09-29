@@ -9,6 +9,7 @@
 package org.cryptomator.cryptofs;
 
 import static java.lang.Math.min;
+import static org.cryptomator.cryptofs.FinallyUtils.guaranteeInvocationOf;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -19,6 +20,7 @@ import java.nio.channels.FileLock;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 class CryptoFileChannel extends FileChannel {
 
@@ -26,16 +28,19 @@ class CryptoFileChannel extends FileChannel {
 
 	private final OpenCryptoFile openCryptoFile;
 	private final EffectiveOpenOptions options;
+	private final Consumer<CryptoFileChannel> onClose;
+
 	private long position = 0;
 
 	/**
 	 * @throws IOException
 	 * @throws ClosedChannelException if the openCryptoFile has already been closed
 	 */
-	public CryptoFileChannel(OpenCryptoFile openCryptoFile, EffectiveOpenOptions options) throws IOException {
+	public CryptoFileChannel(OpenCryptoFile openCryptoFile, EffectiveOpenOptions options, Consumer<CryptoFileChannel> onClose) throws IOException {
 		this.openCryptoFile = Objects.requireNonNull(openCryptoFile);
 		this.options = Objects.requireNonNull(options);
 		this.openCryptoFile.open(options);
+		this.onClose = onClose;
 	}
 
 	@Override
@@ -250,7 +255,9 @@ class CryptoFileChannel extends FileChannel {
 
 	@Override
 	protected void implCloseChannel() throws IOException {
-		openCryptoFile.close(options);
+		guaranteeInvocationOf( //
+				() -> onClose.accept(this), //
+				() -> openCryptoFile.close(options));
 	}
 
 	private void assertWritable() throws IOException {

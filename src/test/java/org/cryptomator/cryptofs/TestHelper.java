@@ -18,8 +18,10 @@ class TestHelper {
 			}
 		});
 		Mockito.when(fileSystemMock.getPathToVault()).thenReturn(pathToVault);
-		Mockito.when(fileSystemMock.getRootPath()).thenReturn(cryptoPathFactory.rootFor(fileSystemMock));
-		Mockito.when(fileSystemMock.getEmptyPath()).thenReturn(cryptoPathFactory.emptyFor(fileSystemMock));
+		CryptoPath root = cryptoPathFactory.rootFor(fileSystemMock);
+		CryptoPath empty = cryptoPathFactory.emptyFor(fileSystemMock);
+		Mockito.when(fileSystemMock.getRootPath()).thenReturn(root);
+		Mockito.when(fileSystemMock.getEmptyPath()).thenReturn(empty);
 	}
 
 }

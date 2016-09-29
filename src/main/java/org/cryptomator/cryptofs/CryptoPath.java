@@ -35,6 +35,7 @@ class CryptoPath implements Path {
 	private final boolean absolute;
 
 	public CryptoPath(CryptoFileSystem fileSystem, List<String> elements, boolean absolute) {
+		fileSystem.assertOpen();
 		this.fileSystem = fileSystem;
 		this.elements = Collections.unmodifiableList(elements);
 		this.absolute = absolute;
@@ -42,7 +43,9 @@ class CryptoPath implements Path {
 
 	public static CryptoPath cast(Path path) {
 		if (path instanceof CryptoPath) {
-			return (CryptoPath) path;
+			CryptoPath cryptoPath = (CryptoPath) path;
+			cryptoPath.getFileSystem().assertOpen();
+			return cryptoPath;
 		} else {
 			throw new ProviderMismatchException("Used a path from different provider: " + path);
 		}
@@ -55,16 +58,19 @@ class CryptoPath implements Path {
 
 	@Override
 	public boolean isAbsolute() {
+		fileSystem.assertOpen();
 		return absolute;
 	}
 
 	@Override
 	public CryptoPath getRoot() {
+		fileSystem.assertOpen();
 		return absolute ? fileSystem.getRootPath() : null;
 	}
 
 	@Override
 	public Path getFileName() {
+		fileSystem.assertOpen();
 		int elementCount = getNameCount();
 		if (elementCount == 0) {
 			return null;
@@ -75,6 +81,7 @@ class CryptoPath implements Path {
 
 	@Override
 	public CryptoPath getParent() {
+		fileSystem.assertOpen();
 		int elementCount = getNameCount();
 		if (elementCount > 1) {
 			List<String> elems = elements.subList(0, elementCount - 1);
@@ -86,21 +93,25 @@ class CryptoPath implements Path {
 
 	@Override
 	public int getNameCount() {
+		fileSystem.assertOpen();
 		return elements.size();
 	}
 
 	@Override
 	public Path getName(int index) {
+		fileSystem.assertOpen();
 		return subpath(index, index + 1);
 	}
 
 	@Override
 	public CryptoPath subpath(int beginIndex, int endIndex) {
+		fileSystem.assertOpen();
 		return new CryptoPath(fileSystem, elements.subList(beginIndex, endIndex), false);
 	}
 
 	@Override
 	public boolean startsWith(Path path) {
+		fileSystem.assertOpen();
 		CryptoPath other = cast(path);
 		boolean matchesAbsolute = this.isAbsolute() == other.isAbsolute();
 		if (matchesAbsolute && other.elements.size() <= this.elements.size()) {
@@ -112,11 +123,13 @@ class CryptoPath implements Path {
 
 	@Override
 	public boolean startsWith(String other) {
+		fileSystem.assertOpen();
 		return startsWith(fileSystem.getPath(other));
 	}
 
 	@Override
 	public boolean endsWith(Path path) {
+		fileSystem.assertOpen();
 		CryptoPath other = cast(path);
 		if (other.elements.size() <= this.elements.size()) {
 			return this.elements.subList(this.elements.size() - other.elements.size(), this.elements.size()).equals(other.elements);
@@ -127,11 +140,13 @@ class CryptoPath implements Path {
 
 	@Override
 	public boolean endsWith(String other) {
+		fileSystem.assertOpen();
 		return endsWith(fileSystem.getPath(other));
 	}
 
 	@Override
 	public CryptoPath normalize() {
+		fileSystem.assertOpen();
 		LinkedList<String> normalized = new LinkedList<>();
 		for (String elem : elements) {
 			String lastElem = normalized.peekLast();
@@ -148,6 +163,7 @@ class CryptoPath implements Path {
 
 	@Override
 	public Path resolve(Path path) {
+		fileSystem.assertOpen();
 		CryptoPath other = cast(path);
 		if (other.isAbsolute()) {
 			return other;
@@ -161,11 +177,13 @@ class CryptoPath implements Path {
 
 	@Override
 	public Path resolve(String other) {
+		fileSystem.assertOpen();
 		return resolve(fileSystem.getPath(other));
 	}
 
 	@Override
 	public Path resolveSibling(Path other) {
+		fileSystem.assertOpen();
 		final Path parent = getParent();
 		if (parent == null || other.isAbsolute()) {
 			return other;
@@ -176,11 +194,13 @@ class CryptoPath implements Path {
 
 	@Override
 	public Path resolveSibling(String other) {
+		fileSystem.assertOpen();
 		return resolveSibling(fileSystem.getPath(other));
 	}
 
 	@Override
 	public Path relativize(Path path) {
+		fileSystem.assertOpen();
 		CryptoPath normalized = this.normalize();
 		CryptoPath other = cast(path).normalize();
 		if (normalized.isAbsolute() == other.isAbsolute()) {
@@ -207,11 +227,13 @@ class CryptoPath implements Path {
 
 	@Override
 	public URI toUri() {
+		fileSystem.assertOpen();
 		return CryptoFileSystemUris.createUri(fileSystem.getPathToVault(), elements.toArray(new String[elements.size()]));
 	}
 
 	@Override
 	public Path toAbsolutePath() {
+		fileSystem.assertOpen();
 		if (isAbsolute()) {
 			return this;
 		} else {
@@ -221,26 +243,31 @@ class CryptoPath implements Path {
 
 	@Override
 	public Path toRealPath(LinkOption... options) throws IOException {
+		fileSystem.assertOpen();
 		return normalize().toAbsolutePath();
 	}
 
 	@Override
 	public File toFile() {
+		fileSystem.assertOpen();
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
 	public WatchKey register(WatchService watcher, WatchEvent.Kind<?>[] events, WatchEvent.Modifier... modifiers) throws IOException {
+		fileSystem.assertOpen();
 		throw new UnsupportedOperationException("Method not implemented.");
 	}
 
 	@Override
 	public WatchKey register(WatchService watcher, WatchEvent.Kind<?>... events) throws IOException {
+		fileSystem.assertOpen();
 		throw new UnsupportedOperationException("Method not implemented.");
 	}
 
 	@Override
 	public Iterator<Path> iterator() {
+		fileSystem.assertOpen();
 		return new Iterator<Path>() {
 
 			private int idx = 0;

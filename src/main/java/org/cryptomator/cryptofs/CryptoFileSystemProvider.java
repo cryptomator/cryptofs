@@ -233,7 +233,9 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	private CryptoFileSystem fileSystem(Path path) {
 		FileSystem fileSystem = path.getFileSystem();
 		if (fileSystem.provider() == this) {
-			return (CryptoFileSystem) fileSystem;
+			CryptoFileSystem cryptoFileSystem = (CryptoFileSystem) fileSystem;
+			cryptoFileSystem.assertOpen();
+			return cryptoFileSystem;
 		} else {
 			throw new ProviderMismatchException("Used a path from provider " + fileSystem.provider() + " with provider " + this);
 		}
