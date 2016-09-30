@@ -149,8 +149,7 @@ class CryptoFileSystem extends FileSystem {
 
 	@Override
 	public void close() throws IOException {
-		// TODO implement correct closing behavior:
-		// * close all directory streams and watch services
+		// TODO close watch services when implemented
 		if (open) {
 			open = false;
 			guaranteeInvocationOf( //
