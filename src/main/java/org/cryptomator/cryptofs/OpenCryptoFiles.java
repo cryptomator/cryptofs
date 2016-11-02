@@ -8,6 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import static org.cryptomator.cryptofs.FinallyUtils.guaranteeInvocationOf;
 import static org.cryptomator.cryptofs.OpenCryptoFileModule.openCryptoFileModule;
 import static org.cryptomator.cryptofs.UncheckedThrows.allowUncheckedThrowsOf;
 
@@ -35,6 +36,13 @@ class OpenCryptoFiles {
 		return allowUncheckedThrowsOf(IOException.class).from(() -> {
 			return openCryptoFiles.computeIfAbsent(normalizedPath, ignored -> create(normalizedPath, options));
 		});
+	}
+
+	public void close() throws IOException {
+		guaranteeInvocationOf( //
+				openCryptoFiles.values().stream() //
+						.map(openCryptoFile -> (RunnableThrowingException<IOException>) () -> openCryptoFile.close()) //
+						.iterator());
 	}
 
 	private OpenCryptoFile create(Path normalizedPath, EffectiveOpenOptions options) {

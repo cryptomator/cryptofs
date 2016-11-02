@@ -8,7 +8,11 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import static java.nio.file.Files.readAllBytes;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertThat;
 
 import java.io.IOException;
 import java.net.URI;
@@ -55,6 +59,74 @@ public class CryptoFileSystemProviderIntegrationTest {
 		try (FileChannel ch = FileChannel.open(fs.getPath("/foo"), EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW))) {
 			Assert.assertTrue(ch instanceof CryptoFileChannel);
 		}
+	}
+
+	@Test
+	public void testCopyFileFromOneCryptoFileSystemToAnother() throws IOException {
+		byte[] data = new byte[] {1, 2, 3, 4, 5, 6, 7};
+
+		Path fs1Location = tmpPath.resolve("foo");
+		Path fs2Location = tmpPath.resolve("bar");
+		Files.createDirectories(fs1Location);
+		Files.createDirectories(fs2Location);
+		FileSystem fs1 = CryptoFileSystemProvider.newFileSystem(fs1Location, cryptoFileSystemProperties().withPassphrase("asd").build());
+		FileSystem fs2 = CryptoFileSystemProvider.newFileSystem(fs2Location, cryptoFileSystemProperties().withPassphrase("qwe").build());
+		Path file1 = fs1.getPath("/foo/bar");
+		Path file2 = fs2.getPath("/bar/baz");
+		Files.createDirectories(file1.getParent());
+		Files.createDirectories(file2.getParent());
+		Files.write(file1, data);
+
+		Files.copy(file1, file2);
+
+		assertThat(readAllBytes(file1), is(data));
+		assertThat(readAllBytes(file2), is(data));
+	}
+
+	@Test
+	public void testCopyFileByRelacingExistingFromOneCryptoFileSystemToAnother() throws IOException {
+		byte[] data = new byte[] {1, 2, 3, 4, 5, 6, 7};
+		byte[] data2 = new byte[] {10, 11, 12};
+
+		Path fs1Location = tmpPath.resolve("foo");
+		Path fs2Location = tmpPath.resolve("bar");
+		Files.createDirectories(fs1Location);
+		Files.createDirectories(fs2Location);
+		FileSystem fs1 = CryptoFileSystemProvider.newFileSystem(fs1Location, cryptoFileSystemProperties().withPassphrase("asd").build());
+		FileSystem fs2 = CryptoFileSystemProvider.newFileSystem(fs2Location, cryptoFileSystemProperties().withPassphrase("qwe").build());
+		Path file1 = fs1.getPath("/foo/bar");
+		Path file2 = fs2.getPath("/bar/baz");
+		Files.createDirectories(file1.getParent());
+		Files.createDirectories(file2.getParent());
+		Files.write(file1, data);
+		Files.write(file2, data2);
+
+		Files.copy(file1, file2, REPLACE_EXISTING);
+
+		assertThat(readAllBytes(file1), is(data));
+		assertThat(readAllBytes(file2), is(data));
+	}
+
+	@Test
+	public void testMoveFileFromOneCryptoFileSystemToAnother() throws IOException {
+		byte[] data = new byte[] {1, 2, 3, 4, 5, 6, 7};
+
+		Path fs1Location = tmpPath.resolve("foo");
+		Path fs2Location = tmpPath.resolve("bar");
+		Files.createDirectories(fs1Location);
+		Files.createDirectories(fs2Location);
+		FileSystem fs1 = CryptoFileSystemProvider.newFileSystem(fs1Location, cryptoFileSystemProperties().withPassphrase("asd").build());
+		FileSystem fs2 = CryptoFileSystemProvider.newFileSystem(fs2Location, cryptoFileSystemProperties().withPassphrase("qwe").build());
+		Path file1 = fs1.getPath("/foo/bar");
+		Path file2 = fs2.getPath("/bar/baz");
+		Files.createDirectories(file1.getParent());
+		Files.createDirectories(file2.getParent());
+		Files.write(file1, data);
+
+		Files.move(file1, file2);
+
+		assertThat(Files.exists(file1), is(false));
+		assertThat(readAllBytes(file2), is(data));
 	}
 
 }

@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.cryptomator.cryptofs.Constants.SEPARATOR;
+import static org.cryptomator.cryptofs.FinallyUtils.guaranteeInvocationOf;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -18,6 +19,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.AccessMode;
 import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.ClosedFileSystemException;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.DirectoryStream;
@@ -74,34 +76,38 @@ class CryptoFileSystem extends FileSystem {
 	private final Cryptor cryptor;
 	private final CryptoPathMapper cryptoPathMapper;
 	private final DirectoryIdProvider dirIdProvider;
-	private final LongFileNameProvider longFileNameProvider;
 	private final CryptoFileAttributeProvider fileAttributeProvider;
+	private final CryptoFileAttributeByNameProvider fileAttributeByNameProvider;
 	private final CryptoFileAttributeViewProvider fileAttributeViewProvider;
+	private final DirectoryStreamFactory directoryStreamFactory;
 	private final OpenCryptoFiles openCryptoFiles;
 	private final CryptoFileStore fileStore;
 	private final PathMatcherFactory pathMatcherFactory;
 	private final CryptoPathFactory cryptoPathFactory;
 	private final CryptoFileSystemStats stats;
 
+	private volatile boolean open = true;
+
 	@Inject
 	public CryptoFileSystem(@PathToVault Path pathToVault, CryptoFileSystemProperties properties, Cryptor cryptor, CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, CryptoFileStore fileStore,
-			OpenCryptoFiles openCryptoFiles, CryptoPathMapper cryptoPathMapper, DirectoryIdProvider dirIdProvider, LongFileNameProvider longFileNameProvider, CryptoFileAttributeProvider fileAttributeProvider,
+			OpenCryptoFiles openCryptoFiles, CryptoPathMapper cryptoPathMapper, DirectoryIdProvider dirIdProvider, CryptoFileAttributeProvider fileAttributeProvider,
 			CryptoFileAttributeViewProvider fileAttributeViewProvider, PathMatcherFactory pathMatcherFactory, CryptoPathFactory cryptoPathFactory, CryptoFileSystemStats stats,
-			RootDirectoryInitializer rootDirectoryInitializer) {
+			RootDirectoryInitializer rootDirectoryInitializer, CryptoFileAttributeByNameProvider fileAttributeByNameProvider, DirectoryStreamFactory directoryStreamFactory) {
 		this.cryptor = cryptor;
 		this.provider = provider;
 		this.cryptoFileSystems = cryptoFileSystems;
 		this.pathToVault = pathToVault;
 		this.cryptoPathMapper = cryptoPathMapper;
 		this.dirIdProvider = dirIdProvider;
-		this.longFileNameProvider = longFileNameProvider;
 		this.fileAttributeProvider = fileAttributeProvider;
+		this.fileAttributeByNameProvider = fileAttributeByNameProvider;
 		this.fileAttributeViewProvider = fileAttributeViewProvider;
 		this.openCryptoFiles = openCryptoFiles;
 		this.fileStore = fileStore;
 		this.pathMatcherFactory = pathMatcherFactory;
 		this.cryptoPathFactory = cryptoPathFactory;
 		this.stats = stats;
+		this.directoryStreamFactory = directoryStreamFactory;
 		this.rootPath = cryptoPathFactory.rootFor(this);
 		this.emptyPath = cryptoPathFactory.emptyFor(this);
 
@@ -112,78 +118,103 @@ class CryptoFileSystem extends FileSystem {
 
 	@Override
 	public FileSystemProvider provider() {
+		assertOpen();
 		return provider;
 	}
 
 	@Override
 	public boolean isReadOnly() {
+		assertOpen();
+		// TODO
 		return false;
 	}
 
 	@Override
 	public String getSeparator() {
+		assertOpen();
 		return SEPARATOR;
 	}
 
 	@Override
 	public Iterable<Path> getRootDirectories() {
+		assertOpen();
 		return Collections.singleton(getRootPath());
 	}
 
 	@Override
 	public Iterable<FileStore> getFileStores() {
+		assertOpen();
 		return Collections.singleton(fileStore);
 	}
 
 	@Override
-	public void close() {
-		// TODO implement correct closing behavior:
-		// * close all streams, channels, watch services
-		// * let further access to all paths etc. fail with ClosedFileSystemException
-		cryptoFileSystems.remove(this);
-		cryptor.destroy();
+	public void close() throws IOException {
+		// TODO close watch services when implemented
+		if (open) {
+			open = false;
+			guaranteeInvocationOf( //
+					() -> cryptoFileSystems.remove(this), //
+					() -> openCryptoFiles.close(), //
+					() -> directoryStreamFactory.close(), //
+					() -> cryptor.destroy());
+		}
 	}
 
 	@Override
 	public boolean isOpen() {
-		return cryptoFileSystems.contains(this);
+		return open;
 	}
 
 	@Override
 	public Set<String> supportedFileAttributeViews() {
+		assertOpen();
 		return fileStore.supportedFileAttributeViewNames();
 	}
 
 	@Override
 	public CryptoPath getPath(String first, String... more) {
+		assertOpen();
 		return cryptoPathFactory.getPath(this, first, more);
 	}
 
 	@Override
 	public PathMatcher getPathMatcher(String syntaxAndPattern) {
+		assertOpen();
 		return pathMatcherFactory.pathMatcherFrom(syntaxAndPattern);
 	}
 
 	@Override
 	public UserPrincipalLookupService getUserPrincipalLookupService() {
+		assertOpen();
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
 	public WatchService newWatchService() throws IOException {
+		assertOpen();
 		throw new UnsupportedOperationException();
 	}
 
 	/* methods delegated to by CryptoFileSystemProvider */
 
-	void setAttribute(Path cleartextPath, String attribute, Object value, LinkOption... options) {
-		// TODO
+	void setAttribute(CryptoPath cleartextPath, String attribute, Object value, LinkOption... options) throws IOException {
+		Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
+		if (Files.notExists(ciphertextDirPath) && cleartextPath.getNameCount() > 0) {
+			Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
+			fileAttributeByNameProvider.setAttribute(ciphertextFilePath, attribute, value);
+		} else {
+			fileAttributeByNameProvider.setAttribute(ciphertextDirPath, attribute, value);
+		}
 	}
 
-	Map<String, Object> readAttributes(Path cleartextPath, String attributes, LinkOption... options) {
-		// TODO
-		// TODO if we read attrs from Dir, everything is fine. If we read them from DirFile, we need to adjust CryptoBasicFileAttributes#isDirectory
-		return null;
+	Map<String, Object> readAttributes(CryptoPath cleartextPath, String attributes, LinkOption... options) throws IOException {
+		Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
+		if (Files.notExists(ciphertextDirPath) && cleartextPath.getNameCount() > 0) {
+			Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
+			return fileAttributeByNameProvider.readAttributes(ciphertextFilePath, attributes);
+		} else {
+			return fileAttributeByNameProvider.readAttributes(ciphertextDirPath, attributes);
+		}
 	}
 
 	<A extends BasicFileAttributes> A readAttributes(CryptoPath cleartextPath, Class<A> type, LinkOption... options) throws IOException {
@@ -283,8 +314,7 @@ class CryptoFileSystem extends FileSystem {
 	}
 
 	DirectoryStream<Path> newDirectoryStream(CryptoPath cleartextDir, Filter<? super Path> filter) throws IOException {
-		Directory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
-		return new CryptoDirectoryStream(ciphertextDir, cleartextDir, cryptor.fileNameCryptor(), longFileNameProvider, filter);
+		return directoryStreamFactory.newDirectoryStream(cleartextDir, filter);
 	}
 
 	FileChannel newFileChannel(CryptoPath cleartextPath, Set<? extends OpenOption> optionsSet, FileAttribute<?>... attrs) throws IOException {
@@ -444,6 +474,12 @@ class CryptoFileSystem extends FileSystem {
 
 	CryptoFileSystemStats getStats() {
 		return stats;
+	}
+
+	void assertOpen() {
+		if (!open) {
+			throw new ClosedFileSystemException();
+		}
 	}
 
 }

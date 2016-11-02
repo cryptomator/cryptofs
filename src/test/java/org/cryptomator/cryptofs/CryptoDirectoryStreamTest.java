@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
+import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -19,6 +20,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.function.Consumer;
 
 import org.apache.commons.lang3.StringUtils;
 import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
@@ -36,6 +38,10 @@ import org.mockito.stubbing.Answer;
 import com.google.common.collect.Iterators;
 
 public class CryptoDirectoryStreamTest {
+
+	private static final Consumer<CryptoDirectoryStream> DO_NOTHING_ON_CLOSE = ignored -> {
+	};
+	private static final Filter<? super Path> ACCEPT_ALL = ignored -> true;
 
 	private static CryptorProvider cryptorProvider;
 
@@ -94,7 +100,7 @@ public class CryptoDirectoryStreamTest {
 		ciphertextFileNames.add("alsoInvalid");
 		Mockito.when(dirStream.iterator()).thenReturn(Iterators.transform(ciphertextFileNames.iterator(), cleartextPath::resolve));
 
-		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new Directory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, longFileNameProvider, p -> true)) {
+		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new Directory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, longFileNameProvider, ACCEPT_ALL, DO_NOTHING_ON_CLOSE)) {
 			Iterator<Path> iter = stream.iterator();
 			Assert.assertTrue(iter.hasNext());
 			Assert.assertEquals(cleartextPath.resolve("one"), iter.next());
@@ -116,7 +122,7 @@ public class CryptoDirectoryStreamTest {
 
 		Mockito.when(dirStream.iterator()).thenReturn(Collections.emptyIterator());
 
-		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new Directory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, longFileNameProvider, p -> true)) {
+		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new Directory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, longFileNameProvider, ACCEPT_ALL, DO_NOTHING_ON_CLOSE)) {
 			Iterator<Path> iter = stream.iterator();
 			Assert.assertFalse(iter.hasNext());
 			iter.next();

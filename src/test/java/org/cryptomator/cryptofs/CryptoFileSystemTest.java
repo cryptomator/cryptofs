@@ -76,13 +76,14 @@ public class CryptoFileSystemTest {
 	private final OpenCryptoFiles openCryptoFiles = mock(OpenCryptoFiles.class);
 	private final CryptoPathMapper cryptoPathMapper = mock(CryptoPathMapper.class);
 	private final DirectoryIdProvider dirIdProvider = mock(DirectoryIdProvider.class);
-	private final LongFileNameProvider longFileNameProvider = mock(LongFileNameProvider.class);
 	private final CryptoFileAttributeProvider fileAttributeProvider = mock(CryptoFileAttributeProvider.class);
+	private final CryptoFileAttributeByNameProvider fileAttributeByNameProvider = mock(CryptoFileAttributeByNameProvider.class);
 	private final CryptoFileAttributeViewProvider fileAttributeViewProvider = mock(CryptoFileAttributeViewProvider.class);
 	private final PathMatcherFactory pathMatcherFactory = mock(PathMatcherFactory.class);
 	private final CryptoPathFactory cryptoPathFactory = mock(CryptoPathFactory.class);
 	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
 	private final RootDirectoryInitializer rootDirectoryInitializer = mock(RootDirectoryInitializer.class);
+	private final DirectoryStreamFactory directoryStreamFactory = mock(DirectoryStreamFactory.class);
 
 	private final CryptoPath root = mock(CryptoPath.class);
 	private final CryptoPath empty = mock(CryptoPath.class);
@@ -94,8 +95,8 @@ public class CryptoFileSystemTest {
 		when(cryptoPathFactory.rootFor(any())).thenReturn(root);
 		when(cryptoPathFactory.emptyFor(any())).thenReturn(empty);
 
-		inTest = new CryptoFileSystem(pathToVault, properties, cryptor, provider, cryptoFileSystems, fileStore, openCryptoFiles, cryptoPathMapper, dirIdProvider, longFileNameProvider, fileAttributeProvider,
-				fileAttributeViewProvider, pathMatcherFactory, cryptoPathFactory, stats, rootDirectoryInitializer);
+		inTest = new CryptoFileSystem(pathToVault, properties, cryptor, provider, cryptoFileSystems, fileStore, openCryptoFiles, cryptoPathMapper, dirIdProvider, fileAttributeProvider, fileAttributeViewProvider,
+				pathMatcherFactory, cryptoPathFactory, stats, rootDirectoryInitializer, fileAttributeByNameProvider, directoryStreamFactory);
 	}
 
 	@Test
@@ -124,29 +125,41 @@ public class CryptoFileSystemTest {
 	}
 
 	@Test
-	public void testCloseRemovesThisFromCryptoFileSystems() {
+	public void testCloseRemovesThisFromCryptoFileSystems() throws IOException {
 		inTest.close();
 
 		verify(cryptoFileSystems).remove(inTest);
 	}
 
 	@Test
-	public void testCloseDestroysCryptor() {
+	public void testCloseDestroysCryptor() throws IOException {
 		inTest.close();
 
 		verify(cryptor).destroy();
 	}
 
 	@Test
-	public void testIsOpenReturnsTrueWhenContainedInCryptoFileSystems() {
-		when(cryptoFileSystems.contains(inTest)).thenReturn(true);
+	public void testCloseClosesDirectoryStreams() throws IOException {
+		inTest.close();
 
+		verify(directoryStreamFactory).close();
+	}
+
+	@Test
+	public void testCloseClosesOpenCryptoFiles() throws IOException {
+		inTest.close();
+
+		verify(openCryptoFiles).close();
+	}
+
+	@Test
+	public void testIsOpenReturnsTrueWhenNotClosed() {
 		assertTrue(inTest.isOpen());
 	}
 
 	@Test
-	public void testIsOpenReturnsFalseWhenNotContainedInCryptoFileSystems() {
-		when(cryptoFileSystems.contains(inTest)).thenReturn(false);
+	public void testIsOpenReturnsFalseWhenClosed() throws IOException {
+		inTest.close();
 
 		assertFalse(inTest.isOpen());
 	}

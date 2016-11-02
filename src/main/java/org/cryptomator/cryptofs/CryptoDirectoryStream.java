@@ -8,6 +8,8 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import static org.cryptomator.cryptofs.FinallyUtils.guaranteeInvocationOf;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -16,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,8 +41,11 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 	private final FileNameCryptor filenameCryptor;
 	private final LongFileNameProvider longFileNameProvider;
 	private final DirectoryStream.Filter<? super Path> filter;
+	private final Consumer<CryptoDirectoryStream> onClose;
 
-	public CryptoDirectoryStream(Directory ciphertextDir, Path cleartextDir, FileNameCryptor filenameCryptor, LongFileNameProvider longFileNameProvider, DirectoryStream.Filter<? super Path> filter) throws IOException {
+	public CryptoDirectoryStream(Directory ciphertextDir, Path cleartextDir, FileNameCryptor filenameCryptor, LongFileNameProvider longFileNameProvider, DirectoryStream.Filter<? super Path> filter,
+			Consumer<CryptoDirectoryStream> onClose) throws IOException {
+		this.onClose = onClose;
 		this.directoryId = ciphertextDir.dirId;
 		this.ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path, p -> true);
 		LOG.trace("OPEN " + directoryId);
@@ -101,8 +107,10 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 
 	@Override
 	public void close() throws IOException {
-		ciphertextDirStream.close();
-		LOG.trace("CLOSE " + directoryId);
+		guaranteeInvocationOf( //
+				() -> ciphertextDirStream.close(), //
+				() -> onClose.accept(this), //
+				() -> LOG.trace("CLOSE " + directoryId));
 	}
 
 }

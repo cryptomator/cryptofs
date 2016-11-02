@@ -123,7 +123,6 @@ class OpenCryptoFile {
 				chunkCache.set(chunkIndex, chunkData);
 			} else {
 				ChunkData chunkData = chunkCache.get(chunkIndex);
-				// TODO locking or similar to prevent removal of chunkData from cache while writing
 				chunkData.copyDataStartingAt(offsetInChunk).from(source);
 			}
 			written += len;
@@ -149,12 +148,10 @@ class OpenCryptoFile {
 	}
 
 	public FileLock lock(long position, long size, boolean shared) throws IOException {
-		// TODO compute correct position / size
 		return channel.lock(position, size, shared);
 	}
 
 	public FileLock tryLock(long position, long size, boolean shared) throws IOException {
-		// TODO compute correct position / size
 		return channel.tryLock(position, size, shared);
 	}
 
@@ -165,6 +162,10 @@ class OpenCryptoFile {
 		} else if (state == WAS_OPEN && openOptions.createNew()) {
 			throw new IOException("Failed to create new file. File exists.");
 		}
+	}
+
+	public void close() throws IOException {
+		cryptoFileChannelFactory.close();
 	}
 
 	public void close(EffectiveOpenOptions options) throws IOException {
