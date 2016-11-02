@@ -19,19 +19,18 @@ import java.util.concurrent.ExecutionException;
 
 import javax.inject.Inject;
 
-import org.apache.commons.codec.binary.Base32;
-import org.apache.commons.codec.binary.BaseNCodec;
 import org.cryptomator.cryptolib.common.MessageDigestSupplier;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.io.BaseEncoding;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 
 @PerFileSystem
 class LongFileNameProvider {
 
-	private static final BaseNCodec BASE32 = new Base32();
+	private static final BaseEncoding BASE32 = BaseEncoding.base32();
 	private static final int MAX_CACHE_SIZE = 5000;
 	private static final String LONG_NAME_FILE_EXT = ".lng";
 
@@ -73,11 +72,11 @@ class LongFileNameProvider {
 	public String deflate(String longFileName) throws IOException {
 		byte[] longFileNameBytes = longFileName.getBytes(UTF_8);
 		byte[] hash = MessageDigestSupplier.SHA1.get().digest(longFileNameBytes);
-		String shortName = BASE32.encodeAsString(hash) + LONG_NAME_FILE_EXT;
+		String shortName = BASE32.encode(hash) + LONG_NAME_FILE_EXT;
 		if (ids.getIfPresent(shortName) == null) {
 			ids.put(shortName, longFileName);
 			// TODO markuskreusch, overheadhunter: do we really want to persist this at this point?...
-			// ...maybe the caller only wanted to know if a file exists but didn't creat it.
+			// ...maybe the caller only wanted to know if a file exists without creating anything.
 			Path file = resolveMetadataFile(shortName);
 			Path fileDir = file.getParent();
 			assert fileDir != null : "resolveMetadataFile returned path to a file";
