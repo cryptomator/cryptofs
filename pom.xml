@@ -61,7 +61,7 @@
 		<dependency>
 			<groupId>org.cryptomator</groupId>
 			<artifactId>cryptolib</artifactId>
-			<version>1.0.2</version>
+			<version>1.0.4</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
@@ -71,7 +71,7 @@
 		<dependency>
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>
-			<version>19.0</version>
+			<version>20.0</version>
 		</dependency>
 		<dependency>
 			<groupId>commons-codec</groupId>
