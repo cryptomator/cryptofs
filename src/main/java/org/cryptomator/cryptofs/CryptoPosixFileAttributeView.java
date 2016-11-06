@@ -19,7 +19,7 @@ import java.util.Set;
 
 class CryptoPosixFileAttributeView extends AbstractCryptoFileAttributeView<PosixFileAttributes, PosixFileAttributeView> implements PosixFileAttributeView {
 
-	public CryptoPosixFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider) {
+	public CryptoPosixFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider) throws UnsupportedFileAttributeViewException {
 		super(ciphertextPath, fileAttributeProvider, PosixFileAttributes.class, PosixFileAttributeView.class);
 	}
 

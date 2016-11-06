@@ -15,7 +15,7 @@ import java.nio.file.attribute.DosFileAttributes;
 
 class CryptoDosFileAttributeView extends AbstractCryptoFileAttributeView<DosFileAttributes, DosFileAttributeView> implements DosFileAttributeView {
 
-	public CryptoDosFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider) {
+	public CryptoDosFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider) throws UnsupportedFileAttributeViewException {
 		super(ciphertextPath, fileAttributeProvider, DosFileAttributes.class, DosFileAttributeView.class);
 	}
 

@@ -18,6 +18,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.lessThan;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assume.assumeThat;
 
 import java.io.IOException;
 import java.nio.file.FileSystem;
@@ -25,6 +26,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
+import java.nio.file.attribute.UserPrincipal;
 import java.util.Map;
 
 import org.junit.AfterClass;
@@ -88,6 +90,18 @@ public class CryptoFileSystemFileAttributeIntegrationTest {
 		assertThat((FileTime) result.get("lastModifiedTime"), is(greaterThan(FileTime.fromMillis(currentTimeMillis() - 10000))));
 		assertThat((FileTime) result.get("lastModifiedTime"), is(lessThan(FileTime.fromMillis(currentTimeMillis() + 10000))));
 		assertThat((Boolean) result.get("isDirectory"), is(TRUE));
+	}
+
+	@Test
+	public void testReadOwnerUsingFilesGetOwner() throws IOException {
+		assumeThat(inMemoryFs.supportedFileAttributeViews().contains("owner"), is(true));
+
+		Path file = fileSystem.getPath("/a");
+		Files.write(file, new byte[1]);
+
+		UserPrincipal user = Files.getOwner(file);
+
+		System.out.println(user.getName());
 	}
 
 }

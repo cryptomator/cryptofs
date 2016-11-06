@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.FileAttributeView;
+import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.util.Collections;
 import java.util.HashMap;
@@ -31,6 +32,7 @@ class CryptoFileAttributeViewProvider {
 	public CryptoFileAttributeViewProvider(CryptoFileAttributeProvider fileAttributeProvider) {
 		fileAttributeViewProviders.put(BasicFileAttributeView.class, CryptoBasicFileAttributeView::new);
 		fileAttributeViewProviders.put(PosixFileAttributeView.class, CryptoPosixFileAttributeView::new);
+		fileAttributeViewProviders.put(FileOwnerAttributeView.class, CryptoFileOwnerAttributeView::new);
 		fileAttributeViewProviders.put(DosFileAttributeView.class, CryptoDosFileAttributeView::new);
 		this.fileAttributeProvider = fileAttributeProvider;
 	}
@@ -39,10 +41,14 @@ class CryptoFileAttributeViewProvider {
 	public <A extends FileAttributeView> A getAttributeView(Path ciphertextPath, Class<A> type) throws IOException {
 		if (fileAttributeViewProviders.containsKey(type)) {
 			FileAttributeViewProvider<A> provider = (FileAttributeViewProvider<A>) fileAttributeViewProviders.get(type);
-			return provider.provide(ciphertextPath, fileAttributeProvider);
-		} else {
-			throw new UnsupportedOperationException("Unsupported file attribute type: " + type);
+			try {
+				return provider.provide(ciphertextPath, fileAttributeProvider);
+			} catch (UnsupportedFileAttributeViewException e) {
+				return null;
+			}
 		}
+		// requested file attribute view is unsupported / unknown
+		return null;
 	}
 
 	Set<Class<? extends FileAttributeView>> knownFileAttributeViewTypes() {
@@ -51,7 +57,7 @@ class CryptoFileAttributeViewProvider {
 
 	@FunctionalInterface
 	private static interface FileAttributeViewProvider<A extends FileAttributeView> {
-		A provide(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider);
+		A provide(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider) throws UnsupportedFileAttributeViewException;
 	}
 
 }

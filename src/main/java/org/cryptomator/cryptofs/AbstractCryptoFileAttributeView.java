@@ -22,11 +22,14 @@ abstract class AbstractCryptoFileAttributeView<S extends BasicFileAttributes, T 
 	protected final T delegate;
 	private final Class<S> attributesType;
 
-	public AbstractCryptoFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, Class<S> attributesType, Class<T> delegateType) {
+	public AbstractCryptoFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, Class<S> attributesType, Class<T> delegateType) throws UnsupportedFileAttributeViewException {
 		this.ciphertextPath = ciphertextPath;
 		this.fileAttributeProvider = fileAttributeProvider;
 		this.attributesType = attributesType;
 		this.delegate = Files.getFileAttributeView(ciphertextPath, delegateType);
+		if (delegate == null) {
+			throw new UnsupportedFileAttributeViewException();
+		}
 	}
 
 	@Override
