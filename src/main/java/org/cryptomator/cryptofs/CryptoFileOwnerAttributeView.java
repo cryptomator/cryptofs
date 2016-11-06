@@ -18,7 +18,7 @@ class CryptoFileOwnerAttributeView implements FileOwnerAttributeView {
 
 	private final FileOwnerAttributeView delegate;
 
-	public CryptoFileOwnerAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider) throws UnsupportedFileAttributeViewException {
+	public CryptoFileOwnerAttributeView(Path ciphertextPath) throws UnsupportedFileAttributeViewException {
 		this.delegate = Files.getFileAttributeView(ciphertextPath, FileOwnerAttributeView.class);
 		if (delegate == null) {
 			throw new UnsupportedFileAttributeViewException();

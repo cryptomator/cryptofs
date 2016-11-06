@@ -32,7 +32,7 @@ class CryptoFileAttributeViewProvider {
 	public CryptoFileAttributeViewProvider(CryptoFileAttributeProvider fileAttributeProvider) {
 		fileAttributeViewProviders.put(BasicFileAttributeView.class, CryptoBasicFileAttributeView::new);
 		fileAttributeViewProviders.put(PosixFileAttributeView.class, CryptoPosixFileAttributeView::new);
-		fileAttributeViewProviders.put(FileOwnerAttributeView.class, CryptoFileOwnerAttributeView::new);
+		fileAttributeViewProviders.put(FileOwnerAttributeView.class, (ciphertextPath, ignored) -> new CryptoFileOwnerAttributeView(ciphertextPath));
 		fileAttributeViewProviders.put(DosFileAttributeView.class, CryptoDosFileAttributeView::new);
 		this.fileAttributeProvider = fileAttributeProvider;
 	}
