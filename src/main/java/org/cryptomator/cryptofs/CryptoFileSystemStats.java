@@ -4,6 +4,10 @@ import java.util.concurrent.atomic.LongAdder;
 
 import javax.inject.Inject;
 
+/**
+ * Provides access to file system performance metrics.
+ * The available metrics are constantly updated in a thread-safe manner and can be polled at any time.
+ */
 @PerFileSystem
 public class CryptoFileSystemStats {
 
