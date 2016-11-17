@@ -43,6 +43,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoints;
+import org.junit.experimental.theories.FromDataPoints;
 import org.junit.experimental.theories.Theories;
 import org.junit.experimental.theories.Theory;
 import org.junit.rules.ExpectedException;
@@ -63,6 +64,7 @@ public class CryptoFileSystemProviderTest {
 
 	private CryptoPath cryptoPath = mock(CryptoPath.class);
 	private CryptoPath secondCryptoPath = mock(CryptoPath.class);
+	private CryptoPath relativeCryptoPath = mock(CryptoPath.class);
 	private CryptoFileSystem cryptoFileSystem = mock(CryptoFileSystem.class);
 	private CopyAndMoveOperations copyAndMoveOperations = mock(CopyAndMoveOperations.class);
 
@@ -72,24 +74,43 @@ public class CryptoFileSystemProviderTest {
 
 	private CryptoFileSystemProvider inTest;
 
-	@DataPoints
+	@DataPoints("shouldFailWithProviderMismatch")
 	@SuppressWarnings("unchecked")
-	public static final List<InvocationWhichShouldFailWithProviderMismatch> INVOCATIONS_FAILING_WITH_PROVIDER_MISMATCH = asList( //
-			shouldFailWithProviderMismatch("newAsynchronousFileChannel", (inTest, otherPath) -> inTest.newAsynchronousFileChannel(otherPath, new HashSet<>(), mock(ExecutorService.class))), //
-			shouldFailWithProviderMismatch("newFileChannel", (inTest, otherPath) -> inTest.newFileChannel(otherPath, new HashSet<>())), //
-			shouldFailWithProviderMismatch("newByteChannel", (inTest, otherPath) -> inTest.newByteChannel(otherPath, new HashSet<>())), //
-			shouldFailWithProviderMismatch("newDirectoryStream", (inTest, otherPath) -> inTest.newDirectoryStream(otherPath, mock(Filter.class))), //
-			shouldFailWithProviderMismatch("createDirectory", (inTest, otherPath) -> inTest.createDirectory(otherPath)), //
-			shouldFailWithProviderMismatch("delete", (inTest, otherPath) -> inTest.delete(otherPath)), //
-			shouldFailWithProviderMismatch("copy", (inTest, otherPath) -> inTest.copy(otherPath, otherPath)), //
-			shouldFailWithProviderMismatch("move", (inTest, otherPath) -> inTest.move(otherPath, otherPath)), //
-			shouldFailWithProviderMismatch("isHidden", (inTest, otherPath) -> inTest.isHidden(otherPath)), //
-			shouldFailWithProviderMismatch("getFileStore", (inTest, otherPath) -> inTest.getFileStore(otherPath)), //
-			shouldFailWithProviderMismatch("checkAccess", (inTest, otherPath) -> inTest.checkAccess(otherPath)), //
-			shouldFailWithProviderMismatch("getFileAttributeView", (inTest, otherPath) -> inTest.getFileAttributeView(otherPath, FileAttributeView.class)), //
-			shouldFailWithProviderMismatch("readAttributesWithClass", (inTest, otherPath) -> inTest.readAttributes(otherPath, BasicFileAttributes.class)), //
-			shouldFailWithProviderMismatch("readAttributesWithString", (inTest, otherPath) -> inTest.readAttributes(otherPath, "fooBar")), //
-			shouldFailWithProviderMismatch("setAttribute", (inTest, otherPath) -> inTest.setAttribute(otherPath, "a", "b")) //
+	public static final List<InvocationWhichShouldFail> INVOCATIONS_FAILING_WITH_PROVIDER_MISMATCH = asList( //
+			invocation("newAsynchronousFileChannel", (inTest, path) -> inTest.newAsynchronousFileChannel(path, new HashSet<>(), mock(ExecutorService.class))), //
+			invocation("newFileChannel", (inTest, path) -> inTest.newFileChannel(path, new HashSet<>())), //
+			invocation("newByteChannel", (inTest, path) -> inTest.newByteChannel(path, new HashSet<>())), //
+			invocation("newDirectoryStream", (inTest, path) -> inTest.newDirectoryStream(path, mock(Filter.class))), //
+			invocation("createDirectory", (inTest, path) -> inTest.createDirectory(path)), //
+			invocation("delete", (inTest, path) -> inTest.delete(path)), //
+			invocation("copy", (inTest, path) -> inTest.copy(path, path)), //
+			invocation("move", (inTest, path) -> inTest.move(path, path)), //
+			invocation("isHidden", (inTest, path) -> inTest.isHidden(path)), //
+			invocation("getFileStore", (inTest, path) -> inTest.getFileStore(path)), //
+			invocation("checkAccess", (inTest, path) -> inTest.checkAccess(path)), //
+			invocation("getFileAttributeView", (inTest, path) -> inTest.getFileAttributeView(path, FileAttributeView.class)), //
+			invocation("readAttributesWithClass", (inTest, path) -> inTest.readAttributes(path, BasicFileAttributes.class)), //
+			invocation("readAttributesWithString", (inTest, path) -> inTest.readAttributes(path, "fooBar")), //
+			invocation("setAttribute", (inTest, path) -> inTest.setAttribute(path, "a", "b")) //
+	);
+
+	@DataPoints("shouldFailWithRelativePath")
+	@SuppressWarnings("unchecked")
+	public static final List<InvocationWhichShouldFail> INVOCATIONS_FAILING_WITH_RELATIVE_PATH = asList( //
+			invocation("newAsynchronousFileChannel", (inTest, path) -> inTest.newAsynchronousFileChannel(path, new HashSet<>(), mock(ExecutorService.class))), //
+			invocation("newFileChannel", (inTest, path) -> inTest.newFileChannel(path, new HashSet<>())), //
+			invocation("newByteChannel", (inTest, path) -> inTest.newByteChannel(path, new HashSet<>())), //
+			invocation("newDirectoryStream", (inTest, path) -> inTest.newDirectoryStream(path, mock(Filter.class))), //
+			invocation("createDirectory", (inTest, path) -> inTest.createDirectory(path)), //
+			invocation("delete", (inTest, path) -> inTest.delete(path)), //
+			invocation("copy", (inTest, path) -> inTest.copy(path, path)), //
+			invocation("move", (inTest, path) -> inTest.move(path, path)), //
+			invocation("isHidden", (inTest, path) -> inTest.isHidden(path)), //
+			invocation("checkAccess", (inTest, path) -> inTest.checkAccess(path)), //
+			invocation("getFileAttributeView", (inTest, path) -> inTest.getFileAttributeView(path, FileAttributeView.class)), //
+			invocation("readAttributesWithClass", (inTest, path) -> inTest.readAttributes(path, BasicFileAttributes.class)), //
+			invocation("readAttributesWithString", (inTest, path) -> inTest.readAttributes(path, "fooBar")), //
+			invocation("setAttribute", (inTest, path) -> inTest.setAttribute(path, "a", "b")) //
 	);
 
 	@Before
@@ -100,19 +121,32 @@ public class CryptoFileSystemProviderTest {
 		when(component.copyAndMoveOperations()).thenReturn(copyAndMoveOperations);
 		inTest = new CryptoFileSystemProvider(component);
 
+		when(cryptoPath.isAbsolute()).thenReturn(true);
 		when(cryptoPath.getFileSystem()).thenReturn(cryptoFileSystem);
+		when(secondCryptoPath.isAbsolute()).thenReturn(true);
 		when(secondCryptoPath.getFileSystem()).thenReturn(cryptoFileSystem);
+		when(relativeCryptoPath.isAbsolute()).thenReturn(false);
+		when(relativeCryptoPath.getFileSystem()).thenReturn(cryptoFileSystem);
 		when(cryptoFileSystem.provider()).thenReturn(inTest);
 
+		when(otherPath.isAbsolute()).thenReturn(true);
 		when(otherPath.getFileSystem()).thenReturn(otherFileSystem);
 		when(otherFileSystem.provider()).thenReturn(otherProvider);
 	}
 
 	@Theory
-	public void testInvocationsWithPathFromOtherProviderFailWithProviderMismatchException(InvocationWhichShouldFailWithProviderMismatch shouldFailWithProviderMismatch) throws IOException {
+	public void testInvocationsWithPathFromOtherProviderFailWithProviderMismatchException(@FromDataPoints("shouldFailWithProviderMismatch") InvocationWhichShouldFail shouldFailWithProviderMismatch) throws IOException {
 		thrown.expect(ProviderMismatchException.class);
 
 		shouldFailWithProviderMismatch.invoke(inTest, otherPath);
+	}
+
+	@Theory
+	public void testInvocationsWithRelativePathFailWithIllegalArgumentException(@FromDataPoints("shouldFailWithRelativePath") InvocationWhichShouldFail shouldFailWithRelativePath) throws IOException {
+		thrown.expect(IllegalArgumentException.class);
+		thrown.expectMessage("Path must be absolute");
+
+		shouldFailWithRelativePath.invoke(inTest, relativeCryptoPath);
 	}
 
 	@Test
@@ -360,16 +394,16 @@ public class CryptoFileSystemProviderTest {
 		verify(cryptoFileSystem).setAttribute(cryptoPath, attribute, value, option);
 	}
 
-	private static InvocationWhichShouldFailWithProviderMismatch shouldFailWithProviderMismatch(String name, Invocation invocation) {
-		return new InvocationWhichShouldFailWithProviderMismatch(name, invocation);
+	private static InvocationWhichShouldFail invocation(String name, Invocation invocation) {
+		return new InvocationWhichShouldFail(name, invocation);
 	}
 
-	private static class InvocationWhichShouldFailWithProviderMismatch {
+	private static class InvocationWhichShouldFail {
 
 		private final String name;
 		private final Invocation invocation;
 
-		public InvocationWhichShouldFailWithProviderMismatch(String name, Invocation invocation) {
+		public InvocationWhichShouldFail(String name, Invocation invocation) {
 			this.name = name;
 			this.invocation = invocation;
 		}
