@@ -8,6 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import static java.lang.Math.min;
 import static java.lang.String.format;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
@@ -84,6 +85,38 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		}
 
 		try (FileChannel channel = readableChannel(fileId)) {
+			assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
+		}
+	}
+
+	@Theory
+	public void testWriteDataAndTruncateToOffset(@FromDataPoints("dataSizes") int cleartextSize, @FromDataPoints("writeOffsets") int truncateToSize) throws IOException {
+		long fileId = nextFileId();
+
+		int targetSize = min(truncateToSize, cleartextSize);
+
+		try (FileChannel channel = writableChannel(fileId)) {
+			assertEquals(0, channel.size());
+			channel.write(repeat(1).times(cleartextSize).asByteBuffer());
+			assertEquals(cleartextSize, channel.size());
+		}
+
+		try (FileChannel channel = writableChannel(fileId)) {
+			assertEquals(cleartextSize, channel.size());
+			channel.truncate(truncateToSize);
+			assertEquals(targetSize, channel.size());
+		}
+
+		try (FileChannel channel = readableChannel(fileId)) {
+			if (targetSize > 0) {
+				ByteBuffer buffer = ByteBuffer.allocate(targetSize);
+				int result = channel.read(buffer);
+				assertEquals(targetSize, result);
+				buffer.flip();
+				for (int i = 0; i < targetSize; i++) {
+					assertEquals(format("byte(%d) = 1", i), 1, buffer.get(i));
+				}
+			}
 			assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
 		}
 	}

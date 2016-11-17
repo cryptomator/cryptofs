@@ -12,6 +12,14 @@ class PatternPathMatcher implements PathMatcher {
 		this.pattern = pattern;
 	}
 
+	/**
+	 * @deprecated for testing
+	 */
+	@Deprecated
+	Pattern getPattern() {
+		return pattern;
+	}
+
 	@Override
 	public boolean matches(Path path) {
 		return pattern.matcher(path.toString()).matches();

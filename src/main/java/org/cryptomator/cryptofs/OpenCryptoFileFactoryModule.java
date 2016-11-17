@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs;
 
 import static org.cryptomator.cryptofs.UncheckedThrows.rethrowUnchecked;
+import static org.cryptomator.cryptolib.Cryptors.cleartextSize;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -26,8 +27,16 @@ class OpenCryptoFileFactoryModule {
 	@Provides
 	@PerOpenFile
 	@OpenFileSize
-	public AtomicLong provideFileSize() {
-		return new AtomicLong();
+	public AtomicLong provideFileSize(FileChannel channel, Cryptor cryptor) {
+		return rethrowUnchecked(IOException.class).from(() -> {
+			long size = channel.size();
+			if (size == 0) {
+				return new AtomicLong();
+			} else {
+				int headerSize = cryptor.fileHeaderCryptor().headerSize();
+				return new AtomicLong(cleartextSize(size - headerSize, cryptor));
+			}
+		});
 	}
 
 	@Provides

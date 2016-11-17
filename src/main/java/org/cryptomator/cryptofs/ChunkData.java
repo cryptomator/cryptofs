@@ -38,6 +38,13 @@ class ChunkData {
 		return written;
 	}
 
+	public void truncate(int length) {
+		if (this.length > length) {
+			this.length = length;
+			this.written = true;
+		}
+	}
+
 	public CopyWithoutDirection copyData() {
 		return copyDataStartingAt(0);
 	}
