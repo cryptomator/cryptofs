@@ -45,7 +45,7 @@ class CryptoFileAttributeByNameProvider {
 		attribute("basic:lastModifiedTime", BasicFileAttributes.class, BasicFileAttributes::lastModifiedTime);
 		attribute("basic:lastAccessTime", BasicFileAttributes.class, BasicFileAttributes::lastAccessTime);
 		attribute("basic:creationTime", BasicFileAttributes.class, BasicFileAttributes::creationTime);
-		attribute("basic:regularFile", BasicFileAttributes.class, BasicFileAttributes::isRegularFile);
+		attribute("basic:isRegularFile", BasicFileAttributes.class, BasicFileAttributes::isRegularFile);
 		attribute("basic:isDirectory", BasicFileAttributes.class, BasicFileAttributes::isDirectory);
 		attribute("basic:isSymbolicLink", BasicFileAttributes.class, BasicFileAttributes::isSymbolicLink);
 		attribute("basic:isOther", BasicFileAttributes.class, BasicFileAttributes::isOther);
