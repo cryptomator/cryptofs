@@ -128,7 +128,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	@Override
-	public FileSystem newFileSystem(URI uri, Map<String, ?> rawProperties) throws IOException {
+	public CryptoFileSystem newFileSystem(URI uri, Map<String, ?> rawProperties) throws IOException {
 		ParsedUri parsedUri = CryptoFileSystemUris.parseUri(uri);
 		CryptoFileSystemProperties properties = CryptoFileSystemProperties.wrap(rawProperties);
 		return fileSystems.create(parsedUri.pathToVault(), properties);

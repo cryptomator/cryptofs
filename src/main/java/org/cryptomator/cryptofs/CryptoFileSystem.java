@@ -114,6 +114,20 @@ class CryptoFileSystem extends FileSystem {
 		rootDirectoryInitializer.initialize(rootPath);
 	}
 
+	/**
+	 * @return The path to the directory containing the encrypted files. This path does not belong to this file system.
+	 */
+	public Path getPathToVault() {
+		return pathToVault;
+	}
+
+	/**
+	 * @return Live monitor for file system performance statistics.
+	 */
+	public CryptoFileSystemStats getStats() {
+		return stats;
+	}
+
 	/* java.nio.file.FileSystem API */
 
 	@Override
@@ -466,14 +480,6 @@ class CryptoFileSystem extends FileSystem {
 
 	CryptoPath getEmptyPath() {
 		return emptyPath;
-	}
-
-	Path getPathToVault() {
-		return pathToVault;
-	}
-
-	CryptoFileSystemStats getStats() {
-		return stats;
 	}
 
 	void assertOpen() {
