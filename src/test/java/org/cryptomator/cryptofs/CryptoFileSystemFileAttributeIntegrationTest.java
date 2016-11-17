@@ -89,7 +89,7 @@ public class CryptoFileSystemFileAttributeIntegrationTest {
 
 		assertThat((FileTime) result.get("lastModifiedTime"), is(greaterThan(FileTime.fromMillis(currentTimeMillis() - 10000))));
 		assertThat((FileTime) result.get("lastModifiedTime"), is(lessThan(FileTime.fromMillis(currentTimeMillis() + 10000))));
-		assertThat((Boolean) result.get("isDirectory"), is(TRUE));
+		assertThat((Boolean) result.get("directory"), is(TRUE));
 	}
 
 	@Test
