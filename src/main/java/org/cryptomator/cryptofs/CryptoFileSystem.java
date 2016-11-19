@@ -322,7 +322,7 @@ class CryptoFileSystem extends FileSystem {
 		} finally {
 			if (!success) {
 				Files.delete(ciphertextDirFile);
-				dirIdProvider.invalidate(ciphertextDirFile);
+				dirIdProvider.delete(ciphertextDirFile);
 			}
 		}
 	}
@@ -350,7 +350,7 @@ class CryptoFileSystem extends FileSystem {
 					// should not happen. Nevertheless this is a valid state, so who no big deal...
 					LOG.warn("Successfully deleted dir {}, but didn't find corresponding dir file {}", ciphertextDir, ciphertextDirFile);
 				}
-				dirIdProvider.invalidate(ciphertextDirFile);
+				dirIdProvider.delete(ciphertextDirFile);
 			} catch (NoSuchFileException e) {
 				// translate ciphertext path to cleartext path
 				throw new NoSuchFileException(cleartextPath.toString());
@@ -458,11 +458,10 @@ class CryptoFileSystem extends FileSystem {
 						}
 					}
 					Files.delete(ciphertextTargetDir);
-					dirIdProvider.invalidate(ciphertextTargetDirFile);
 				}
 				Files.move(ciphertextSourceDirFile, ciphertextTargetDirFile, options);
 			}
-			dirIdProvider.invalidate(ciphertextSourceDirFile);
+			dirIdProvider.move(ciphertextSourceDirFile, ciphertextTargetDirFile);
 		} else {
 			throw new NoSuchFileException(cleartextSource.toString());
 		}
