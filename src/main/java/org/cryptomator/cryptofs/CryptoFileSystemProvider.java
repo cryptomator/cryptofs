@@ -156,7 +156,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public FileChannel newFileChannel(Path cleartextPath, Set<? extends OpenOption> optionsSet, FileAttribute<?>... attrs) throws IOException {
-		return fileSystem(cleartextPath).newFileChannel(CryptoPath.cast(cleartextPath), optionsSet, attrs);
+		return fileSystem(cleartextPath).newFileChannel(CryptoPath.castAndAssertAbsolute(cleartextPath), optionsSet, attrs);
 	}
 
 	@Override
@@ -166,27 +166,27 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public DirectoryStream<Path> newDirectoryStream(Path cleartextDir, Filter<? super Path> filter) throws IOException {
-		return fileSystem(cleartextDir).newDirectoryStream(CryptoPath.cast(cleartextDir), filter);
+		return fileSystem(cleartextDir).newDirectoryStream(CryptoPath.castAndAssertAbsolute(cleartextDir), filter);
 	}
 
 	@Override
 	public void createDirectory(Path cleartextDir, FileAttribute<?>... attrs) throws IOException {
-		fileSystem(cleartextDir).createDirectory(CryptoPath.cast(cleartextDir), attrs);
+		fileSystem(cleartextDir).createDirectory(CryptoPath.castAndAssertAbsolute(cleartextDir), attrs);
 	}
 
 	@Override
 	public void delete(Path cleartextPath) throws IOException {
-		fileSystem(cleartextPath).delete(CryptoPath.cast(cleartextPath));
+		fileSystem(cleartextPath).delete(CryptoPath.castAndAssertAbsolute(cleartextPath));
 	}
 
 	@Override
 	public void copy(Path cleartextSource, Path cleartextTarget, CopyOption... options) throws IOException {
-		copyAndMoveOperations.copy(CryptoPath.cast(cleartextSource), CryptoPath.cast(cleartextTarget), options);
+		copyAndMoveOperations.copy(CryptoPath.castAndAssertAbsolute(cleartextSource), CryptoPath.castAndAssertAbsolute(cleartextTarget), options);
 	}
 
 	@Override
 	public void move(Path cleartextSource, Path cleartextTarget, CopyOption... options) throws IOException {
-		copyAndMoveOperations.move(CryptoPath.cast(cleartextSource), CryptoPath.cast(cleartextTarget), options);
+		copyAndMoveOperations.move(CryptoPath.castAndAssertAbsolute(cleartextSource), CryptoPath.castAndAssertAbsolute(cleartextTarget), options);
 	}
 
 	@Override
@@ -197,7 +197,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public boolean isHidden(Path cleartextPath) throws IOException {
-		return fileSystem(cleartextPath).isHidden(CryptoPath.cast(cleartextPath));
+		return fileSystem(cleartextPath).isHidden(CryptoPath.castAndAssertAbsolute(cleartextPath));
 	}
 
 	@Override
@@ -207,27 +207,27 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public void checkAccess(Path cleartextPath, AccessMode... modes) throws IOException {
-		fileSystem(cleartextPath).checkAccess(CryptoPath.cast(cleartextPath), modes);
+		fileSystem(cleartextPath).checkAccess(CryptoPath.castAndAssertAbsolute(cleartextPath), modes);
 	}
 
 	@Override
 	public <V extends FileAttributeView> V getFileAttributeView(Path cleartextPath, Class<V> type, LinkOption... options) {
-		return fileSystem(cleartextPath).getFileAttributeView(CryptoPath.cast(cleartextPath), type, options);
+		return fileSystem(cleartextPath).getFileAttributeView(CryptoPath.castAndAssertAbsolute(cleartextPath), type, options);
 	}
 
 	@Override
 	public <A extends BasicFileAttributes> A readAttributes(Path cleartextPath, Class<A> type, LinkOption... options) throws IOException {
-		return fileSystem(cleartextPath).readAttributes(CryptoPath.cast(cleartextPath), type, options);
+		return fileSystem(cleartextPath).readAttributes(CryptoPath.castAndAssertAbsolute(cleartextPath), type, options);
 	}
 
 	@Override
 	public Map<String, Object> readAttributes(Path cleartextPath, String attributes, LinkOption... options) throws IOException {
-		return fileSystem(cleartextPath).readAttributes(CryptoPath.cast(cleartextPath), attributes, options);
+		return fileSystem(cleartextPath).readAttributes(CryptoPath.castAndAssertAbsolute(cleartextPath), attributes, options);
 	}
 
 	@Override
 	public void setAttribute(Path cleartextPath, String attribute, Object value, LinkOption... options) throws IOException {
-		fileSystem(cleartextPath).setAttribute(CryptoPath.cast(cleartextPath), attribute, value, options);
+		fileSystem(cleartextPath).setAttribute(CryptoPath.castAndAssertAbsolute(cleartextPath), attribute, value, options);
 	}
 
 	private CryptoFileSystem fileSystem(Path path) {

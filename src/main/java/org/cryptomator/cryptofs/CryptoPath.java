@@ -41,6 +41,14 @@ class CryptoPath implements Path {
 		this.absolute = absolute;
 	}
 
+	public static CryptoPath castAndAssertAbsolute(Path path) {
+		CryptoPath result = cast(path);
+		if (!result.isAbsolute()) {
+			throw new IllegalArgumentException("Path must be absolute but was " + path);
+		}
+		return result;
+	}
+
 	public static CryptoPath cast(Path path) {
 		if (path instanceof CryptoPath) {
 			CryptoPath cryptoPath = (CryptoPath) path;

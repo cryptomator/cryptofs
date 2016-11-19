@@ -12,6 +12,7 @@ import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static org.cryptomator.cryptofs.OpenCounter.OpenState.ALREADY_CLOSED;
 import static org.cryptomator.cryptofs.OpenCounter.OpenState.WAS_OPEN;
+import static org.cryptomator.cryptolib.Cryptors.ciphertextSize;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -51,8 +52,6 @@ class OpenCryptoFile {
 		this.header = header;
 		this.size = size;
 		this.stats = stats;
-
-		size.set(header.getFilesize());
 	}
 
 	public FileChannel newFileChannel(EffectiveOpenOptions options) throws IOException {
@@ -135,13 +134,22 @@ class OpenCryptoFile {
 	}
 
 	public synchronized void truncate(long size) throws IOException {
-		// TODO
+		long originalSize = this.size.getAndUpdate(current -> min(size, current));
+		if (originalSize > size) {
+			int cleartextChunkSize = cryptor.fileContentCryptor().cleartextChunkSize();
+			long indexOfLastChunk = (size + cleartextChunkSize - 1) / cleartextChunkSize - 1;
+			int sizeOfIncompleteChunk = (int) (size % cleartextChunkSize);
+			if (sizeOfIncompleteChunk > 0) {
+				chunkCache.get(indexOfLastChunk).truncate(sizeOfIncompleteChunk);
+			}
+			long ciphertextFileSize = cryptor.fileHeaderCryptor().headerSize() + ciphertextSize(size, cryptor);
+			channel.truncate(ciphertextFileSize);
+		}
 	}
 
 	public synchronized void force(boolean metaData, EffectiveOpenOptions options) throws IOException {
 		chunkCache.invalidateAll(); // TODO increase performance by writing chunks but keeping them cached
 		if (options.writable()) {
-			header.setFilesize(size.get());
 			channel.write(cryptor.fileHeaderCryptor().encryptHeader(header), 0);
 		}
 		channel.force(metaData);

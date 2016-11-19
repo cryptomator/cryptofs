@@ -16,10 +16,14 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.DosFileAttributes;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileTime;
+import java.nio.file.attribute.GroupPrincipal;
+import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributes;
+import java.nio.file.attribute.UserPrincipal;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -48,10 +52,10 @@ class CryptoFileAttributeByNameProvider {
 		attribute("basic:size", BasicFileAttributes.class, BasicFileAttributes::size);
 		attribute("basic:fileKey", BasicFileAttributes.class, BasicFileAttributes::fileKey);
 
-		attribute("dos:isReadOnly", DosFileAttributes.class, DosFileAttributes::isReadOnly);
-		attribute("dos:isHidden", DosFileAttributes.class, DosFileAttributes::isHidden);
-		attribute("dos:isArchive", DosFileAttributes.class, DosFileAttributes::isArchive);
-		attribute("dos:isSystem", DosFileAttributes.class, DosFileAttributes::isSystem);
+		attribute("dos:readOnly", DosFileAttributes.class, DosFileAttributes::isReadOnly);
+		attribute("dos:hidden", DosFileAttributes.class, DosFileAttributes::isHidden);
+		attribute("dos:archive", DosFileAttributes.class, DosFileAttributes::isArchive);
+		attribute("dos:system", DosFileAttributes.class, DosFileAttributes::isSystem);
 
 		attribute("posix:owner", PosixFileAttributes.class, PosixFileAttributes::owner);
 		attribute("posix:group", PosixFileAttributes.class, PosixFileAttributes::group);
@@ -64,14 +68,14 @@ class CryptoFileAttributeByNameProvider {
 		attribute("basic:lastAccessTime", BasicFileAttributeView.class, FileTime.class, (view, lastAccessTime) -> view.setTimes(null, lastAccessTime, null));
 		attribute("basic:creationTime", BasicFileAttributeView.class, FileTime.class, (view, creationTime) -> view.setTimes(null, null, creationTime));
 
-		attribute("dos:isReadOnly", DosFileAttributes.class, DosFileAttributes::isReadOnly);
-		attribute("dos:isHidden", DosFileAttributes.class, DosFileAttributes::isHidden);
-		attribute("dos:isArchive", DosFileAttributes.class, DosFileAttributes::isArchive);
-		attribute("dos:isSystem", DosFileAttributes.class, DosFileAttributes::isSystem);
+		attribute("dos:readOnly", DosFileAttributeView.class, Boolean.class, DosFileAttributeView::setReadOnly);
+		attribute("dos:hidden", DosFileAttributeView.class, Boolean.class, DosFileAttributeView::setHidden);
+		attribute("dos:archive", DosFileAttributeView.class, Boolean.class, DosFileAttributeView::setArchive);
+		attribute("dos:system", DosFileAttributeView.class, Boolean.class, DosFileAttributeView::setSystem);
 
-		attribute("posix:owner", PosixFileAttributes.class, PosixFileAttributes::owner);
-		attribute("posix:group", PosixFileAttributes.class, PosixFileAttributes::group);
-		attribute("posix:permissions", PosixFileAttributes.class, PosixFileAttributes::permissions);
+		attribute("posix:owner", PosixFileAttributeView.class, UserPrincipal.class, PosixFileAttributeView::setOwner);
+		attribute("posix:group", PosixFileAttributeView.class, GroupPrincipal.class, PosixFileAttributeView::setGroup);
+		attribute("posix:permissions", PosixFileAttributeView.class, Set.class, PosixFileAttributeView::setPermissions);
 	}
 
 	private <T extends BasicFileAttributes> void attribute(String name, Class<T> type, Function<T, ?> getter) {

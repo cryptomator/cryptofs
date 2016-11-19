@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs;
 
 import static java.nio.file.Files.readAllBytes;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import static org.apache.commons.lang3.SystemUtils.IS_OS_WINDOWS;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
@@ -26,6 +27,7 @@ import java.util.EnumSet;
 
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -127,6 +129,25 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 		assertThat(Files.exists(file1), is(false));
 		assertThat(readAllBytes(file2), is(data));
+	}
+
+	@Test
+	public void testDosFileAttributes() throws IOException {
+		Assume.assumeTrue(IS_OS_WINDOWS);
+
+		FileSystem fs = CryptoFileSystemProvider.newFileSystem(tmpPath, cryptoFileSystemProperties().withPassphrase("asd").build());
+		Path file = fs.getPath("/test");
+		Files.write(file, new byte[1]);
+
+		Files.setAttribute(file, "dos:hidden", true);
+		Files.setAttribute(file, "dos:system", true);
+		Files.setAttribute(file, "dos:archive", true);
+		Files.setAttribute(file, "dos:readOnly", true);
+
+		assertThat(Files.getAttribute(file, "dos:hidden"), is(true));
+		assertThat(Files.getAttribute(file, "dos:system"), is(true));
+		assertThat(Files.getAttribute(file, "dos:archive"), is(true));
+		assertThat(Files.getAttribute(file, "dos:readOnly"), is(true));
 	}
 
 }
