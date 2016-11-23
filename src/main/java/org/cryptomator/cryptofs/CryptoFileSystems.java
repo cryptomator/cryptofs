@@ -18,14 +18,14 @@ class CryptoFileSystems {
 
 	private final CryptoFileSystemProviderComponent cryptoFileSystemProviderComponent;
 
-	private final ConcurrentMap<Path, CryptoFileSystem> fileSystems = new ConcurrentHashMap<>();
+	private final ConcurrentMap<Path, CryptoFileSystemImpl> fileSystems = new ConcurrentHashMap<>();
 
 	@Inject
 	public CryptoFileSystems(CryptoFileSystemProviderComponent cryptoFileSystemProviderComponent) {
 		this.cryptoFileSystemProviderComponent = cryptoFileSystemProviderComponent;
 	}
 
-	public CryptoFileSystem create(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
+	public CryptoFileSystemImpl create(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
 		Path normalizedPathToVault = pathToVault.normalize();
 		return allowUncheckedThrowsOf(IOException.class).from(() -> fileSystems.compute(normalizedPathToVault, (key, value) -> {
 			if (value == null) {
@@ -41,15 +41,15 @@ class CryptoFileSystems {
 		}));
 	}
 
-	public void remove(CryptoFileSystem cryptoFileSystem) {
+	public void remove(CryptoFileSystemImpl cryptoFileSystem) {
 		fileSystems.values().remove(cryptoFileSystem);
 	}
 
-	public boolean contains(CryptoFileSystem cryptoFileSystem) {
+	public boolean contains(CryptoFileSystemImpl cryptoFileSystem) {
 		return fileSystems.containsValue(cryptoFileSystem);
 	}
 
-	public CryptoFileSystem get(Path pathToVault) {
+	public CryptoFileSystemImpl get(Path pathToVault) {
 		Path normalizedPathToVault = pathToVault.normalize();
 		return fileSystems.computeIfAbsent(normalizedPathToVault, key -> {
 			throw new FileSystemNotFoundException(format("CryptoFileSystem at %s not initialized", pathToVault));

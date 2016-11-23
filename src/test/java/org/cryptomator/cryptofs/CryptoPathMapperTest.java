@@ -27,7 +27,7 @@ public class CryptoPathMapperTest {
 	private final FileNameCryptor fileNameCryptor = Mockito.mock(FileNameCryptor.class);
 	private final DirectoryIdProvider dirIdProvider = Mockito.mock(DirectoryIdProvider.class);
 	private final LongFileNameProvider longFileNameProvider = Mockito.mock(LongFileNameProvider.class);
-	private final CryptoFileSystem fileSystem = Mockito.mock(CryptoFileSystem.class);
+	private final CryptoFileSystemImpl fileSystem = Mockito.mock(CryptoFileSystemImpl.class);
 
 	@Before
 	public void setup() throws IOException {

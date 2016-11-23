@@ -6,7 +6,7 @@ import org.mockito.Mockito;
 
 class TestHelper {
 
-	public static void prepareMockForPathCreation(CryptoFileSystem fileSystemMock, Path pathToVault) {
+	public static void prepareMockForPathCreation(CryptoFileSystemImpl fileSystemMock, Path pathToVault) {
 		CryptoPathFactory cryptoPathFactory = new CryptoPathFactory();
 		Mockito.when(fileSystemMock.getPath(Mockito.anyString(), Mockito.anyVararg())).thenAnswer(invocation -> {
 			String first = invocation.getArgumentAt(0, String.class);

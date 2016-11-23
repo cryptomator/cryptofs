@@ -6,6 +6,7 @@ import javax.inject.Inject;
 
 /**
  * Provides access to file system performance metrics.
+ * <p>
  * The available metrics are constantly updated in a thread-safe manner and can be polled at any time.
  */
 @PerFileSystem

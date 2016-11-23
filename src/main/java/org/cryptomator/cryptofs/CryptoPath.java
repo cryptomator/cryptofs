@@ -30,11 +30,11 @@ class CryptoPath implements Path {
 	private static final String CURRENT_DIR = ".";
 	private static final String PARENT_DIR = "..";
 
-	private final CryptoFileSystem fileSystem;
+	private final CryptoFileSystemImpl fileSystem;
 	private final List<String> elements;
 	private final boolean absolute;
 
-	public CryptoPath(CryptoFileSystem fileSystem, List<String> elements, boolean absolute) {
+	public CryptoPath(CryptoFileSystemImpl fileSystem, List<String> elements, boolean absolute) {
 		fileSystem.assertOpen();
 		this.fileSystem = fileSystem;
 		this.elements = Collections.unmodifiableList(elements);
@@ -60,7 +60,7 @@ class CryptoPath implements Path {
 	}
 
 	@Override
-	public CryptoFileSystem getFileSystem() {
+	public CryptoFileSystemImpl getFileSystem() {
 		return fileSystem;
 	}
 

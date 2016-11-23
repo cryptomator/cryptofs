@@ -25,7 +25,7 @@ class CryptoPathFactory {
 	public CryptoPathFactory() {
 	}
 
-	public CryptoPath getPath(CryptoFileSystem fileSystem, String first, String... more) {
+	public CryptoPath getPath(CryptoFileSystemImpl fileSystem, String first, String... more) {
 		List<String> elements = new ArrayList<>(max(10, 1 + more.length));
 		splitPath(first).forEach(elements::add);
 		stream(more).flatMap(this::splitPath).collect(Collectors.toList()).forEach(elements::add);
@@ -33,11 +33,11 @@ class CryptoPathFactory {
 		return new CryptoPath(fileSystem, elements, isAbsolute);
 	}
 
-	public CryptoPath emptyFor(CryptoFileSystem fileSystem) {
+	public CryptoPath emptyFor(CryptoFileSystemImpl fileSystem) {
 		return new CryptoPath(fileSystem, Collections.emptyList(), false);
 	}
 
-	public CryptoPath rootFor(CryptoFileSystem fileSystem) {
+	public CryptoPath rootFor(CryptoFileSystemImpl fileSystem) {
 		return new CryptoPath(fileSystem, Collections.emptyList(), true);
 	}
 
