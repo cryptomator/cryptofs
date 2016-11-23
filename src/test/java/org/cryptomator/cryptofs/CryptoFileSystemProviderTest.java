@@ -65,7 +65,7 @@ public class CryptoFileSystemProviderTest {
 	private CryptoPath cryptoPath = mock(CryptoPath.class);
 	private CryptoPath secondCryptoPath = mock(CryptoPath.class);
 	private CryptoPath relativeCryptoPath = mock(CryptoPath.class);
-	private CryptoFileSystem cryptoFileSystem = mock(CryptoFileSystem.class);
+	private CryptoFileSystemImpl cryptoFileSystem = mock(CryptoFileSystemImpl.class);
 	private CopyAndMoveOperations copyAndMoveOperations = mock(CopyAndMoveOperations.class);
 
 	private Path otherPath = mock(Path.class);

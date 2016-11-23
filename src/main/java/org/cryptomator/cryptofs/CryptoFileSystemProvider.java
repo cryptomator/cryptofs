@@ -22,7 +22,6 @@ import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
-import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -43,16 +42,13 @@ import org.cryptomator.cryptolib.common.SecureRandomModule;
 
 /**
  * <p>
- * A {@link FileSystemProvider} for CryptoFileSystems.
+ * A {@link FileSystemProvider} for {@link CryptoFileSystem CryptoFileSystems}.
  * <p>
- * A CryptoFileSystem encrypts/decrypts data read/stored from/to it and uses a storage location for the encrypted data. The storage location is denoted by a {@link Path} and can thus be any location
- * itself accessbile via a java.nio.FileSystem.
- * <p>
- * A CryptoFileSystem can be used as any other java.nio.FileSystem, e.g. by using the operations from {@link Files}.
+ * All {@code FileSystem} instances created by {@link CryptoFileSystemProvider} are instances of {@code CryptoFileSystem}.
  * <p>
  * <b>Usage</b>
- * 
- * We recommend to use {@link CryptoFileSystemProvider#newFileSystem(Path, CryptoFileSystemProperties)} to create a CryptoFileSystem. To do this:
+ * <p>
+ * It is recommended to use {@link CryptoFileSystemProvider#newFileSystem(Path, CryptoFileSystemProperties)} to create a CryptoFileSystem. To do this:
  * 
  * <blockquote>
  * 
@@ -82,8 +78,8 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	private final CryptoFileSystems fileSystems;
 	private final CopyAndMoveOperations copyAndMoveOperations;
 
-	public static FileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
-		return FileSystems.newFileSystem(createUri(pathToVault.toAbsolutePath()), properties);
+	public static CryptoFileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
+		return (CryptoFileSystem) FileSystems.newFileSystem(createUri(pathToVault.toAbsolutePath()), properties);
 	}
 
 	public CryptoFileSystemProvider() {
@@ -230,10 +226,10 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		fileSystem(cleartextPath).setAttribute(CryptoPath.castAndAssertAbsolute(cleartextPath), attribute, value, options);
 	}
 
-	private CryptoFileSystem fileSystem(Path path) {
+	private CryptoFileSystemImpl fileSystem(Path path) {
 		FileSystem fileSystem = path.getFileSystem();
 		if (fileSystem.provider() == this) {
-			CryptoFileSystem cryptoFileSystem = (CryptoFileSystem) fileSystem;
+			CryptoFileSystemImpl cryptoFileSystem = (CryptoFileSystemImpl) fileSystem;
 			cryptoFileSystem.assertOpen();
 			return cryptoFileSystem;
 		} else {

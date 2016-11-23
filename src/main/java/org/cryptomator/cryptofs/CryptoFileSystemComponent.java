@@ -6,7 +6,7 @@ import dagger.Subcomponent;
 @Subcomponent(modules = {CryptoFileSystemModule.class, CryptoFileSystemFactoryModule.class})
 interface CryptoFileSystemComponent {
 
-	CryptoFileSystem cryptoFileSystem();
+	CryptoFileSystemImpl cryptoFileSystem();
 
 	OpenCryptoFileComponent newOpenCryptoFileComponent(OpenCryptoFileModule openCryptoFileModule);
 

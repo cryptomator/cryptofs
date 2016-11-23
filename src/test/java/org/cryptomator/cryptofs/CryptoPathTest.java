@@ -52,7 +52,7 @@ public class CryptoPathTest {
 	@Rule
 	public final ExpectedException thrown = ExpectedException.none();
 
-	private CryptoFileSystem fileSystem;
+	private CryptoFileSystemImpl fileSystem;
 
 	private CryptoPathFactory cryptoPathFactory = new CryptoPathFactory();
 
@@ -61,7 +61,7 @@ public class CryptoPathTest {
 
 	@Before
 	public void setup() {
-		fileSystem = Mockito.mock(CryptoFileSystem.class);
+		fileSystem = Mockito.mock(CryptoFileSystemImpl.class);
 		rootPath = cryptoPathFactory.rootFor(fileSystem);
 		emptyPath = cryptoPathFactory.emptyFor(fileSystem);
 		when(fileSystem.getPath(any(String.class))).thenAnswer(invocation -> {
@@ -326,7 +326,7 @@ public class CryptoPathTest {
 		@Test
 		public void testPathFromOtherFileSystemIsNotEqual() {
 			Path inTest = path("a");
-			Path other = cryptoPathFactory.getPath(mock(CryptoFileSystem.class), "a");
+			Path other = cryptoPathFactory.getPath(mock(CryptoFileSystemImpl.class), "a");
 
 			assertThat(inTest, is(not(equalTo(other))));
 		}

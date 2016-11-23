@@ -59,7 +59,7 @@ import org.mockito.junit.MockitoRule;
 import de.bechte.junit.runners.context.HierarchicalContextRunner;
 
 @RunWith(HierarchicalContextRunner.class)
-public class CryptoFileSystemTest {
+public class CryptoFileSystemImplTest {
 
 	@Rule
 	public MockitoRule mockitoRule = MockitoJUnit.rule();
@@ -88,14 +88,14 @@ public class CryptoFileSystemTest {
 	private final CryptoPath root = mock(CryptoPath.class);
 	private final CryptoPath empty = mock(CryptoPath.class);
 
-	private CryptoFileSystem inTest;
+	private CryptoFileSystemImpl inTest;
 
 	@Before
 	public void setup() {
 		when(cryptoPathFactory.rootFor(any())).thenReturn(root);
 		when(cryptoPathFactory.emptyFor(any())).thenReturn(empty);
 
-		inTest = new CryptoFileSystem(pathToVault, properties, cryptor, provider, cryptoFileSystems, fileStore, openCryptoFiles, cryptoPathMapper, dirIdProvider, fileAttributeProvider, fileAttributeViewProvider,
+		inTest = new CryptoFileSystemImpl(pathToVault, properties, cryptor, provider, cryptoFileSystems, fileStore, openCryptoFiles, cryptoPathMapper, dirIdProvider, fileAttributeProvider, fileAttributeViewProvider,
 				pathMatcherFactory, cryptoPathFactory, stats, rootDirectoryInitializer, fileAttributeByNameProvider, directoryStreamFactory);
 	}
 
