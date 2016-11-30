@@ -8,7 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.DosFileAttributeView;
@@ -37,18 +37,25 @@ class CryptoFileAttributeViewProvider {
 		this.fileAttributeProvider = fileAttributeProvider;
 	}
 
-	@SuppressWarnings("unchecked")
-	public <A extends FileAttributeView> A getAttributeView(Path ciphertextPath, Class<A> type) throws IOException {
+	/**
+	 * @param ciphertextPath the path to the file
+	 * @param type the Class object corresponding to the file attribute view
+	 * @return a file attribute view of the specified type, or <code>null</code> if the attribute view type is not available
+	 * @see Files#getFileAttributeView(Path, Class, java.nio.file.LinkOption...)
+	 */
+	public <A extends FileAttributeView> A getAttributeView(Path ciphertextPath, Class<A> type) {
 		if (fileAttributeViewProviders.containsKey(type)) {
+			@SuppressWarnings("unchecked")
 			FileAttributeViewProvider<A> provider = (FileAttributeViewProvider<A>) fileAttributeViewProviders.get(type);
 			try {
 				return provider.provide(ciphertextPath, fileAttributeProvider);
 			} catch (UnsupportedFileAttributeViewException e) {
 				return null;
 			}
+		} else {
+			// requested file attribute view is unsupported / unknown
+			return null;
 		}
-		// requested file attribute view is unsupported / unknown
-		return null;
 	}
 
 	Set<Class<? extends FileAttributeView>> knownFileAttributeViewTypes() {

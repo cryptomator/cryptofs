@@ -30,7 +30,7 @@ class CryptoFileChannel extends FileChannel {
 	private final EffectiveOpenOptions options;
 	private final Consumer<CryptoFileChannel> onClose;
 
-	private long position = 0;
+	private volatile long position = 0;
 
 	/**
 	 * @throws IOException
@@ -60,7 +60,7 @@ class CryptoFileChannel extends FileChannel {
 	}
 
 	@Override
-	public synchronized int read(ByteBuffer dst) throws IOException {
+	public int read(ByteBuffer dst) throws IOException {
 		assertOpen();
 		assertReadable();
 		return blockingIo(() -> internalRead(dst));
@@ -167,7 +167,7 @@ class CryptoFileChannel extends FileChannel {
 		});
 	}
 
-	private long internalWrite(ByteBuffer src) throws IOException {
+	private synchronized long internalWrite(ByteBuffer src) throws IOException {
 		if (options.append()) {
 			return openCryptoFile.append(options, src);
 		} else {

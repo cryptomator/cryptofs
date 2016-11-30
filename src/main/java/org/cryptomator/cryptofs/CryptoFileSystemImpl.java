@@ -236,6 +236,13 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		}
 	}
 
+	/**
+	 * @param cleartextPath the path to the file
+	 * @param type the Class object corresponding to the file attribute view
+	 * @param options future use
+	 * @return a file attribute view of the specified type, or <code>null</code> if the attribute view type is not available
+	 * @see CryptoFileAttributeViewProvider#getAttributeView(Path, Class)
+	 */
 	<V extends FileAttributeView> V getFileAttributeView(CryptoPath cleartextPath, Class<V> type, LinkOption... options) {
 		try {
 			Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
@@ -284,8 +291,8 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	boolean isHidden(CryptoPath cleartextPath) throws IOException {
-		if (fileStore.supportsFileAttributeView(DosFileAttributeView.class)) {
-			DosFileAttributeView view = this.getFileAttributeView(cleartextPath, DosFileAttributeView.class);
+		DosFileAttributeView view = this.getFileAttributeView(cleartextPath, DosFileAttributeView.class);
+		if (view != null) {
 			return view.readAttributes().isHidden();
 		} else {
 			return false;

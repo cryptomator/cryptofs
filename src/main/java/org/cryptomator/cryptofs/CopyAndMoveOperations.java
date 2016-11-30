@@ -61,7 +61,9 @@ class CopyAndMoveOperations {
 			}
 			if (ArrayUtils.contains(options, COPY_ATTRIBUTES)) {
 				BasicFileAttributeView targetAttrView = provider(target).getFileAttributeView(target, BasicFileAttributeView.class);
-				targetAttrView.setTimes(sourceAttrs.get().lastModifiedTime(), sourceAttrs.get().lastAccessTime(), sourceAttrs.get().creationTime());
+				if (targetAttrView != null) {
+					targetAttrView.setTimes(sourceAttrs.get().lastModifiedTime(), sourceAttrs.get().lastAccessTime(), sourceAttrs.get().creationTime());
+				}
 			}
 		}
 	}
