@@ -54,14 +54,25 @@ class CopyAndMoveOperations {
 			if (sourceAttrs.get().isDirectory()) {
 				provider(target).createDirectory(target);
 			} else {
-				try (FileChannel sourceChannel = provider(source).newFileChannel(source, EnumSet.of(READ)); //
-						FileChannel targetChannel = provider(target).newFileChannel(target, EnumSet.of(CREATE_NEW, WRITE))) {
-					sourceChannel.transferTo(0, sourceChannel.size(), targetChannel);
-				}
+				transferFullFile(source, target);
 			}
 			if (ArrayUtils.contains(options, COPY_ATTRIBUTES)) {
 				BasicFileAttributeView targetAttrView = provider(target).getFileAttributeView(target, BasicFileAttributeView.class);
-				targetAttrView.setTimes(sourceAttrs.get().lastModifiedTime(), sourceAttrs.get().lastAccessTime(), sourceAttrs.get().creationTime());
+				if (targetAttrView != null) {
+					targetAttrView.setTimes(sourceAttrs.get().lastModifiedTime(), sourceAttrs.get().lastAccessTime(), sourceAttrs.get().creationTime());
+				}
+			}
+		}
+	}
+
+	private void transferFullFile(CryptoPath source, CryptoPath target) throws IOException {
+		try (FileChannel sourceChannel = provider(source).newFileChannel(source, EnumSet.of(READ)); //
+				FileChannel targetChannel = provider(target).newFileChannel(target, EnumSet.of(CREATE_NEW, WRITE))) {
+			long transferred = 0;
+			long toTransfer = sourceChannel.size();
+			while (toTransfer > 0) {
+				transferred += sourceChannel.transferTo(transferred, toTransfer, targetChannel);
+				toTransfer = sourceChannel.size() - transferred;
 			}
 		}
 	}
