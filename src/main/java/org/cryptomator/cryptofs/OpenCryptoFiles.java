@@ -33,9 +33,11 @@ class OpenCryptoFiles {
 	public OpenCryptoFile get(Path path, EffectiveOpenOptions options) throws IOException {
 		Path normalizedPath = path.toAbsolutePath().normalize();
 
-		return allowUncheckedThrowsOf(IOException.class).from(() -> {
+		OpenCryptoFile result = allowUncheckedThrowsOf(IOException.class).from(() -> {
 			return openCryptoFiles.computeIfAbsent(normalizedPath, ignored -> create(normalizedPath, options));
 		});
+		assert result != null : "computeIfAbsent will not return null";
+		return result;
 	}
 
 	public void close() throws IOException {
