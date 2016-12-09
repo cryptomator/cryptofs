@@ -45,8 +45,6 @@ public class CryptoFileSystemUris {
 	 */
 	public static URI createUri(Path pathToVault, String... pathComponentsInsideVault) {
 		try {
-			// TODO markuskreusch: javadoc of URI constructor states that this constructor throws URISyntaxExceptions if an authority that is not server based
-			// is used. The implementation tells it doesn't. Check if there is something written about this issue somewhere
 			return new URI(URI_SCHEME, pathToVault.toUri().toString(), "/" + String.join("/", pathComponentsInsideVault), null, null);
 		} catch (URISyntaxException e) {
 			throw new IllegalArgumentException("Can not create URI from given input", e);
@@ -75,7 +73,7 @@ public class CryptoFileSystemUris {
 			if (uri.getAuthority() == null) {
 				throw new IllegalArgumentException("URI must have an authority");
 			}
-			if (uri.getPath() == null) {
+			if (uri.getPath() == null || uri.getPath().isEmpty()) {
 				throw new IllegalArgumentException("URI must have a path");
 			}
 			if (uri.getQuery() != null) {

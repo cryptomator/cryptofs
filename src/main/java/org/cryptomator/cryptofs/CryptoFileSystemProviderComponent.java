@@ -10,6 +10,8 @@ interface CryptoFileSystemProviderComponent {
 
 	CryptoFileSystemComponent newCryptoFileSystemComponent(CryptoFileSystemModule cryptoFileSystemModule);
 
-	CopyAndMoveOperations copyAndMoveOperations();
+	CopyOperation copyOperation();
+
+	MoveOperation moveOperation();
 
 }

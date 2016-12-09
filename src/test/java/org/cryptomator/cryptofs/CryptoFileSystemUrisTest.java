@@ -74,4 +74,65 @@ public class CryptoFileSystemUrisTest {
 		assertThat(parsed.pathInsideVault(), is("/"));
 	}
 
+	@Test
+	public void testParseValidUri() throws URISyntaxException {
+		Path path = Paths.get("a").toAbsolutePath();
+		ParsedUri parsed = CryptoFileSystemUris.parseUri(new URI("cryptomator", path.toUri().toString(), "/b", null, null));
+
+		assertThat(parsed.pathToVault(), is(path));
+		assertThat(parsed.pathInsideVault(), is("/b"));
+	}
+
+	@Test
+	public void testParseUriWithInvalidScheme() throws URISyntaxException {
+		Path path = Paths.get("a").toAbsolutePath();
+
+		thrown.expect(IllegalArgumentException.class);
+
+		CryptoFileSystemUris.parseUri(new URI("invalid", path.toUri().toString(), "/b", null, null));
+	}
+
+	@Test
+	public void testParseUriWithoutAuthority() throws URISyntaxException {
+		thrown.expect(IllegalArgumentException.class);
+
+		CryptoFileSystemUris.parseUri(new URI("cryptomator", null, "/b", null, null));
+	}
+
+	@Test
+	public void testParseUriWithoutPath() throws URISyntaxException {
+		System.out.println(Paths.get("a").toUri().toString());
+		Path path = Paths.get("a").toAbsolutePath();
+
+		thrown.expect(IllegalArgumentException.class);
+
+		CryptoFileSystemUris.parseUri(new URI("cryptomator", path.toUri().toString(), null, null, null));
+	}
+
+	@Test
+	public void testParseUriWithQuery() throws URISyntaxException {
+		Path path = Paths.get("a").toAbsolutePath();
+
+		thrown.expect(IllegalArgumentException.class);
+
+		CryptoFileSystemUris.parseUri(new URI("cryptomator", path.toUri().toString(), "/b", "a=b", null));
+	}
+
+	@Test
+	public void testParseUriWithFragment() throws URISyntaxException {
+		Path path = Paths.get("a").toAbsolutePath();
+
+		thrown.expect(IllegalArgumentException.class);
+
+		CryptoFileSystemUris.parseUri(new URI("cryptomator", path.toUri().toString(), "/b", null, "abc"));
+	}
+
+	@Test
+	public void testURIConstructorDoesNotThrowExceptionForNonServerBasedAuthority() throws URISyntaxException {
+		// The constructor states that a URISyntaxException is thrown if a registry based authority is used.
+		// The implementation tells that it doesn't. Assume it works but ensure that this test tells us if
+		// the implementation changes.
+		new URI("scheme", Paths.get("test").toUri().toString(), "/b", null, null);
+	}
+
 }

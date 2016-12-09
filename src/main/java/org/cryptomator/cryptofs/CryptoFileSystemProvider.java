@@ -76,7 +76,8 @@ import org.cryptomator.cryptolib.common.SecureRandomModule;
 public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	private final CryptoFileSystems fileSystems;
-	private final CopyAndMoveOperations copyAndMoveOperations;
+	private final CopyOperation copyOperation;
+	private final MoveOperation moveOperation;
 
 	public static CryptoFileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
 		return (CryptoFileSystem) FileSystems.newFileSystem(createUri(pathToVault.toAbsolutePath()), properties);
@@ -90,7 +91,8 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 						.build()) //
 				.build();
 		this.fileSystems = component.fileSystems();
-		this.copyAndMoveOperations = component.copyAndMoveOperations();
+		this.copyOperation = component.copyOperation();
+		this.moveOperation = component.moveOperation();
 	}
 
 	private static SecureRandom strongSecureRandom() {
@@ -107,7 +109,8 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	@Deprecated
 	CryptoFileSystemProvider(CryptoFileSystemProviderComponent component) {
 		this.fileSystems = component.fileSystems();
-		this.copyAndMoveOperations = component.copyAndMoveOperations();
+		this.copyOperation = component.copyOperation();
+		this.moveOperation = component.moveOperation();
 	}
 
 	/**
@@ -177,12 +180,12 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public void copy(Path cleartextSource, Path cleartextTarget, CopyOption... options) throws IOException {
-		copyAndMoveOperations.copy(CryptoPath.castAndAssertAbsolute(cleartextSource), CryptoPath.castAndAssertAbsolute(cleartextTarget), options);
+		copyOperation.copy(CryptoPath.castAndAssertAbsolute(cleartextSource), CryptoPath.castAndAssertAbsolute(cleartextTarget), options);
 	}
 
 	@Override
 	public void move(Path cleartextSource, Path cleartextTarget, CopyOption... options) throws IOException {
-		copyAndMoveOperations.move(CryptoPath.castAndAssertAbsolute(cleartextSource), CryptoPath.castAndAssertAbsolute(cleartextTarget), options);
+		moveOperation.move(CryptoPath.castAndAssertAbsolute(cleartextSource), CryptoPath.castAndAssertAbsolute(cleartextTarget), options);
 	}
 
 	@Override

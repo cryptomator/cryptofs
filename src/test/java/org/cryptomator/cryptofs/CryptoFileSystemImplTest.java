@@ -2,6 +2,7 @@ package org.cryptomator.cryptofs;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.sameInstance;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
@@ -17,6 +18,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.spi.AbstractInterruptibleChannel;
 import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.ClosedFileSystemException;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.DirectoryStream;
@@ -104,6 +106,21 @@ public class CryptoFileSystemImplTest {
 		assertThat(inTest.provider(), is(provider));
 	}
 
+	@Test
+	public void testEmptyPathReturnsEmptyPath() {
+		assertThat(inTest.getEmptyPath(), is(empty));
+	}
+
+	@Test
+	public void testGetStatsReturnsStats() {
+		assertThat(inTest.getStats(), is(stats));
+	}
+
+	@Test
+	public void testGetFilestoresReturnsIterableContainingFileStore() {
+		assertThat(inTest.getFileStores(), contains(fileStore));
+	}
+
 	@Test // TODO markuskreusch: should not return false but look into delegate filestore and flags
 	public void testIsReadOnlyReturnsFalse() {
 		assertFalse(inTest.isReadOnly());
@@ -124,44 +141,101 @@ public class CryptoFileSystemImplTest {
 		assertThat(inTest.getFileStore(), is(fileStore));
 	}
 
-	@Test
-	public void testCloseRemovesThisFromCryptoFileSystems() throws IOException {
-		inTest.close();
+	public class CloseAndIsOpen {
 
-		verify(cryptoFileSystems).remove(inTest);
+		@Test
+		public void testCloseRemovesThisFromCryptoFileSystems() throws IOException {
+			inTest.close();
+
+			verify(cryptoFileSystems).remove(inTest);
+		}
+
+		@Test
+		public void testCloseDestroysCryptor() throws IOException {
+			inTest.close();
+
+			verify(cryptor).destroy();
+		}
+
+		@Test
+		public void testCloseClosesDirectoryStreams() throws IOException {
+			inTest.close();
+
+			verify(directoryStreamFactory).close();
+		}
+
+		@Test
+		public void testCloseClosesOpenCryptoFiles() throws IOException {
+			inTest.close();
+
+			verify(openCryptoFiles).close();
+		}
+
+		@Test
+		public void testIsOpenReturnsTrueWhenNotClosed() {
+			assertTrue(inTest.isOpen());
+		}
+
+		@Test
+		public void testIsOpenReturnsFalseWhenClosed() throws IOException {
+			inTest.close();
+
+			assertFalse(inTest.isOpen());
+		}
+
+		@Test
+		public void testAssertOpenThrowsClosedFileSystemExceptionWhenClosed() throws IOException {
+			inTest.close();
+
+			thrown.expect(ClosedFileSystemException.class);
+
+			inTest.assertOpen();
+		}
+
 	}
 
-	@Test
-	public void testCloseDestroysCryptor() throws IOException {
-		inTest.close();
+	public class DuplicateCloseAndIsOpen {
 
-		verify(cryptor).destroy();
-	}
+		@Test
+		public void testDuplicateCloseRemovesThisFromCryptoFileSystems() throws IOException {
+			inTest.close();
+			inTest.close();
 
-	@Test
-	public void testCloseClosesDirectoryStreams() throws IOException {
-		inTest.close();
+			verify(cryptoFileSystems).remove(inTest);
+		}
 
-		verify(directoryStreamFactory).close();
-	}
+		@Test
+		public void testDuplicateCloseDestroysCryptor() throws IOException {
+			inTest.close();
+			inTest.close();
 
-	@Test
-	public void testCloseClosesOpenCryptoFiles() throws IOException {
-		inTest.close();
+			verify(cryptor).destroy();
+		}
 
-		verify(openCryptoFiles).close();
-	}
+		@Test
+		public void testDuplicateCloseClosesDirectoryStreams() throws IOException {
+			inTest.close();
+			inTest.close();
 
-	@Test
-	public void testIsOpenReturnsTrueWhenNotClosed() {
-		assertTrue(inTest.isOpen());
-	}
+			verify(directoryStreamFactory).close();
+		}
 
-	@Test
-	public void testIsOpenReturnsFalseWhenClosed() throws IOException {
-		inTest.close();
+		@Test
+		public void testDuplicateCloseClosesOpenCryptoFiles() throws IOException {
+			inTest.close();
+			inTest.close();
 
-		assertFalse(inTest.isOpen());
+			verify(openCryptoFiles).close();
+		}
+
+		@Test
+		public void testIsOpenReturnsFalseWhenClosedTwoTimes() throws IOException {
+			inTest.close();
+			inTest.close();
+
+			assertFalse(inTest.isOpen());
+		}
+
 	}
 
 	@Test // TODO markuskreusch: is this behaviour correct?

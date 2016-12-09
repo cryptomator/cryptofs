@@ -66,7 +66,8 @@ public class CryptoFileSystemProviderTest {
 	private CryptoPath secondCryptoPath = mock(CryptoPath.class);
 	private CryptoPath relativeCryptoPath = mock(CryptoPath.class);
 	private CryptoFileSystemImpl cryptoFileSystem = mock(CryptoFileSystemImpl.class);
-	private CopyAndMoveOperations copyAndMoveOperations = mock(CopyAndMoveOperations.class);
+	private CopyOperation copyOperation = mock(CopyOperation.class);
+	private MoveOperation moveOperation = mock(MoveOperation.class);
 
 	private Path otherPath = mock(Path.class);
 	private FileSystem otherFileSystem = mock(FileSystem.class);
@@ -118,7 +119,8 @@ public class CryptoFileSystemProviderTest {
 	public void setup() {
 		CryptoFileSystemProviderComponent component = mock(CryptoFileSystemProviderComponent.class);
 		when(component.fileSystems()).thenReturn(fileSystems);
-		when(component.copyAndMoveOperations()).thenReturn(copyAndMoveOperations);
+		when(component.copyOperation()).thenReturn(copyOperation);
+		when(component.moveOperation()).thenReturn(moveOperation);
 		inTest = new CryptoFileSystemProvider(component);
 
 		when(cryptoPath.isAbsolute()).thenReturn(true);
@@ -277,21 +279,21 @@ public class CryptoFileSystemProviderTest {
 	}
 
 	@Test
-	public void testCopyDelegatesToCopyAndMoveOperations() throws IOException {
+	public void testCopyDelegatesToCopyOperation() throws IOException {
 		CopyOption option = mock(CopyOption.class);
 
 		inTest.copy(cryptoPath, secondCryptoPath, option);
 
-		verify(copyAndMoveOperations).copy(cryptoPath, secondCryptoPath, option);
+		verify(copyOperation).copy(cryptoPath, secondCryptoPath, option);
 	}
 
 	@Test
-	public void testMoveDelegatesToCopyAndMoveOperations() throws IOException {
+	public void testMoveDelegatesToMoveOperation() throws IOException {
 		CopyOption option = mock(CopyOption.class);
 
 		inTest.move(cryptoPath, secondCryptoPath, option);
 
-		verify(copyAndMoveOperations).move(cryptoPath, secondCryptoPath, option);
+		verify(moveOperation).move(cryptoPath, secondCryptoPath, option);
 	}
 
 	@Test

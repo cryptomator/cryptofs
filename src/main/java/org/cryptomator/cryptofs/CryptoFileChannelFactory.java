@@ -19,12 +19,16 @@ class CryptoFileChannelFactory {
 	public CryptoFileChannelFactory() {
 	}
 
+	@SuppressWarnings("finally")
 	public CryptoFileChannel create(OpenCryptoFile openCryptoFile, EffectiveOpenOptions options) throws IOException {
 		CryptoFileChannel channel = new CryptoFileChannel(openCryptoFile, options, closed -> channels.remove(closed));
 		channels.put(channel, channel);
 		if (closed) {
-			channel.close();
-			throw new ClosedFileSystemException();
+			try {
+				channel.close();
+			} finally {
+				throw new ClosedFileSystemException();
+			}
 		}
 		return channel;
 	}

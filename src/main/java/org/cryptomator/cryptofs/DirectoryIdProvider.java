@@ -9,16 +9,12 @@
 package org.cryptomator.cryptofs;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 import javax.inject.Inject;
 
 import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 
 @PerFileSystem
@@ -29,21 +25,8 @@ class DirectoryIdProvider {
 	private final LoadingCache<Path, String> ids;
 
 	@Inject
-	public DirectoryIdProvider() {
-		ids = CacheBuilder.newBuilder().maximumSize(MAX_CACHE_SIZE).build(new Loader());
-	}
-
-	private static class Loader extends CacheLoader<Path, String> {
-
-		@Override
-		public String load(Path dirFilePath) throws IOException {
-			if (Files.exists(dirFilePath)) {
-				return new String(Files.readAllBytes(dirFilePath), StandardCharsets.UTF_8);
-			} else {
-				return UUID.randomUUID().toString();
-			}
-		}
-
+	public DirectoryIdProvider(DirectoryIdLoader directoryIdLoader) {
+		ids = CacheBuilder.newBuilder().maximumSize(MAX_CACHE_SIZE).build(directoryIdLoader);
 	}
 
 	public String load(Path dirFilePath) throws IOException {
