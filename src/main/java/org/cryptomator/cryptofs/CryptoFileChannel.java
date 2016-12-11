@@ -9,7 +9,6 @@
 package org.cryptomator.cryptofs;
 
 import static java.lang.Math.min;
-import static org.cryptomator.cryptofs.FinallyUtils.guaranteeInvocationOf;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -29,6 +28,7 @@ class CryptoFileChannel extends FileChannel {
 	private final OpenCryptoFile openCryptoFile;
 	private final EffectiveOpenOptions options;
 	private final Consumer<CryptoFileChannel> onClose;
+	private final FinallyUtil finallyUtil;
 
 	private volatile long position = 0;
 
@@ -36,11 +36,12 @@ class CryptoFileChannel extends FileChannel {
 	 * @throws IOException
 	 * @throws ClosedChannelException if the openCryptoFile has already been closed
 	 */
-	public CryptoFileChannel(OpenCryptoFile openCryptoFile, EffectiveOpenOptions options, Consumer<CryptoFileChannel> onClose) throws IOException {
+	public CryptoFileChannel(OpenCryptoFile openCryptoFile, EffectiveOpenOptions options, Consumer<CryptoFileChannel> onClose, FinallyUtil finallyUtil) throws IOException {
 		this.openCryptoFile = Objects.requireNonNull(openCryptoFile);
 		this.options = Objects.requireNonNull(options);
 		this.openCryptoFile.open(options);
 		this.onClose = onClose;
+		this.finallyUtil = finallyUtil;
 	}
 
 	@Override
@@ -253,9 +254,10 @@ class CryptoFileChannel extends FileChannel {
 
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	protected void implCloseChannel() throws IOException {
-		guaranteeInvocationOf( //
+		finallyUtil.guaranteeInvocationOf( //
 				() -> onClose.accept(this), //
 				() -> openCryptoFile.close(options));
 	}

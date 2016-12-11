@@ -59,11 +59,13 @@ public class CryptoFileChannelTest {
 	@SuppressWarnings("unchecked")
 	private Consumer<CryptoFileChannel> onClose = mock(Consumer.class);
 
+	private FinallyUtil finallyUtil = mock(FinallyUtil.class);
+
 	private CryptoFileChannel inTest;
 
 	@Before
 	public void setUp() throws IOException {
-		inTest = new CryptoFileChannel(openCryptoFile, options, onClose);
+		inTest = new CryptoFileChannel(openCryptoFile, options, onClose, finallyUtil);
 	}
 
 	@Test

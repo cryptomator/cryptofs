@@ -10,6 +10,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -97,6 +98,7 @@ public class CryptoFileSystemImplTest {
 	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
 	private final RootDirectoryInitializer rootDirectoryInitializer = mock(RootDirectoryInitializer.class);
 	private final DirectoryStreamFactory directoryStreamFactory = mock(DirectoryStreamFactory.class);
+	private final FinallyUtil finallyUtil = mock(FinallyUtil.class);
 
 	private final CryptoPath root = mock(CryptoPath.class);
 	private final CryptoPath empty = mock(CryptoPath.class);
@@ -109,7 +111,7 @@ public class CryptoFileSystemImplTest {
 		when(cryptoPathFactory.emptyFor(any())).thenReturn(empty);
 
 		inTest = new CryptoFileSystemImpl(pathToVault, properties, cryptor, provider, cryptoFileSystems, fileStore, openCryptoFiles, cryptoPathMapper, dirIdProvider, fileAttributeProvider, fileAttributeViewProvider,
-				pathMatcherFactory, cryptoPathFactory, stats, rootDirectoryInitializer, fileAttributeByNameProvider, directoryStreamFactory);
+				pathMatcherFactory, cryptoPathFactory, stats, rootDirectoryInitializer, fileAttributeByNameProvider, directoryStreamFactory, finallyUtil);
 	}
 
 	@Test
@@ -153,6 +155,17 @@ public class CryptoFileSystemImplTest {
 	}
 
 	public class CloseAndIsOpen {
+
+		@SuppressWarnings("unchecked")
+		@Before
+		public void setup() {
+			doAnswer(invocation -> {
+				for (Object runnable : invocation.getArguments()) {
+					((RunnableThrowingException<?>) runnable).run();
+				}
+				return null;
+			}).when(finallyUtil).guaranteeInvocationOf(any(RunnableThrowingException.class), any(RunnableThrowingException.class), any(RunnableThrowingException.class), any(RunnableThrowingException.class));
+		}
 
 		@Test
 		public void testCloseRemovesThisFromCryptoFileSystems() throws IOException {
@@ -206,6 +219,17 @@ public class CryptoFileSystemImplTest {
 	}
 
 	public class DuplicateCloseAndIsOpen {
+
+		@SuppressWarnings("unchecked")
+		@Before
+		public void setup() {
+			doAnswer(invocation -> {
+				for (Object runnable : invocation.getArguments()) {
+					((RunnableThrowingException<?>) runnable).run();
+				}
+				return null;
+			}).when(finallyUtil).guaranteeInvocationOf(any(RunnableThrowingException.class), any(RunnableThrowingException.class), any(RunnableThrowingException.class), any(RunnableThrowingException.class));
+		}
 
 		@Test
 		public void testDuplicateCloseRemovesThisFromCryptoFileSystems() throws IOException {

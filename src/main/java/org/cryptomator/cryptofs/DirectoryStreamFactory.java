@@ -1,7 +1,5 @@
 package org.cryptomator.cryptofs;
 
-import static org.cryptomator.cryptofs.FinallyUtils.guaranteeInvocationOf;
-
 import java.io.IOException;
 import java.nio.file.ClosedFileSystemException;
 import java.nio.file.DirectoryStream;
@@ -21,16 +19,18 @@ class DirectoryStreamFactory {
 	private final Cryptor cryptor;
 	private final LongFileNameProvider longFileNameProvider;
 	private final CryptoPathMapper cryptoPathMapper;
+	private final FinallyUtil finallyUtil;
 
 	private final ConcurrentMap<CryptoDirectoryStream, CryptoDirectoryStream> streams = new ConcurrentHashMap<>();
 
 	private volatile boolean closed = false;
 
 	@Inject
-	public DirectoryStreamFactory(Cryptor cryptor, LongFileNameProvider longFileNameProvider, CryptoPathMapper cryptoPathMapper) {
+	public DirectoryStreamFactory(Cryptor cryptor, LongFileNameProvider longFileNameProvider, CryptoPathMapper cryptoPathMapper, FinallyUtil finallyUtil) {
 		this.cryptor = cryptor;
 		this.longFileNameProvider = longFileNameProvider;
 		this.cryptoPathMapper = cryptoPathMapper;
+		this.finallyUtil = finallyUtil;
 	}
 
 	public DirectoryStream<Path> newDirectoryStream(CryptoPath cleartextDir, Filter<? super Path> filter) throws IOException {
@@ -41,7 +41,8 @@ class DirectoryStreamFactory {
 				cryptor.fileNameCryptor(), //
 				longFileNameProvider, //
 				filter, //
-				closed -> streams.remove(closed));
+				closed -> streams.remove(closed), //
+				finallyUtil);
 		streams.put(stream, stream);
 		if (closed) {
 			stream.close();
@@ -52,7 +53,7 @@ class DirectoryStreamFactory {
 
 	public void close() throws IOException {
 		closed = true;
-		guaranteeInvocationOf( //
+		finallyUtil.guaranteeInvocationOf( //
 				streams.keySet().stream() //
 						.map(stream -> (RunnableThrowingException<IOException>) () -> stream.close()) //
 						.iterator());

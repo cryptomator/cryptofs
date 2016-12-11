@@ -1,7 +1,6 @@
 package org.cryptomator.cryptofs;
 
 import static java.util.Arrays.asList;
-import static org.cryptomator.cryptofs.FinallyUtils.guaranteeInvocationOf;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -13,10 +12,12 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
 @SuppressWarnings("unchecked")
-public class FinallyUtilsTest {
+public class FinallyUtilTest {
 
 	@Rule
 	public MockitoRule mockitoRule = MockitoJUnit.rule();
+
+	private FinallyUtil inTest = new FinallyUtil();
 
 	@Test
 	public void testFinallyUtilsExecutesAllTasks() throws Exception {
@@ -24,7 +25,7 @@ public class FinallyUtilsTest {
 		RunnableThrowingException<Exception> task2 = mock(RunnableThrowingException.class);
 		RunnableThrowingException<Exception> task3 = mock(RunnableThrowingException.class);
 
-		guaranteeInvocationOf(task1, task2, task3);
+		inTest.guaranteeInvocationOf(task1, task2, task3);
 
 		InOrder inOrder = inOrder(task1, task2, task3);
 		inOrder.verify(task1).run();
@@ -38,7 +39,7 @@ public class FinallyUtilsTest {
 		RunnableThrowingException<Exception> task2 = mock(RunnableThrowingException.class);
 		RunnableThrowingException<Exception> task3 = mock(RunnableThrowingException.class);
 
-		guaranteeInvocationOf(asList(task1, task2, task3));
+		inTest.guaranteeInvocationOf(asList(task1, task2, task3));
 
 		InOrder inOrder = inOrder(task1, task2, task3);
 		inOrder.verify(task1).run();
@@ -52,7 +53,7 @@ public class FinallyUtilsTest {
 		RunnableThrowingException<Exception> task2 = mock(RunnableThrowingException.class);
 		RunnableThrowingException<Exception> task3 = mock(RunnableThrowingException.class);
 
-		guaranteeInvocationOf(asList(task1, task2, task3).iterator());
+		inTest.guaranteeInvocationOf(asList(task1, task2, task3).iterator());
 
 		InOrder inOrder = inOrder(task1, task2, task3);
 		inOrder.verify(task1).run();
@@ -70,7 +71,7 @@ public class FinallyUtilsTest {
 		doThrow(new Exception()).when(task3).run();
 
 		try {
-			guaranteeInvocationOf(task1, task2, task3);
+			inTest.guaranteeInvocationOf(task1, task2, task3);
 		} catch (Exception e) {
 			// ignore
 		}
