@@ -21,6 +21,7 @@ public class DelegatingFileStoreTest {
 	@Rule
 	public MockitoRule mockitoRule = MockitoJUnit.rule();
 
+	@Rule
 	public ExpectedException thrown = ExpectedException.none();
 
 	private FileStore delegate = mock(FileStore.class);
@@ -104,14 +105,14 @@ public class DelegatingFileStoreTest {
 
 	@Test
 	public void getFileStoreAttributeView() {
-		assertThat(delegate.getFileStoreAttributeView(FileStoreAttributeView.class), is((FileStoreAttributeView) null));
+		assertThat(inTest.getFileStoreAttributeView(FileStoreAttributeView.class), is((FileStoreAttributeView) null));
 	}
 
 	@Test
 	public void testGetAttribute() throws IOException {
 		thrown.expect(UnsupportedOperationException.class);
 
-		delegate.getAttribute("any");
+		inTest.getAttribute("any");
 	}
 
 }

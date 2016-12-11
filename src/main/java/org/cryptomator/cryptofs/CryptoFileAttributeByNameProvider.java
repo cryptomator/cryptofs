@@ -41,7 +41,7 @@ import com.google.common.base.Predicate;
 class CryptoFileAttributeByNameProvider {
 
 	private static final SortedMap<String, AttributeGetter<?>> GETTERS = new TreeMap<>();
-	{
+	static {
 		attribute("basic:lastModifiedTime", BasicFileAttributes.class, BasicFileAttributes::lastModifiedTime);
 		attribute("basic:lastAccessTime", BasicFileAttributes.class, BasicFileAttributes::lastAccessTime);
 		attribute("basic:creationTime", BasicFileAttributes.class, BasicFileAttributes::creationTime);
@@ -63,7 +63,7 @@ class CryptoFileAttributeByNameProvider {
 	}
 
 	private static final SortedMap<String, AttributeSetter<?, ?>> SETTERS = new TreeMap<>();
-	{
+	static {
 		attribute("basic:lastModifiedTime", BasicFileAttributeView.class, FileTime.class, (view, lastModifiedTime) -> view.setTimes(lastModifiedTime, null, null));
 		attribute("basic:lastAccessTime", BasicFileAttributeView.class, FileTime.class, (view, lastAccessTime) -> view.setTimes(null, lastAccessTime, null));
 		attribute("basic:creationTime", BasicFileAttributeView.class, FileTime.class, (view, creationTime) -> view.setTimes(null, null, creationTime));
@@ -78,12 +78,12 @@ class CryptoFileAttributeByNameProvider {
 		attribute("posix:permissions", PosixFileAttributeView.class, Set.class, PosixFileAttributeView::setPermissions);
 	}
 
-	private <T extends BasicFileAttributes> void attribute(String name, Class<T> type, Function<T, ?> getter) {
+	private static <T extends BasicFileAttributes> void attribute(String name, Class<T> type, Function<T, ?> getter) {
 		String plainName = name.substring(name.indexOf(':') + 1);
 		GETTERS.put(name, new AttributeGetter<>(plainName, type, getter));
 	}
 
-	private <T extends BasicFileAttributeView, V> void attribute(String name, Class<T> type, Class<V> valueType, BiConsumerThrowingException<T, V, IOException> setter) {
+	private static <T extends BasicFileAttributeView, V> void attribute(String name, Class<T> type, Class<V> valueType, BiConsumerThrowingException<T, V, IOException> setter) {
 		SETTERS.put(name, new AttributeSetter<>(type, valueType, setter));
 	}
 
@@ -125,7 +125,7 @@ class CryptoFileAttributeByNameProvider {
 		Map<String, Object> result = new HashMap<>();
 		BasicFileAttributes attributes = null;
 		for (AttributeGetter getter : getters) {
-			if (!getter.type().isInstance(attributes)) {
+			if (attributes == null) {
 				attributes = cryptoFileAttributeProvider.readAttributes(path, getter.type());
 			}
 			String name = getter.name();
