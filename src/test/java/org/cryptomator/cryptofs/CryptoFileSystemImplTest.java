@@ -130,6 +130,18 @@ public class CryptoFileSystemImplTest {
 	}
 
 	@Test
+	public void testToStringWithOpenFileSystem() {
+		assertThat(inTest.toString(), is("CryptoFileSystem(" + pathToVault.toString() + ")"));
+	}
+
+	@Test
+	public void testToStringWithClosedFileSystem() throws IOException {
+		inTest.close();
+
+		assertThat(inTest.toString(), is("closed CryptoFileSystem(" + pathToVault.toString() + ")"));
+	}
+
+	@Test
 	public void testGetFilestoresReturnsIterableContainingFileStore() {
 		assertThat(inTest.getFileStores(), contains(fileStore));
 	}
