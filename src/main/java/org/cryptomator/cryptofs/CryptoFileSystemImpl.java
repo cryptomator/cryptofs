@@ -8,6 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.cryptomator.cryptofs.Constants.SEPARATOR;
 
@@ -489,6 +490,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		if (!open) {
 			throw new ClosedFileSystemException();
 		}
+	}
+
+	@Override
+	public String toString() {
+		return format("%sCryptoFileSystem(%s)", open ? "" : "closed ", pathToVault);
 	}
 
 }

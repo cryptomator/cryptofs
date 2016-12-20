@@ -329,8 +329,9 @@ class CryptoPath implements Path {
 
 	@Override
 	public String toString() {
-		String prefix = isAbsolute() ? SEPARATOR : "";
-		return prefix + String.join(SEPARATOR, elements);
+		String prefix = absolute ? SEPARATOR : "";
+		String suffix = fileSystem.isOpen() ? "" : " (closed)";
+		return prefix + String.join(SEPARATOR, elements) + suffix;
 	}
 
 	public CryptoPath copyWithElements(List<String> elements) {
