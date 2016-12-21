@@ -33,6 +33,19 @@ public class UncheckedThrowsTest {
 	}
 
 	@Test
+	public void testUncheckedExceptionIsUnaffectedByUncheckedThrows() throws IOException {
+		RuntimeException exception = new RuntimeException();
+
+		thrown.expect(is(exception));
+
+		allowUncheckedThrowsOf(IOException.class).from(() -> {
+			rethrowUnchecked(IOException.class).from(() -> {
+				throw exception;
+			});
+		});
+	}
+
+	@Test
 	public void testNestedUncheckedThrows() throws IOException {
 		IOException exception = new IOException();
 
