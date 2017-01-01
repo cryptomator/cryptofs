@@ -22,6 +22,7 @@ import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -81,6 +82,11 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	public static CryptoFileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
 		return (CryptoFileSystem) FileSystems.newFileSystem(createUri(pathToVault.toAbsolutePath()), properties);
+	}
+
+	public static boolean containsVault(Path pathToVault) {
+		Path masterKeyPath = pathToVault.resolve(Constants.MASTERKEY_FILE_NAME);
+		return Files.exists(masterKeyPath);
 	}
 
 	public CryptoFileSystemProvider() {
