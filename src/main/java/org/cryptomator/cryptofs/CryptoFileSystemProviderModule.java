@@ -1,17 +1,21 @@
 package org.cryptomator.cryptofs;
 
-import org.cryptomator.cryptolib.CryptoLibModule;
+import java.util.Objects;
+
+import org.cryptomator.cryptolib.api.CryptorProvider;
 
 import dagger.Module;
 import dagger.Provides;
 
-@Module(includes = CryptoLibModule.class)
+@Module
 class CryptoFileSystemProviderModule {
 
 	private final CryptoFileSystemProvider cryptoFileSystemProvider;
+	private final CryptorProvider cryptorProvider;
 
-	private CryptoFileSystemProviderModule(Builder builder) {
-		this.cryptoFileSystemProvider = builder.cryptoFileSystemProvider;
+	public CryptoFileSystemProviderModule(CryptoFileSystemProvider cryptoFileSystemProvider, CryptorProvider cryptorProvider) {
+		this.cryptoFileSystemProvider = Objects.requireNonNull(cryptoFileSystemProvider);
+		this.cryptorProvider = cryptorProvider;
 	}
 
 	@Provides
@@ -20,33 +24,10 @@ class CryptoFileSystemProviderModule {
 		return cryptoFileSystemProvider;
 	}
 
-	public static Builder builder() {
-		return new Builder();
-	}
-
-	public static class Builder {
-
-		private CryptoFileSystemProvider cryptoFileSystemProvider;
-
-		private Builder() {
-		}
-
-		public Builder withCrytpoFileSystemProvider(CryptoFileSystemProvider cryptoFileSystemProvider) {
-			this.cryptoFileSystemProvider = cryptoFileSystemProvider;
-			return this;
-		}
-
-		public CryptoFileSystemProviderModule build() {
-			validate();
-			return new CryptoFileSystemProviderModule(this);
-		}
-
-		private void validate() {
-			if (cryptoFileSystemProvider == null) {
-				throw new IllegalStateException("cryptoFileSystemProvider must be set");
-			}
-		}
-
+	@Provides
+	@PerProvider
+	public CryptorProvider provideCryptorProvider() {
+		return cryptorProvider;
 	}
 
 }
