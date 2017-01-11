@@ -106,10 +106,12 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * 
 	 * @param pathToVault A directory path
 	 * @return <code>true</code> if the directory seems to contain a vault.
+	 * @since 1.1.0
 	 */
-	public static boolean containsVault(Path pathToVault) {
-		Path masterKeyPath = pathToVault.resolve(Constants.MASTERKEY_FILE_NAME);
-		return Files.exists(masterKeyPath);
+	public static boolean containsVault(Path pathToVault, String masterkeyFilename) {
+		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
+		Path dataDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME);
+		return Files.isRegularFile(masterKeyPath) && Files.isDirectory(dataDirPath);
 	}
 
 	/**
@@ -120,10 +122,11 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @param newPassphrase Future passphrase
 	 * @throws InvalidPassphraseException If <code>oldPassphrase</code> can not be used to unlock the vault.
 	 * @throws IOException If the masterkey could not be read or written.
+	 * @since 1.1.0
 	 */
-	public static void changePassphrase(Path pathToVault, CharSequence oldPassphrase, CharSequence newPassphrase) throws InvalidPassphraseException, IOException {
-		Path masterKeyPath = pathToVault.resolve(Constants.MASTERKEY_FILE_NAME);
-		Path backupKeyPath = pathToVault.resolve(Constants.BACKUPKEY_FILE_NAME);
+	public static void changePassphrase(Path pathToVault, String masterkeyFilename, CharSequence oldPassphrase, CharSequence newPassphrase) throws InvalidPassphraseException, IOException {
+		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
+		Path backupKeyPath = pathToVault.resolve(masterkeyFilename + Constants.MASTERKEY_BACKUP_SUFFIX);
 		byte[] oldMasterkeyBytes = Files.readAllBytes(masterKeyPath);
 		byte[] newMasterkeyBytes = Cryptors.changePassphrase(CRYPTOR_PROVIDER, oldMasterkeyBytes, oldPassphrase, newPassphrase);
 		Files.move(masterKeyPath, backupKeyPath, REPLACE_EXISTING, ATOMIC_MOVE);

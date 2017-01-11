@@ -31,8 +31,8 @@ class CryptoFileSystemModule {
 	@PerFileSystem
 	public Cryptor provideCryptor(CryptorProvider cryptorProvider, @PathToVault Path pathToVault, CryptoFileSystemProperties properties) {
 		return rethrowUnchecked(IOException.class).from(() -> {
-			Path masterKeyPath = pathToVault.resolve(Constants.MASTERKEY_FILE_NAME);
-			Path backupKeyPath = pathToVault.resolve(Constants.BACKUPKEY_FILE_NAME);
+			Path masterKeyPath = pathToVault.resolve(properties.masterkeyFilename());
+			Path backupKeyPath = pathToVault.resolve(properties.masterkeyFilename() + Constants.MASTERKEY_BACKUP_SUFFIX);
 			Cryptor cryptor;
 			if (Files.isRegularFile(masterKeyPath)) {
 				byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
