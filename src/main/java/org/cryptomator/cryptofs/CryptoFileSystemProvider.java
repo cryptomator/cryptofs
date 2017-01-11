@@ -44,10 +44,8 @@ import java.util.concurrent.ExecutorService;
 
 import org.cryptomator.cryptofs.CryptoFileSystemUris.ParsedUri;
 import org.cryptomator.cryptolib.Cryptors;
-import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.InvalidPassphraseException;
-import org.cryptomator.cryptolib.api.KeyFile;
 
 /**
  * <p>
@@ -127,9 +125,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		Path masterKeyPath = pathToVault.resolve(Constants.MASTERKEY_FILE_NAME);
 		Path backupKeyPath = pathToVault.resolve(Constants.BACKUPKEY_FILE_NAME);
 		byte[] oldMasterkeyBytes = Files.readAllBytes(masterKeyPath);
-		Cryptor cryptor = CRYPTOR_PROVIDER.createFromKeyFile(KeyFile.parse(oldMasterkeyBytes), oldPassphrase, Constants.VAULT_VERSION);
-		byte[] newMasterkeyBytes = cryptor.writeKeysToMasterkeyFile(newPassphrase, Constants.VAULT_VERSION).serialize();
-		cryptor.destroy();
+		byte[] newMasterkeyBytes = Cryptors.changePassphrase(CRYPTOR_PROVIDER, oldMasterkeyBytes, oldPassphrase, newPassphrase);
 		Files.move(masterKeyPath, backupKeyPath, REPLACE_EXISTING, ATOMIC_MOVE);
 		Files.write(masterKeyPath, newMasterkeyBytes, CREATE_NEW, WRITE);
 	}
