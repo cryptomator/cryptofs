@@ -5,11 +5,11 @@ import static org.cryptomator.cryptofs.CryptoFileSystemModuleMatcher.withPropert
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.argThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.hamcrest.MockitoHamcrest.argThat;
 
 import java.io.IOException;
 import java.nio.file.FileSystemAlreadyExistsException;
@@ -31,15 +31,15 @@ public class CryptoFileSystemsTest {
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
 
-	private Path path = mock(Path.class);
-	private Path normalizedPath = mock(Path.class);
-	private CryptoFileSystemProperties properties = mock(CryptoFileSystemProperties.class);
-	private CryptoFileSystemComponent cryptoFileSystemComponent = mock(CryptoFileSystemComponent.class);
-	private CryptoFileSystemImpl cryptoFileSystem = mock(CryptoFileSystemImpl.class);
+	private final Path path = mock(Path.class);
+	private final Path normalizedPath = mock(Path.class);
+	private final CryptoFileSystemProperties properties = mock(CryptoFileSystemProperties.class);
+	private final CryptoFileSystemComponent cryptoFileSystemComponent = mock(CryptoFileSystemComponent.class);
+	private final CryptoFileSystemImpl cryptoFileSystem = mock(CryptoFileSystemImpl.class);
 
-	private CryptoFileSystemProviderComponent cryptoFileSystemProviderComponent = mock(CryptoFileSystemProviderComponent.class);
+	private final CryptoFileSystemProviderComponent cryptoFileSystemProviderComponent = mock(CryptoFileSystemProviderComponent.class);
 
-	private CryptoFileSystems inTest = new CryptoFileSystems(cryptoFileSystemProviderComponent);
+	private final CryptoFileSystems inTest = new CryptoFileSystems(cryptoFileSystemProviderComponent);
 
 	@Before
 	public void setup() {

@@ -1,8 +1,8 @@
 package org.cryptomator.cryptofs;
 
 import static org.junit.Assert.assertNotNull;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.same;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -34,14 +34,14 @@ public class DirectoryStreamFactoryTest {
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
 
-	private FileSystem fileSystem = mock(FileSystem.class);
-	private FileSystemProvider provider = mock(FileSystemProvider.class);
-	private FinallyUtil finallyUtil = mock(FinallyUtil.class);
-	private Cryptor cryptor = mock(Cryptor.class);
-	private LongFileNameProvider longFileNameProvider = mock(LongFileNameProvider.class);
-	private CryptoPathMapper cryptoPathMapper = mock(CryptoPathMapper.class);
+	private final FileSystem fileSystem = mock(FileSystem.class);
+	private final FileSystemProvider provider = mock(FileSystemProvider.class);
+	private final FinallyUtil finallyUtil = mock(FinallyUtil.class);
+	private final Cryptor cryptor = mock(Cryptor.class);
+	private final LongFileNameProvider longFileNameProvider = mock(LongFileNameProvider.class);
+	private final CryptoPathMapper cryptoPathMapper = mock(CryptoPathMapper.class);
 
-	private DirectoryStreamFactory inTest = new DirectoryStreamFactory(cryptor, longFileNameProvider, cryptoPathMapper, finallyUtil);
+	private final DirectoryStreamFactory inTest = new DirectoryStreamFactory(cryptor, longFileNameProvider, cryptoPathMapper, finallyUtil);
 
 	@SuppressWarnings("unchecked")
 
@@ -54,7 +54,7 @@ public class DirectoryStreamFactoryTest {
 			return null;
 		}).when(finallyUtil).guaranteeInvocationOf(any(RunnableThrowingException.class), any(RunnableThrowingException.class), any(RunnableThrowingException.class));
 		doAnswer(invocation -> {
-			Iterator<RunnableThrowingException<?>> iterator = invocation.getArgumentAt(0, Iterator.class);
+			Iterator<RunnableThrowingException<?>> iterator = invocation.getArgument(0);
 			while (iterator.hasNext()) {
 				iterator.next().run();
 			}

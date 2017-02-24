@@ -3,7 +3,7 @@ package org.cryptomator.cryptofs;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 
@@ -26,16 +26,16 @@ public class CryptoFileChannelFactoryTest {
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
 
-	private FinallyUtil finallyUtil = mock(FinallyUtil.class);
+	private final FinallyUtil finallyUtil = mock(FinallyUtil.class);
 
-	private CryptoFileChannelFactory inTest = new CryptoFileChannelFactory(finallyUtil);
+	private final CryptoFileChannelFactory inTest = new CryptoFileChannelFactory(finallyUtil);
 
 	@SuppressWarnings("unchecked")
 
 	@Before
 	public void setup() {
 		doAnswer(invocation -> {
-			Iterator<RunnableThrowingException<?>> iterator = invocation.getArgumentAt(0, Iterator.class);
+			Iterator<RunnableThrowingException<?>> iterator = invocation.getArgument(0);
 			while (iterator.hasNext()) {
 				iterator.next().run();
 			}
