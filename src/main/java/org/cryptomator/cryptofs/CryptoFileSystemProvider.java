@@ -8,6 +8,10 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import static java.nio.file.StandardOpenOption.CREATE_NEW;
+import static java.nio.file.StandardOpenOption.WRITE;
 import static org.cryptomator.cryptofs.CryptoFileSystemUris.createUri;
 
 import java.io.IOException;
@@ -22,6 +26,7 @@ import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -38,7 +43,9 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import org.cryptomator.cryptofs.CryptoFileSystemUris.ParsedUri;
-import org.cryptomator.cryptolib.common.SecureRandomModule;
+import org.cryptomator.cryptolib.Cryptors;
+import org.cryptomator.cryptolib.api.CryptorProvider;
+import org.cryptomator.cryptolib.api.InvalidPassphraseException;
 
 /**
  * <p>
@@ -75,22 +82,55 @@ import org.cryptomator.cryptolib.common.SecureRandomModule;
  */
 public class CryptoFileSystemProvider extends FileSystemProvider {
 
+	private static final CryptorProvider CRYPTOR_PROVIDER = Cryptors.version1(strongSecureRandom());
+
 	private final CryptoFileSystems fileSystems;
-	private final CopyAndMoveOperations copyAndMoveOperations;
+	private final CopyOperation copyOperation;
+	private final MoveOperation moveOperation;
+
+	public CryptoFileSystemProvider() {
+		CryptoFileSystemProviderComponent component = DaggerCryptoFileSystemProviderComponent.builder() //
+				.cryptoFileSystemProviderModule(new CryptoFileSystemProviderModule(this, CRYPTOR_PROVIDER)) //
+				.build();
+		this.fileSystems = component.fileSystems();
+		this.copyOperation = component.copyOperation();
+		this.moveOperation = component.moveOperation();
+	}
 
 	public static CryptoFileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
 		return (CryptoFileSystem) FileSystems.newFileSystem(createUri(pathToVault.toAbsolutePath()), properties);
 	}
 
-	public CryptoFileSystemProvider() {
-		CryptoFileSystemProviderComponent component = DaggerCryptoFileSystemProviderComponent.builder() //
-				.secureRandomModule(new SecureRandomModule(strongSecureRandom())) //
-				.cryptoFileSystemProviderModule(CryptoFileSystemProviderModule.builder() //
-						.withCrytpoFileSystemProvider(this) //
-						.build()) //
-				.build();
-		this.fileSystems = component.fileSystems();
-		this.copyAndMoveOperations = component.copyAndMoveOperations();
+	/**
+	 * Checks if the folder represented by the given path exists and contains a valid vault structure.
+	 * 
+	 * @param pathToVault A directory path
+	 * @return <code>true</code> if the directory seems to contain a vault.
+	 * @since 1.1.0
+	 */
+	public static boolean containsVault(Path pathToVault, String masterkeyFilename) {
+		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
+		Path dataDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME);
+		return Files.isRegularFile(masterKeyPath) && Files.isDirectory(dataDirPath);
+	}
+
+	/**
+	 * Changes the passphrase of a vault at the given path.
+	 * 
+	 * @param pathToVault Vault directory
+	 * @param oldPassphrase Current passphrase
+	 * @param newPassphrase Future passphrase
+	 * @throws InvalidPassphraseException If <code>oldPassphrase</code> can not be used to unlock the vault.
+	 * @throws IOException If the masterkey could not be read or written.
+	 * @since 1.1.0
+	 */
+	public static void changePassphrase(Path pathToVault, String masterkeyFilename, CharSequence oldPassphrase, CharSequence newPassphrase) throws InvalidPassphraseException, IOException {
+		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
+		Path backupKeyPath = pathToVault.resolve(masterkeyFilename + Constants.MASTERKEY_BACKUP_SUFFIX);
+		byte[] oldMasterkeyBytes = Files.readAllBytes(masterKeyPath);
+		byte[] newMasterkeyBytes = Cryptors.changePassphrase(CRYPTOR_PROVIDER, oldMasterkeyBytes, oldPassphrase, newPassphrase);
+		Files.move(masterKeyPath, backupKeyPath, REPLACE_EXISTING, ATOMIC_MOVE);
+		Files.write(masterKeyPath, newMasterkeyBytes, CREATE_NEW, WRITE);
 	}
 
 	private static SecureRandom strongSecureRandom() {
@@ -107,7 +147,8 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	@Deprecated
 	CryptoFileSystemProvider(CryptoFileSystemProviderComponent component) {
 		this.fileSystems = component.fileSystems();
-		this.copyAndMoveOperations = component.copyAndMoveOperations();
+		this.copyOperation = component.copyOperation();
+		this.moveOperation = component.moveOperation();
 	}
 
 	/**
@@ -177,12 +218,12 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public void copy(Path cleartextSource, Path cleartextTarget, CopyOption... options) throws IOException {
-		copyAndMoveOperations.copy(CryptoPath.castAndAssertAbsolute(cleartextSource), CryptoPath.castAndAssertAbsolute(cleartextTarget), options);
+		copyOperation.copy(CryptoPath.castAndAssertAbsolute(cleartextSource), CryptoPath.castAndAssertAbsolute(cleartextTarget), options);
 	}
 
 	@Override
 	public void move(Path cleartextSource, Path cleartextTarget, CopyOption... options) throws IOException {
-		copyAndMoveOperations.move(CryptoPath.castAndAssertAbsolute(cleartextSource), CryptoPath.castAndAssertAbsolute(cleartextTarget), options);
+		moveOperation.move(CryptoPath.castAndAssertAbsolute(cleartextSource), CryptoPath.castAndAssertAbsolute(cleartextTarget), options);
 	}
 
 	@Override

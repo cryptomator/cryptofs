@@ -329,7 +329,7 @@ class CryptoPath implements Path {
 
 	@Override
 	public String toString() {
-		String prefix = isAbsolute() ? SEPARATOR : "";
+		String prefix = absolute ? SEPARATOR : "";
 		return prefix + String.join(SEPARATOR, elements);
 	}
 

@@ -1,5 +1,7 @@
 package org.cryptomator.cryptofs;
 
+import static java.lang.Math.max;
+
 import java.util.concurrent.atomic.LongAdder;
 
 import javax.inject.Inject;
@@ -18,6 +20,7 @@ public class CryptoFileSystemStats {
 	private final LongAdder bytesEncrypted = new LongAdder();
 	private final LongAdder chunkCacheAccesses = new LongAdder();
 	private final LongAdder chunkCacheMisses = new LongAdder();
+	private final LongAdder chunkCacheHits = new LongAdder();
 
 	@Inject
 	CryptoFileSystemStats() {
@@ -61,14 +64,20 @@ public class CryptoFileSystemStats {
 
 	void addChunkCacheAccess() {
 		chunkCacheAccesses.increment();
+		chunkCacheHits.increment();
 	}
 
 	public long pollChunkCacheHits() {
+		return max(0, chunkCacheHits.sumThenReset());
+	}
+
+	public long pollChunkCacheMisses() {
 		return chunkCacheMisses.sumThenReset();
 	}
 
 	void addChunkCacheMiss() {
 		chunkCacheMisses.increment();
+		chunkCacheHits.decrement();
 	}
 
 }

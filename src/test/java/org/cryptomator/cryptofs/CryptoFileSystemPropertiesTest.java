@@ -1,5 +1,7 @@
 package org.cryptomator.cryptofs;
 
+import static org.cryptomator.cryptofs.CryptoFileSystemProperties.DEFAULT_MASTERKEY_FILENAME;
+import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_MASTERKEY_FILENAME;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_PASSPHRASE;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_READONLY;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
@@ -41,10 +43,12 @@ public class CryptoFileSystemPropertiesTest {
 				.build();
 
 		assertThat(inTest.passphrase(), is(passphrase));
+		assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
 		assertThat(inTest.readonly(), is(false));
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
+						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
 						anEntry(PROPERTY_READONLY, false)));
 	}
 
@@ -58,10 +62,33 @@ public class CryptoFileSystemPropertiesTest {
 				.build();
 
 		assertThat(inTest.passphrase(), is(passphrase));
+		assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
 		assertThat(inTest.readonly(), is(true));
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
+						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
+						anEntry(PROPERTY_READONLY, true)));
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	public void testSetPassphraseAndMasterkeyFilenameAndReadonlyFlag() {
+		String passphrase = "aPassphrase";
+		String masterkeyFilename = "aMasterkeyFilename";
+		CryptoFileSystemProperties inTest = cryptoFileSystemProperties() //
+				.withPassphrase(passphrase) //
+				.withMasterkeyFilename(masterkeyFilename) //
+				.withReadonlyFlag() //
+				.build();
+
+		assertThat(inTest.passphrase(), is(passphrase));
+		assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
+		assertThat(inTest.readonly(), is(true));
+		assertThat(inTest.entrySet(),
+				containsInAnyOrder( //
+						anEntry(PROPERTY_PASSPHRASE, passphrase), //
+						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_READONLY, true)));
 	}
 
@@ -70,15 +97,19 @@ public class CryptoFileSystemPropertiesTest {
 	public void testFromMap() {
 		Map<String, Object> map = new HashMap<>();
 		String passphrase = "aPassphrase";
+		String masterkeyFilename = "aMasterkeyFilename";
 		map.put(PROPERTY_PASSPHRASE, passphrase);
+		map.put(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename);
 		map.put(PROPERTY_READONLY, true);
 		CryptoFileSystemProperties inTest = cryptoFileSystemPropertiesFrom(map).build();
 
 		assertThat(inTest.passphrase(), is(passphrase));
+		assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
 		assertThat(inTest.readonly(), is(true));
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
+						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_READONLY, true)));
 	}
 
@@ -87,15 +118,19 @@ public class CryptoFileSystemPropertiesTest {
 	public void testWrapMapWithTrueReadonly() {
 		Map<String, Object> map = new HashMap<>();
 		String passphrase = "aPassphrase";
+		String masterkeyFilename = "aMasterkeyFilename";
 		map.put(PROPERTY_PASSPHRASE, passphrase);
+		map.put(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename);
 		map.put(PROPERTY_READONLY, true);
 		CryptoFileSystemProperties inTest = CryptoFileSystemProperties.wrap(map);
 
 		assertThat(inTest.passphrase(), is(passphrase));
+		assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
 		assertThat(inTest.readonly(), is(true));
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
+						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_READONLY, true)));
 	}
 
@@ -104,15 +139,19 @@ public class CryptoFileSystemPropertiesTest {
 	public void testWrapMapWithFalseReadonly() {
 		Map<String, Object> map = new HashMap<>();
 		String passphrase = "aPassphrase";
+		String masterkeyFilename = "aMasterkeyFilename";
 		map.put(PROPERTY_PASSPHRASE, passphrase);
+		map.put(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename);
 		map.put(PROPERTY_READONLY, false);
 		CryptoFileSystemProperties inTest = CryptoFileSystemProperties.wrap(map);
 
 		assertThat(inTest.passphrase(), is(passphrase));
+		assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
 		assertThat(inTest.readonly(), is(false));
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
+						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_READONLY, false)));
 	}
 
@@ -122,7 +161,19 @@ public class CryptoFileSystemPropertiesTest {
 
 		Map<String, Object> map = new HashMap<>();
 		map.put(PROPERTY_PASSPHRASE, "any");
+		map.put(PROPERTY_MASTERKEY_FILENAME, "any");
 		map.put(PROPERTY_READONLY, 1);
+		CryptoFileSystemProperties.wrap(map);
+	}
+
+	@Test
+	public void testWrapMapWithInvalidMasterkeyFilename() {
+		thrown.expect(IllegalArgumentException.class);
+
+		Map<String, Object> map = new HashMap<>();
+		map.put(PROPERTY_PASSPHRASE, "any");
+		map.put(PROPERTY_MASTERKEY_FILENAME, "");
+		map.put(PROPERTY_READONLY, false);
 		CryptoFileSystemProperties.wrap(map);
 	}
 
@@ -132,6 +183,7 @@ public class CryptoFileSystemPropertiesTest {
 
 		Map<String, Object> map = new HashMap<>();
 		map.put(PROPERTY_PASSPHRASE, new Object());
+		map.put(PROPERTY_MASTERKEY_FILENAME, "any");
 		map.put(PROPERTY_READONLY, false);
 		CryptoFileSystemProperties.wrap(map);
 	}
@@ -145,10 +197,12 @@ public class CryptoFileSystemPropertiesTest {
 		CryptoFileSystemProperties inTest = CryptoFileSystemProperties.wrap(map);
 
 		assertThat(inTest.passphrase(), is(passphrase));
+		assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
 		assertThat(inTest.readonly(), is(false));
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
+						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
 						anEntry(PROPERTY_READONLY, false)));
 	}
 

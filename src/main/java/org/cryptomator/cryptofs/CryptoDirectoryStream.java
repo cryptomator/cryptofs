@@ -8,8 +8,6 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static org.cryptomator.cryptofs.FinallyUtils.guaranteeInvocationOf;
-
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -42,10 +40,12 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 	private final LongFileNameProvider longFileNameProvider;
 	private final DirectoryStream.Filter<? super Path> filter;
 	private final Consumer<CryptoDirectoryStream> onClose;
+	private final FinallyUtil finallyUtil;
 
 	public CryptoDirectoryStream(Directory ciphertextDir, Path cleartextDir, FileNameCryptor filenameCryptor, LongFileNameProvider longFileNameProvider, DirectoryStream.Filter<? super Path> filter,
-			Consumer<CryptoDirectoryStream> onClose) throws IOException {
+			Consumer<CryptoDirectoryStream> onClose, FinallyUtil finallyUtil) throws IOException {
 		this.onClose = onClose;
+		this.finallyUtil = finallyUtil;
 		this.directoryId = ciphertextDir.dirId;
 		this.ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path, p -> true);
 		LOG.trace("OPEN " + directoryId);
@@ -106,8 +106,9 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public void close() throws IOException {
-		guaranteeInvocationOf( //
+		finallyUtil.guaranteeInvocationOf( //
 				() -> ciphertextDirStream.close(), //
 				() -> onClose.accept(this), //
 				() -> LOG.trace("CLOSE " + directoryId));

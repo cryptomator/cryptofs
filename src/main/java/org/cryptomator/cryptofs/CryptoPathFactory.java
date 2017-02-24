@@ -1,19 +1,17 @@
 package org.cryptomator.cryptofs;
 
-import static java.lang.Math.max;
 import static java.util.Arrays.stream;
 import static java.util.Spliterator.IMMUTABLE;
 import static java.util.Spliterator.NONNULL;
+import static java.util.Spliterator.ORDERED;
 import static java.util.Spliterators.spliteratorUnknownSize;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.StreamSupport.stream;
 import static org.cryptomator.cryptofs.Constants.SEPARATOR;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 import java.util.StringTokenizer;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.inject.Inject;
@@ -26,11 +24,9 @@ class CryptoPathFactory {
 	}
 
 	public CryptoPath getPath(CryptoFileSystemImpl fileSystem, String first, String... more) {
-		List<String> elements = new ArrayList<>(max(10, 1 + more.length));
-		splitPath(first).forEach(elements::add);
-		stream(more).flatMap(this::splitPath).collect(Collectors.toList()).forEach(elements::add);
 		boolean isAbsolute = first.startsWith(SEPARATOR);
-		return new CryptoPath(fileSystem, elements, isAbsolute);
+		Stream<String> elements = Stream.concat(splitPath(first), stream(more).flatMap(this::splitPath));
+		return new CryptoPath(fileSystem, elements.collect(toList()), isAbsolute);
 	}
 
 	public CryptoPath emptyFor(CryptoFileSystemImpl fileSystem) {
@@ -54,7 +50,7 @@ class CryptoPathFactory {
 				return tokenizer.nextToken();
 			}
 		};
-		return stream(spliteratorUnknownSize(iterator, IMMUTABLE & NONNULL), false);
+		return stream(spliteratorUnknownSize(iterator, ORDERED | IMMUTABLE | NONNULL), false);
 	}
 
 }

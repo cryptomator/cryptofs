@@ -1,7 +1,5 @@
 package org.cryptomator.cryptofs;
 
-import static org.cryptomator.cryptofs.FinallyUtils.guaranteeInvocationOf;
-
 import java.io.IOException;
 import java.nio.file.ClosedFileSystemException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,24 +12,30 @@ class CryptoFileChannelFactory {
 
 	private final ConcurrentMap<CryptoFileChannel, CryptoFileChannel> channels = new ConcurrentHashMap<>();
 	private volatile boolean closed = false;
+	private final FinallyUtil finallyUtil;
 
 	@Inject
-	public CryptoFileChannelFactory() {
+	public CryptoFileChannelFactory(FinallyUtil finallyUtil) {
+		this.finallyUtil = finallyUtil;
 	}
 
+	@SuppressWarnings("finally")
 	public CryptoFileChannel create(OpenCryptoFile openCryptoFile, EffectiveOpenOptions options) throws IOException {
-		CryptoFileChannel channel = new CryptoFileChannel(openCryptoFile, options, closed -> channels.remove(closed));
+		CryptoFileChannel channel = new CryptoFileChannel(openCryptoFile, options, closed -> channels.remove(closed), finallyUtil);
 		channels.put(channel, channel);
 		if (closed) {
-			channel.close();
-			throw new ClosedFileSystemException();
+			try {
+				channel.close();
+			} finally {
+				throw new ClosedFileSystemException();
+			}
 		}
 		return channel;
 	}
 
 	public void close() throws IOException {
 		closed = true;
-		guaranteeInvocationOf( //
+		finallyUtil.guaranteeInvocationOf( //
 				channels.keySet().stream() //
 						.map(channel -> (RunnableThrowingException<IOException>) () -> channel.close()) //
 						.iterator());

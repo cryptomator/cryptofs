@@ -274,11 +274,6 @@ class GlobToRegex {
 				converter.append(c);
 			}
 		}
-
-		@Override
-		public String toString() {
-			return "NORMAL";
-		}
 	};
 
 	/**
@@ -294,11 +289,6 @@ class GlobToRegex {
 		@Override
 		void finish(GlobToRegex converter) {
 			throw converter.syntaxError("Hanging escape (\\) at end of pattern");
-		}
-
-		@Override
-		public String toString() {
-			return "ESCAPE";
 		}
 	};
 
@@ -321,11 +311,6 @@ class GlobToRegex {
 		@Override
 		void finish(GlobToRegex converter) {
 			converter.appendStar();
-		}
-
-		@Override
-		public String toString() {
-			return "STAR";
 		}
 	};
 
@@ -362,11 +347,6 @@ class GlobToRegex {
 		void finish(GlobToRegex converter) {
 			throw converter.syntaxError("Unclosed [");
 		}
-
-		@Override
-		public String toString() {
-			return "BRACKET_FIRST_CHAR";
-		}
 	};
 
 	/**
@@ -386,11 +366,6 @@ class GlobToRegex {
 		@Override
 		void finish(GlobToRegex converter) {
 			throw converter.syntaxError("Unclosed [");
-		}
-
-		@Override
-		public String toString() {
-			return "BRACKET";
 		}
 	};
 
@@ -431,11 +406,6 @@ class GlobToRegex {
 		@Override
 		void finish(GlobToRegex converter) {
 			throw converter.syntaxError("Unclosed {");
-		}
-
-		@Override
-		public String toString() {
-			return "CURLY_BRACE";
 		}
 	};
 }

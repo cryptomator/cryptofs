@@ -56,6 +56,8 @@ class UncheckedThrows {
 			public <T> T from(SupplierThrowingException<T, E> action) {
 				try {
 					return action.get();
+				} catch (RuntimeException e) {
+					throw e; // don't catch unchecked exceptions
 				} catch (Exception e) {
 					throw new ExceptionThrownUnchecked(e);
 				}

@@ -8,9 +8,9 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.cryptomator.cryptofs.Constants.SEPARATOR;
-import static org.cryptomator.cryptofs.FinallyUtils.guaranteeInvocationOf;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -84,6 +84,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	private final PathMatcherFactory pathMatcherFactory;
 	private final CryptoPathFactory cryptoPathFactory;
 	private final CryptoFileSystemStats stats;
+	private final FinallyUtil finallyUtil;
 
 	private volatile boolean open = true;
 
@@ -91,7 +92,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	public CryptoFileSystemImpl(@PathToVault Path pathToVault, CryptoFileSystemProperties properties, Cryptor cryptor, CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, CryptoFileStore fileStore,
 			OpenCryptoFiles openCryptoFiles, CryptoPathMapper cryptoPathMapper, DirectoryIdProvider dirIdProvider, CryptoFileAttributeProvider fileAttributeProvider,
 			CryptoFileAttributeViewProvider fileAttributeViewProvider, PathMatcherFactory pathMatcherFactory, CryptoPathFactory cryptoPathFactory, CryptoFileSystemStats stats,
-			RootDirectoryInitializer rootDirectoryInitializer, CryptoFileAttributeByNameProvider fileAttributeByNameProvider, DirectoryStreamFactory directoryStreamFactory) {
+			RootDirectoryInitializer rootDirectoryInitializer, CryptoFileAttributeByNameProvider fileAttributeByNameProvider, DirectoryStreamFactory directoryStreamFactory, FinallyUtil finallyUtil) {
 		this.cryptor = cryptor;
 		this.provider = provider;
 		this.cryptoFileSystems = cryptoFileSystems;
@@ -109,6 +110,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		this.directoryStreamFactory = directoryStreamFactory;
 		this.rootPath = cryptoPathFactory.rootFor(this);
 		this.emptyPath = cryptoPathFactory.emptyFor(this);
+		this.finallyUtil = finallyUtil;
 
 		rootDirectoryInitializer.initialize(rootPath);
 	}
@@ -156,12 +158,13 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		return Collections.singleton(fileStore);
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public void close() throws IOException {
 		// TODO close watch services when implemented
 		if (open) {
 			open = false;
-			guaranteeInvocationOf( //
+			finallyUtil.guaranteeInvocationOf( //
 					() -> cryptoFileSystems.remove(this), //
 					() -> openCryptoFiles.close(), //
 					() -> directoryStreamFactory.close(), //
@@ -487,6 +490,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		if (!open) {
 			throw new ClosedFileSystemException();
 		}
+	}
+
+	@Override
+	public String toString() {
+		return format("%sCryptoFileSystem(%s)", open ? "" : "closed ", pathToVault);
 	}
 
 }

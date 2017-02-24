@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import org.apache.commons.lang3.StringUtils;
+
 /**
  * Properties to pass to
  * <ul>
@@ -42,12 +44,23 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 */
 	public static final String PROPERTY_READONLY = "readonly";
 
+	/**
+	 * Key identifying the name of the masterkey file located inside the vault directory.
+	 * 
+	 * @since 1.1.0
+	 */
+	public static final String PROPERTY_MASTERKEY_FILENAME = "masterkeyFilename";
+
+	static final String DEFAULT_MASTERKEY_FILENAME = "masterkey.cryptomator";
+
 	private final Set<Entry<String, Object>> entries;
 
 	private CryptoFileSystemProperties(Builder builder) {
 		this.entries = unmodifiableSet(new HashSet<>(asList( //
 				entry(PROPERTY_PASSPHRASE, builder.passphrase), //
-				entry(PROPERTY_READONLY, builder.readonly))));
+				entry(PROPERTY_READONLY, builder.readonly), //
+				entry(PROPERTY_MASTERKEY_FILENAME, builder.masterkeyFilename) //
+		)));
 	}
 
 	CharSequence passphrase() {
@@ -56,6 +69,10 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	boolean readonly() {
 		return (boolean) get(PROPERTY_READONLY);
+	}
+
+	String masterkeyFilename() {
+		return (String) get(PROPERTY_MASTERKEY_FILENAME);
 	}
 
 	@Override
@@ -127,12 +144,14 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 		private CharSequence passphrase;
 		private boolean readonly = false;
+		private String masterkeyFilename = DEFAULT_MASTERKEY_FILENAME;
 
 		private Builder() {
 		}
 
 		private Builder(Map<String, ?> properties) {
 			checkedSet(CharSequence.class, PROPERTY_PASSPHRASE, properties, this::withPassphrase);
+			checkedSet(String.class, PROPERTY_MASTERKEY_FILENAME, properties, this::withMasterkeyFilename);
 			checkedSet(Boolean.class, PROPERTY_READONLY, properties, readonly -> {
 				if (TRUE.equals(readonly)) {
 					withReadonlyFlag();
@@ -174,6 +193,18 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		}
 
 		/**
+		 * Sets the name of the masterkey file located inside the vault directory.
+		 * 
+		 * @param masterkeyFilename the filename of the json file containing configuration to decrypt the masterkey
+		 * @return this
+		 * @since 1.1.0
+		 */
+		public Builder withMasterkeyFilename(String masterkeyFilename) {
+			this.masterkeyFilename = masterkeyFilename;
+			return this;
+		}
+
+		/**
 		 * Validates the values and creates new {@link CryptoFileSystemProperties}.
 		 * 
 		 * @return a new {@code CryptoFileSystemProperties} with the values from this builder
@@ -187,6 +218,9 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		private void validate() {
 			if (passphrase == null) {
 				throw new IllegalStateException("passphrase is required");
+			}
+			if (StringUtils.isBlank(masterkeyFilename)) {
+				throw new IllegalStateException("masterkeyFilename is required");
 			}
 		}
 

@@ -8,7 +8,6 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static org.cryptomator.cryptofs.FinallyUtils.guaranteeInvocationOf;
 import static org.cryptomator.cryptofs.OpenCryptoFileModule.openCryptoFileModule;
 import static org.cryptomator.cryptofs.UncheckedThrows.allowUncheckedThrowsOf;
 
@@ -23,11 +22,13 @@ import javax.inject.Inject;
 class OpenCryptoFiles {
 
 	private final CryptoFileSystemComponent component;
+	private final FinallyUtil finallyUtil;
 	private final ConcurrentMap<Path, OpenCryptoFile> openCryptoFiles = new ConcurrentHashMap<>();
 
 	@Inject
-	public OpenCryptoFiles(CryptoFileSystemComponent component) {
+	public OpenCryptoFiles(CryptoFileSystemComponent component, FinallyUtil finallyUtil) {
 		this.component = component;
+		this.finallyUtil = finallyUtil;
 	}
 
 	public OpenCryptoFile get(Path path, EffectiveOpenOptions options) throws IOException {
@@ -41,7 +42,7 @@ class OpenCryptoFiles {
 	}
 
 	public void close() throws IOException {
-		guaranteeInvocationOf( //
+		finallyUtil.guaranteeInvocationOf( //
 				openCryptoFiles.values().stream() //
 						.map(openCryptoFile -> (RunnableThrowingException<IOException>) () -> openCryptoFile.close()) //
 						.iterator());

@@ -14,11 +14,29 @@ import java.nio.channels.SeekableByteChannel;
 
 class SeekableByteChannelMock implements SeekableByteChannel {
 
-	boolean open = true;
+	private boolean open = true;
+
 	private final ByteBuffer buf;
+
+	public SeekableByteChannelMock(int position, int size, ByteBuffer buf) {
+		this.buf = buf;
+		buf.position(position);
+		buf.limit(size);
+	}
 
 	public SeekableByteChannelMock(ByteBuffer buf) {
 		this.buf = buf;
+		buf.position(0);
+	}
+
+	public SeekableByteChannelMock(int maxSize) {
+		this(0, 0, ByteBuffer.allocate(100));
+	}
+
+	public ByteBuffer data() {
+		ByteBuffer result = buf.asReadOnlyBuffer();
+		result.position(0);
+		return result;
 	}
 
 	@Override
@@ -46,11 +64,13 @@ class SeekableByteChannelMock implements SeekableByteChannel {
 
 	@Override
 	public int write(ByteBuffer src) throws IOException {
-		int num = Math.min(buf.remaining(), src.remaining());
-		ByteBuffer limitedSrc = src.asReadOnlyBuffer();
-		limitedSrc.limit(limitedSrc.position() + num);
-		buf.put(limitedSrc);
-		return num;
+		int amount = src.remaining();
+		if (buf.capacity() - buf.position() < amount) {
+			throw new IOException("Out of bounds write. Max size is " + buf.capacity());
+		}
+		buf.limit(Math.max(buf.limit(), buf.position() + amount));
+		buf.put(src);
+		return amount;
 	}
 
 	@Override

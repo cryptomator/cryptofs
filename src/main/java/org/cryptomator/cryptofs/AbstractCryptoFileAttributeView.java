@@ -9,7 +9,6 @@
 package org.cryptomator.cryptofs;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -26,7 +25,7 @@ abstract class AbstractCryptoFileAttributeView<S extends BasicFileAttributes, T 
 		this.ciphertextPath = ciphertextPath;
 		this.fileAttributeProvider = fileAttributeProvider;
 		this.attributesType = attributesType;
-		this.delegate = Files.getFileAttributeView(ciphertextPath, delegateType);
+		this.delegate = ciphertextPath.getFileSystem().provider().getFileAttributeView(ciphertextPath, delegateType);
 		if (delegate == null) {
 			throw new UnsupportedFileAttributeViewException();
 		}
