@@ -75,7 +75,7 @@ public class CryptoDirectoryStreamTest {
 
 			@Override
 			public String answer(InvocationOnMock invocation) throws Throwable {
-				String shortName = invocation.getArgumentAt(0, String.class);
+				String shortName = invocation.getArgument(0);
 				if (shortName.contains("invalid")) {
 					throw new IOException("invalid shortened name");
 				} else {
