@@ -4,11 +4,11 @@ import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
 import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.hasAtLeastRemaining;
 import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.argThat;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.hamcrest.MockitoHamcrest.argThat;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -107,7 +107,7 @@ public class ChunkLoaderTest {
 
 	private Answer<Integer> fillBufferWith(byte value, int amount) {
 		return invocation -> {
-			ByteBuffer buffer = invocation.getArgumentAt(0, ByteBuffer.class);
+			ByteBuffer buffer = invocation.getArgument(0);
 			for (int i = 0; i < amount; i++) {
 				buffer.put(value);
 			}

@@ -5,9 +5,9 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyLong;
-import static org.mockito.Matchers.same;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -52,12 +52,12 @@ public class CryptoFileChannelTest {
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
 
-	private OpenCryptoFile openCryptoFile = mock(OpenCryptoFile.class);
+	private final OpenCryptoFile openCryptoFile = mock(OpenCryptoFile.class);
 
-	private EffectiveOpenOptions options = mock(EffectiveOpenOptions.class);
+	private final EffectiveOpenOptions options = mock(EffectiveOpenOptions.class);
 
 	@SuppressWarnings("unchecked")
-	private Consumer<CryptoFileChannel> onClose = mock(Consumer.class);
+	private final Consumer<CryptoFileChannel> onClose = mock(Consumer.class);
 
 	private FinallyUtil finallyUtil = mock(FinallyUtil.class);
 
@@ -530,8 +530,8 @@ public class CryptoFileChannelTest {
 			when(openCryptoFile.read(any(ByteBuffer.class), anyLong())).thenAnswer(new Answer<Integer>() {
 				@Override
 				public Integer answer(InvocationOnMock invocation) throws Throwable {
-					ByteBuffer target = invocation.getArgumentAt(0, ByteBuffer.class);
-					Long position = invocation.getArgumentAt(1, Long.class);
+					ByteBuffer target = invocation.getArgument(0);
+					Long position = invocation.getArgument(1);
 					return sourceData.read(target, position);
 				}
 			});
@@ -553,8 +553,8 @@ public class CryptoFileChannelTest {
 			when(openCryptoFile.read(any(ByteBuffer.class), anyLong())).thenAnswer(new Answer<Integer>() {
 				@Override
 				public Integer answer(InvocationOnMock invocation) throws Throwable {
-					ByteBuffer target = invocation.getArgumentAt(0, ByteBuffer.class);
-					Long position = invocation.getArgumentAt(1, Long.class);
+					ByteBuffer target = invocation.getArgument(0);
+					Long position = invocation.getArgument(1);
 					return sourceData.read(target, position);
 				}
 			});
@@ -605,8 +605,8 @@ public class CryptoFileChannelTest {
 			when(openCryptoFile.write(same(options), any(ByteBuffer.class), anyLong())).thenAnswer(new Answer<Integer>() {
 				@Override
 				public Integer answer(InvocationOnMock invocation) throws Throwable {
-					ByteBuffer source = invocation.getArgumentAt(1, ByteBuffer.class);
-					Long position = invocation.getArgumentAt(2, Long.class);
+					ByteBuffer source = invocation.getArgument(1);
+					Long position = invocation.getArgument(2);
 					return targetData.write(source, position.intValue());
 				}
 			});
@@ -629,8 +629,8 @@ public class CryptoFileChannelTest {
 			when(openCryptoFile.write(same(options), any(ByteBuffer.class), anyLong())).thenAnswer(new Answer<Integer>() {
 				@Override
 				public Integer answer(InvocationOnMock invocation) throws Throwable {
-					ByteBuffer source = invocation.getArgumentAt(1, ByteBuffer.class);
-					Long position = invocation.getArgumentAt(2, Long.class);
+					ByteBuffer source = invocation.getArgument(1);
+					Long position = invocation.getArgument(2);
 					return targetData.write(source, position.intValue());
 				}
 			});

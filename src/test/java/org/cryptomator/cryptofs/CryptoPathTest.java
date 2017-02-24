@@ -19,7 +19,7 @@ import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -54,7 +54,7 @@ public class CryptoPathTest {
 
 	private CryptoFileSystemImpl fileSystem;
 
-	private CryptoPathFactory cryptoPathFactory = new CryptoPathFactory();
+	private final CryptoPathFactory cryptoPathFactory = new CryptoPathFactory();
 
 	private CryptoPath rootPath;
 	private CryptoPath emptyPath;
@@ -65,7 +65,7 @@ public class CryptoPathTest {
 		rootPath = cryptoPathFactory.rootFor(fileSystem);
 		emptyPath = cryptoPathFactory.emptyFor(fileSystem);
 		when(fileSystem.getPath(any(String.class))).thenAnswer(invocation -> {
-			String first = invocation.getArgumentAt(0, String.class);
+			String first = invocation.getArgument(0);
 			return path(first);
 		});
 

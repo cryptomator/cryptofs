@@ -198,7 +198,7 @@ public class AsyncDelegatingFileChannelTest {
 			Mockito.when(channel.read(Mockito.any(), Mockito.anyLong())).thenAnswer(new Answer<Integer>() {
 				@Override
 				public Integer answer(InvocationOnMock invocation) throws Throwable {
-					ByteBuffer dst = invocation.getArgumentAt(0, ByteBuffer.class);
+					ByteBuffer dst = invocation.getArgument(0);
 					Thread.sleep(100);
 					int read = dst.remaining();
 					dst.position(dst.position() + read);
@@ -256,7 +256,7 @@ public class AsyncDelegatingFileChannelTest {
 			Mockito.when(channel.write(Mockito.any(), Mockito.anyLong())).thenAnswer(new Answer<Integer>() {
 				@Override
 				public Integer answer(InvocationOnMock invocation) throws Throwable {
-					ByteBuffer dst = invocation.getArgumentAt(0, ByteBuffer.class);
+					ByteBuffer dst = invocation.getArgument(0);
 					Thread.sleep(100);
 					int read = dst.remaining();
 					dst.position(dst.position() + read);
