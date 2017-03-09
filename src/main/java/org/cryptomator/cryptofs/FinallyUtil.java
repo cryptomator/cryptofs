@@ -1,8 +1,9 @@
 package org.cryptomator.cryptofs;
 
-import static java.util.Arrays.asList;
-
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import javax.inject.Inject;
 
@@ -13,14 +14,18 @@ class FinallyUtil {
 	public FinallyUtil() {
 	}
 
-	@SuppressWarnings({"rawtypes", "unchecked"})
+	@SuppressWarnings({"unchecked"})
 	public <E extends Exception> void guaranteeInvocationOf(RunnableThrowingException<? extends E>... tasks) throws E {
-		guaranteeInvocationOf((Iterator) asList(tasks).iterator());
+		guaranteeInvocationOf(Arrays.stream(tasks));
 	}
 
-	@SuppressWarnings({"rawtypes", "unchecked"})
 	public <E extends Exception> void guaranteeInvocationOf(Iterable<RunnableThrowingException<? extends E>> tasks) throws E {
-		guaranteeInvocationOf((Iterator) tasks.iterator());
+		guaranteeInvocationOf(StreamSupport.stream(tasks.spliterator(), false));
+	}
+
+	@SuppressWarnings({"unchecked"})
+	public <E extends Exception> void guaranteeInvocationOf(Stream<RunnableThrowingException<? extends E>> tasks) throws E {
+		guaranteeInvocationOf(tasks.map(t -> (RunnableThrowingException<E>) t).iterator());
 	}
 
 	@SuppressWarnings("unchecked")
