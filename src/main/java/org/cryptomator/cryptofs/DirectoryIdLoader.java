@@ -20,7 +20,11 @@ class DirectoryIdLoader extends CacheLoader<Path, String> {
 	@Override
 	public String load(Path dirFilePath) throws IOException {
 		if (Files.exists(dirFilePath)) {
-			return new String(Files.readAllBytes(dirFilePath), StandardCharsets.UTF_8);
+			byte[] bytes = Files.readAllBytes(dirFilePath);
+			if (bytes.length == 0) {
+				throw new IOException("Invalid, empty directory file: " + dirFilePath);
+			}
+			return new String(bytes, StandardCharsets.UTF_8);
 		} else {
 			return UUID.randomUUID().toString();
 		}
