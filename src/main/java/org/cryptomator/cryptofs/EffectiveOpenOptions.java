@@ -159,9 +159,11 @@ class EffectiveOpenOptions {
 		return StandardOpenOption.class.isInstance(option);
 	}
 
+	// TODO do not add write if filesystem is in readonly mode
 	public Set<OpenOption> createOpenOptionsForEncryptedFile() {
 		Set<OpenOption> result = new HashSet<>(options);
 		result.add(READ); // also needed during write
+		result.add(WRITE); // maybe needed when opening writable channel afterwards
 		result.remove(APPEND);
 		return result;
 	}

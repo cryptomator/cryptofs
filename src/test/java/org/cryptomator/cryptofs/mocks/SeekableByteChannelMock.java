@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 
-class SeekableByteChannelMock implements SeekableByteChannel {
+public class SeekableByteChannelMock implements SeekableByteChannel {
 
 	private boolean open = true;
 
@@ -58,6 +58,7 @@ class SeekableByteChannelMock implements SeekableByteChannel {
 			ByteBuffer limitedSrc = buf.asReadOnlyBuffer();
 			limitedSrc.limit(limitedSrc.position() + num);
 			dst.put(limitedSrc);
+			buf.position(buf.position() + num);
 			return num;
 		}
 	}

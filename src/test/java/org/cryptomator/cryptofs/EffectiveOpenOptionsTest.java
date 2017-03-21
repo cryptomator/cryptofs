@@ -63,7 +63,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.truncateExisting());
 		assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
+		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
 	}
 
 	@Test
@@ -97,7 +97,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.truncateExisting());
 		assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
+		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
 	}
 
 	@Test
@@ -131,7 +131,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.truncateExisting());
 		assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
+		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
 	}
 
 	@Test
@@ -182,7 +182,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.truncateExisting());
 		assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, DELETE_ON_CLOSE));
+		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE, DELETE_ON_CLOSE));
 	}
 
 	@Test
@@ -199,7 +199,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.truncateExisting());
 		assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
+		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
 	}
 
 	@Test
@@ -216,7 +216,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.truncateExisting());
 		assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, SYNC));
+		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE, SYNC));
 	}
 
 	@Test
@@ -233,7 +233,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.truncateExisting());
 		assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, DSYNC));
+		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE, DSYNC));
 	}
 
 	@Test
@@ -250,7 +250,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.truncateExisting());
 		assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
+		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
 	}
 
 	@Test
