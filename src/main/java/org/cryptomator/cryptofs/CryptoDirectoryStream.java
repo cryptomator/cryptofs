@@ -19,14 +19,14 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.common.collect.Iterators;
 
 class CryptoDirectoryStream implements DirectoryStream<Path> {
 
@@ -57,12 +57,11 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 
 	@Override
 	public Iterator<Path> iterator() {
-		Iterator<Path> ciphertextPathIter = ciphertextDirStream.iterator();
-		Iterator<Path> longCiphertextPathOrNullIter = Iterators.transform(ciphertextPathIter, this::inflateIfNeeded);
-		Iterator<Path> longCiphertextPathIter = Iterators.filter(longCiphertextPathOrNullIter, Objects::nonNull);
-		Iterator<Path> cleartextPathOrNullIter = Iterators.transform(longCiphertextPathIter, this::decrypt);
-		Iterator<Path> cleartextPathIter = Iterators.filter(cleartextPathOrNullIter, Objects::nonNull);
-		return Iterators.filter(cleartextPathIter, this::isAcceptableByFilter);
+		Stream<Path> pathIter = StreamSupport.stream(ciphertextDirStream.spliterator(), false);
+		Stream<Path> inflated = pathIter.map(this::inflateIfNeeded).filter(Objects::nonNull);
+		Stream<Path> decrypted = inflated.map(this::decrypt).filter(Objects::nonNull);
+		Stream<Path> filtered = decrypted.filter(this::isAcceptableByFilter);
+		return filtered.iterator();
 	}
 
 	private Path inflateIfNeeded(Path ciphertextPath) {

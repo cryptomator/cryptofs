@@ -8,7 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 
@@ -20,10 +20,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Spliterators;
 import java.util.function.Consumer;
 
 import org.apache.commons.lang3.StringUtils;
@@ -38,8 +38,6 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-
-import com.google.common.collect.Iterators;
 
 public class CryptoDirectoryStreamTest {
 
@@ -111,7 +109,7 @@ public class CryptoDirectoryStreamTest {
 		ciphertextFileNames.add(filenameCryptor.encryptFilename("four", "foo".getBytes()) + ".lng");
 		ciphertextFileNames.add(filenameCryptor.encryptFilename("invalid", "bar".getBytes()));
 		ciphertextFileNames.add("alsoInvalid");
-		Mockito.when(dirStream.iterator()).thenReturn(Iterators.transform(ciphertextFileNames.iterator(), cleartextPath::resolve));
+		Mockito.when(dirStream.spliterator()).thenReturn(ciphertextFileNames.stream().map(cleartextPath::resolve).spliterator());
 
 		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new Directory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, longFileNameProvider, ACCEPT_ALL, DO_NOTHING_ON_CLOSE, finallyUtil)) {
 			Iterator<Path> iter = stream.iterator();
@@ -133,7 +131,7 @@ public class CryptoDirectoryStreamTest {
 	public void testDirListingForEmptyDir() throws IOException {
 		Path cleartextPath = Paths.get("/foo/bar");
 
-		Mockito.when(dirStream.iterator()).thenReturn(Collections.emptyIterator());
+		Mockito.when(dirStream.spliterator()).thenReturn(Spliterators.emptySpliterator());
 
 		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new Directory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, longFileNameProvider, ACCEPT_ALL, DO_NOTHING_ON_CLOSE, finallyUtil)) {
 			Iterator<Path> iter = stream.iterator();
