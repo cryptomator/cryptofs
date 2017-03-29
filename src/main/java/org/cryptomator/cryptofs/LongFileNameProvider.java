@@ -32,7 +32,7 @@ class LongFileNameProvider {
 
 	private static final BaseEncoding BASE32 = BaseEncoding.base32();
 	private static final int MAX_CACHE_SIZE = 5000;
-	private static final String LONG_NAME_FILE_EXT = ".lng";
+	public static final String LONG_NAME_FILE_EXT = ".lng";
 
 	private final Path metadataRoot;
 	private final LoadingCache<String, String> ids;
