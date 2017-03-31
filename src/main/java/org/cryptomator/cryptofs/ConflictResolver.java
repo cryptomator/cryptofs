@@ -5,9 +5,12 @@ import static org.cryptomator.cryptofs.Constants.NAME_SHORTENING_THRESHOLD;
 import static org.cryptomator.cryptofs.LongFileNameProvider.LONG_NAME_FILE_EXT;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -25,6 +28,7 @@ class ConflictResolver {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ConflictResolver.class);
 	private static final Pattern BASE32_PATTERN = Pattern.compile("(([A-Z2-7]{8})*[A-Z2-7=]{8})");
+	private static final int MAX_DIR_FILE_SIZE = 87; // "normal" file header has 88 bytes
 	private static final int UUID_FIRST_GROUP_STRLEN = 8;
 
 	private final LongFileNameProvider longFileNameProvider;
@@ -51,24 +55,30 @@ class ConflictResolver {
 			if (LongFileNameProvider.isDeflated(ciphertextFileName)) {
 				ciphertext = longFileNameProvider.inflate(ciphertext + LONG_NAME_FILE_EXT);
 			}
-			return getAlternativeCiphertextName(directory, ciphertext, dirId);
+			return getAlternativeCiphertextName(directory, ciphertextFileName, ciphertext, dirId);
 		} else {
 			// full match or no match at all -> nothing to resolve
 			return ciphertextFileName;
 		}
 	}
 
-	private String getAlternativeCiphertextName(Path directory, String ciphertextFileName, String dirId) throws IOException {
-		boolean isDirectory = ciphertextFileName.startsWith(DIR_PREFIX);
-		String ciphertext = StringUtils.removeStart(ciphertextFileName, DIR_PREFIX);
+	private String getAlternativeCiphertextName(Path directory, String filename, String ciphertext, String dirId) throws IOException {
+		final boolean isDirectory = filename.startsWith(DIR_PREFIX);
+		final String prefix = isDirectory ? DIR_PREFIX : "";
+		final Path conflictingPath = directory.resolve(filename);
+		final Path canonicalPath = directory.resolve(prefix + ciphertext);
+		if (isDirectory && hasSameDirFileContent(conflictingPath, canonicalPath)) {
+			// there must not be two directories pointing to the same dirId. In this case no human interaction is needed to resolve this conflict:
+			Files.deleteIfExists(conflictingPath);
+			return canonicalPath.getFileName().toString();
+		}
 		try {
 			String cleartext = filenameCryptor.decryptFilename(ciphertext, dirId.getBytes(StandardCharsets.UTF_8));
-			Path canonicalPath = directory.resolve(ciphertextFileName);
 			Path alternativePath = canonicalPath;
 			while (Files.exists(alternativePath)) {
 				String alternativeCleartext = cleartext + " (Conflict " + createConflictId() + ")";
 				String alternativeCiphertext = filenameCryptor.encryptFilename(alternativeCleartext, dirId.getBytes(StandardCharsets.UTF_8));
-				String alternativeCiphertextFileName = isDirectory ? DIR_PREFIX + alternativeCiphertext : alternativeCiphertext;
+				String alternativeCiphertextFileName = prefix + alternativeCiphertext;
 				if (alternativeCiphertextFileName.length() >= NAME_SHORTENING_THRESHOLD) {
 					alternativeCiphertextFileName = longFileNameProvider.deflate(alternativeCiphertextFileName);
 				}
@@ -77,8 +87,27 @@ class ConflictResolver {
 			return alternativePath.getFileName().toString();
 		} catch (AuthenticationFailedException e) {
 			// not decryptable, no need to resolve any kind of conflict
-			LOG.info("Found valid Base32 string, which is an invalid ciphertext: {}", ciphertextFileName);
-			return ciphertextFileName;
+			LOG.info("Found valid Base32 string, which is an invalid ciphertext: {}", filename);
+			return filename;
+		}
+	}
+
+	/**
+	 * @param conflictingPath Path to a potentially conflicting file supposedly containing a directory id
+	 * @param canonicalPath Path to the canonical file containing a directory id
+	 * @return <code>true</code> if the first {@value #MAX_DIR_FILE_SIZE} bytes are equal in both files.
+	 * @throws IOException If an I/O exception occurs while reading either file.
+	 */
+	private boolean hasSameDirFileContent(Path conflictingPath, Path canonicalPath) throws IOException {
+		try (ReadableByteChannel in1 = Files.newByteChannel(conflictingPath, StandardOpenOption.READ); //
+				ReadableByteChannel in2 = Files.newByteChannel(canonicalPath, StandardOpenOption.READ)) {
+			ByteBuffer buf1 = ByteBuffer.allocate(MAX_DIR_FILE_SIZE);
+			ByteBuffer buf2 = ByteBuffer.allocate(MAX_DIR_FILE_SIZE);
+			in1.read(buf1);
+			in2.read(buf2);
+			buf1.flip();
+			buf2.flip();
+			return buf1.compareTo(buf2) == 0;
 		}
 	}
 
