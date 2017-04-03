@@ -8,6 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import static org.mockito.AdditionalAnswers.returnsFirstArg;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -36,8 +37,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 
 public class CryptoDirectoryStreamTest {
 
@@ -59,6 +58,7 @@ public class CryptoDirectoryStreamTest {
 	private Path ciphertextDirPath;
 	private DirectoryStream<Path> dirStream;
 	private LongFileNameProvider longFileNameProvider;
+	private ConflictResolver conflictResolver;
 	private FinallyUtil finallyUtil;
 
 	@Before
@@ -74,20 +74,17 @@ public class CryptoDirectoryStreamTest {
 		dirStream = Mockito.mock(DirectoryStream.class);
 		Mockito.when(provider.newDirectoryStream(Mockito.same(ciphertextDirPath), Mockito.any())).thenReturn(dirStream);
 		longFileNameProvider = Mockito.mock(LongFileNameProvider.class);
+		conflictResolver = Mockito.mock(ConflictResolver.class);
 		finallyUtil = mock(FinallyUtil.class);
-		Mockito.when(longFileNameProvider.inflate(Mockito.anyString())).thenAnswer(new Answer<String>() {
-
-			@Override
-			public String answer(InvocationOnMock invocation) throws Throwable {
-				String shortName = invocation.getArgument(0);
-				if (shortName.contains("invalid")) {
-					throw new IOException("invalid shortened name");
-				} else {
-					return StringUtils.removeEnd(shortName, ".lng");
-				}
+		Mockito.when(longFileNameProvider.inflate(Mockito.anyString())).then(invocation -> {
+			String shortName = invocation.getArgument(0);
+			if (shortName.contains("invalid")) {
+				throw new IOException("invalid shortened name");
+			} else {
+				return StringUtils.removeEnd(shortName, ".lng");
 			}
-
 		});
+		Mockito.when(conflictResolver.resolveConflicts(Mockito.any(), Mockito.any())).then(returnsFirstArg());
 
 		doAnswer(invocation -> {
 			for (Object runnable : invocation.getArguments()) {
@@ -111,7 +108,8 @@ public class CryptoDirectoryStreamTest {
 		ciphertextFileNames.add("alsoInvalid");
 		Mockito.when(dirStream.spliterator()).thenReturn(ciphertextFileNames.stream().map(cleartextPath::resolve).spliterator());
 
-		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new Directory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, longFileNameProvider, ACCEPT_ALL, DO_NOTHING_ON_CLOSE, finallyUtil)) {
+		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new Directory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, longFileNameProvider, conflictResolver, ACCEPT_ALL, DO_NOTHING_ON_CLOSE,
+				finallyUtil)) {
 			Iterator<Path> iter = stream.iterator();
 			Assert.assertTrue(iter.hasNext());
 			Assert.assertEquals(cleartextPath.resolve("one"), iter.next());
@@ -133,7 +131,8 @@ public class CryptoDirectoryStreamTest {
 
 		Mockito.when(dirStream.spliterator()).thenReturn(Spliterators.emptySpliterator());
 
-		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new Directory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, longFileNameProvider, ACCEPT_ALL, DO_NOTHING_ON_CLOSE, finallyUtil)) {
+		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new Directory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, longFileNameProvider, conflictResolver, ACCEPT_ALL, DO_NOTHING_ON_CLOSE,
+				finallyUtil)) {
 			Iterator<Path> iter = stream.iterator();
 			Assert.assertFalse(iter.hasNext());
 			iter.next();
