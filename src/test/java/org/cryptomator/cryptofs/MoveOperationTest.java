@@ -5,8 +5,8 @@ import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.same;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -133,7 +133,6 @@ public class MoveOperationTest {
 	}
 
 	@Test
-	@SuppressWarnings("unchecked")
 	public void testMoveDoesNotThrowIOExceptionIfFileAttributesOfSourceCanNotBeRead() throws IOException {
 		when(provider.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenThrow(IOException.class);
 
