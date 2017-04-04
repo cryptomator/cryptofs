@@ -93,9 +93,6 @@ class ConflictResolver {
 			canonicalPath = directory.resolve(dirPrefix + ciphertext);
 		}
 
-		/*
-		 * Directory files must not result in symlink, make sure the conflicting file is not identical to the original.
-		 */
 		if (isDirectory && resolveDirectoryConflictTrivially(canonicalPath, conflictingPath)) {
 			return canonicalPath;
 		} else {
