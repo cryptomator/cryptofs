@@ -18,6 +18,7 @@ class DirectoryStreamFactory {
 
 	private final Cryptor cryptor;
 	private final LongFileNameProvider longFileNameProvider;
+	private final ConflictResolver conflictResolver;
 	private final CryptoPathMapper cryptoPathMapper;
 	private final FinallyUtil finallyUtil;
 
@@ -26,9 +27,10 @@ class DirectoryStreamFactory {
 	private volatile boolean closed = false;
 
 	@Inject
-	public DirectoryStreamFactory(Cryptor cryptor, LongFileNameProvider longFileNameProvider, CryptoPathMapper cryptoPathMapper, FinallyUtil finallyUtil) {
+	public DirectoryStreamFactory(Cryptor cryptor, LongFileNameProvider longFileNameProvider, ConflictResolver conflictResolver, CryptoPathMapper cryptoPathMapper, FinallyUtil finallyUtil) {
 		this.cryptor = cryptor;
 		this.longFileNameProvider = longFileNameProvider;
+		this.conflictResolver = conflictResolver;
 		this.cryptoPathMapper = cryptoPathMapper;
 		this.finallyUtil = finallyUtil;
 	}
@@ -40,6 +42,7 @@ class DirectoryStreamFactory {
 				cleartextDir, //
 				cryptor.fileNameCryptor(), //
 				longFileNameProvider, //
+				conflictResolver, //
 				filter, //
 				closed -> streams.remove(closed), //
 				finallyUtil);
