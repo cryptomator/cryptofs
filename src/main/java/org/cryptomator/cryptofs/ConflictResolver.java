@@ -41,26 +41,41 @@ class ConflictResolver {
 		this.cryptor = cryptor;
 	}
 
-	public Path resolveConflicts(Path ciphertextPath, String dirId) throws IOException {
+	/**
+	 * Checks if the name of the file represented by the given ciphertextPath is a valid ciphertext name without any additional chars.
+	 * If any unexpected chars are found on the name but it still contains an authentic ciphertext, it is considered a conflicting file.
+	 * Conflicting files will be given a new name. The caller must use the path returned by this function after invoking it, as the given ciphertextPath might be no longer valid.
+	 * 
+	 * @param ciphertextPath The path to a file to check.
+	 * @param dirId The directory id of the file's parent directory.
+	 * @return Either the original name if no unexpected chars have been found or a completely new path.
+	 * @throws IOException
+	 */
+	public Path resolveConflictsIfNecessary(Path ciphertextPath, String dirId) throws IOException {
 		String ciphertextFileName = ciphertextPath.getFileName().toString();
-		String resolvedCiphertextFileName = resolveNameConflictIfNecessary(ciphertextPath.getParent(), ciphertextFileName, dirId);
-		return ciphertextPath.resolveSibling(resolvedCiphertextFileName);
-	}
-
-	private String resolveNameConflictIfNecessary(Path directory, String ciphertextFileName, String dirId) throws IOException {
 		String basename = StringUtils.removeEnd(ciphertextFileName, LONG_NAME_FILE_EXT);
 		Matcher m = BASE32_PATTERN.matcher(basename);
 		if (!m.matches() && m.find(0)) {
 			// no full match, but still contains base32 -> partial match
-			return resolveConflict(directory, ciphertextFileName, m.group(1), dirId);
+			return resolveConflict(ciphertextPath, m.group(1), dirId);
 		} else {
 			// full match or no match at all -> nothing to resolve
-			return ciphertextFileName;
+			return ciphertextPath;
 		}
 	}
 
-	private String resolveConflict(Path directory, String originalFileName, String base32match, String dirId) throws IOException {
-		final Path conflictingPath = directory.resolve(originalFileName);
+	/**
+	 * Resolves a conflict.
+	 * 
+	 * @param conflictingPath The path of a file containing a valid base 32 part.
+	 * @param base32match The base32 part inside the filename of the conflicting file.
+	 * @param dirId The directory id of the file's parent directory.
+	 * @return The new path of the conflicting file after the conflict has been resolved.
+	 * @throws IOException
+	 */
+	private Path resolveConflict(Path conflictingPath, String base32match, String dirId) throws IOException {
+		final Path directory = conflictingPath.getParent();
+		final String originalFileName = conflictingPath.getFileName().toString();
 		final String ciphertext;
 		final boolean isDirectory;
 		final String dirPrefix;
@@ -81,20 +96,25 @@ class ConflictResolver {
 		/*
 		 * Directory files must not result in symlink, make sure the conflicting file is not identical to the original.
 		 */
-		if (isDirectory && !Files.exists(canonicalPath)) {
-			// original file is, so this is no real conflict.
-			Files.move(conflictingPath, canonicalPath, StandardCopyOption.ATOMIC_MOVE);
-			return canonicalPath.getFileName().toString();
-		} else if (isDirectory && hasSameDirFileContent(conflictingPath, canonicalPath)) {
-			// there must not be two directories pointing to the same dirId. In this case no human interaction is needed to resolve this conflict:
-			LOG.info("Removing conflicting directory file {} (identical to {})", conflictingPath, canonicalPath);
-			Files.deleteIfExists(conflictingPath);
-			return canonicalPath.getFileName().toString();
+		if (isDirectory && resolveDirectoryConflictTrivially(canonicalPath, conflictingPath)) {
+			return canonicalPath;
+		} else {
+			return renameConflictingFile(canonicalPath, conflictingPath, ciphertext, dirId, dirPrefix);
 		}
+	}
 
-		/*
-		 * Find alternative name for conflicting file:
-		 */
+	/**
+	 * Resolves a conflict by renaming the conflicting file.
+	 * 
+	 * @param canonicalPath The path to the original (conflict-free) file.
+	 * @param conflictingPath The path to the potentially conflicting file.
+	 * @param ciphertext The (previously inflated) ciphertext name of the file without any preceeding directory prefix.
+	 * @param dirId The directory id of the file's parent directory.
+	 * @param dirPrefix The directory prefix (if the conflicting file is a directory file) or an empty string.
+	 * @return The new path after renaming the conflicting file.
+	 * @throws IOException
+	 */
+	private Path renameConflictingFile(Path canonicalPath, Path conflictingPath, String ciphertext, String dirId, String dirPrefix) throws IOException {
 		try {
 			String cleartext = cryptor.fileNameCryptor().decryptFilename(ciphertext, dirId.getBytes(StandardCharsets.UTF_8));
 			Path alternativePath = canonicalPath;
@@ -105,15 +125,36 @@ class ConflictResolver {
 				if (alternativeCiphertextFileName.length() >= NAME_SHORTENING_THRESHOLD) {
 					alternativeCiphertextFileName = longFileNameProvider.deflate(alternativeCiphertextFileName);
 				}
-				alternativePath = directory.resolve(alternativeCiphertextFileName);
+				alternativePath = canonicalPath.resolveSibling(alternativeCiphertextFileName);
 			}
 			LOG.info("Moving conflicting file {} to {}", conflictingPath, alternativePath);
-			Files.move(conflictingPath, alternativePath, StandardCopyOption.ATOMIC_MOVE);
-			return alternativePath.getFileName().toString();
+			return Files.move(conflictingPath, alternativePath, StandardCopyOption.ATOMIC_MOVE);
 		} catch (AuthenticationFailedException e) {
 			// not decryptable, no need to resolve any kind of conflict
-			LOG.info("Found valid Base32 string, which is an invalid ciphertext: {}", originalFileName);
-			return originalFileName;
+			LOG.info("Found valid Base32 string, which is an unauthentic ciphertext: {}", conflictingPath);
+			return conflictingPath;
+		}
+	}
+
+	/**
+	 * Tries to resolve a conflicting directory file without renaming the file. If successful, only the file with the canonical path will exist afterwards.
+	 * 
+	 * @param canonicalPath The path to the original (conflict-free) directory file (must not exist).
+	 * @param conflictingPath The path to the potentially conflicting file (known to exist).
+	 * @return <code>true</code> if the conflict has been resolved.
+	 * @throws IOException
+	 */
+	private boolean resolveDirectoryConflictTrivially(Path canonicalPath, Path conflictingPath) throws IOException {
+		if (!Files.exists(canonicalPath)) {
+			Files.move(conflictingPath, canonicalPath, StandardCopyOption.ATOMIC_MOVE);
+			return true;
+		} else if (hasSameDirFileContent(conflictingPath, canonicalPath)) {
+			// there must not be two directories pointing to the same dirId.
+			LOG.info("Removing conflicting directory file {} (identical to {})", conflictingPath, canonicalPath);
+			Files.deleteIfExists(conflictingPath);
+			return true;
+		} else {
+			return false;
 		}
 	}
 

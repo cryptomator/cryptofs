@@ -84,7 +84,7 @@ public class CryptoDirectoryStreamTest {
 				return StringUtils.removeEnd(shortName, ".lng");
 			}
 		});
-		Mockito.when(conflictResolver.resolveConflicts(Mockito.any(), Mockito.any())).then(returnsFirstArg());
+		Mockito.when(conflictResolver.resolveConflictsIfNecessary(Mockito.any(), Mockito.any())).then(returnsFirstArg());
 
 		doAnswer(invocation -> {
 			for (Object runnable : invocation.getArguments()) {

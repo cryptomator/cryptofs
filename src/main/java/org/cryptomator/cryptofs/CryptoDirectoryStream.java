@@ -69,7 +69,7 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 
 	private Path resolveConflictingFileIfNeeded(Path potentiallyConflictingPath) {
 		try {
-			return conflictResolver.resolveConflicts(potentiallyConflictingPath, directoryId);
+			return conflictResolver.resolveConflictsIfNecessary(potentiallyConflictingPath, directoryId);
 		} catch (IOException e) {
 			LOG.warn("I/O exception while finding potentially conflicting file versions for {}.", potentiallyConflictingPath);
 			return null;

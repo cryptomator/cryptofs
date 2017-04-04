@@ -63,6 +63,7 @@ public class ConflictResolverTest {
 		Mockito.when(resultName.toString()).thenReturn(invocation.getArgument(0));
 		Mockito.when(result.getParent()).thenReturn(testDir);
 		Mockito.when(result.getFileSystem()).thenReturn(testFileSystem);
+		Mockito.when(result.resolveSibling(Mockito.anyString())).then(this::resolveChildOfTestDir);
 		return result;
 	}
 
@@ -88,7 +89,7 @@ public class ConflictResolverTest {
 	@Test
 	public void testPassthroughValidBase32NormalFile() throws IOException {
 		Mockito.when(testFileName.toString()).thenReturn("ABCDEF==");
-		Path resolved = conflictResolver.resolveConflicts(testFile, dirId);
+		Path resolved = conflictResolver.resolveConflictsIfNecessary(testFile, dirId);
 		Mockito.verifyNoMoreInteractions(filenameCryptor);
 		Mockito.verifyNoMoreInteractions(longFileNameProvider);
 		Assert.assertEquals(testFile.getFileName().toString(), resolved.getFileName().toString());
@@ -97,7 +98,7 @@ public class ConflictResolverTest {
 	@Test
 	public void testPassthroughValidBase32LongFile() throws IOException {
 		Mockito.when(testFileName.toString()).thenReturn("ABCDEF==.lng");
-		Path resolved = conflictResolver.resolveConflicts(testFile, dirId);
+		Path resolved = conflictResolver.resolveConflictsIfNecessary(testFile, dirId);
 		Mockito.verifyNoMoreInteractions(filenameCryptor);
 		Mockito.verifyNoMoreInteractions(longFileNameProvider);
 		Assert.assertEquals(testFile.getFileName().toString(), resolved.getFileName().toString());
@@ -110,7 +111,7 @@ public class ConflictResolverTest {
 		Mockito.when(filenameCryptor.decryptFilename(Mockito.eq("ABCDEF=="), Mockito.any())).thenReturn("abcdef");
 		Mockito.when(filenameCryptor.encryptFilename(Mockito.startsWith("abcdef (Conflict "), Mockito.any())).thenReturn(ciphertextName);
 		Mockito.doThrow(new NoSuchFileException(ciphertextName)).when(testFileSystemProvider).checkAccess(Mockito.argThat(hasFileName(ciphertextName)));
-		Path resolved = conflictResolver.resolveConflicts(testFile, dirId);
+		Path resolved = conflictResolver.resolveConflictsIfNecessary(testFile, dirId);
 		Mockito.verifyNoMoreInteractions(longFileNameProvider);
 		Mockito.verify(testFileSystemProvider).move(Mockito.argThat(hasFileName("ABCDEF== (1)")), Mockito.argThat(hasFileName(ciphertextName)), Mockito.any());
 		Assert.assertThat(resolved.getFileName().toString(), CoreMatchers.containsString(ciphertextName));
@@ -126,7 +127,7 @@ public class ConflictResolverTest {
 		Mockito.when(filenameCryptor.decryptFilename(Mockito.eq("FEDCBA=="), Mockito.any())).thenReturn("fedcba");
 		Mockito.when(filenameCryptor.encryptFilename(Mockito.startsWith("fedcba (Conflict "), Mockito.any())).thenReturn(longCiphertextName);
 		Mockito.doThrow(new NoSuchFileException("FEDCBA==.lng")).when(testFileSystemProvider).checkAccess(Mockito.argThat(hasFileName("FEDCBA==.lng")));
-		Path resolved = conflictResolver.resolveConflicts(testFile, dirId);
+		Path resolved = conflictResolver.resolveConflictsIfNecessary(testFile, dirId);
 		Mockito.verify(longFileNameProvider).deflate(longCiphertextName);
 		Mockito.verify(testFileSystemProvider).move(Mockito.argThat(hasFileName("ABCDEF== (1).lng")), Mockito.argThat(hasFileName("FEDCBA==.lng")), Mockito.any());
 		Assert.assertThat(resolved.getFileName().toString(), CoreMatchers.containsString("FEDCBA==.lng"));
@@ -145,7 +146,7 @@ public class ConflictResolverTest {
 		Mockito.when(testFileSystemProvider.newByteChannel(Mockito.argThat(hasFileName("0ABCDEF== (1)")), Mockito.any(), Mockito.any())).thenReturn(conflictingFc);
 		Mockito.when(canonicalFc.read(Mockito.any(ByteBuffer.class))).then(fillBufferWithBytes("12345".getBytes()));
 		Mockito.when(conflictingFc.read(Mockito.any(ByteBuffer.class))).then(fillBufferWithBytes("12345".getBytes()));
-		Path resolved = conflictResolver.resolveConflicts(testFile, dirId);
+		Path resolved = conflictResolver.resolveConflictsIfNecessary(testFile, dirId);
 		Mockito.verify(testFileSystemProvider).deleteIfExists(Mockito.argThat(hasFileName("0ABCDEF== (1)")));
 		Assert.assertEquals("0ABCDEF==", resolved.getFileName().toString());
 	}
@@ -154,7 +155,7 @@ public class ConflictResolverTest {
 	public void testSilentRenamingForConflictingDirectoryFileWithMissingCanonicalFile() throws IOException, ReflectiveOperationException {
 		Mockito.when(testFileName.toString()).thenReturn("0ABCDEF== (1)");
 		Mockito.doThrow(new NoSuchFileException("0ABCDEF==")).when(testFileSystemProvider).checkAccess(Mockito.argThat(hasFileName("0ABCDEF==")));
-		Path resolved = conflictResolver.resolveConflicts(testFile, dirId);
+		Path resolved = conflictResolver.resolveConflictsIfNecessary(testFile, dirId);
 		Mockito.verify(testFileSystemProvider).move(Mockito.argThat(hasFileName("0ABCDEF== (1)")), Mockito.argThat(hasFileName("0ABCDEF==")), Mockito.any());
 		Assert.assertEquals("0ABCDEF==", resolved.getFileName().toString());
 	}
