@@ -12,7 +12,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
-import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -30,7 +29,6 @@ class ConflictResolver {
 	private static final Logger LOG = LoggerFactory.getLogger(ConflictResolver.class);
 	private static final Pattern BASE32_PATTERN = Pattern.compile("0?(([A-Z2-7]{8})*[A-Z2-7=]{8})");
 	private static final int MAX_DIR_FILE_SIZE = 87; // "normal" file header has 88 bytes
-	private static final int UUID_FIRST_GROUP_STRLEN = 8;
 
 	private final LongFileNameProvider longFileNameProvider;
 	private final Cryptor cryptor;
@@ -115,8 +113,8 @@ class ConflictResolver {
 		try {
 			String cleartext = cryptor.fileNameCryptor().decryptFilename(ciphertext, dirId.getBytes(StandardCharsets.UTF_8));
 			Path alternativePath = canonicalPath;
-			while (Files.exists(alternativePath)) {
-				String alternativeCleartext = cleartext + " (Conflict " + createConflictId() + ")";
+			for (int i = 1; Files.exists(alternativePath); i++) {
+				String alternativeCleartext = cleartext + " (Conflict " + i + ")";
 				String alternativeCiphertext = cryptor.fileNameCryptor().encryptFilename(alternativeCleartext, dirId.getBytes(StandardCharsets.UTF_8));
 				String alternativeCiphertextFileName = dirPrefix + alternativeCiphertext;
 				if (alternativeCiphertextFileName.length() >= NAME_SHORTENING_THRESHOLD) {
@@ -172,10 +170,6 @@ class ConflictResolver {
 			buf2.flip();
 			return buf1.compareTo(buf2) == 0;
 		}
-	}
-
-	private static String createConflictId() {
-		return UUID.randomUUID().toString().substring(0, UUID_FIRST_GROUP_STRLEN);
 	}
 
 }
