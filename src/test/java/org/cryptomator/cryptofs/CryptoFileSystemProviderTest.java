@@ -4,12 +4,14 @@ import static java.nio.file.Paths.get;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.util.Arrays.asList;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
+import static org.cryptomator.cryptofs.CryptoFileSystemProvider.containsVault;
+import static org.cryptomator.cryptofs.CryptoFileSystemProvider.newFileSystem;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -25,6 +27,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
+import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -39,6 +42,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
+import org.cryptomator.cryptolib.api.InvalidPassphraseException;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -50,6 +54,9 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
 
 @RunWith(Theories.class)
 public class CryptoFileSystemProviderTest {
@@ -172,6 +179,98 @@ public class CryptoFileSystemProviderTest {
 		FileSystem result = inTest.newFileSystem(uri, properties);
 
 		assertThat(result, is(cryptoFileSystem));
+	}
+
+	@Test
+	public void testContainsVaultReturnsTrueIfDirectoryContainsMasterkeyFileAndDataDir() throws IOException {
+		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
+
+		String masterkeyFilename = "masterkey.foo.baz";
+		Path pathToVault = fs.getPath("/vaultDir");
+
+		Path masterkeyFile = pathToVault.resolve(masterkeyFilename);
+		Path dataDir = pathToVault.resolve("d");
+		Files.createDirectories(dataDir);
+		Files.write(masterkeyFile, new byte[0]);
+
+		assertTrue(containsVault(pathToVault, masterkeyFilename));
+	}
+
+	@Test
+	public void testContainsVaultReturnsFalseIfDirectoryContainsNoMasterkeyFileButDataDir() throws IOException {
+		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
+
+		String masterkeyFilename = "masterkey.foo.baz";
+		Path pathToVault = fs.getPath("/vaultDir");
+
+		Path dataDir = pathToVault.resolve("d");
+		Files.createDirectories(dataDir);
+
+		assertFalse(containsVault(pathToVault, masterkeyFilename));
+	}
+
+	@Test
+	public void testContainsVaultReturnsFalseIfDirectoryContainsMasterkeyFileButNoDataDir() throws IOException {
+		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
+
+		String masterkeyFilename = "masterkey.foo.baz";
+		Path pathToVault = fs.getPath("/vaultDir");
+
+		Path masterkeyFile = pathToVault.resolve(masterkeyFilename);
+		Files.createDirectories(pathToVault);
+		Files.write(masterkeyFile, new byte[0]);
+
+		assertFalse(containsVault(pathToVault, masterkeyFilename));
+	}
+
+	@Test
+	public void testVaultWithChangedPassphraseCanBeOpenedWithNewPassphrase() throws IOException {
+		String oldPassphrase = "oldPassphrase838283";
+		String newPassphrase = "newPassphrase954810921";
+		String masterkeyFilename = "masterkey.foo.baz";
+		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
+		Path pathToVault = fs.getPath("/vaultDir");
+		newFileSystem( //
+				pathToVault, //
+				cryptoFileSystemProperties() //
+						.withMasterkeyFilename(masterkeyFilename) //
+						.withPassphrase(oldPassphrase) //
+						.build()).close();
+
+		CryptoFileSystemProvider.changePassphrase(pathToVault, masterkeyFilename, oldPassphrase, newPassphrase);
+
+		newFileSystem( //
+				pathToVault, //
+				cryptoFileSystemProperties() //
+						.withMasterkeyFilename(masterkeyFilename) //
+						.withPassphrase(newPassphrase) //
+						.build()).close();
+	}
+
+	@Test
+	public void testVaultWithChangedPassphraseCanNotBeOpenedWithOldPassphrase() throws IOException {
+		String oldPassphrase = "oldPassphrase838283";
+		String newPassphrase = "newPassphrase954810921";
+		String masterkeyFilename = "masterkey.foo.baz";
+		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
+		Path pathToVault = fs.getPath("/vaultDir");
+		newFileSystem( //
+				pathToVault, //
+				cryptoFileSystemProperties() //
+						.withMasterkeyFilename(masterkeyFilename) //
+						.withPassphrase(oldPassphrase) //
+						.build()).close();
+
+		CryptoFileSystemProvider.changePassphrase(pathToVault, masterkeyFilename, oldPassphrase, newPassphrase);
+
+		thrown.expect(InvalidPassphraseException.class);
+
+		newFileSystem( //
+				pathToVault, //
+				cryptoFileSystemProperties() //
+						.withMasterkeyFilename(masterkeyFilename) //
+						.withPassphrase(oldPassphrase) //
+						.build());
 	}
 
 	@Test
