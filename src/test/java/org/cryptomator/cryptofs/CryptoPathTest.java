@@ -119,11 +119,13 @@ public class CryptoPathTest {
 		Path p1 = path("/foo");
 		Path p2 = path("/foo/bar");
 		Path p3 = path("foo");
+		Path p4 = path("/");
 
 		Assert.assertEquals(p1, p2.getParent());
 		Assert.assertEquals(rootPath, p1.getParent());
 		Assert.assertNull(emptyPath.getParent());
 		Assert.assertNull(p3.getParent());
+		Assert.assertNull(p4.getParent());
 	}
 
 	@Test

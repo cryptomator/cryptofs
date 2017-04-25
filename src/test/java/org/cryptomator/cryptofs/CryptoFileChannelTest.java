@@ -59,7 +59,7 @@ public class CryptoFileChannelTest {
 	@SuppressWarnings("unchecked")
 	private final Consumer<CryptoFileChannel> onClose = mock(Consumer.class);
 
-	private FinallyUtil finallyUtil = mock(FinallyUtil.class);
+	private final FinallyUtil finallyUtil = mock(FinallyUtil.class);
 
 	private CryptoFileChannel inTest;
 
