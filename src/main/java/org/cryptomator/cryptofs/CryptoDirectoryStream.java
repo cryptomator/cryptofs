@@ -100,7 +100,7 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 
 	private boolean isBrokenDirectoryFile(Path potentialDirectoryFile) {
 		if (potentialDirectoryFile.getFileName().toString().startsWith(Constants.DIR_PREFIX)) {
-			Path dirPath;
+			final Path dirPath;
 			try {
 				dirPath = cryptoPathMapper.resolveDirectory(potentialDirectoryFile).path;
 			} catch (IOException e) {
