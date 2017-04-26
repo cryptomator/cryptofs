@@ -19,6 +19,7 @@ import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -57,6 +58,7 @@ public class CryptoDirectoryStreamTest {
 	private FileNameCryptor filenameCryptor;
 	private Path ciphertextDirPath;
 	private DirectoryStream<Path> dirStream;
+	private CryptoPathMapper cryptoPathMapper;
 	private LongFileNameProvider longFileNameProvider;
 	private ConflictResolver conflictResolver;
 	private FinallyUtil finallyUtil;
@@ -84,6 +86,20 @@ public class CryptoDirectoryStreamTest {
 				return StringUtils.removeEnd(shortName, ".lng");
 			}
 		});
+		cryptoPathMapper = Mockito.mock(CryptoPathMapper.class);
+		Mockito.when(cryptoPathMapper.resolveDirectory(Mockito.any())).then(invocation -> {
+			Path dirFilePath = invocation.getArgument(0);
+			if (dirFilePath.toString().contains("invalid")) {
+				throw new IOException("Invalid directory.");
+			}
+			Path dirPath = Mockito.mock(Path.class);
+			BasicFileAttributes attrs = Mockito.mock(BasicFileAttributes.class);
+			Mockito.when(dirPath.getFileSystem()).thenReturn(fs);
+			Mockito.when(provider.readAttributes(dirPath, BasicFileAttributes.class)).thenReturn(attrs);
+			Mockito.when(attrs.isDirectory()).thenReturn(!dirFilePath.toString().contains("noDirectory"));
+			return new Directory("asdf", dirPath);
+		});
+
 		Mockito.when(conflictResolver.resolveConflictsIfNecessary(Mockito.any(), Mockito.any())).then(returnsFirstArg());
 
 		doAnswer(invocation -> {
@@ -102,14 +118,16 @@ public class CryptoDirectoryStreamTest {
 		ciphertextFileNames.add(filenameCryptor.encryptFilename("one", "foo".getBytes()));
 		ciphertextFileNames.add(filenameCryptor.encryptFilename("two", "foo".getBytes()) + "_conflict");
 		ciphertextFileNames.add("0" + filenameCryptor.encryptFilename("three", "foo".getBytes()));
+		ciphertextFileNames.add("0invalidDirectory");
+		ciphertextFileNames.add("0noDirectory");
 		ciphertextFileNames.add("invalidLongName.lng");
 		ciphertextFileNames.add(filenameCryptor.encryptFilename("four", "foo".getBytes()) + ".lng");
 		ciphertextFileNames.add(filenameCryptor.encryptFilename("invalid", "bar".getBytes()));
 		ciphertextFileNames.add("alsoInvalid");
 		Mockito.when(dirStream.spliterator()).thenReturn(ciphertextFileNames.stream().map(cleartextPath::resolve).spliterator());
 
-		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new Directory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, longFileNameProvider, conflictResolver, ACCEPT_ALL, DO_NOTHING_ON_CLOSE,
-				finallyUtil)) {
+		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new Directory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, cryptoPathMapper, longFileNameProvider, conflictResolver, ACCEPT_ALL,
+				DO_NOTHING_ON_CLOSE, finallyUtil)) {
 			Iterator<Path> iter = stream.iterator();
 			Assert.assertTrue(iter.hasNext());
 			Assert.assertEquals(cleartextPath.resolve("one"), iter.next());
@@ -131,8 +149,8 @@ public class CryptoDirectoryStreamTest {
 
 		Mockito.when(dirStream.spliterator()).thenReturn(Spliterators.emptySpliterator());
 
-		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new Directory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, longFileNameProvider, conflictResolver, ACCEPT_ALL, DO_NOTHING_ON_CLOSE,
-				finallyUtil)) {
+		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new Directory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, cryptoPathMapper, longFileNameProvider, conflictResolver, ACCEPT_ALL,
+				DO_NOTHING_ON_CLOSE, finallyUtil)) {
 			Iterator<Path> iter = stream.iterator();
 			Assert.assertFalse(iter.hasNext());
 			iter.next();

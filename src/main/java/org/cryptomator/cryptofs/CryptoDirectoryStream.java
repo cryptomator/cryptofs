@@ -37,14 +37,15 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 	private final DirectoryStream<Path> ciphertextDirStream;
 	private final Path cleartextDir;
 	private final FileNameCryptor filenameCryptor;
+	private final CryptoPathMapper cryptoPathMapper;
 	private final LongFileNameProvider longFileNameProvider;
 	private final ConflictResolver conflictResolver;
 	private final DirectoryStream.Filter<? super Path> filter;
 	private final Consumer<CryptoDirectoryStream> onClose;
 	private final FinallyUtil finallyUtil;
 
-	public CryptoDirectoryStream(Directory ciphertextDir, Path cleartextDir, FileNameCryptor filenameCryptor, LongFileNameProvider longFileNameProvider, ConflictResolver conflictResolver,
-			DirectoryStream.Filter<? super Path> filter, Consumer<CryptoDirectoryStream> onClose, FinallyUtil finallyUtil) throws IOException {
+	public CryptoDirectoryStream(Directory ciphertextDir, Path cleartextDir, FileNameCryptor filenameCryptor, CryptoPathMapper cryptoPathMapper, LongFileNameProvider longFileNameProvider,
+			ConflictResolver conflictResolver, DirectoryStream.Filter<? super Path> filter, Consumer<CryptoDirectoryStream> onClose, FinallyUtil finallyUtil) throws IOException {
 		this.onClose = onClose;
 		this.finallyUtil = finallyUtil;
 		this.directoryId = ciphertextDir.dirId;
@@ -52,6 +53,7 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 		LOG.trace("OPEN " + directoryId);
 		this.cleartextDir = cleartextDir;
 		this.filenameCryptor = filenameCryptor;
+		this.cryptoPathMapper = cryptoPathMapper;
 		this.longFileNameProvider = longFileNameProvider;
 		this.conflictResolver = conflictResolver;
 		this.filter = filter;
@@ -62,7 +64,8 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 		Stream<Path> pathIter = StreamSupport.stream(ciphertextDirStream.spliterator(), false);
 		Stream<Path> resolved = pathIter.map(this::resolveConflictingFileIfNeeded).filter(Objects::nonNull);
 		Stream<Path> inflated = resolved.map(this::inflateIfNeeded).filter(Objects::nonNull);
-		Stream<Path> decrypted = inflated.map(this::decrypt).filter(Objects::nonNull);
+		Stream<Path> sanitized = inflated.filter(this::passesPlausibilityChecks);
+		Stream<Path> decrypted = sanitized.map(this::decrypt).filter(Objects::nonNull);
 		Stream<Path> filtered = decrypted.filter(this::isAcceptableByFilter);
 		return filtered.iterator();
 	}
@@ -89,6 +92,27 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 		} else {
 			return ciphertextPath;
 		}
+	}
+
+	private boolean passesPlausibilityChecks(Path ciphertextPath) {
+		return !isBrokenDirectoryFile(ciphertextPath);
+	}
+
+	private boolean isBrokenDirectoryFile(Path potentialDirectoryFile) {
+		if (potentialDirectoryFile.getFileName().toString().startsWith(Constants.DIR_PREFIX)) {
+			Path dirPath;
+			try {
+				dirPath = cryptoPathMapper.resolveDirectory(potentialDirectoryFile).path;
+			} catch (IOException e) {
+				LOG.warn("Broken directory file {}. Exception: {}", potentialDirectoryFile, e.getMessage());
+				return true;
+			}
+			if (!Files.isDirectory(dirPath)) {
+				LOG.warn("Broken directory file {}. Directory {} does not exist.", potentialDirectoryFile, dirPath);
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private Path decrypt(Path ciphertextPath) {
