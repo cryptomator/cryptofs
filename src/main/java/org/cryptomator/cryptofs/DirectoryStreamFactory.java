@@ -41,6 +41,7 @@ class DirectoryStreamFactory {
 				ciphertextDir, //
 				cleartextDir, //
 				cryptor.fileNameCryptor(), //
+				cryptoPathMapper, //
 				longFileNameProvider, //
 				conflictResolver, //
 				filter, //

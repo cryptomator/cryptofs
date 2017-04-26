@@ -40,14 +40,12 @@ class GlobToRegex {
 	 * Basic conversions (assuming / as only separator):
 	 *
 	 * <pre>
-	 * {@code
 	 * ?        = [^/]
 	 * *        = [^/]*
 	 * **       = .*
 	 * [a-z]    = [[^/]&&[a-z]]
 	 * [!a-z]   = [[^/]&&[^a-z]]
 	 * {a,b,c}  = (a|b|c)
-	 * }
 	 * </pre>
 	 */
 	public static String toRegex(String glob, char separator) {

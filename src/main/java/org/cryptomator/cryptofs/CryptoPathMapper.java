@@ -85,9 +85,15 @@ class CryptoPathMapper {
 			Directory parent = getCiphertextDir(parentPath);
 			String cleartextName = cleartextPath.getFileName().toString();
 			String ciphertextName = getCiphertextFileName(parent.dirId, cleartextName, CiphertextFileType.DIRECTORY);
-			String dirId = dirIdProvider.load(parent.path.resolve(ciphertextName));
-			return new Directory(dirId, directoryPathCache.getUnchecked(dirId));
+			Path dirIdFile = parent.path.resolve(ciphertextName);
+			return resolveDirectory(dirIdFile);
 		}
+	}
+
+	public Directory resolveDirectory(Path directoryFile) throws IOException {
+		String dirId = dirIdProvider.load(directoryFile);
+		Path dirPath = directoryPathCache.getUnchecked(dirId);
+		return new Directory(dirId, dirPath);
 	}
 
 	private Path resolveDirectory(String dirId) {
