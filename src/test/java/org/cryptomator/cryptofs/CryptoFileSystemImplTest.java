@@ -714,8 +714,8 @@ public class CryptoFileSystemImplTest {
 
 	public class CreateDirectory {
 
-		private FileSystemProvider provider = mock(FileSystemProvider.class);
-		private CryptoFileSystemImpl fileSystem = mock(CryptoFileSystemImpl.class);
+		private final FileSystemProvider provider = mock(FileSystemProvider.class);
+		private final CryptoFileSystemImpl fileSystem = mock(CryptoFileSystemImpl.class);
 
 		@Before
 		public void setup() {
@@ -796,37 +796,39 @@ public class CryptoFileSystemImplTest {
 		}
 
 		@Test
-		public void createDirectoryClearsDirIdAndDeletesDirFileIfWritingDirFileFails() throws IOException {
+		public void createDirectoryClearsDirIdAndDeletesDirFileIfCreatingDirFails() throws IOException {
 			CryptoPath path = mock(CryptoPath.class);
 			CryptoPath parent = mock(CryptoPath.class);
-			Path cyphertextParent = mock(Path.class);
-			Path cyphertextFile = mock(Path.class);
-			Path cyphertextDirFile = mock(Path.class);
-			Path cyphertextDirPath = mock(Path.class);
+			Path ciphertextParent = mock(Path.class, "ciphertextParent");
+			Path ciphertextFile = mock(Path.class, "ciphertextFile");
+			Path ciphertextDirFile = mock(Path.class, "ciphertextDirFile");
+			Path ciphertextDirPath = mock(Path.class, "ciphertextDir");
 			String dirId = "DirId1234ABC";
 			FileChannelMock channel = new FileChannelMock(100);
-			Directory cyphertextDir = new Directory(dirId, cyphertextDirPath);
+			Directory ciphertextDir = new Directory(dirId, ciphertextDirPath);
 			when(path.getParent()).thenReturn(parent);
-			when(cryptoPathMapper.getCiphertextDirPath(parent)).thenReturn(cyphertextParent);
-			when(cryptoPathMapper.getCiphertextFilePath(path, CiphertextFileType.FILE)).thenReturn(cyphertextFile);
-			when(cryptoPathMapper.getCiphertextFilePath(path, CiphertextFileType.DIRECTORY)).thenReturn(cyphertextDirFile);
-			when(cryptoPathMapper.getCiphertextDir(path)).thenReturn(cyphertextDir);
-			when(cyphertextParent.getFileSystem()).thenReturn(fileSystem);
-			when(cyphertextFile.getFileSystem()).thenReturn(fileSystem);
-			when(cyphertextDirFile.getFileSystem()).thenReturn(fileSystem);
-			when(cyphertextDirPath.getFileSystem()).thenReturn(fileSystem);
-			when(provider.newFileChannel(cyphertextDirFile, EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))).thenReturn(channel);
-			IOException expectedException = new IOException();
-			channel.setFailOnNextOperation(expectedException);
-			doThrow(NoSuchFileException.class).when(provider).checkAccess(cyphertextFile);
+			when(cryptoPathMapper.getCiphertextDirPath(parent)).thenReturn(ciphertextParent);
+			when(cryptoPathMapper.getCiphertextFilePath(path, CiphertextFileType.FILE)).thenReturn(ciphertextFile);
+			when(cryptoPathMapper.getCiphertextFilePath(path, CiphertextFileType.DIRECTORY)).thenReturn(ciphertextDirFile);
+			when(cryptoPathMapper.getCiphertextDir(path)).thenReturn(ciphertextDir);
+			when(ciphertextParent.getFileSystem()).thenReturn(fileSystem);
+			when(ciphertextFile.getFileSystem()).thenReturn(fileSystem);
+			when(ciphertextDirFile.getFileSystem()).thenReturn(fileSystem);
+			when(ciphertextDirPath.getFileSystem()).thenReturn(fileSystem);
+			doThrow(new NoSuchFileException("ciphertextFile")).when(provider).checkAccess(ciphertextFile);
+			when(provider.newFileChannel(ciphertextDirFile, EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))).thenReturn(channel);
 
-			thrown.expect(is(expectedException));
+			// make createDirectory with an FileSystemException during Files.createDirectories(ciphertextDirPath)
+			doThrow(new IOException()).when(provider).createDirectory(ciphertextDirPath);
+			when(ciphertextDirPath.toAbsolutePath()).thenReturn(ciphertextDirPath);
+			when(ciphertextDirPath.getParent()).thenReturn(null);
+			thrown.expect(IOException.class);
 
 			try {
 				inTest.createDirectory(path);
 			} finally {
-				verify(provider).delete(cyphertextDirFile);
-				verify(dirIdProvider).delete(cyphertextDirFile);
+				verify(provider).delete(ciphertextDirFile);
+				verify(dirIdProvider).delete(ciphertextDirFile);
 			}
 		}
 
@@ -834,8 +836,8 @@ public class CryptoFileSystemImplTest {
 
 	public class IsHidden {
 
-		private FileSystemProvider provider = mock(FileSystemProvider.class);
-		private CryptoFileSystemImpl fileSystem = mock(CryptoFileSystemImpl.class);
+		private final FileSystemProvider provider = mock(FileSystemProvider.class);
+		private final CryptoFileSystemImpl fileSystem = mock(CryptoFileSystemImpl.class);
 
 		@Before
 		public void setup() {
@@ -886,8 +888,8 @@ public class CryptoFileSystemImplTest {
 
 	public class CheckAccess {
 
-		private FileSystemProvider provider = mock(FileSystemProvider.class);
-		private CryptoFileSystemImpl fileSystem = mock(CryptoFileSystemImpl.class);
+		private final FileSystemProvider provider = mock(FileSystemProvider.class);
+		private final CryptoFileSystemImpl fileSystem = mock(CryptoFileSystemImpl.class);
 
 		@Before
 		public void setup() {
@@ -1110,8 +1112,8 @@ public class CryptoFileSystemImplTest {
 
 	public class SetAttribute {
 
-		private FileSystemProvider provider = mock(FileSystemProvider.class);
-		private CryptoFileSystemImpl fileSystem = mock(CryptoFileSystemImpl.class);
+		private final FileSystemProvider provider = mock(FileSystemProvider.class);
+		private final CryptoFileSystemImpl fileSystem = mock(CryptoFileSystemImpl.class);
 
 		@Before
 		public void setup() {

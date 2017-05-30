@@ -110,9 +110,9 @@ class OpenCryptoFile {
 		int written = 0;
 		while (source.hasRemaining()) {
 			long currentPosition = position + written;
-			long chunkIndex = currentPosition / cleartextChunkSize;
-			int offsetInChunk = (int) currentPosition % cleartextChunkSize;
-			int len = (int) min(source.remaining(), cleartextChunkSize - offsetInChunk);
+			long chunkIndex = currentPosition / cleartextChunkSize; // floor by int-truncation
+			int offsetInChunk = (int) (currentPosition % cleartextChunkSize); // known to fit in int, because cleartextChunkSize is int
+			int len = (int) min(source.remaining(), cleartextChunkSize - offsetInChunk); // known to fit in int, because second argument is int
 			long minSize = currentPosition + len;
 			size.getAndUpdate(size -> max(minSize, size));
 			if (len == cleartextChunkSize) {

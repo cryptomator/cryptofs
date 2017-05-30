@@ -6,6 +6,8 @@ import java.util.Deque;
 import java.util.LinkedList;
 import java.util.function.Supplier;
 
+import com.google.common.base.Throwables;
+
 /**
  * <p>
  * Implements means to throw checked exceptions crossing method boundaries which do not declare them.
@@ -35,9 +37,7 @@ class UncheckedThrows {
 					allowedToBeThrownUnchecked.addFirst(type);
 					return action.get();
 				} catch (ExceptionThrownUnchecked e) {
-					if (type.isInstance(e.getCause())) {
-						throw type.cast(e.getCause());
-					}
+					Throwables.throwIfInstanceOf(e.getCause(), type);
 					throw e;
 				} finally {
 					allowedToBeThrownUnchecked.removeFirst();
@@ -56,9 +56,8 @@ class UncheckedThrows {
 			public <T> T from(SupplierThrowingException<T, E> action) {
 				try {
 					return action.get();
-				} catch (RuntimeException e) {
-					throw e; // don't catch unchecked exceptions
 				} catch (Exception e) {
+					Throwables.throwIfUnchecked(e); // don't catch unchecked exceptions
 					throw new ExceptionThrownUnchecked(e);
 				}
 			}
