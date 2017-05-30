@@ -316,19 +316,19 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			throw new FileAlreadyExistsException(cleartextDir.toString());
 		}
 		Path ciphertextDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextDir, CiphertextFileType.DIRECTORY);
-		boolean success = false;
+		Directory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
+		// atomically check for FileAlreadyExists and create otherwise:
+		try (FileChannel channel = FileChannel.open(ciphertextDirFile, EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), attrs)) {
+			channel.write(ByteBuffer.wrap(ciphertextDir.dirId.getBytes(UTF_8)));
+		}
+		// create dir if and only if the dirFile has been created right now (not if it has been created before):
 		try {
-			Directory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
-			try (FileChannel channel = FileChannel.open(ciphertextDirFile, EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), attrs)) {
-				channel.write(ByteBuffer.wrap(ciphertextDir.dirId.getBytes(UTF_8)));
-			}
 			Files.createDirectories(ciphertextDir.path);
-			success = true;
-		} finally {
-			if (!success) {
-				Files.delete(ciphertextDirFile);
-				dirIdProvider.delete(ciphertextDirFile);
-			}
+		} catch (IOException e) {
+			// make sure there is no orphan dir file:
+			Files.delete(ciphertextDirFile);
+			dirIdProvider.delete(ciphertextDirFile);
+			throw e;
 		}
 	}
 
