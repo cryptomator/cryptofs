@@ -28,7 +28,7 @@ class ChunkCache {
 				.removalListener(removal -> chunkSaver.save((Long) removal.getKey(), (ChunkData) removal.getValue())) //
 				.build(new CacheLoader<Long, ChunkData>() {
 					@Override
-					public ChunkData load(Long key) throws Exception {
+					public ChunkData load(Long key) throws IOException {
 						return chunkLoader.load(key);
 					}
 				});
@@ -39,6 +39,7 @@ class ChunkCache {
 			stats.addChunkCacheAccess();
 			return chunks.get(chunkIndex);
 		} catch (ExecutionException e) {
+			assert e.getCause() != null; // no exception in ChunkLoader -> no executionException during chunk loading ;-)
 			throw (IOException) e.getCause();
 		} catch (UncheckedExecutionException e) {
 			if (e.getCause() instanceof AuthenticationFailedException) {
