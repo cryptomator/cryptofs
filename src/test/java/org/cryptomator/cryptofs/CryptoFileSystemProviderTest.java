@@ -172,7 +172,7 @@ public class CryptoFileSystemProviderTest {
 	@Test
 	public void testNewFileSystemInvokesFileSystemsCreate() throws IOException {
 		Path pathToVault = get("a").toAbsolutePath();
-		URI uri = CryptoFileSystemUris.createUri(pathToVault);
+		URI uri = CryptoFileSystemUri.create(pathToVault);
 		CryptoFileSystemProperties properties = cryptoFileSystemProperties().withPassphrase("asd").build();
 		when(fileSystems.create(eq(pathToVault), eq(properties))).thenReturn(cryptoFileSystem);
 
@@ -276,7 +276,7 @@ public class CryptoFileSystemProviderTest {
 	@Test
 	public void testGetFileSystemInvokesFileSystemsGetWithPathToVaultFromUri() {
 		Path pathToVault = get("a").toAbsolutePath();
-		URI uri = CryptoFileSystemUris.createUri(pathToVault);
+		URI uri = CryptoFileSystemUri.create(pathToVault);
 		when(fileSystems.get(pathToVault)).thenReturn(cryptoFileSystem);
 
 		FileSystem result = inTest.getFileSystem(uri);
@@ -287,7 +287,7 @@ public class CryptoFileSystemProviderTest {
 	@Test
 	public void testGetPathDelegatesToFileSystem() {
 		Path pathToVault = get("a").toAbsolutePath();
-		URI uri = CryptoFileSystemUris.createUri(pathToVault, "c", "d");
+		URI uri = CryptoFileSystemUri.create(pathToVault, "c", "d");
 		when(fileSystems.get(pathToVault)).thenReturn(cryptoFileSystem);
 		when(cryptoFileSystem.getPath("/c/d")).thenReturn(cryptoPath);
 

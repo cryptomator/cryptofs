@@ -43,7 +43,7 @@ or to use one of the standard methods from ``FileSystems#newFileSystem``:
 
 ```java
 Path storageLocation = Paths.get("/home/cryptobot/vault");
-URI uri = CryptoFileSystemUris.createUri(storageLocation);
+URI uri = CryptoFileSystemUri.create(storageLocation);
 FileSystem fileSystem = FileSystems.newFileSystem(
 		uri,
 		CryptoFileSystemProperties.cryptoFileSystemProperties()

@@ -47,7 +47,7 @@ public class ReadmeCodeSamplesTest {
 
 	@Test
 	public void testReadmeCodeSampleUsingFileSystemConstructionMethodB() throws IOException {
-		URI uri = CryptoFileSystemUris.createUri(storageLocation);
+		URI uri = CryptoFileSystemUri.create(storageLocation);
 		FileSystem fileSystem = FileSystems.newFileSystem(uri, CryptoFileSystemProperties.cryptoFileSystemProperties().withPassphrase("password").build());
 
 		runCodeSample(fileSystem);

@@ -12,7 +12,7 @@ import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
-import static org.cryptomator.cryptofs.CryptoFileSystemUris.createUri;
+import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 
 import java.io.IOException;
 import java.net.URI;
@@ -42,7 +42,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
-import org.cryptomator.cryptofs.CryptoFileSystemUris.ParsedUri;
 import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.InvalidPassphraseException;
@@ -73,9 +72,9 @@ import org.cryptomator.cryptolib.api.InvalidPassphraseException;
  * Afterwards you can use the created {@code FileSystem} to create paths, do directory listings, create files and so on.
  * 
  * <p>
- * To create a new FileSystem from a URI using {@link FileSystems#newFileSystem(URI, Map)} you may have a look at {@link CryptoFileSystemUris}.
+ * To create a new FileSystem from a URI using {@link FileSystems#newFileSystem(URI, Map)} you may have a look at {@link CryptoFileSystemUri}.
  * 
- * @see CryptoFileSystemUris
+ * @see CryptoFileSystemUri
  * @see CryptoFileSystemProperties
  * @see FileSystems
  * @see FileSystem
@@ -98,7 +97,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	public static CryptoFileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
-		return (CryptoFileSystem) FileSystems.newFileSystem(createUri(pathToVault.toAbsolutePath()), properties);
+		return (CryptoFileSystem) FileSystems.newFileSystem(create(pathToVault.toAbsolutePath()), properties);
 	}
 
 	/**
@@ -161,25 +160,25 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public String getScheme() {
-		return CryptoFileSystemUris.URI_SCHEME;
+		return CryptoFileSystemUri.URI_SCHEME;
 	}
 
 	@Override
 	public CryptoFileSystem newFileSystem(URI uri, Map<String, ?> rawProperties) throws IOException {
-		ParsedUri parsedUri = CryptoFileSystemUris.parseUri(uri);
+		CryptoFileSystemUri parsedUri = CryptoFileSystemUri.parse(uri);
 		CryptoFileSystemProperties properties = CryptoFileSystemProperties.wrap(rawProperties);
 		return fileSystems.create(parsedUri.pathToVault(), properties);
 	}
 
 	@Override
 	public CryptoFileSystem getFileSystem(URI uri) {
-		ParsedUri parsedUri = CryptoFileSystemUris.parseUri(uri);
+		CryptoFileSystemUri parsedUri = CryptoFileSystemUri.parse(uri);
 		return fileSystems.get(parsedUri.pathToVault());
 	}
 
 	@Override
 	public Path getPath(URI uri) {
-		ParsedUri parsedUri = CryptoFileSystemUris.parseUri(uri);
+		CryptoFileSystemUri parsedUri = CryptoFileSystemUri.parse(uri);
 		return fileSystems.get(parsedUri.pathToVault()).getPath(parsedUri.pathInsideVault());
 	}
 
