@@ -243,6 +243,8 @@ public class CryptoFileSystemProviderTest {
 	@Test
 	public void testNewFileSystemInvokesFileSystemsCreate() throws IOException {
 		Path pathToVault = get("a").toAbsolutePath();
+		Files.createDirectory(pathToVault);
+
 		URI uri = CryptoFileSystemUri.create(pathToVault);
 		CryptoFileSystemProperties properties = cryptoFileSystemProperties().withPassphrase("asd").build();
 		when(fileSystems.create(eq(pathToVault), eq(properties))).thenReturn(cryptoFileSystem);
