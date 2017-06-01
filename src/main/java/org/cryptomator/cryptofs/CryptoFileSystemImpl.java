@@ -47,6 +47,7 @@ import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
@@ -263,23 +264,8 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	void checkAccess(CryptoPath cleartextPath, AccessMode... modes) throws IOException {
 		if (fileStore.supportsFileAttributeView(PosixFileAttributeView.class)) {
 			Set<PosixFilePermission> permissions = readAttributes(cleartextPath, PosixFileAttributes.class).permissions();
-			boolean accessGranted = true;
-			for (AccessMode accessMode : modes) {
-				switch (accessMode) {
-				case READ:
-					accessGranted &= permissions.contains(PosixFilePermission.OWNER_READ);
-					break;
-				case WRITE:
-					accessGranted &= permissions.contains(PosixFilePermission.OWNER_WRITE);
-					break;
-				case EXECUTE:
-					accessGranted &= permissions.contains(PosixFilePermission.OWNER_EXECUTE);
-					break;
-				default:
-					throw new UnsupportedOperationException("AccessMode " + accessMode + " not supported.");
-				}
-			}
-			if (!accessGranted) {
+			boolean accessDenied = Arrays.stream(modes).anyMatch(accessMode -> !hasAccess(permissions, accessMode));
+			if (accessDenied) {
 				throw new AccessDeniedException(cleartextPath.toString());
 			}
 		} else if (fileStore.supportsFileAttributeView(DosFileAttributeView.class)) {
@@ -290,6 +276,19 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		} else {
 			// read attributes to check for file existence / throws IOException if file does not exist
 			readAttributes(cleartextPath, BasicFileAttributes.class);
+		}
+	}
+
+	private boolean hasAccess(Set<PosixFilePermission> permissions, AccessMode accessMode) {
+		switch (accessMode) {
+		case READ:
+			return permissions.contains(PosixFilePermission.OWNER_READ);
+		case WRITE:
+			return permissions.contains(PosixFilePermission.OWNER_WRITE);
+		case EXECUTE:
+			return permissions.contains(PosixFilePermission.OWNER_EXECUTE);
+		default:
+			throw new UnsupportedOperationException("AccessMode " + accessMode + " not supported.");
 		}
 	}
 

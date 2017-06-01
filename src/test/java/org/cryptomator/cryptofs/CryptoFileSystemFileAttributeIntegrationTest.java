@@ -13,7 +13,7 @@ import static java.lang.Boolean.TRUE;
 import static java.lang.System.currentTimeMillis;
 import static java.nio.file.Files.readAttributes;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
-import static org.cryptomator.cryptofs.CryptoFileSystemUris.createUri;
+import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.lessThan;
@@ -50,7 +50,8 @@ public class CryptoFileSystemFileAttributeIntegrationTest {
 	public static void setupClass() throws IOException {
 		inMemoryFs = Jimfs.newFileSystem();
 		pathToVault = inMemoryFs.getRootDirectories().iterator().next().resolve("vault");
-		fileSystem = new CryptoFileSystemProvider().newFileSystem(createUri(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
+		Files.createDirectory(pathToVault);
+		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
 	}
 
 	@AfterClass

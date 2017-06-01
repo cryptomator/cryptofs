@@ -10,7 +10,7 @@ package org.cryptomator.cryptofs;
 
 import static java.nio.file.Files.walkFileTree;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
-import static org.cryptomator.cryptofs.CryptoFileSystemUris.createUri;
+import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assume.assumeThat;
 
@@ -40,7 +40,8 @@ public class RealFileSystemIntegrationTest {
 	public static void setupClass() throws IOException {
 		tempDir = Files.createTempDirectory("RealFileSystemIntegrationTest");
 		pathToVault = tempDir.resolve("vault");
-		fileSystem = new CryptoFileSystemProvider().newFileSystem(createUri(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
+		Files.createDirectory(pathToVault);
+		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
 	}
 
 	@AfterClass

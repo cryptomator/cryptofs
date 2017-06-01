@@ -25,16 +25,22 @@ import java.nio.file.Paths;
  * <p>
  * this leads to cryptomator URIs of the form
  * <blockquote>
- * <i>cryptomator</i><b>{@code :}//</b><i>pathToVaultAsUri</i><b>/</b><i>pathInsideVault</i>
+ * <i>cryptomator</i><b>{@code :}//</b><i>file:<tt>%2F%2F</tt>path<tt>%2F</tt>to<tt>%2F</tt>vault<tt>%2F</tt>as<tt>%2F</tt>uri</i><b>/</b><i>path/inside/vault</i>
  * </blockquote>
  * 
  * @author Markus Kreusch
  */
-public class CryptoFileSystemUris {
+public class CryptoFileSystemUri {
 
 	public static final String URI_SCHEME = "cryptomator";
 
-	private CryptoFileSystemUris() {
+	private final Path pathToVault;
+	private final String pathInsideVault;
+
+	private CryptoFileSystemUri(URI uri) {
+		validate(uri);
+		pathToVault = Paths.get(URI.create(uri.getAuthority()));
+		pathInsideVault = uri.getPath();
 	}
 
 	/**
@@ -43,7 +49,7 @@ public class CryptoFileSystemUris {
 	 * @param pathToVault path to the vault
 	 * @param pathComponentsInsideVault path components to node inside the vault
 	 */
-	public static URI createUri(Path pathToVault, String... pathComponentsInsideVault) {
+	public static URI create(Path pathToVault, String... pathComponentsInsideVault) {
 		try {
 			return new URI(URI_SCHEME, pathToVault.toUri().toString(), "/" + String.join("/", pathComponentsInsideVault), null, null);
 		} catch (URISyntaxException e) {
@@ -51,47 +57,43 @@ public class CryptoFileSystemUris {
 		}
 	}
 
-	static ParsedUri parseUri(URI uri) {
-		return new ParsedUri(uri);
+	/**
+	 * Decodes the path to a vault and the path inside a vault from the given URI.
+	 * 
+	 * @param uri A valid CryptoFileSystem URI
+	 * @return Decoded URI components
+	 * @throws IllegalArgumentException If the given URI does not comply with the CryptoFileSystem URI standard.
+	 */
+	static CryptoFileSystemUri parse(URI uri) throws IllegalArgumentException {
+		return new CryptoFileSystemUri(uri);
 	}
 
-	static class ParsedUri {
-
-		private final Path pathToVault;
-		private final String pathInsideVault;
-
-		public ParsedUri(URI uri) {
-			validate(uri);
-			pathToVault = Paths.get(URI.create(uri.getAuthority()));
-			pathInsideVault = uri.getPath();
+	private static void validate(URI uri) {
+		if (!URI_SCHEME.equals(uri.getScheme())) {
+			throw new IllegalArgumentException("URI must have " + URI_SCHEME + " scheme");
 		}
-
-		private void validate(URI uri) {
-			if (!URI_SCHEME.equals(uri.getScheme())) {
-				throw new IllegalArgumentException("URI must have " + URI_SCHEME + " scheme");
-			}
-			if (uri.getAuthority() == null) {
-				throw new IllegalArgumentException("URI must have an authority");
-			}
-			if (uri.getPath() == null || uri.getPath().isEmpty()) {
-				throw new IllegalArgumentException("URI must have a path");
-			}
-			if (uri.getQuery() != null) {
-				throw new IllegalArgumentException("URI must not have a query part");
-			}
-			if (uri.getFragment() != null) {
-				throw new IllegalArgumentException("URI must not have a fragment part");
-			}
+		if (uri.getAuthority() == null) {
+			throw new IllegalArgumentException("URI must have an authority");
 		}
-
-		public Path pathToVault() {
-			return pathToVault;
+		if (uri.getPath() == null || uri.getPath().isEmpty()) {
+			throw new IllegalArgumentException("URI must have a path");
 		}
-
-		public String pathInsideVault() {
-			return pathInsideVault;
+		if (uri.getQuery() != null) {
+			throw new IllegalArgumentException("URI must not have a query part");
 		}
+		if (uri.getFragment() != null) {
+			throw new IllegalArgumentException("URI must not have a fragment part");
+		}
+	}
 
+	/* GETTER */
+
+	public Path pathToVault() {
+		return pathToVault;
+	}
+
+	public String pathInsideVault() {
+		return pathInsideVault;
 	}
 
 }

@@ -47,7 +47,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 	@Test
 	public void testGetFsViaNioApi() throws IOException {
-		URI fsUri = CryptoFileSystemUris.createUri(tmpPath);
+		URI fsUri = CryptoFileSystemUri.create(tmpPath);
 		FileSystem fs = FileSystems.newFileSystem(fsUri, cryptoFileSystemProperties().withPassphrase("asd").build());
 		Assert.assertTrue(fs instanceof CryptoFileSystemImpl);
 		Assert.assertTrue(Files.exists(tmpPath.resolve("masterkey.cryptomator")));

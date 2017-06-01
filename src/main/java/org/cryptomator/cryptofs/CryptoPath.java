@@ -238,7 +238,7 @@ class CryptoPath implements Path {
 	@Override
 	public URI toUri() {
 		fileSystem.assertOpen();
-		return CryptoFileSystemUris.createUri(fileSystem.getPathToVault(), elements.toArray(new String[elements.size()]));
+		return CryptoFileSystemUri.create(fileSystem.getPathToVault(), elements.toArray(new String[elements.size()]));
 	}
 
 	@Override

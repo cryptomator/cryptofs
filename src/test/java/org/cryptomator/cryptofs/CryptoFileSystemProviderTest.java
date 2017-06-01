@@ -29,6 +29,7 @@ import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.NotDirectoryException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.ProviderMismatchException;
@@ -36,13 +37,16 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
+import org.cryptomator.cryptofs.CryptoFileSystemProperties.FileSystemFlags;
 import org.cryptomator.cryptolib.api.InvalidPassphraseException;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -67,18 +71,18 @@ public class CryptoFileSystemProviderTest {
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
 
-	private CryptoFileSystems fileSystems = mock(CryptoFileSystems.class);
+	private final CryptoFileSystems fileSystems = mock(CryptoFileSystems.class);
 
-	private CryptoPath cryptoPath = mock(CryptoPath.class);
-	private CryptoPath secondCryptoPath = mock(CryptoPath.class);
-	private CryptoPath relativeCryptoPath = mock(CryptoPath.class);
-	private CryptoFileSystemImpl cryptoFileSystem = mock(CryptoFileSystemImpl.class);
-	private CopyOperation copyOperation = mock(CopyOperation.class);
-	private MoveOperation moveOperation = mock(MoveOperation.class);
+	private final CryptoPath cryptoPath = mock(CryptoPath.class);
+	private final CryptoPath secondCryptoPath = mock(CryptoPath.class);
+	private final CryptoPath relativeCryptoPath = mock(CryptoPath.class);
+	private final CryptoFileSystemImpl cryptoFileSystem = mock(CryptoFileSystemImpl.class);
+	private final CopyOperation copyOperation = mock(CopyOperation.class);
+	private final MoveOperation moveOperation = mock(MoveOperation.class);
 
-	private Path otherPath = mock(Path.class);
-	private FileSystem otherFileSystem = mock(FileSystem.class);
-	private FileSystemProvider otherProvider = mock(FileSystemProvider.class);
+	private final Path otherPath = mock(Path.class);
+	private final FileSystem otherFileSystem = mock(FileSystem.class);
+	private final FileSystemProvider otherProvider = mock(FileSystemProvider.class);
 
 	private CryptoFileSystemProvider inTest;
 
@@ -169,10 +173,79 @@ public class CryptoFileSystemProviderTest {
 		assertThat(inTest.getScheme(), is("cryptomator"));
 	}
 
+	@Test(expected = NotDirectoryException.class)
+	public void testInitializeFailWithNotDirectoryException() throws IOException {
+		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
+		Path pathToVault = fs.getPath("/vaultDir");
+
+		CryptoFileSystemProvider.initialize(pathToVault, "irrelevant.txt", "asd");
+	}
+
+	@Test
+	public void testInitialize() throws IOException {
+		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
+		Path pathToVault = fs.getPath("/vaultDir");
+		Path masterkeyFile = pathToVault.resolve("masterkey.cryptomator");
+		Path dataDir = pathToVault.resolve("d");
+
+		Files.createDirectory(pathToVault);
+		CryptoFileSystemProvider.initialize(pathToVault, "masterkey.cryptomator", "asd");
+
+		Assert.assertTrue(Files.isDirectory(dataDir));
+		Assert.assertTrue(Files.isRegularFile(masterkeyFile));
+	}
+
+	@Test
+	public void testNoImplicitInitialization() throws IOException {
+		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
+		Path pathToVault = fs.getPath("/vaultDir");
+		Path masterkeyFile = pathToVault.resolve("masterkey.cryptomator");
+		Path dataDir = pathToVault.resolve("d");
+
+		Files.createDirectory(pathToVault);
+		URI uri = CryptoFileSystemUri.create(pathToVault);
+
+		CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
+				.withFlags(EnumSet.noneOf(FileSystemFlags.class)) //
+				.withMasterkeyFilename("masterkey.cryptomator") //
+				.withPassphrase("asd") //
+				.build();
+		inTest.newFileSystem(uri, properties);
+		verify(fileSystems).create(eq(pathToVault), eq(properties));
+
+		Assert.assertTrue(Files.notExists(dataDir));
+		Assert.assertTrue(Files.notExists(masterkeyFile));
+	}
+
+	@Test
+	@SuppressWarnings("deprecation")
+	public void testImplicitInitialization() throws IOException {
+		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
+		Path pathToVault = fs.getPath("/vaultDir");
+		Path masterkeyFile = pathToVault.resolve("masterkey.cryptomator");
+		Path dataDir = pathToVault.resolve("d");
+
+		Files.createDirectory(pathToVault);
+		URI uri = CryptoFileSystemUri.create(pathToVault);
+
+		CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
+				.withFlags(EnumSet.of(FileSystemFlags.INIT_IMPLICITLY)) //
+				.withMasterkeyFilename("masterkey.cryptomator") //
+				.withPassphrase("asd") //
+				.build();
+		inTest.newFileSystem(uri, properties);
+		verify(fileSystems).create(eq(pathToVault), eq(properties));
+
+		Assert.assertTrue(Files.isDirectory(dataDir));
+		Assert.assertTrue(Files.isRegularFile(masterkeyFile));
+	}
+
 	@Test
 	public void testNewFileSystemInvokesFileSystemsCreate() throws IOException {
 		Path pathToVault = get("a").toAbsolutePath();
-		URI uri = CryptoFileSystemUris.createUri(pathToVault);
+		Files.createDirectory(pathToVault);
+
+		URI uri = CryptoFileSystemUri.create(pathToVault);
 		CryptoFileSystemProperties properties = cryptoFileSystemProperties().withPassphrase("asd").build();
 		when(fileSystems.create(eq(pathToVault), eq(properties))).thenReturn(cryptoFileSystem);
 
@@ -230,6 +303,7 @@ public class CryptoFileSystemProviderTest {
 		String masterkeyFilename = "masterkey.foo.baz";
 		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
 		Path pathToVault = fs.getPath("/vaultDir");
+		Files.createDirectory(pathToVault);
 		newFileSystem( //
 				pathToVault, //
 				cryptoFileSystemProperties() //
@@ -254,6 +328,7 @@ public class CryptoFileSystemProviderTest {
 		String masterkeyFilename = "masterkey.foo.baz";
 		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
 		Path pathToVault = fs.getPath("/vaultDir");
+		Files.createDirectory(pathToVault);
 		newFileSystem( //
 				pathToVault, //
 				cryptoFileSystemProperties() //
@@ -276,7 +351,7 @@ public class CryptoFileSystemProviderTest {
 	@Test
 	public void testGetFileSystemInvokesFileSystemsGetWithPathToVaultFromUri() {
 		Path pathToVault = get("a").toAbsolutePath();
-		URI uri = CryptoFileSystemUris.createUri(pathToVault);
+		URI uri = CryptoFileSystemUri.create(pathToVault);
 		when(fileSystems.get(pathToVault)).thenReturn(cryptoFileSystem);
 
 		FileSystem result = inTest.getFileSystem(uri);
@@ -287,7 +362,7 @@ public class CryptoFileSystemProviderTest {
 	@Test
 	public void testGetPathDelegatesToFileSystem() {
 		Path pathToVault = get("a").toAbsolutePath();
-		URI uri = CryptoFileSystemUris.createUri(pathToVault, "c", "d");
+		URI uri = CryptoFileSystemUri.create(pathToVault, "c", "d");
 		when(fileSystems.get(pathToVault)).thenReturn(cryptoFileSystem);
 		when(cryptoFileSystem.getPath("/c/d")).thenReturn(cryptoPath);
 

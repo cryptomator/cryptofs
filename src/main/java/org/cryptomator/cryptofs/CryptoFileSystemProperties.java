@@ -8,7 +8,6 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static java.lang.Boolean.TRUE;
 import static java.util.Arrays.asList;
 import static java.util.Collections.unmodifiableSet;
 
@@ -16,6 +15,7 @@ import java.net.URI;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.AbstractMap;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -40,11 +40,6 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	public static final String PROPERTY_PASSPHRASE = "passphrase";
 
 	/**
-	 * Key identifying the readonly property (<code>true</code> or <code>false</code>) for a vault.
-	 */
-	public static final String PROPERTY_READONLY = "readonly";
-
-	/**
 	 * Key identifying the name of the masterkey file located inside the vault directory.
 	 * 
 	 * @since 1.1.0
@@ -53,12 +48,35 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	static final String DEFAULT_MASTERKEY_FILENAME = "masterkey.cryptomator";
 
+	/**
+	 * Key identifying the filesystem flags.
+	 * 
+	 * @since 1.3.0
+	 */
+	public static final String PROPERTY_FILESYSTEM_FLAGS = "flags";
+
+	static final Set<FileSystemFlags> DEFAULT_FILESYSTEM_FLAGS = unmodifiableSet(EnumSet.of(FileSystemFlags.INIT_IMPLICITLY));
+
+	public enum FileSystemFlags {
+		/**
+		 * If present, the vault is opened in read-only mode.
+		 */
+		READONLY,
+
+		/**
+		 * If present, the vault structure will implicitly get initialized upon filesystem creation.
+		 * 
+		 * @deprecated Will get removed in version 2.0.0. Use {@link CryptoFileSystemProvider#initialize(Path, String, CharSequence)} explicitly.
+		 */
+		@Deprecated INIT_IMPLICITLY
+	};
+
 	private final Set<Entry<String, Object>> entries;
 
 	private CryptoFileSystemProperties(Builder builder) {
 		this.entries = unmodifiableSet(new HashSet<>(asList( //
 				entry(PROPERTY_PASSPHRASE, builder.passphrase), //
-				entry(PROPERTY_READONLY, builder.readonly), //
+				entry(PROPERTY_FILESYSTEM_FLAGS, builder.flags), //
 				entry(PROPERTY_MASTERKEY_FILENAME, builder.masterkeyFilename) //
 		)));
 	}
@@ -67,8 +85,17 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		return (CharSequence) get(PROPERTY_PASSPHRASE);
 	}
 
+	@SuppressWarnings("unchecked")
+	Set<FileSystemFlags> flags() {
+		return (Set<FileSystemFlags>) get(PROPERTY_FILESYSTEM_FLAGS);
+	}
+
 	boolean readonly() {
-		return (boolean) get(PROPERTY_READONLY);
+		return flags().contains(FileSystemFlags.READONLY);
+	}
+
+	boolean initializeImplicitly() {
+		return flags().contains(FileSystemFlags.INIT_IMPLICITLY);
 	}
 
 	String masterkeyFilename() {
@@ -143,7 +170,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	public static class Builder {
 
 		private CharSequence passphrase;
-		private boolean readonly = false;
+		private final Set<FileSystemFlags> flags = EnumSet.copyOf(DEFAULT_FILESYSTEM_FLAGS);
 		private String masterkeyFilename = DEFAULT_MASTERKEY_FILENAME;
 
 		private Builder() {
@@ -152,12 +179,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		private Builder(Map<String, ?> properties) {
 			checkedSet(CharSequence.class, PROPERTY_PASSPHRASE, properties, this::withPassphrase);
 			checkedSet(String.class, PROPERTY_MASTERKEY_FILENAME, properties, this::withMasterkeyFilename);
-			checkedSet(Boolean.class, PROPERTY_READONLY, properties, readonly -> {
-				if (TRUE.equals(readonly)) {
-					withReadonlyFlag();
-				}
-			});
-
+			checkedSet(Set.class, PROPERTY_FILESYSTEM_FLAGS, properties, this::withFlags);
 		}
 
 		private <T> void checkedSet(Class<T> type, String key, Map<String, ?> properties, Consumer<T> setter) {
@@ -182,13 +204,19 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 			return this;
 		}
 
+		public Builder withFlags(Set<FileSystemFlags> flags) {
+			this.flags.clear();
+			this.flags.addAll(flags);
+			return this;
+		}
+
 		/**
 		 * Sets the readonly flag for a CryptoFileSystem.
 		 * 
 		 * @return this
 		 */
 		public Builder withReadonlyFlag() {
-			this.readonly = true;
+			flags.add(FileSystemFlags.READONLY);
 			return this;
 		}
 
