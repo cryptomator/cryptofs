@@ -26,7 +26,6 @@ import com.google.common.cache.LoadingCache;
 @PerFileSystem
 class CryptoPathMapper {
 
-	private static final String ROOT_DIR_ID = "";
 	private static final int MAX_CACHED_DIR_PATHS = 1000;
 
 	private final Cryptor cryptor;
@@ -78,7 +77,7 @@ class CryptoPathMapper {
 	public Directory getCiphertextDir(CryptoPath cleartextPath) throws IOException {
 		assert cleartextPath.isAbsolute();
 		if (cleartextPath.getNameCount() == 0) {
-			return new Directory(ROOT_DIR_ID, directoryPathCache.getUnchecked(ROOT_DIR_ID));
+			return new Directory(Constants.ROOT_DIR_ID, directoryPathCache.getUnchecked(Constants.ROOT_DIR_ID));
 		} else {
 			CryptoPath parentPath = cleartextPath.getParent();
 			assert parentPath != null : "namecount > 0";

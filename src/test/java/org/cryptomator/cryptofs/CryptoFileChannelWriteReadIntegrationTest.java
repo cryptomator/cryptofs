@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.junit.AfterClass;
@@ -68,6 +69,7 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 	public static void setupClass() throws IOException {
 		inMemoryFs = Jimfs.newFileSystem();
 		pathToVault = inMemoryFs.getRootDirectories().iterator().next().resolve("vault");
+		Files.createDirectory(pathToVault);
 		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
 	}
 

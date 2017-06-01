@@ -40,6 +40,7 @@ public class RealFileSystemIntegrationTest {
 	public static void setupClass() throws IOException {
 		tempDir = Files.createTempDirectory("RealFileSystemIntegrationTest");
 		pathToVault = tempDir.resolve("vault");
+		Files.createDirectory(pathToVault);
 		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
 	}
 

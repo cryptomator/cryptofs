@@ -28,6 +28,7 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.NotDirectoryException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.ProviderMismatchException;
@@ -43,6 +44,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import org.cryptomator.cryptolib.Cryptors;
+import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.InvalidPassphraseException;
 
@@ -101,9 +103,37 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	/**
+	 * Creates a new vault at the given directory path.
+	 * 
+	 * @param pathToVault Path to a not yet existing directory
+	 * @param masterkeyFilename Name of the masterkey file
+	 * @param passphrase Passphrase that should be used to unlock the vault
+	 * @throws NotDirectoryException If the given path is not an existing directory.
+	 * @throws IOException If the vault structure could not be initialized due to I/O errors
+	 * @since 1.3.0
+	 */
+	public static void initialize(Path pathToVault, String masterkeyFilename, CharSequence passphrase) throws NotDirectoryException, IOException {
+		if (!Files.isDirectory(pathToVault)) {
+			throw new NotDirectoryException(pathToVault.toString());
+		}
+		try (Cryptor cryptor = CRYPTOR_PROVIDER.createNew()) {
+			// save masterkey file:
+			Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
+			byte[] keyFileContents = cryptor.writeKeysToMasterkeyFile(passphrase, Constants.VAULT_VERSION).serialize();
+			Files.write(masterKeyPath, keyFileContents, CREATE_NEW, WRITE);
+			// create "d/RO/OTDIRECTORY":
+			String rootDirHash = cryptor.fileNameCryptor().hashDirectoryId(Constants.ROOT_DIR_ID);
+			Path rootDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(rootDirHash.substring(0, 2)).resolve(rootDirHash.substring(2));
+			Files.createDirectories(rootDirPath);
+		}
+		assert containsVault(pathToVault, masterkeyFilename);
+	}
+
+	/**
 	 * Checks if the folder represented by the given path exists and contains a valid vault structure.
 	 * 
 	 * @param pathToVault A directory path
+	 * @param masterkeyFilename Name of the masterkey file
 	 * @return <code>true</code> if the directory seems to contain a vault.
 	 * @since 1.1.0
 	 */
@@ -117,6 +147,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * Changes the passphrase of a vault at the given path.
 	 * 
 	 * @param pathToVault Vault directory
+	 * @param masterkeyFilename Name of the masterkey file
 	 * @param oldPassphrase Current passphrase
 	 * @param newPassphrase Future passphrase
 	 * @throws InvalidPassphraseException If <code>oldPassphrase</code> can not be used to unlock the vault.
@@ -167,6 +198,12 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	public CryptoFileSystem newFileSystem(URI uri, Map<String, ?> rawProperties) throws IOException {
 		CryptoFileSystemUri parsedUri = CryptoFileSystemUri.parse(uri);
 		CryptoFileSystemProperties properties = CryptoFileSystemProperties.wrap(rawProperties);
+
+		// TODO remove implicit initialization in 2.0.0:
+		if (properties.initializeImplicitly() && !CryptoFileSystemProvider.containsVault(parsedUri.pathToVault(), properties.masterkeyFilename())) {
+			CryptoFileSystemProvider.initialize(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase());
+		}
+
 		return fileSystems.create(parsedUri.pathToVault(), properties);
 	}
 

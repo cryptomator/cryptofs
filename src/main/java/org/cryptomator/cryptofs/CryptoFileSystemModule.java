@@ -1,8 +1,6 @@
 package org.cryptomator.cryptofs;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-import static java.nio.file.StandardOpenOption.CREATE_NEW;
-import static java.nio.file.StandardOpenOption.WRITE;
 import static org.cryptomator.cryptofs.UncheckedThrows.rethrowUnchecked;
 
 import java.io.IOException;
@@ -33,17 +31,10 @@ class CryptoFileSystemModule {
 		return rethrowUnchecked(IOException.class).from(() -> {
 			Path masterKeyPath = pathToVault.resolve(properties.masterkeyFilename());
 			Path backupKeyPath = pathToVault.resolve(properties.masterkeyFilename() + Constants.MASTERKEY_BACKUP_SUFFIX);
-			Cryptor cryptor;
-			if (Files.isRegularFile(masterKeyPath)) {
-				byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
-				cryptor = cryptorProvider.createFromKeyFile(KeyFile.parse(keyFileContents), properties.passphrase(), Constants.VAULT_VERSION);
-				Files.copy(masterKeyPath, backupKeyPath, REPLACE_EXISTING);
-			} else {
-				cryptor = cryptorProvider.createNew();
-				byte[] keyFileContents = cryptor.writeKeysToMasterkeyFile(properties.passphrase(), Constants.VAULT_VERSION).serialize();
-				Files.createDirectories(pathToVault);
-				Files.write(masterKeyPath, keyFileContents, CREATE_NEW, WRITE);
-			}
+			assert Files.exists(masterKeyPath); // since 1.3.0 a file system can only be created for existing vaults. initialization is done before.
+			byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
+			Cryptor cryptor = cryptorProvider.createFromKeyFile(KeyFile.parse(keyFileContents), properties.passphrase(), Constants.VAULT_VERSION);
+			Files.copy(masterKeyPath, backupKeyPath, REPLACE_EXISTING);
 			return cryptor;
 		});
 	}

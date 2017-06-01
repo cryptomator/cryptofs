@@ -50,6 +50,7 @@ public class CryptoFileSystemFileAttributeIntegrationTest {
 	public static void setupClass() throws IOException {
 		inMemoryFs = Jimfs.newFileSystem();
 		pathToVault = inMemoryFs.getRootDirectories().iterator().next().resolve("vault");
+		Files.createDirectory(pathToVault);
 		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
 	}
 
