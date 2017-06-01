@@ -37,7 +37,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
-import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -206,7 +205,7 @@ public class CryptoFileSystemProviderTest {
 		URI uri = CryptoFileSystemUri.create(pathToVault);
 
 		CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
-				.withFlags(EnumSet.noneOf(FileSystemFlags.class)) //
+				.withFlags() //
 				.withMasterkeyFilename("masterkey.cryptomator") //
 				.withPassphrase("asd") //
 				.build();
@@ -229,7 +228,7 @@ public class CryptoFileSystemProviderTest {
 		URI uri = CryptoFileSystemUri.create(pathToVault);
 
 		CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
-				.withFlags(EnumSet.of(FileSystemFlags.INIT_IMPLICITLY)) //
+				.withFlags(FileSystemFlags.INIT_IMPLICITLY) //
 				.withMasterkeyFilename("masterkey.cryptomator") //
 				.withPassphrase("asd") //
 				.build();
