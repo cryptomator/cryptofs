@@ -26,14 +26,14 @@ import java.util.Set;
 
 class EffectiveOpenOptions {
 
-	public static EffectiveOpenOptions from(Set<? extends OpenOption> options) {
-		return new EffectiveOpenOptions(options);
-	}
-
 	private final Set<OpenOption> options;
 
 	private EffectiveOpenOptions(Set<? extends OpenOption> options) {
 		this.options = cleanAndValidate(options);
+	}
+
+	public static EffectiveOpenOptions from(Set<? extends OpenOption> options) {
+		return new EffectiveOpenOptions(options);
 	}
 
 	/**

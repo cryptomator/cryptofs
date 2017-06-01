@@ -15,7 +15,6 @@ import java.net.URI;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.AbstractMap;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Map;
@@ -56,7 +55,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 */
 	public static final String PROPERTY_FILESYSTEM_FLAGS = "flags";
 
-	static final Set<FileSystemFlags> DEFAULT_FILESYSTEM_FLAGS = Collections.unmodifiableSet(EnumSet.of(FileSystemFlags.INIT_IMPLICITLY));
+	static final Set<FileSystemFlags> DEFAULT_FILESYSTEM_FLAGS = unmodifiableSet(EnumSet.of(FileSystemFlags.INIT_IMPLICITLY));
 
 	public enum FileSystemFlags {
 		/**
