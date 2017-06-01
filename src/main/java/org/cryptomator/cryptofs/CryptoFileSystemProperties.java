@@ -15,7 +15,6 @@ import java.net.URI;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.AbstractMap;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -207,7 +206,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		}
 
 		public Builder withFlags(FileSystemFlags... flags) {
-			return withFlags(Arrays.asList(flags));
+			return withFlags(asList(flags));
 		}
 
 		public Builder withFlags(Collection<FileSystemFlags> flags) {
