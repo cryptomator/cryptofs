@@ -205,10 +205,22 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 			return this;
 		}
 
+		/**
+		 * Sets the flags for a CryptoFileSystem.
+		 * 
+		 * @return this
+		 * @since 1.3.1
+		 */
 		public Builder withFlags(FileSystemFlags... flags) {
 			return withFlags(asList(flags));
 		}
 
+		/**
+		 * Sets the flags for a CryptoFileSystem.
+		 * 
+		 * @return this
+		 * @since 1.3.0
+		 */
 		public Builder withFlags(Collection<FileSystemFlags> flags) {
 			this.flags.clear();
 			this.flags.addAll(flags);
@@ -219,7 +231,9 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		 * Sets the readonly flag for a CryptoFileSystem.
 		 * 
 		 * @return this
+		 * @deprecated Will be removed in 2.0.0. Use {@link #withFlags(FileSystemFlags.READONLY)}
 		 */
+		@Deprecated
 		public Builder withReadonlyFlag() {
 			flags.add(FileSystemFlags.READONLY);
 			return this;

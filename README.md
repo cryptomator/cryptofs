@@ -25,30 +25,36 @@ For more information on the security details visit [cryptomator.org](https://cry
 
 CryptoFS depends on a Java 8 JRE/JDK. In addition the JCE unlimited strength policy files (needed for 256-bit keys) must be installed.
 
-### Construction
+### Vault initialization
+
+```java
+Path storageLocation = Paths.get("/home/cryptobot/vault");
+Files.createDirectories(storageLocation);
+CryptoFileSystemProvider.initialize(storageLocation, "masterkey.cryptomator", "password");
+```
+
+### Obtaining a FileSystem instance
 
 You have the option to use the convenience method ``CryptoFileSystemProvider#newFileSystem`` as follows:  
 
 ```java
-Path storageLocation = Paths.get("/home/cryptobot/vault");
 FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(
 	storageLocation,
 	CryptoFileSystemProperties.cryptoFileSystemProperties()
 		.withPassphrase("password")
-		.withReadonlyFlag() // readonly flag is optional of course
+		.withFlags(FileSystemFlags.READONLY) // readonly flag is optional of course
 		.build());
 ```
 
 or to use one of the standard methods from ``FileSystems#newFileSystem``:
 
 ```java
-Path storageLocation = Paths.get("/home/cryptobot/vault");
 URI uri = CryptoFileSystemUri.create(storageLocation);
 FileSystem fileSystem = FileSystems.newFileSystem(
 		uri,
 		CryptoFileSystemProperties.cryptoFileSystemProperties()
 			.withPassphrase("password")
-			.withReadonlyFlag() // readonly flag is optional of course
+			.withFlags(FileSystemFlags.READONLY) // readonly flag is optional of course
 			.build());
 ```
 
@@ -59,20 +65,22 @@ For more details on construction have a look at the javadoc of ``CryptoFileSytem
 ### Using the constructed file system
 
 ```java
-FileSystem fileSystem = ...; // see above
+try (FileSystem fileSystem = ...) { // see above
 
-// obtain a path to a test file
-Path testFile = fileSystem.getPath("/foo/bar/test");
+	// obtain a path to a test file
+	Path testFile = fileSystem.getPath("/foo/bar/test");
 
-// create all parent directories
-Files.createDirectories(testFile.getParent());
+	// create all parent directories
+	Files.createDirectories(testFile.getParent());
 
-// Write data to the file
-Files.write(testFile, "test".getBytes());
+	// Write data to the file
+	Files.write(testFile, "test".getBytes());
 
-// List all files present in a directory
-try (Stream<Path> listing = Files.list(testFile.getParent())) {
-	listing.forEach(System.out::println);
+	// List all files present in a directory
+	try (Stream<Path> listing = Files.list(testFile.getParent())) {
+		listing.forEach(System.out::println);
+	}
+
 }
 ```
 
