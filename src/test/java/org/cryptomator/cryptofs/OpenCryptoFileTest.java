@@ -7,13 +7,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.file.StandardOpenOption;
+import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.cryptomator.cryptofs.OpenCounter.OpenState;
 import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
 import org.junit.Rule;
 import org.junit.Test;
@@ -21,6 +25,8 @@ import org.junit.experimental.theories.Theories;
 import org.junit.experimental.theories.Theory;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
+import org.mockito.InOrder;
+import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
@@ -106,6 +112,70 @@ public class OpenCryptoFileTest {
 		inTest.close();
 
 		verify(cryptoFileChannelFactory).close();
+	}
+
+	@Test
+	public void testRead() throws IOException {
+		int cleartextChunkSize = 1000; // 1 kb per chunk
+		ByteBuffer buf = ByteBuffer.allocate(10);
+		size.set(10_000_000_000l); // 10 gb total file size
+
+		FileContentCryptor fileContentCryptor = Mockito.mock(FileContentCryptor.class);
+		when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
+		when(fileContentCryptor.cleartextChunkSize()).thenReturn(cleartextChunkSize);
+		when(chunkCache.get(Mockito.anyLong())).then(invocation -> {
+			return ChunkData.wrap(ByteBuffer.allocate(cleartextChunkSize));
+		});
+
+		// A read from frist chunk:
+		buf.clear();
+		inTest.read(buf, 0);
+
+		// B read from second and third chunk:
+		buf.clear();
+		inTest.read(buf, 1999);
+
+		// C read from position > maxint
+		buf.clear();
+		inTest.read(buf, 5_000_000_000l);
+
+		InOrder inOrder = Mockito.inOrder(chunkCache, chunkCache, chunkCache, chunkCache);
+		inOrder.verify(chunkCache).get(0l); // A
+		inOrder.verify(chunkCache).get(1l); // B
+		inOrder.verify(chunkCache).get(2l); // B
+		inOrder.verify(chunkCache).get(5_000_000l); // C
+		inOrder.verifyNoMoreInteractions();
+	}
+
+	@Test
+	public void testWrite() throws IOException {
+		int cleartextChunkSize = 1000; // 1 kb per chunk
+		size.set(10_000_000_000l); // 10 gb total file size
+
+		FileContentCryptor fileContentCryptor = Mockito.mock(FileContentCryptor.class);
+		when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
+		when(fileContentCryptor.cleartextChunkSize()).thenReturn(cleartextChunkSize);
+		when(chunkCache.get(Mockito.anyLong())).then(invocation -> {
+			return ChunkData.wrap(ByteBuffer.allocate(cleartextChunkSize));
+		});
+
+		// A change 10 bytes inside first chunk:
+		ByteBuffer buf1 = ByteBuffer.allocate(10);
+		inTest.write(EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE)), buf1, 0);
+
+		// B change complete second chunk:
+		ByteBuffer buf2 = ByteBuffer.allocate(1000);
+		inTest.write(EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE)), buf2, 1000);
+
+		// C change complete chunk at position > maxint:
+		ByteBuffer buf3 = ByteBuffer.allocate(1000);
+		inTest.write(EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE)), buf3, 5_000_000_000l);
+
+		InOrder inOrder = Mockito.inOrder(chunkCache, chunkCache, chunkCache);
+		inOrder.verify(chunkCache).get(0l); // A
+		inOrder.verify(chunkCache).set(Mockito.eq(1l), Mockito.any()); // B
+		inOrder.verify(chunkCache).set(Mockito.eq(5_000_000l), Mockito.any()); // C
+		inOrder.verifyNoMoreInteractions();
 	}
 
 }

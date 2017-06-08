@@ -69,11 +69,11 @@ class OpenCryptoFile {
 		int payloadSize = cryptor.fileContentCryptor().cleartextChunkSize();
 		while (dst.hasRemaining()) {
 			long pos = position + read;
-			long chunkIndex = pos / payloadSize;
-			int offset = (int) pos % payloadSize;
-			int len = min(dst.remaining(), payloadSize - offset);
+			long chunkIndex = pos / payloadSize; // floor by int-truncation
+			int offsetInChunk = (int) (pos % payloadSize); // known to fit in int, because payloadSize is int
+			int len = min(dst.remaining(), payloadSize - offsetInChunk); // known to fit in int, because second argument is int
 			final ChunkData chunkData = chunkCache.get(chunkIndex);
-			chunkData.copyDataStartingAt(offset).to(dst);
+			chunkData.copyDataStartingAt(offsetInChunk).to(dst);
 			read += len;
 		}
 		dst.limit(origLimit);
@@ -138,7 +138,7 @@ class OpenCryptoFile {
 		if (originalSize > size) {
 			int cleartextChunkSize = cryptor.fileContentCryptor().cleartextChunkSize();
 			long indexOfLastChunk = (size + cleartextChunkSize - 1) / cleartextChunkSize - 1;
-			int sizeOfIncompleteChunk = (int) (size % cleartextChunkSize);
+			int sizeOfIncompleteChunk = (int) (size % cleartextChunkSize); // known to fit in int, because cleartextChunkSize is int
 			if (sizeOfIncompleteChunk > 0) {
 				chunkCache.get(indexOfLastChunk).truncate(sizeOfIncompleteChunk);
 			}
