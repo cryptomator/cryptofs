@@ -41,6 +41,15 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	public static final String PROPERTY_PASSPHRASE = "passphrase";
 
 	/**
+	 * Key identifying the pepper used during key derivation.
+	 * 
+	 * @since 1.3.2
+	 */
+	public static final String PROPERTY_PEPPER = "pepper";
+
+	static final byte[] DEFAULT_PEPPER = new byte[0];
+
+	/**
 	 * Key identifying the name of the masterkey file located inside the vault directory.
 	 * 
 	 * @since 1.1.0
@@ -77,6 +86,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	private CryptoFileSystemProperties(Builder builder) {
 		this.entries = unmodifiableSet(new HashSet<>(asList( //
 				entry(PROPERTY_PASSPHRASE, builder.passphrase), //
+				entry(PROPERTY_PEPPER, builder.pepper), //
 				entry(PROPERTY_FILESYSTEM_FLAGS, builder.flags), //
 				entry(PROPERTY_MASTERKEY_FILENAME, builder.masterkeyFilename) //
 		)));
@@ -84,6 +94,10 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	CharSequence passphrase() {
 		return (CharSequence) get(PROPERTY_PASSPHRASE);
+	}
+
+	byte[] pepper() {
+		return (byte[]) get(PROPERTY_PEPPER);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -171,6 +185,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	public static class Builder {
 
 		private CharSequence passphrase;
+		public byte[] pepper = DEFAULT_PEPPER;
 		private final Set<FileSystemFlags> flags = EnumSet.copyOf(DEFAULT_FILESYSTEM_FLAGS);
 		private String masterkeyFilename = DEFAULT_MASTERKEY_FILENAME;
 
@@ -179,6 +194,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 		private Builder(Map<String, ?> properties) {
 			checkedSet(CharSequence.class, PROPERTY_PASSPHRASE, properties, this::withPassphrase);
+			checkedSet(byte[].class, PROPERTY_PEPPER, properties, this::withPepper);
 			checkedSet(String.class, PROPERTY_MASTERKEY_FILENAME, properties, this::withMasterkeyFilename);
 			checkedSet(Set.class, PROPERTY_FILESYSTEM_FLAGS, properties, this::withFlags);
 		}
@@ -205,10 +221,36 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 			return this;
 		}
 
+		/**
+		 * Sets the pepper for a CryptoFileSystem.
+		 * 
+		 * @param pepper A pepper used during key derivation
+		 * @return this
+		 * @since 1.3.2
+		 */
+		public Builder withPepper(byte[] pepper) {
+			this.pepper = pepper;
+			return this;
+		}
+
+		/**
+		 * Sets the flags for a CryptoFileSystem.
+		 * 
+		 * @param flags File system flags
+		 * @return this
+		 * @since 1.3.1
+		 */
 		public Builder withFlags(FileSystemFlags... flags) {
 			return withFlags(asList(flags));
 		}
 
+		/**
+		 * Sets the flags for a CryptoFileSystem.
+		 * 
+		 * @param flags collection of file system flags
+		 * @return this
+		 * @since 1.3.0
+		 */
 		public Builder withFlags(Collection<FileSystemFlags> flags) {
 			this.flags.clear();
 			this.flags.addAll(flags);
@@ -219,7 +261,9 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		 * Sets the readonly flag for a CryptoFileSystem.
 		 * 
 		 * @return this
+		 * @deprecated Will be removed in 2.0.0. Use {@link #withFlags(FileSystemFlags...) withFlags(FileSystemFlags.READONLY)}
 		 */
+		@Deprecated
 		public Builder withReadonlyFlag() {
 			flags.add(FileSystemFlags.READONLY);
 			return this;

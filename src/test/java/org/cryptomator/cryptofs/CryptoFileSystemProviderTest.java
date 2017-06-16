@@ -147,7 +147,8 @@ public class CryptoFileSystemProviderTest {
 	}
 
 	@Theory
-	public void testInvocationsWithPathFromOtherProviderFailWithProviderMismatchException(@FromDataPoints("shouldFailWithProviderMismatch") InvocationWhichShouldFail shouldFailWithProviderMismatch) throws IOException {
+	public void testInvocationsWithPathFromOtherProviderFailWithProviderMismatchException(@FromDataPoints("shouldFailWithProviderMismatch") InvocationWhichShouldFail shouldFailWithProviderMismatch)
+			throws IOException {
 		thrown.expect(ProviderMismatchException.class);
 
 		shouldFailWithProviderMismatch.invoke(inTest, otherPath);
@@ -242,10 +243,9 @@ public class CryptoFileSystemProviderTest {
 	@Test
 	public void testNewFileSystemInvokesFileSystemsCreate() throws IOException {
 		Path pathToVault = get("a").toAbsolutePath();
-		Files.createDirectory(pathToVault);
 
 		URI uri = CryptoFileSystemUri.create(pathToVault);
-		CryptoFileSystemProperties properties = cryptoFileSystemProperties().withPassphrase("asd").build();
+		CryptoFileSystemProperties properties = cryptoFileSystemProperties().withPassphrase("asd").withFlags().build();
 		when(fileSystems.create(eq(pathToVault), eq(properties))).thenReturn(cryptoFileSystem);
 
 		FileSystem result = inTest.newFileSystem(uri, properties);
