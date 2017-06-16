@@ -33,7 +33,7 @@ class CryptoFileSystemModule {
 			Path backupKeyPath = pathToVault.resolve(properties.masterkeyFilename() + Constants.MASTERKEY_BACKUP_SUFFIX);
 			assert Files.exists(masterKeyPath); // since 1.3.0 a file system can only be created for existing vaults. initialization is done before.
 			byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
-			Cryptor cryptor = cryptorProvider.createFromKeyFile(KeyFile.parse(keyFileContents), properties.passphrase(), Constants.VAULT_VERSION);
+			Cryptor cryptor = cryptorProvider.createFromKeyFile(KeyFile.parse(keyFileContents), properties.passphrase(), properties.pepper(), Constants.VAULT_VERSION);
 			Files.copy(masterKeyPath, backupKeyPath, REPLACE_EXISTING);
 			return cryptor;
 		});

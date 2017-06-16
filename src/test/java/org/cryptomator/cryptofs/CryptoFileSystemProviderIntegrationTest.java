@@ -18,6 +18,7 @@ import static org.junit.Assert.assertThat;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -25,13 +26,22 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.EnumSet;
 
+import org.cryptomator.cryptolib.api.InvalidPassphraseException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
+
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
 
 public class CryptoFileSystemProviderIntegrationTest {
+
+	@Rule
+	public ExpectedException thrown = ExpectedException.none();
 
 	private Path tmpPath;
 
@@ -56,6 +66,41 @@ public class CryptoFileSystemProviderIntegrationTest {
 	}
 
 	@Test
+	public void testInitAndOpenFsWithPepper() throws IOException {
+		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
+		Path pathToVault = fs.getPath("/vaultDir");
+		Path masterkeyFile = pathToVault.resolve("masterkey.cryptomator");
+		Path dataDir = pathToVault.resolve("d");
+		byte[] pepper = "pepper".getBytes(StandardCharsets.US_ASCII);
+
+		// Initialize vault:
+		Files.createDirectory(pathToVault);
+		CryptoFileSystemProvider.initialize(pathToVault, "masterkey.cryptomator", pepper, "asd");
+		Assert.assertTrue(Files.isDirectory(dataDir));
+		Assert.assertTrue(Files.isRegularFile(masterkeyFile));
+
+		// Attempt 1: Correct pepper:
+		CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
+				.withFlags() //
+				.withMasterkeyFilename("masterkey.cryptomator") //
+				.withPassphrase("asd") //
+				.withPepper(pepper) //
+				.build();
+		try (CryptoFileSystem cryptoFs = CryptoFileSystemProvider.newFileSystem(pathToVault, properties)) {
+			Assert.assertNotNull(cryptoFs);
+		}
+
+		// Attempt 2: Invalid pepper resulting in InvalidPassphraseException:
+		CryptoFileSystemProperties wrongProperties = cryptoFileSystemProperties() //
+				.withFlags() //
+				.withMasterkeyFilename("masterkey.cryptomator") //
+				.withPassphrase("asd") //
+				.build();
+		thrown.expect(InvalidPassphraseException.class);
+		CryptoFileSystemProvider.newFileSystem(pathToVault, wrongProperties);
+	}
+
+	@Test
 	public void testOpenAndCloseFileChannel() throws IOException {
 		FileSystem fs = CryptoFileSystemProvider.newFileSystem(tmpPath, cryptoFileSystemProperties().withPassphrase("asd").build());
 		try (FileChannel ch = FileChannel.open(fs.getPath("/foo"), EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW))) {
@@ -65,7 +110,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 	@Test
 	public void testCopyFileFromOneCryptoFileSystemToAnother() throws IOException {
-		byte[] data = new byte[] {1, 2, 3, 4, 5, 6, 7};
+		byte[] data = new byte[] { 1, 2, 3, 4, 5, 6, 7 };
 
 		Path fs1Location = tmpPath.resolve("foo");
 		Path fs2Location = tmpPath.resolve("bar");
@@ -87,8 +132,8 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 	@Test
 	public void testCopyFileByRelacingExistingFromOneCryptoFileSystemToAnother() throws IOException {
-		byte[] data = new byte[] {1, 2, 3, 4, 5, 6, 7};
-		byte[] data2 = new byte[] {10, 11, 12};
+		byte[] data = new byte[] { 1, 2, 3, 4, 5, 6, 7 };
+		byte[] data2 = new byte[] { 10, 11, 12 };
 
 		Path fs1Location = tmpPath.resolve("foo");
 		Path fs2Location = tmpPath.resolve("bar");
@@ -111,7 +156,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 	@Test
 	public void testMoveFileFromOneCryptoFileSystemToAnother() throws IOException {
-		byte[] data = new byte[] {1, 2, 3, 4, 5, 6, 7};
+		byte[] data = new byte[] { 1, 2, 3, 4, 5, 6, 7 };
 
 		Path fs1Location = tmpPath.resolve("foo");
 		Path fs2Location = tmpPath.resolve("bar");

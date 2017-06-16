@@ -1,9 +1,11 @@
 package org.cryptomator.cryptofs;
 
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.DEFAULT_MASTERKEY_FILENAME;
+import static org.cryptomator.cryptofs.CryptoFileSystemProperties.DEFAULT_PEPPER;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_FILESYSTEM_FLAGS;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_MASTERKEY_FILENAME;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_PASSPHRASE;
+import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_PEPPER;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemPropertiesFrom;
 import static org.hamcrest.CoreMatchers.sameInstance;
@@ -11,6 +13,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 
+import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,7 +40,7 @@ public class CryptoFileSystemPropertiesTest {
 	}
 
 	@Test
-	@SuppressWarnings({"unchecked", "deprecation"})
+	@SuppressWarnings({ "unchecked", "deprecation" })
 	public void testSetOnlyPassphrase() {
 		String passphrase = "aPassphrase";
 		CryptoFileSystemProperties inTest = cryptoFileSystemProperties() //
@@ -51,12 +54,13 @@ public class CryptoFileSystemPropertiesTest {
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
+						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.INIT_IMPLICITLY))));
 	}
 
 	@Test
-	@SuppressWarnings({"unchecked", "deprecation"})
+	@SuppressWarnings({ "unchecked", "deprecation" })
 	public void testSetPassphraseAndReadonlyFlag() {
 		String passphrase = "aPassphrase";
 		CryptoFileSystemProperties inTest = cryptoFileSystemProperties() //
@@ -71,12 +75,13 @@ public class CryptoFileSystemPropertiesTest {
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
+						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY, FileSystemFlags.INIT_IMPLICITLY))));
 	}
 
 	@Test
-	@SuppressWarnings({"unchecked", "deprecation"})
+	@SuppressWarnings({ "unchecked", "deprecation" })
 	public void testSetPassphraseAndMasterkeyFilenameAndReadonlyFlag() {
 		String passphrase = "aPassphrase";
 		String masterkeyFilename = "aMasterkeyFilename";
@@ -93,17 +98,20 @@ public class CryptoFileSystemPropertiesTest {
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
+						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY, FileSystemFlags.INIT_IMPLICITLY))));
 	}
 
 	@Test
-	@SuppressWarnings({"unchecked"})
+	@SuppressWarnings({ "unchecked" })
 	public void testFromMap() {
 		Map<String, Object> map = new HashMap<>();
 		String passphrase = "aPassphrase";
+		byte[] pepper = "aPepper".getBytes(StandardCharsets.US_ASCII);
 		String masterkeyFilename = "aMasterkeyFilename";
 		map.put(PROPERTY_PASSPHRASE, passphrase);
+		map.put(PROPERTY_PEPPER, pepper);
 		map.put(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename);
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY));
 		CryptoFileSystemProperties inTest = cryptoFileSystemPropertiesFrom(map).build();
@@ -115,6 +123,7 @@ public class CryptoFileSystemPropertiesTest {
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
+						anEntry(PROPERTY_PEPPER, pepper), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
@@ -124,8 +133,10 @@ public class CryptoFileSystemPropertiesTest {
 	public void testWrapMapWithTrueReadonly() {
 		Map<String, Object> map = new HashMap<>();
 		String passphrase = "aPassphrase";
+		byte[] pepper = "aPepper".getBytes(StandardCharsets.US_ASCII);
 		String masterkeyFilename = "aMasterkeyFilename";
 		map.put(PROPERTY_PASSPHRASE, passphrase);
+		map.put(PROPERTY_PEPPER, pepper);
 		map.put(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename);
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY));
 		CryptoFileSystemProperties inTest = CryptoFileSystemProperties.wrap(map);
@@ -137,6 +148,7 @@ public class CryptoFileSystemPropertiesTest {
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
+						anEntry(PROPERTY_PEPPER, pepper), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
@@ -146,8 +158,10 @@ public class CryptoFileSystemPropertiesTest {
 	public void testWrapMapWithFalseReadonly() {
 		Map<String, Object> map = new HashMap<>();
 		String passphrase = "aPassphrase";
+		byte[] pepper = "aPepper".getBytes(StandardCharsets.US_ASCII);
 		String masterkeyFilename = "aMasterkeyFilename";
 		map.put(PROPERTY_PASSPHRASE, passphrase);
+		map.put(PROPERTY_PEPPER, pepper);
 		map.put(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename);
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class));
 		CryptoFileSystemProperties inTest = CryptoFileSystemProperties.wrap(map);
@@ -159,6 +173,7 @@ public class CryptoFileSystemPropertiesTest {
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
+						anEntry(PROPERTY_PEPPER, pepper), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class))));
 	}
@@ -197,11 +212,13 @@ public class CryptoFileSystemPropertiesTest {
 	}
 
 	@Test
-	@SuppressWarnings({"unchecked", "deprecation"})
+	@SuppressWarnings({ "unchecked", "deprecation" })
 	public void testWrapMapWithoutReadonly() {
 		Map<String, Object> map = new HashMap<>();
 		String passphrase = "aPassphrase";
+		byte[] pepper = "aPepper".getBytes(StandardCharsets.US_ASCII);
 		map.put(PROPERTY_PASSPHRASE, passphrase);
+		map.put(PROPERTY_PEPPER, pepper);
 		CryptoFileSystemProperties inTest = CryptoFileSystemProperties.wrap(map);
 
 		assertThat(inTest.passphrase(), is(passphrase));
@@ -211,6 +228,7 @@ public class CryptoFileSystemPropertiesTest {
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
+						anEntry(PROPERTY_PEPPER, pepper), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.INIT_IMPLICITLY))));
 	}

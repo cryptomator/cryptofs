@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import org.apache.commons.lang3.StringUtils;
+import org.cryptomator.cryptofs.CryptoFileSystemProperties.FileSystemFlags;
 
 /**
  * Properties to pass to
@@ -39,6 +40,15 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 * Key identifying the passphrase for an encrypted vault.
 	 */
 	public static final String PROPERTY_PASSPHRASE = "passphrase";
+
+	/**
+	 * Key identifying the pepper used during key derivation.
+	 * 
+	 * @since 1.3.2
+	 */
+	public static final String PROPERTY_PEPPER = "pepper";
+
+	static final byte[] DEFAULT_PEPPER = new byte[0];
 
 	/**
 	 * Key identifying the name of the masterkey file located inside the vault directory.
@@ -77,6 +87,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	private CryptoFileSystemProperties(Builder builder) {
 		this.entries = unmodifiableSet(new HashSet<>(asList( //
 				entry(PROPERTY_PASSPHRASE, builder.passphrase), //
+				entry(PROPERTY_PEPPER, builder.pepper), //
 				entry(PROPERTY_FILESYSTEM_FLAGS, builder.flags), //
 				entry(PROPERTY_MASTERKEY_FILENAME, builder.masterkeyFilename) //
 		)));
@@ -84,6 +95,10 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	CharSequence passphrase() {
 		return (CharSequence) get(PROPERTY_PASSPHRASE);
+	}
+
+	byte[] pepper() {
+		return (byte[]) get(PROPERTY_PEPPER);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -171,6 +186,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	public static class Builder {
 
 		private CharSequence passphrase;
+		public byte[] pepper = DEFAULT_PEPPER;
 		private final Set<FileSystemFlags> flags = EnumSet.copyOf(DEFAULT_FILESYSTEM_FLAGS);
 		private String masterkeyFilename = DEFAULT_MASTERKEY_FILENAME;
 
@@ -179,6 +195,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 		private Builder(Map<String, ?> properties) {
 			checkedSet(CharSequence.class, PROPERTY_PASSPHRASE, properties, this::withPassphrase);
+			checkedSet(byte[].class, PROPERTY_PEPPER, properties, this::withPepper);
 			checkedSet(String.class, PROPERTY_MASTERKEY_FILENAME, properties, this::withMasterkeyFilename);
 			checkedSet(Set.class, PROPERTY_FILESYSTEM_FLAGS, properties, this::withFlags);
 		}
@@ -202,6 +219,18 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		 */
 		public Builder withPassphrase(CharSequence passphrase) {
 			this.passphrase = passphrase;
+			return this;
+		}
+
+		/**
+		 * Sets the pepper for a CryptoFileSystem.
+		 * 
+		 * @param pepper A pepper used during key derivation
+		 * @return this
+		 * @since 1.3.2
+		 */
+		public Builder withPepper(byte[] pepper) {
+			this.pepper = pepper;
 			return this;
 		}
 

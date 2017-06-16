@@ -113,13 +113,28 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @since 1.3.0
 	 */
 	public static void initialize(Path pathToVault, String masterkeyFilename, CharSequence passphrase) throws NotDirectoryException, IOException {
+		initialize(pathToVault, masterkeyFilename, new byte[0], passphrase);
+	}
+
+	/**
+	 * Creates a new vault at the given directory path.
+	 * 
+	 * @param pathToVault Path to a not yet existing directory
+	 * @param masterkeyFilename Name of the masterkey file
+	 * @param pepper Application-specific pepper used during key derivation
+	 * @param passphrase Passphrase that should be used to unlock the vault
+	 * @throws NotDirectoryException If the given path is not an existing directory.
+	 * @throws IOException If the vault structure could not be initialized due to I/O errors
+	 * @since 1.3.2
+	 */
+	public static void initialize(Path pathToVault, String masterkeyFilename, byte[] pepper, CharSequence passphrase) throws NotDirectoryException, IOException {
 		if (!Files.isDirectory(pathToVault)) {
 			throw new NotDirectoryException(pathToVault.toString());
 		}
 		try (Cryptor cryptor = CRYPTOR_PROVIDER.createNew()) {
 			// save masterkey file:
 			Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
-			byte[] keyFileContents = cryptor.writeKeysToMasterkeyFile(passphrase, Constants.VAULT_VERSION).serialize();
+			byte[] keyFileContents = cryptor.writeKeysToMasterkeyFile(passphrase, pepper, Constants.VAULT_VERSION).serialize();
 			Files.write(masterKeyPath, keyFileContents, CREATE_NEW, WRITE);
 			// create "d/RO/OTDIRECTORY":
 			String rootDirHash = cryptor.fileNameCryptor().hashDirectoryId(Constants.ROOT_DIR_ID);
