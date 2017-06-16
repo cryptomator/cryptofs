@@ -23,7 +23,6 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import org.apache.commons.lang3.StringUtils;
-import org.cryptomator.cryptofs.CryptoFileSystemProperties.FileSystemFlags;
 
 /**
  * Properties to pass to
@@ -237,6 +236,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		/**
 		 * Sets the flags for a CryptoFileSystem.
 		 * 
+		 * @param flags File system flags
 		 * @return this
 		 * @since 1.3.1
 		 */
@@ -247,6 +247,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		/**
 		 * Sets the flags for a CryptoFileSystem.
 		 * 
+		 * @param flags collection of file system flags
 		 * @return this
 		 * @since 1.3.0
 		 */
@@ -260,7 +261,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		 * Sets the readonly flag for a CryptoFileSystem.
 		 * 
 		 * @return this
-		 * @deprecated Will be removed in 2.0.0. Use {@link #withFlags(FileSystemFlags.READONLY)}
+		 * @deprecated Will be removed in 2.0.0. Use {@link #withFlags(FileSystemFlags...) withFlags(FileSystemFlags.READONLY)}
 		 */
 		@Deprecated
 		public Builder withReadonlyFlag() {
