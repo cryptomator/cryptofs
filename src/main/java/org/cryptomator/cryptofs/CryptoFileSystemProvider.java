@@ -39,6 +39,8 @@ import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.text.Normalizer;
+import java.text.Normalizer.Form;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -98,6 +100,22 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		this.moveOperation = component.moveOperation();
 	}
 
+	private static SecureRandom strongSecureRandom() {
+		try {
+			return SecureRandom.getInstanceStrong();
+		} catch (NoSuchAlgorithmException e) {
+			throw new IllegalStateException("A strong algorithm must exist in every Java platform.", e);
+		}
+	}
+
+	/**
+	 * Typesafe alternative to {@link FileSystems#newFileSystem(URI, Map)}. Default way to retrieve a CryptoFS instance.
+	 * 
+	 * @param pathToVault Path to this vault's storage location
+	 * @param properties Parameters used during initialization of the file system
+	 * @return a new file system
+	 * @throws IOException if an I/O error occurs creating the file system
+	 */
 	public static CryptoFileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
 		return (CryptoFileSystem) FileSystems.newFileSystem(create(pathToVault.toAbsolutePath()), properties);
 	}
@@ -134,7 +152,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		try (Cryptor cryptor = CRYPTOR_PROVIDER.createNew()) {
 			// save masterkey file:
 			Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
-			byte[] keyFileContents = cryptor.writeKeysToMasterkeyFile(passphrase, pepper, Constants.VAULT_VERSION).serialize();
+			byte[] keyFileContents = cryptor.writeKeysToMasterkeyFile(Normalizer.normalize(passphrase, Form.NFC), pepper, Constants.VAULT_VERSION).serialize();
 			Files.write(masterKeyPath, keyFileContents, CREATE_NEW, WRITE);
 			// create "d/RO/OTDIRECTORY":
 			String rootDirHash = cryptor.fileNameCryptor().hashDirectoryId(Constants.ROOT_DIR_ID);
@@ -170,20 +188,14 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @since 1.1.0
 	 */
 	public static void changePassphrase(Path pathToVault, String masterkeyFilename, CharSequence oldPassphrase, CharSequence newPassphrase) throws InvalidPassphraseException, IOException {
+		String normalizedOldPassphrase = Normalizer.normalize(oldPassphrase, Form.NFC);
+		String normalizedNewPassphrase = Normalizer.normalize(newPassphrase, Form.NFC);
 		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
 		Path backupKeyPath = pathToVault.resolve(masterkeyFilename + Constants.MASTERKEY_BACKUP_SUFFIX);
 		byte[] oldMasterkeyBytes = Files.readAllBytes(masterKeyPath);
-		byte[] newMasterkeyBytes = Cryptors.changePassphrase(CRYPTOR_PROVIDER, oldMasterkeyBytes, oldPassphrase, newPassphrase);
+		byte[] newMasterkeyBytes = Cryptors.changePassphrase(CRYPTOR_PROVIDER, oldMasterkeyBytes, normalizedOldPassphrase, normalizedNewPassphrase);
 		Files.move(masterKeyPath, backupKeyPath, REPLACE_EXISTING, ATOMIC_MOVE);
 		Files.write(masterKeyPath, newMasterkeyBytes, CREATE_NEW, WRITE);
-	}
-
-	private static SecureRandom strongSecureRandom() {
-		try {
-			return SecureRandom.getInstanceStrong();
-		} catch (NoSuchAlgorithmException e) {
-			throw new IllegalStateException("A strong algorithm must exist in every Java platform.", e);
-		}
 	}
 
 	/**
@@ -218,6 +230,8 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		if (properties.initializeImplicitly() && !CryptoFileSystemProvider.containsVault(parsedUri.pathToVault(), properties.masterkeyFilename())) {
 			CryptoFileSystemProvider.initialize(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase());
 		}
+
+		// TODO overheadhunter: check for compatibility, expose and document specific exception if vault needs to get migrated
 
 		return fileSystems.create(parsedUri.pathToVault(), properties);
 	}

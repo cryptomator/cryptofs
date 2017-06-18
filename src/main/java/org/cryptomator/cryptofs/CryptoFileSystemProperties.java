@@ -14,6 +14,8 @@ import static java.util.Collections.unmodifiableSet;
 import java.net.URI;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.text.Normalizer;
+import java.text.Normalizer.Form;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -217,7 +219,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		 * @return this
 		 */
 		public Builder withPassphrase(CharSequence passphrase) {
-			this.passphrase = passphrase;
+			this.passphrase = Normalizer.normalize(passphrase, Form.NFC);
 			return this;
 		}
 
