@@ -164,11 +164,11 @@ class ConflictResolver {
 				ReadableByteChannel in2 = Files.newByteChannel(canonicalPath, StandardOpenOption.READ)) {
 			ByteBuffer buf1 = ByteBuffer.allocate(MAX_DIR_FILE_SIZE);
 			ByteBuffer buf2 = ByteBuffer.allocate(MAX_DIR_FILE_SIZE);
-			in1.read(buf1);
-			in2.read(buf2);
+			int read1 = in1.read(buf1);
+			int read2 = in2.read(buf2);
 			buf1.flip();
 			buf2.flip();
-			return buf1.compareTo(buf2) == 0;
+			return read1 == read2 && buf1.compareTo(buf2) == 0;
 		}
 	}
 
