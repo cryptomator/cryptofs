@@ -24,6 +24,18 @@ import org.cryptomator.cryptolib.api.UnsupportedVaultFormatException;
 import org.cryptomator.cryptolib.common.SecureRandomModule;
 
 /**
+ * Used to perform migration from an older vault format to a newer one.
+ * <p>
+ * Example Usage:
+ * 
+ * <pre>
+ * <code>
+ * if (Migrators.get().{@link #needsMigration(Path, String) needsMigration(pathToVault, masterkeyFileName)}) {
+ * 	Migrators.get().{@link #migrate(Path, String, CharSequence) migrate(pathToVault, masterkeyFileName, passphrase)};
+ * }
+ * </code>
+ * </pre>
+ * 
  * @since 1.4.0
  */
 public class Migrators {
@@ -91,6 +103,7 @@ public class Migrators {
 	}
 
 	private Optional<Migrator> findApplicableMigrator(int version) {
+		// TODO return "5->6->7" instead of "5->6" and "6->7", if possible
 		return migrators.entrySet().stream().filter(entry -> entry.getKey().isApplicable(version)).map(Map.Entry::getValue).findAny();
 	}
 

@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
+import org.cryptomator.cryptofs.migration.Migrators;
 import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
@@ -114,9 +115,10 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @param pathToVault Path to this vault's storage location
 	 * @param properties Parameters used during initialization of the file system
 	 * @return a new file system
+	 * @throws FileSystemNeedsMigrationException if the vault format needs to get updated and <code>properties</code> did not contain a flag for implicit migration.
 	 * @throws IOException if an I/O error occurs creating the file system
 	 */
-	public static CryptoFileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
+	public static CryptoFileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws FileSystemNeedsMigrationException, IOException {
 		URI uri = CryptoFileSystemUri.create(pathToVault.toAbsolutePath());
 		return (CryptoFileSystem) FileSystems.newFileSystem(uri, properties);
 	}
@@ -185,10 +187,15 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @param oldPassphrase Current passphrase
 	 * @param newPassphrase Future passphrase
 	 * @throws InvalidPassphraseException If <code>oldPassphrase</code> can not be used to unlock the vault.
+	 * @throws FileSystemNeedsMigrationException if the vault format needs to get updated.
 	 * @throws IOException If the masterkey could not be read or written.
 	 * @since 1.1.0
 	 */
-	public static void changePassphrase(Path pathToVault, String masterkeyFilename, CharSequence oldPassphrase, CharSequence newPassphrase) throws InvalidPassphraseException, IOException {
+	public static void changePassphrase(Path pathToVault, String masterkeyFilename, CharSequence oldPassphrase, CharSequence newPassphrase)
+			throws InvalidPassphraseException, FileSystemNeedsMigrationException, IOException {
+		if (Migrators.get().needsMigration(pathToVault, masterkeyFilename)) {
+			throw new FileSystemNeedsMigrationException(pathToVault);
+		}
 		String normalizedOldPassphrase = Normalizer.normalize(oldPassphrase, Form.NFC);
 		String normalizedNewPassphrase = Normalizer.normalize(newPassphrase, Form.NFC);
 		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
@@ -232,7 +239,13 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 			CryptoFileSystemProvider.initialize(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase());
 		}
 
-		// TODO overheadhunter: check for compatibility, expose and document specific exception if vault needs to get migrated
+		if (Migrators.get().needsMigration(parsedUri.pathToVault(), properties.masterkeyFilename())) {
+			if (properties.migrateImplicitly()) {
+				Migrators.get().migrate(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase());
+			} else {
+				throw new FileSystemNeedsMigrationException(parsedUri.pathToVault());
+			}
+		}
 
 		return fileSystems.create(parsedUri.pathToVault(), properties);
 	}
