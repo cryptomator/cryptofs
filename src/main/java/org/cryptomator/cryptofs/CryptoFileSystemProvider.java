@@ -12,7 +12,6 @@ import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
-import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 
 import java.io.IOException;
 import java.net.URI;
@@ -68,7 +67,8 @@ import org.cryptomator.cryptolib.api.InvalidPassphraseException;
  * 	storageLocation,
  * 	{@link CryptoFileSystemProperties cryptoFileSystemProperties()}
  * 		.withPassword("password")
- * 		.withReadonlyFlag().build());
+ * 		.withFlags(FileSystemFlags.READONLY)
+ * 		.build());
  * </pre>
  * 
  * </blockquote>
@@ -117,7 +117,8 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @throws IOException if an I/O error occurs creating the file system
 	 */
 	public static CryptoFileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
-		return (CryptoFileSystem) FileSystems.newFileSystem(create(pathToVault.toAbsolutePath()), properties);
+		URI uri = CryptoFileSystemUri.create(pathToVault.toAbsolutePath());
+		return (CryptoFileSystem) FileSystems.newFileSystem(uri, properties);
 	}
 
 	/**

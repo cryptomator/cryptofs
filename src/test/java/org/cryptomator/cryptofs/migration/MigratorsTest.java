@@ -18,6 +18,7 @@ import java.util.HashMap;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.migration.api.NoApplicableMigratorException;
 import org.cryptomator.cryptolib.api.InvalidPassphraseException;
+import org.cryptomator.cryptolib.api.UnsupportedVaultFormatException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -88,6 +89,19 @@ public class MigratorsTest {
 		});
 		migrators.migrate(pathToVault, "masterkey.cryptomator", "secret");
 		Mockito.verify(migrator).migrate(pathToVault, "masterkey.cryptomator", "secret");
+	}
+
+	@Test(expected = IllegalStateException.class)
+	@SuppressWarnings("deprecation")
+	public void testMigrateUnsupportedVaultFormat() throws NoApplicableMigratorException, InvalidPassphraseException, IOException {
+		Migrator migrator = Mockito.mock(Migrator.class);
+		Migrators migrators = new Migrators(new HashMap<Migration, Migrator>() {
+			{
+				put(Migration.ZERO_TO_ONE, migrator);
+			}
+		});
+		Mockito.doThrow(new UnsupportedVaultFormatException(Integer.MAX_VALUE, 1)).when(migrator).migrate(pathToVault, "masterkey.cryptomator", "secret");
+		migrators.migrate(pathToVault, "masterkey.cryptomator", "secret");
 	}
 
 }
