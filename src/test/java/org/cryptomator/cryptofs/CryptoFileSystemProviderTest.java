@@ -29,6 +29,7 @@ import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.NotDirectoryException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -147,8 +148,7 @@ public class CryptoFileSystemProviderTest {
 	}
 
 	@Theory
-	public void testInvocationsWithPathFromOtherProviderFailWithProviderMismatchException(@FromDataPoints("shouldFailWithProviderMismatch") InvocationWhichShouldFail shouldFailWithProviderMismatch)
-			throws IOException {
+	public void testInvocationsWithPathFromOtherProviderFailWithProviderMismatchException(@FromDataPoints("shouldFailWithProviderMismatch") InvocationWhichShouldFail shouldFailWithProviderMismatch) throws IOException {
 		thrown.expect(ProviderMismatchException.class);
 
 		shouldFailWithProviderMismatch.invoke(inTest, otherPath);
@@ -210,11 +210,14 @@ public class CryptoFileSystemProviderTest {
 				.withMasterkeyFilename("masterkey.cryptomator") //
 				.withPassphrase("asd") //
 				.build();
-		inTest.newFileSystem(uri, properties);
-		verify(fileSystems).create(eq(pathToVault), eq(properties));
-
-		Assert.assertTrue(Files.notExists(dataDir));
-		Assert.assertTrue(Files.notExists(masterkeyFile));
+		try {
+			thrown.expect(NoSuchFileException.class);
+			thrown.expectMessage("Vault not initialized");
+			inTest.newFileSystem(uri, properties);
+		} finally {
+			Assert.assertTrue(Files.notExists(dataDir));
+			Assert.assertTrue(Files.notExists(masterkeyFile));
+		}
 	}
 
 	@Test
@@ -233,24 +236,13 @@ public class CryptoFileSystemProviderTest {
 				.withMasterkeyFilename("masterkey.cryptomator") //
 				.withPassphrase("asd") //
 				.build();
-		inTest.newFileSystem(uri, properties);
+		when(fileSystems.create(eq(pathToVault), eq(properties))).thenReturn(cryptoFileSystem);
+		FileSystem result = inTest.newFileSystem(uri, properties);
 		verify(fileSystems).create(eq(pathToVault), eq(properties));
 
+		Assert.assertThat(result, is(cryptoFileSystem));
 		Assert.assertTrue(Files.isDirectory(dataDir));
 		Assert.assertTrue(Files.isRegularFile(masterkeyFile));
-	}
-
-	@Test
-	public void testNewFileSystemInvokesFileSystemsCreate() throws IOException {
-		Path pathToVault = get("a").toAbsolutePath();
-
-		URI uri = CryptoFileSystemUri.create(pathToVault);
-		CryptoFileSystemProperties properties = cryptoFileSystemProperties().withPassphrase("asd").withFlags().build();
-		when(fileSystems.create(eq(pathToVault), eq(properties))).thenReturn(cryptoFileSystem);
-
-		FileSystem result = inTest.newFileSystem(uri, properties);
-
-		assertThat(result, is(cryptoFileSystem));
 	}
 
 	@Test

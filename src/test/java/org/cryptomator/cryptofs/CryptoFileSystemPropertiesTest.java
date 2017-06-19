@@ -40,7 +40,7 @@ public class CryptoFileSystemPropertiesTest {
 	}
 
 	@Test
-	@SuppressWarnings({ "unchecked", "deprecation" })
+	@SuppressWarnings({"unchecked", "deprecation"})
 	public void testSetOnlyPassphrase() {
 		String passphrase = "aPassphrase";
 		CryptoFileSystemProperties inTest = cryptoFileSystemProperties() //
@@ -51,16 +51,17 @@ public class CryptoFileSystemPropertiesTest {
 		assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
 		assertThat(inTest.readonly(), is(false));
 		assertThat(inTest.initializeImplicitly(), is(true));
+		assertThat(inTest.migrateImplicitly(), is(true));
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.INIT_IMPLICITLY))));
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.INIT_IMPLICITLY, FileSystemFlags.MIGRATE_IMPLICITLY))));
 	}
 
 	@Test
-	@SuppressWarnings({ "unchecked", "deprecation" })
+	@SuppressWarnings({"unchecked", "deprecation"})
 	public void testSetPassphraseAndReadonlyFlag() {
 		String passphrase = "aPassphrase";
 		CryptoFileSystemProperties inTest = cryptoFileSystemProperties() //
@@ -72,16 +73,17 @@ public class CryptoFileSystemPropertiesTest {
 		assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
 		assertThat(inTest.readonly(), is(true));
 		assertThat(inTest.initializeImplicitly(), is(true));
+		assertThat(inTest.migrateImplicitly(), is(true));
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY, FileSystemFlags.INIT_IMPLICITLY))));
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY, FileSystemFlags.INIT_IMPLICITLY, FileSystemFlags.MIGRATE_IMPLICITLY))));
 	}
 
 	@Test
-	@SuppressWarnings({ "unchecked", "deprecation" })
+	@SuppressWarnings({"unchecked", "deprecation"})
 	public void testSetPassphraseAndMasterkeyFilenameAndReadonlyFlag() {
 		String passphrase = "aPassphrase";
 		String masterkeyFilename = "aMasterkeyFilename";
@@ -95,16 +97,17 @@ public class CryptoFileSystemPropertiesTest {
 		assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
 		assertThat(inTest.readonly(), is(true));
 		assertThat(inTest.initializeImplicitly(), is(true));
+		assertThat(inTest.migrateImplicitly(), is(true));
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY, FileSystemFlags.INIT_IMPLICITLY))));
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY, FileSystemFlags.INIT_IMPLICITLY, FileSystemFlags.MIGRATE_IMPLICITLY))));
 	}
 
 	@Test
-	@SuppressWarnings({ "unchecked" })
+	@SuppressWarnings({"unchecked"})
 	public void testFromMap() {
 		Map<String, Object> map = new HashMap<>();
 		String passphrase = "aPassphrase";
@@ -212,7 +215,7 @@ public class CryptoFileSystemPropertiesTest {
 	}
 
 	@Test
-	@SuppressWarnings({ "unchecked", "deprecation" })
+	@SuppressWarnings({"unchecked", "deprecation"})
 	public void testWrapMapWithoutReadonly() {
 		Map<String, Object> map = new HashMap<>();
 		String passphrase = "aPassphrase";
@@ -225,12 +228,13 @@ public class CryptoFileSystemPropertiesTest {
 		assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
 		assertThat(inTest.readonly(), is(false));
 		assertThat(inTest.initializeImplicitly(), is(true));
+		assertThat(inTest.migrateImplicitly(), is(true));
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, pepper), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.INIT_IMPLICITLY))));
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.INIT_IMPLICITLY, FileSystemFlags.MIGRATE_IMPLICITLY))));
 	}
 
 	@Test

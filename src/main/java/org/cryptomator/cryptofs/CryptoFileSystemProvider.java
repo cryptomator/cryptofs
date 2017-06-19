@@ -27,6 +27,7 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.NotDirectoryException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -234,9 +235,13 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		CryptoFileSystemUri parsedUri = CryptoFileSystemUri.parse(uri);
 		CryptoFileSystemProperties properties = CryptoFileSystemProperties.wrap(rawProperties);
 
-		// TODO remove implicit initialization in 2.0.0:
-		if (properties.initializeImplicitly() && !CryptoFileSystemProvider.containsVault(parsedUri.pathToVault(), properties.masterkeyFilename())) {
-			CryptoFileSystemProvider.initialize(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase());
+		if (!CryptoFileSystemProvider.containsVault(parsedUri.pathToVault(), properties.masterkeyFilename())) {
+			// TODO remove implicit initialization in 2.0.0:
+			if (properties.initializeImplicitly()) {
+				CryptoFileSystemProvider.initialize(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase());
+			} else {
+				throw new NoSuchFileException(parsedUri.pathToVault().toString(), null, "Vault not initialized.");
+			}
 		}
 
 		if (Migrators.get().needsMigration(parsedUri.pathToVault(), properties.masterkeyFilename())) {
