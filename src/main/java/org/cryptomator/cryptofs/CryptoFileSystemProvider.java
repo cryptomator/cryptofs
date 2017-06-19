@@ -12,7 +12,6 @@ import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
-import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 
 import java.io.IOException;
 import java.net.URI;
@@ -28,6 +27,7 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.NotDirectoryException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -39,10 +39,13 @@ import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.text.Normalizer;
+import java.text.Normalizer.Form;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
+import org.cryptomator.cryptofs.migration.Migrators;
 import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
@@ -66,7 +69,8 @@ import org.cryptomator.cryptolib.api.InvalidPassphraseException;
  * 	storageLocation,
  * 	{@link CryptoFileSystemProperties cryptoFileSystemProperties()}
  * 		.withPassword("password")
- * 		.withReadonlyFlag().build());
+ * 		.withFlags(FileSystemFlags.READONLY)
+ * 		.build());
  * </pre>
  * 
  * </blockquote>
@@ -98,8 +102,26 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		this.moveOperation = component.moveOperation();
 	}
 
-	public static CryptoFileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
-		return (CryptoFileSystem) FileSystems.newFileSystem(create(pathToVault.toAbsolutePath()), properties);
+	private static SecureRandom strongSecureRandom() {
+		try {
+			return SecureRandom.getInstanceStrong();
+		} catch (NoSuchAlgorithmException e) {
+			throw new IllegalStateException("A strong algorithm must exist in every Java platform.", e);
+		}
+	}
+
+	/**
+	 * Typesafe alternative to {@link FileSystems#newFileSystem(URI, Map)}. Default way to retrieve a CryptoFS instance.
+	 * 
+	 * @param pathToVault Path to this vault's storage location
+	 * @param properties Parameters used during initialization of the file system
+	 * @return a new file system
+	 * @throws FileSystemNeedsMigrationException if the vault format needs to get updated and <code>properties</code> did not contain a flag for implicit migration.
+	 * @throws IOException if an I/O error occurs creating the file system
+	 */
+	public static CryptoFileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws FileSystemNeedsMigrationException, IOException {
+		URI uri = CryptoFileSystemUri.create(pathToVault.toAbsolutePath());
+		return (CryptoFileSystem) FileSystems.newFileSystem(uri, properties);
 	}
 
 	/**
@@ -134,7 +156,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		try (Cryptor cryptor = CRYPTOR_PROVIDER.createNew()) {
 			// save masterkey file:
 			Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
-			byte[] keyFileContents = cryptor.writeKeysToMasterkeyFile(passphrase, pepper, Constants.VAULT_VERSION).serialize();
+			byte[] keyFileContents = cryptor.writeKeysToMasterkeyFile(Normalizer.normalize(passphrase, Form.NFC), pepper, Constants.VAULT_VERSION).serialize();
 			Files.write(masterKeyPath, keyFileContents, CREATE_NEW, WRITE);
 			// create "d/RO/OTDIRECTORY":
 			String rootDirHash = cryptor.fileNameCryptor().hashDirectoryId(Constants.ROOT_DIR_ID);
@@ -166,24 +188,42 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @param oldPassphrase Current passphrase
 	 * @param newPassphrase Future passphrase
 	 * @throws InvalidPassphraseException If <code>oldPassphrase</code> can not be used to unlock the vault.
+	 * @throws FileSystemNeedsMigrationException if the vault format needs to get updated.
 	 * @throws IOException If the masterkey could not be read or written.
 	 * @since 1.1.0
+	 * @see #changePassphrase(Path, String, byte[], CharSequence, CharSequence)
 	 */
-	public static void changePassphrase(Path pathToVault, String masterkeyFilename, CharSequence oldPassphrase, CharSequence newPassphrase) throws InvalidPassphraseException, IOException {
+	public static void changePassphrase(Path pathToVault, String masterkeyFilename, CharSequence oldPassphrase, CharSequence newPassphrase)
+			throws InvalidPassphraseException, FileSystemNeedsMigrationException, IOException {
+		changePassphrase(pathToVault, masterkeyFilename, new byte[0], oldPassphrase, newPassphrase);
+	}
+
+	/**
+	 * Changes the passphrase of a vault at the given path.
+	 * 
+	 * @param pathToVault Vault directory
+	 * @param masterkeyFilename Name of the masterkey file
+	 * @param pepper An application-specific pepper added to the salt during key-derivation (if applicable)
+	 * @param oldPassphrase Current passphrase
+	 * @param newPassphrase Future passphrase
+	 * @throws InvalidPassphraseException If <code>oldPassphrase</code> can not be used to unlock the vault.
+	 * @throws FileSystemNeedsMigrationException if the vault format needs to get updated.
+	 * @throws IOException If the masterkey could not be read or written.
+	 * @since 1.4.0
+	 */
+	public static void changePassphrase(Path pathToVault, String masterkeyFilename, byte[] pepper, CharSequence oldPassphrase, CharSequence newPassphrase)
+			throws InvalidPassphraseException, FileSystemNeedsMigrationException, IOException {
+		if (Migrators.get().needsMigration(pathToVault, masterkeyFilename)) {
+			throw new FileSystemNeedsMigrationException(pathToVault);
+		}
+		String normalizedOldPassphrase = Normalizer.normalize(oldPassphrase, Form.NFC);
+		String normalizedNewPassphrase = Normalizer.normalize(newPassphrase, Form.NFC);
 		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
 		Path backupKeyPath = pathToVault.resolve(masterkeyFilename + Constants.MASTERKEY_BACKUP_SUFFIX);
 		byte[] oldMasterkeyBytes = Files.readAllBytes(masterKeyPath);
-		byte[] newMasterkeyBytes = Cryptors.changePassphrase(CRYPTOR_PROVIDER, oldMasterkeyBytes, oldPassphrase, newPassphrase);
+		byte[] newMasterkeyBytes = Cryptors.changePassphrase(CRYPTOR_PROVIDER, oldMasterkeyBytes, pepper, normalizedOldPassphrase, normalizedNewPassphrase);
 		Files.move(masterKeyPath, backupKeyPath, REPLACE_EXISTING, ATOMIC_MOVE);
 		Files.write(masterKeyPath, newMasterkeyBytes, CREATE_NEW, WRITE);
-	}
-
-	private static SecureRandom strongSecureRandom() {
-		try {
-			return SecureRandom.getInstanceStrong();
-		} catch (NoSuchAlgorithmException e) {
-			throw new IllegalStateException("A strong algorithm must exist in every Java platform.", e);
-		}
 	}
 
 	/**
@@ -214,9 +254,21 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		CryptoFileSystemUri parsedUri = CryptoFileSystemUri.parse(uri);
 		CryptoFileSystemProperties properties = CryptoFileSystemProperties.wrap(rawProperties);
 
-		// TODO remove implicit initialization in 2.0.0:
-		if (properties.initializeImplicitly() && !CryptoFileSystemProvider.containsVault(parsedUri.pathToVault(), properties.masterkeyFilename())) {
-			CryptoFileSystemProvider.initialize(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase());
+		if (!CryptoFileSystemProvider.containsVault(parsedUri.pathToVault(), properties.masterkeyFilename())) {
+			// TODO remove implicit initialization in 2.0.0:
+			if (properties.initializeImplicitly()) {
+				CryptoFileSystemProvider.initialize(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase());
+			} else {
+				throw new NoSuchFileException(parsedUri.pathToVault().toString(), null, "Vault not initialized.");
+			}
+		}
+
+		if (Migrators.get().needsMigration(parsedUri.pathToVault(), properties.masterkeyFilename())) {
+			if (properties.migrateImplicitly()) {
+				Migrators.get().migrate(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase());
+			} else {
+				throw new FileSystemNeedsMigrationException(parsedUri.pathToVault());
+			}
 		}
 
 		return fileSystems.create(parsedUri.pathToVault(), properties);

@@ -14,6 +14,8 @@ import static java.util.Collections.unmodifiableSet;
 import java.net.URI;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.text.Normalizer;
+import java.text.Normalizer.Form;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -65,13 +67,21 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 */
 	public static final String PROPERTY_FILESYSTEM_FLAGS = "flags";
 
-	static final Set<FileSystemFlags> DEFAULT_FILESYSTEM_FLAGS = unmodifiableSet(EnumSet.of(FileSystemFlags.INIT_IMPLICITLY));
+	static final Set<FileSystemFlags> DEFAULT_FILESYSTEM_FLAGS = unmodifiableSet(EnumSet.of(FileSystemFlags.MIGRATE_IMPLICITLY, FileSystemFlags.INIT_IMPLICITLY));
 
 	public enum FileSystemFlags {
 		/**
 		 * If present, the vault is opened in read-only mode.
 		 */
 		READONLY,
+
+		/**
+		 * If present, the vault gets automatically migrated during file system creation, which might become significantly slower.
+		 * If absent, a {@link FileSystemNeedsMigrationException} will get thrown during the attempt to open a vault that needs migration.
+		 * 
+		 * @since 1.4.0
+		 */
+		MIGRATE_IMPLICITLY,
 
 		/**
 		 * If present, the vault structure will implicitly get initialized upon filesystem creation.
@@ -107,6 +117,10 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	boolean readonly() {
 		return flags().contains(FileSystemFlags.READONLY);
+	}
+
+	boolean migrateImplicitly() {
+		return flags().contains(FileSystemFlags.MIGRATE_IMPLICITLY);
 	}
 
 	boolean initializeImplicitly() {
@@ -148,6 +162,18 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 */
 	public static Builder cryptoFileSystemProperties() {
 		return new Builder();
+	}
+
+	/**
+	 * Starts construction of {@code CryptoFileSystemProperties}.
+	 * Convenience function for <code>cryptoFileSystemProperties().withPassphrase(passphrase)</code>.
+	 * 
+	 * @param passphrase the passphrase to use
+	 * @return a {@link Builder} which can be used to construct {@code CryptoFileSystemProperties}
+	 * @since 1.4.0
+	 */
+	public static Builder withPassphrase(CharSequence passphrase) {
+		return new Builder().withPassphrase(passphrase);
 	}
 
 	/**
@@ -217,7 +243,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		 * @return this
 		 */
 		public Builder withPassphrase(CharSequence passphrase) {
-			this.passphrase = passphrase;
+			this.passphrase = Normalizer.normalize(passphrase, Form.NFC);
 			return this;
 		}
 

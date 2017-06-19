@@ -35,6 +35,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import com.google.common.io.MoreFiles;
+import com.google.common.io.RecursiveDeleteOption;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 
@@ -43,38 +45,39 @@ public class CryptoFileSystemProviderIntegrationTest {
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
 
-	private Path tmpPath;
+	private FileSystem tmpFs;
+	private Path pathToVault;
+	private Path masterkeyFile;
 
 	@Before
 	public void setup() throws IOException {
-		tmpPath = Files.createTempDirectory("unit-tests");
+		tmpFs = Jimfs.newFileSystem(Configuration.unix());
+		pathToVault = tmpFs.getPath("/vaultDir");
+		masterkeyFile = pathToVault.resolve("masterkey.cryptomator");
+		Files.createDirectory(pathToVault);
 	}
 
 	@After
 	public void teardown() throws IOException {
-		Files.walkFileTree(tmpPath, new DeletingFileVisitor());
+		tmpFs.close();
 	}
 
 	@Test
 	public void testGetFsViaNioApi() throws IOException {
-		URI fsUri = CryptoFileSystemUri.create(tmpPath);
+		URI fsUri = CryptoFileSystemUri.create(pathToVault);
 		FileSystem fs = FileSystems.newFileSystem(fsUri, cryptoFileSystemProperties().withPassphrase("asd").build());
 		Assert.assertTrue(fs instanceof CryptoFileSystemImpl);
-		Assert.assertTrue(Files.exists(tmpPath.resolve("masterkey.cryptomator")));
+		Assert.assertTrue(Files.exists(masterkeyFile));
 		FileSystem fs2 = FileSystems.getFileSystem(fsUri);
 		Assert.assertSame(fs, fs2);
 	}
 
 	@Test
 	public void testInitAndOpenFsWithPepper() throws IOException {
-		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
-		Path pathToVault = fs.getPath("/vaultDir");
-		Path masterkeyFile = pathToVault.resolve("masterkey.cryptomator");
 		Path dataDir = pathToVault.resolve("d");
 		byte[] pepper = "pepper".getBytes(StandardCharsets.US_ASCII);
 
 		// Initialize vault:
-		Files.createDirectory(pathToVault);
 		CryptoFileSystemProvider.initialize(pathToVault, "masterkey.cryptomator", pepper, "asd");
 		Assert.assertTrue(Files.isDirectory(dataDir));
 		Assert.assertTrue(Files.isRegularFile(masterkeyFile));
@@ -101,8 +104,24 @@ public class CryptoFileSystemProviderIntegrationTest {
 	}
 
 	@Test
+	public void testChangePassphraseWithUnsupportedVersion() throws IOException {
+		Files.write(masterkeyFile, "{\"version\": 0}".getBytes(StandardCharsets.US_ASCII));
+		thrown.expect(FileSystemNeedsMigrationException.class);
+		CryptoFileSystemProvider.changePassphrase(pathToVault, "masterkey.cryptomator", "foo", "bar");
+	}
+
+	@Test
+	public void testChangePassphrase() throws IOException {
+		CryptoFileSystemProvider.initialize(pathToVault, "masterkey.cryptomator", "foo");
+		CryptoFileSystemProvider.changePassphrase(pathToVault, "masterkey.cryptomator", "foo", "bar");
+		try (FileSystem fs = CryptoFileSystemProvider.newFileSystem(pathToVault, CryptoFileSystemProperties.withPassphrase("bar").build())) {
+			Assert.assertNotNull(fs);
+		}
+	}
+
+	@Test
 	public void testOpenAndCloseFileChannel() throws IOException {
-		FileSystem fs = CryptoFileSystemProvider.newFileSystem(tmpPath, cryptoFileSystemProperties().withPassphrase("asd").build());
+		FileSystem fs = CryptoFileSystemProvider.newFileSystem(pathToVault, cryptoFileSystemProperties().withPassphrase("asd").build());
 		try (FileChannel ch = FileChannel.open(fs.getPath("/foo"), EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW))) {
 			Assert.assertTrue(ch instanceof CryptoFileChannel);
 		}
@@ -110,10 +129,10 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 	@Test
 	public void testCopyFileFromOneCryptoFileSystemToAnother() throws IOException {
-		byte[] data = new byte[] { 1, 2, 3, 4, 5, 6, 7 };
+		byte[] data = new byte[] {1, 2, 3, 4, 5, 6, 7};
 
-		Path fs1Location = tmpPath.resolve("foo");
-		Path fs2Location = tmpPath.resolve("bar");
+		Path fs1Location = pathToVault.resolve("foo");
+		Path fs2Location = pathToVault.resolve("bar");
 		Files.createDirectories(fs1Location);
 		Files.createDirectories(fs2Location);
 		FileSystem fs1 = CryptoFileSystemProvider.newFileSystem(fs1Location, cryptoFileSystemProperties().withPassphrase("asd").build());
@@ -132,11 +151,11 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 	@Test
 	public void testCopyFileByRelacingExistingFromOneCryptoFileSystemToAnother() throws IOException {
-		byte[] data = new byte[] { 1, 2, 3, 4, 5, 6, 7 };
-		byte[] data2 = new byte[] { 10, 11, 12 };
+		byte[] data = new byte[] {1, 2, 3, 4, 5, 6, 7};
+		byte[] data2 = new byte[] {10, 11, 12};
 
-		Path fs1Location = tmpPath.resolve("foo");
-		Path fs2Location = tmpPath.resolve("bar");
+		Path fs1Location = pathToVault.resolve("foo");
+		Path fs2Location = pathToVault.resolve("bar");
 		Files.createDirectories(fs1Location);
 		Files.createDirectories(fs2Location);
 		FileSystem fs1 = CryptoFileSystemProvider.newFileSystem(fs1Location, cryptoFileSystemProperties().withPassphrase("asd").build());
@@ -156,10 +175,10 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 	@Test
 	public void testMoveFileFromOneCryptoFileSystemToAnother() throws IOException {
-		byte[] data = new byte[] { 1, 2, 3, 4, 5, 6, 7 };
+		byte[] data = new byte[] {1, 2, 3, 4, 5, 6, 7};
 
-		Path fs1Location = tmpPath.resolve("foo");
-		Path fs2Location = tmpPath.resolve("bar");
+		Path fs1Location = pathToVault.resolve("foo");
+		Path fs2Location = pathToVault.resolve("bar");
 		Files.createDirectories(fs1Location);
 		Files.createDirectories(fs2Location);
 		FileSystem fs1 = CryptoFileSystemProvider.newFileSystem(fs1Location, cryptoFileSystemProperties().withPassphrase("asd").build());
@@ -180,6 +199,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 	public void testDosFileAttributes() throws IOException {
 		Assume.assumeTrue(IS_OS_WINDOWS);
 
+		Path tmpPath = Files.createTempDirectory("unit-tests");
 		FileSystem fs = CryptoFileSystemProvider.newFileSystem(tmpPath, cryptoFileSystemProperties().withPassphrase("asd").build());
 		Path file = fs.getPath("/test");
 		Files.write(file, new byte[1]);
@@ -193,6 +213,8 @@ public class CryptoFileSystemProviderIntegrationTest {
 		assertThat(Files.getAttribute(file, "dos:system"), is(true));
 		assertThat(Files.getAttribute(file, "dos:archive"), is(true));
 		assertThat(Files.getAttribute(file, "dos:readOnly"), is(true));
+
+		MoreFiles.deleteRecursively(tmpPath, RecursiveDeleteOption.ALLOW_INSECURE);
 	}
 
 }

@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2016 Sebastian Stenzel and others.
+ * Copyright (c) 2016, 2017 Sebastian Stenzel and others.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the accompanying LICENSE.txt.
  *
@@ -8,16 +8,17 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-final class Constants {
+public final class Constants {
 
+	public static final int VAULT_VERSION = 6;
 	public static final String MASTERKEY_BACKUP_SUFFIX = ".bkup";
-	public static final String DATA_DIR_NAME = "d";
-	public static final String METADATA_DIR_NAME = "m";
-	public static final String DIR_PREFIX = "0";
-	public static final int NAME_SHORTENING_THRESHOLD = 129;
-	public static final int VAULT_VERSION = 5;
-	public static final String ROOT_DIR_ID = "";
 
-	public static final String SEPARATOR = "/";
+	static final String DATA_DIR_NAME = "d";
+	static final String METADATA_DIR_NAME = "m";
+	static final String DIR_PREFIX = "0";
+	static final int NAME_SHORTENING_THRESHOLD = 129;
+	static final String ROOT_DIR_ID = "";
+
+	static final String SEPARATOR = "/";
 
 }
