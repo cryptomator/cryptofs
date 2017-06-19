@@ -191,8 +191,27 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @throws FileSystemNeedsMigrationException if the vault format needs to get updated.
 	 * @throws IOException If the masterkey could not be read or written.
 	 * @since 1.1.0
+	 * @see #changePassphrase(Path, String, byte[], CharSequence, CharSequence)
 	 */
 	public static void changePassphrase(Path pathToVault, String masterkeyFilename, CharSequence oldPassphrase, CharSequence newPassphrase)
+			throws InvalidPassphraseException, FileSystemNeedsMigrationException, IOException {
+		changePassphrase(pathToVault, masterkeyFilename, new byte[0], oldPassphrase, newPassphrase);
+	}
+
+	/**
+	 * Changes the passphrase of a vault at the given path.
+	 * 
+	 * @param pathToVault Vault directory
+	 * @param masterkeyFilename Name of the masterkey file
+	 * @param pepper An application-specific pepper added to the salt during key-derivation (if applicable)
+	 * @param oldPassphrase Current passphrase
+	 * @param newPassphrase Future passphrase
+	 * @throws InvalidPassphraseException If <code>oldPassphrase</code> can not be used to unlock the vault.
+	 * @throws FileSystemNeedsMigrationException if the vault format needs to get updated.
+	 * @throws IOException If the masterkey could not be read or written.
+	 * @since 1.4.0
+	 */
+	public static void changePassphrase(Path pathToVault, String masterkeyFilename, byte[] pepper, CharSequence oldPassphrase, CharSequence newPassphrase)
 			throws InvalidPassphraseException, FileSystemNeedsMigrationException, IOException {
 		if (Migrators.get().needsMigration(pathToVault, masterkeyFilename)) {
 			throw new FileSystemNeedsMigrationException(pathToVault);
@@ -202,7 +221,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
 		Path backupKeyPath = pathToVault.resolve(masterkeyFilename + Constants.MASTERKEY_BACKUP_SUFFIX);
 		byte[] oldMasterkeyBytes = Files.readAllBytes(masterKeyPath);
-		byte[] newMasterkeyBytes = Cryptors.changePassphrase(CRYPTOR_PROVIDER, oldMasterkeyBytes, normalizedOldPassphrase, normalizedNewPassphrase);
+		byte[] newMasterkeyBytes = Cryptors.changePassphrase(CRYPTOR_PROVIDER, oldMasterkeyBytes, pepper, normalizedOldPassphrase, normalizedNewPassphrase);
 		Files.move(masterKeyPath, backupKeyPath, REPLACE_EXISTING, ATOMIC_MOVE);
 		Files.write(masterKeyPath, newMasterkeyBytes, CREATE_NEW, WRITE);
 	}
