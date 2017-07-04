@@ -28,7 +28,6 @@ import java.util.NoSuchElementException;
 import java.util.Spliterators;
 import java.util.function.Consumer;
 
-import org.apache.commons.lang3.StringUtils;
 import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
 import org.cryptomator.cryptolib.DaggerCryptoLibComponent;
 import org.cryptomator.cryptolib.api.CryptorProvider;

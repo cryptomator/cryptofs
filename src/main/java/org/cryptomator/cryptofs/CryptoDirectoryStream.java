@@ -50,7 +50,7 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 		this.finallyUtil = finallyUtil;
 		this.directoryId = ciphertextDir.dirId;
 		this.ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path, p -> true);
-		LOG.trace("OPEN " + directoryId);
+		LOG.trace("OPEN {}", directoryId);
 		this.cleartextDir = cleartextDir;
 		this.filenameCryptor = filenameCryptor;
 		this.cryptoPathMapper = cryptoPathMapper;
@@ -63,9 +63,9 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 	public Iterator<Path> iterator() {
 		Stream<Path> pathIter = StreamSupport.stream(ciphertextDirStream.spliterator(), false);
 		Stream<Path> resolved = pathIter.map(this::resolveConflictingFileIfNeeded).filter(Objects::nonNull);
-		Stream<Path> inflated = resolved.map(this::inflateIfNeeded).filter(Objects::nonNull);
-		Stream<Path> sanitized = inflated.filter(this::passesPlausibilityChecks);
-		Stream<Path> decrypted = sanitized.map(this::decrypt).filter(Objects::nonNull);
+		Stream<Path> sanitized = resolved.filter(this::passesPlausibilityChecks);
+		Stream<Path> inflated = sanitized.map(this::inflateIfNeeded).filter(Objects::nonNull);
+		Stream<Path> decrypted = inflated.map(this::decrypt).filter(Objects::nonNull);
 		Stream<Path> filtered = decrypted.filter(this::isAcceptableByFilter);
 		return filtered.iterator();
 	}
@@ -94,6 +94,12 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 		}
 	}
 
+	/**
+	 * Checks if a given file belongs into this ciphertext dir.
+	 * 
+	 * @param ciphertextPath The path to check.
+	 * @return <code>true</code> if the file is an existing ciphertext or directory file.
+	 */
 	private boolean passesPlausibilityChecks(Path ciphertextPath) {
 		return !isBrokenDirectoryFile(ciphertextPath);
 	}
@@ -146,7 +152,7 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 		finallyUtil.guaranteeInvocationOf( //
 				() -> ciphertextDirStream.close(), //
 				() -> onClose.accept(this), //
-				() -> LOG.trace("CLOSE " + directoryId));
+				() -> LOG.trace("CLOSE {}", directoryId));
 	}
 
 }
