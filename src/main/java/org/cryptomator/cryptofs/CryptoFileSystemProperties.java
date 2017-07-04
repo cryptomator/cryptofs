@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
-import org.apache.commons.lang3.StringUtils;
+import com.google.common.base.Strings;
 
 /**
  * Properties to pass to
@@ -322,7 +322,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 			if (passphrase == null) {
 				throw new IllegalStateException("passphrase is required");
 			}
-			if (StringUtils.isBlank(masterkeyFilename)) {
+			if (Strings.nullToEmpty(masterkeyFilename).trim().isEmpty()) {
 				throw new IllegalStateException("masterkeyFilename is required");
 			}
 		}

@@ -10,7 +10,6 @@ package org.cryptomator.cryptofs;
 
 import static java.nio.file.Files.readAllBytes;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-import static org.apache.commons.lang3.SystemUtils.IS_OS_WINDOWS;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
@@ -27,6 +26,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.EnumSet;
 
 import org.cryptomator.cryptolib.api.InvalidPassphraseException;
+import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -128,6 +128,15 @@ public class CryptoFileSystemProviderIntegrationTest {
 	}
 
 	@Test
+	public void testLongFileNames() throws IOException {
+		FileSystem fs = CryptoFileSystemProvider.newFileSystem(pathToVault, cryptoFileSystemProperties().withPassphrase("asd").build());
+		Path longNamePath = fs.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen");
+		Files.createDirectory(longNamePath);
+		Assert.assertTrue(Files.isDirectory(longNamePath));
+		Assert.assertThat(MoreFiles.listFiles(fs.getPath("/")), Matchers.contains(longNamePath));
+	}
+
+	@Test
 	public void testCopyFileFromOneCryptoFileSystemToAnother() throws IOException {
 		byte[] data = new byte[] {1, 2, 3, 4, 5, 6, 7};
 
@@ -197,7 +206,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 	@Test
 	public void testDosFileAttributes() throws IOException {
-		Assume.assumeTrue(IS_OS_WINDOWS);
+		Assume.assumeThat(System.getProperty("os.name"), Matchers.startsWith("Windows"));
 
 		Path tmpPath = Files.createTempDirectory("unit-tests");
 		FileSystem fs = CryptoFileSystemProvider.newFileSystem(tmpPath, cryptoFileSystemProperties().withPassphrase("asd").build());
