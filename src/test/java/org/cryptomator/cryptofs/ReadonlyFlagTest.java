@@ -12,7 +12,9 @@ import java.nio.file.Path;
 import java.nio.file.spi.FileSystemProvider;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 public class ReadonlyFlagTest {
 
@@ -24,6 +26,9 @@ public class ReadonlyFlagTest {
 	private CryptoFileSystemProperties properties = mock(CryptoFileSystemProperties.class);
 
 	private ReadonlyFlag inTest;
+
+	@Rule
+	public ExpectedException thrown = ExpectedException.none();
 
 	@Before
 	public void setup() throws IOException {
@@ -65,6 +70,47 @@ public class ReadonlyFlagTest {
 		});
 
 		assertThat(inTest.isSet(), is(false));
+	}
+
+	@Test
+	public void testAssertWritableThrowsIOExceptionIfReadonlyIsSetOnProperties() throws IOException {
+		when(properties.readonly()).thenReturn(true);
+
+		UncheckedThrows.allowUncheckedThrowsOf(IOException.class).from(() -> {
+			inTest = new ReadonlyFlag(properties, path);
+		});
+
+		thrown.expect(IOException.class);
+		thrown.expectMessage("Vault opened readonly");
+
+		inTest.assertWritable();
+	}
+
+	@Test
+	public void testAssertWritableThrowsIOExceptionIfReadonlyIsNotSetOnPropertiesAndFilestoreOfVaultIsReadonly() throws IOException {
+		when(properties.readonly()).thenReturn(false);
+		when(fileStore.isReadOnly()).thenReturn(true);
+
+		UncheckedThrows.allowUncheckedThrowsOf(IOException.class).from(() -> {
+			inTest = new ReadonlyFlag(properties, path);
+		});
+
+		thrown.expect(IOException.class);
+		thrown.expectMessage("Vault on readonly filesystem");
+
+		inTest.assertWritable();
+	}
+
+	@Test
+	public void testAssertWritableDoesNotThrowIOExceptionIfReadonlyIsNotSetOnPropertiesAndFilestoreOfVaultIsNotReadonly() throws IOException {
+		when(properties.readonly()).thenReturn(false);
+		when(fileStore.isReadOnly()).thenReturn(false);
+
+		UncheckedThrows.allowUncheckedThrowsOf(IOException.class).from(() -> {
+			inTest = new ReadonlyFlag(properties, path);
+		});
+
+		inTest.assertWritable();
 	}
 
 }
