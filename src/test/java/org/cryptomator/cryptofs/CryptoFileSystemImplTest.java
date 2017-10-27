@@ -99,6 +99,7 @@ public class CryptoFileSystemImplTest {
 	private final RootDirectoryInitializer rootDirectoryInitializer = mock(RootDirectoryInitializer.class);
 	private final DirectoryStreamFactory directoryStreamFactory = mock(DirectoryStreamFactory.class);
 	private final FinallyUtil finallyUtil = mock(FinallyUtil.class);
+	private final ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 
 	private final CryptoPath root = mock(CryptoPath.class);
 	private final CryptoPath empty = mock(CryptoPath.class);
@@ -111,7 +112,7 @@ public class CryptoFileSystemImplTest {
 		when(cryptoPathFactory.emptyFor(any())).thenReturn(empty);
 
 		inTest = new CryptoFileSystemImpl(pathToVault, properties, cryptor, provider, cryptoFileSystems, fileStore, openCryptoFiles, cryptoPathMapper, dirIdProvider, fileAttributeProvider, fileAttributeViewProvider,
-				pathMatcherFactory, cryptoPathFactory, stats, rootDirectoryInitializer, fileAttributeByNameProvider, directoryStreamFactory, finallyUtil);
+				pathMatcherFactory, cryptoPathFactory, stats, rootDirectoryInitializer, fileAttributeByNameProvider, directoryStreamFactory, finallyUtil, readonlyFlag);
 	}
 
 	@Test
@@ -146,8 +147,17 @@ public class CryptoFileSystemImplTest {
 		assertThat(inTest.getFileStores(), contains(fileStore));
 	}
 
-	@Test // TODO markuskreusch: should not return false but look into delegate filestore and flags
-	public void testIsReadOnlyReturnsFalse() {
+	@Test
+	public void testIsReadOnlyReturnsTrueIfReadonlyFlagIsSet() {
+		when(readonlyFlag.isSet()).thenReturn(true);
+
+		assertTrue(inTest.isReadOnly());
+	}
+
+	@Test
+	public void testIsReadOnlyReturnsFalseIfReadonlyFlagIsNotSet() {
+		when(readonlyFlag.isSet()).thenReturn(false);
+
 		assertFalse(inTest.isReadOnly());
 	}
 
