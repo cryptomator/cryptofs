@@ -72,8 +72,8 @@ public class CryptoFileSystemPropertiesTest {
 		assertThat(inTest.passphrase(), is(passphrase));
 		assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
 		assertThat(inTest.readonly(), is(true));
-		assertThat(inTest.initializeImplicitly(), is(true));
-		assertThat(inTest.migrateImplicitly(), is(true));
+		assertThat(inTest.initializeImplicitly(), is(false));
+		assertThat(inTest.migrateImplicitly(), is(false));
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
@@ -96,8 +96,8 @@ public class CryptoFileSystemPropertiesTest {
 		assertThat(inTest.passphrase(), is(passphrase));
 		assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
 		assertThat(inTest.readonly(), is(true));
-		assertThat(inTest.initializeImplicitly(), is(true));
-		assertThat(inTest.migrateImplicitly(), is(true));
+		assertThat(inTest.initializeImplicitly(), is(false));
+		assertThat(inTest.migrateImplicitly(), is(false));
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //

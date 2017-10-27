@@ -223,6 +223,16 @@ public class CryptoFileSystemProviderIntegrationTest {
 		assertThat(Files.getAttribute(file, "dos:archive"), is(true));
 		assertThat(Files.getAttribute(file, "dos:readOnly"), is(true));
 
+		Files.setAttribute(file, "dos:hidden", false);
+		Files.setAttribute(file, "dos:system", false);
+		Files.setAttribute(file, "dos:archive", false);
+		Files.setAttribute(file, "dos:readOnly", false);
+
+		assertThat(Files.getAttribute(file, "dos:hidden"), is(false));
+		assertThat(Files.getAttribute(file, "dos:system"), is(false));
+		assertThat(Files.getAttribute(file, "dos:archive"), is(false));
+		assertThat(Files.getAttribute(file, "dos:readOnly"), is(false));
+
 		MoreFiles.deleteRecursively(tmpPath, RecursiveDeleteOption.ALLOW_INSECURE);
 	}
 

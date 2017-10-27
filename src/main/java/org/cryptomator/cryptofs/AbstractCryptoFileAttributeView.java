@@ -20,10 +20,13 @@ abstract class AbstractCryptoFileAttributeView<S extends BasicFileAttributes, T 
 	protected final CryptoFileAttributeProvider fileAttributeProvider;
 	protected final T delegate;
 	private final Class<S> attributesType;
+	private final ReadonlyFlag readonlyFlag;
 
-	public AbstractCryptoFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, Class<S> attributesType, Class<T> delegateType) throws UnsupportedFileAttributeViewException {
+	public AbstractCryptoFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag, Class<S> attributesType, Class<T> delegateType)
+			throws UnsupportedFileAttributeViewException {
 		this.ciphertextPath = ciphertextPath;
 		this.fileAttributeProvider = fileAttributeProvider;
+		this.readonlyFlag = readonlyFlag;
 		this.attributesType = attributesType;
 		this.delegate = ciphertextPath.getFileSystem().provider().getFileAttributeView(ciphertextPath, delegateType);
 		if (delegate == null) {
@@ -38,6 +41,7 @@ abstract class AbstractCryptoFileAttributeView<S extends BasicFileAttributes, T 
 
 	@Override
 	public void setTimes(FileTime lastModifiedTime, FileTime lastAccessTime, FileTime createTime) throws IOException {
+		readonlyFlag.assertWritable();
 		delegate.setTimes(lastModifiedTime, lastAccessTime, createTime);
 	}
 

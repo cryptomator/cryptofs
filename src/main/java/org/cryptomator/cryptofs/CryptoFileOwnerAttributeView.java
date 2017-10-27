@@ -17,8 +17,10 @@ import java.nio.file.attribute.UserPrincipal;
 class CryptoFileOwnerAttributeView implements FileOwnerAttributeView {
 
 	private final FileOwnerAttributeView delegate;
+	private final ReadonlyFlag readonlyFlag;
 
-	public CryptoFileOwnerAttributeView(Path ciphertextPath) throws UnsupportedFileAttributeViewException {
+	public CryptoFileOwnerAttributeView(Path ciphertextPath, ReadonlyFlag readonlyFlag) throws UnsupportedFileAttributeViewException {
+		this.readonlyFlag = readonlyFlag;
 		this.delegate = Files.getFileAttributeView(ciphertextPath, FileOwnerAttributeView.class);
 		if (delegate == null) {
 			throw new UnsupportedFileAttributeViewException();
@@ -32,6 +34,7 @@ class CryptoFileOwnerAttributeView implements FileOwnerAttributeView {
 
 	@Override
 	public void setOwner(UserPrincipal owner) throws IOException {
+		readonlyFlag.assertWritable();
 		delegate.setOwner(owner);
 	}
 
