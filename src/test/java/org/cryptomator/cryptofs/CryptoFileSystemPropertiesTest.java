@@ -79,7 +79,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY, FileSystemFlags.INIT_IMPLICITLY, FileSystemFlags.MIGRATE_IMPLICITLY))));
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
 
 	@Test
@@ -103,7 +103,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY, FileSystemFlags.INIT_IMPLICITLY, FileSystemFlags.MIGRATE_IMPLICITLY))));
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
 
 	@Test
