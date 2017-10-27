@@ -261,23 +261,22 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		return fileSystems.create(parsedUri.pathToVault(), properties);
 	}
 
-	// TODO remove implicit initialization in 2.0.0
-	private void initializeFileSystemIfRequired(CryptoFileSystemUri parsedUri, CryptoFileSystemProperties properties) throws NotDirectoryException, IOException, NoSuchFileException {
-		if (!CryptoFileSystemProvider.containsVault(parsedUri.pathToVault(), properties.masterkeyFilename())) {
-			if (properties.initializeImplicitly()) {
-				CryptoFileSystemProvider.initialize(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase());
-			} else {
-				throw new NoSuchFileException(parsedUri.pathToVault().toString(), null, "Vault not initialized.");
-			}
-		}
-	}
-
 	private void migrateFileSystemIfRequired(CryptoFileSystemUri parsedUri, CryptoFileSystemProperties properties) throws IOException, FileSystemNeedsMigrationException {
 		if (Migrators.get().needsMigration(parsedUri.pathToVault(), properties.masterkeyFilename())) {
 			if (properties.migrateImplicitly()) {
 				Migrators.get().migrate(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase());
 			} else {
 				throw new FileSystemNeedsMigrationException(parsedUri.pathToVault());
+			}
+		}
+	}
+
+	private void initializeFileSystemIfRequired(CryptoFileSystemUri parsedUri, CryptoFileSystemProperties properties) throws NotDirectoryException, IOException, NoSuchFileException {
+		if (!CryptoFileSystemProvider.containsVault(parsedUri.pathToVault(), properties.masterkeyFilename())) {
+			if (properties.initializeImplicitly()) {
+				CryptoFileSystemProvider.initialize(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase());
+			} else {
+				throw new NoSuchFileException(parsedUri.pathToVault().toString(), null, "Vault not initialized.");
 			}
 		}
 	}

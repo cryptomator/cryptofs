@@ -72,12 +72,16 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	public enum FileSystemFlags {
 		/**
 		 * If present, the vault is opened in read-only mode.
+		 * <p>
+		 * This flag can not be set together with {@link #INIT_IMPLICITLY} or {@link #MIGRATE_IMPLICITLY}.
 		 */
 		READONLY,
 
 		/**
 		 * If present, the vault gets automatically migrated during file system creation, which might become significantly slower.
 		 * If absent, a {@link FileSystemNeedsMigrationException} will get thrown during the attempt to open a vault that needs migration.
+		 * <p>
+		 * This flag can not be set together with {@link #READONLY}.
 		 * 
 		 * @since 1.4.0
 		 */
@@ -85,6 +89,8 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 		/**
 		 * If present, the vault structure will implicitly get initialized upon filesystem creation.
+		 * <p>
+		 * This flag can not be set together with {@link #READONLY}.
 		 * 
 		 * @deprecated Will get removed in version 2.0.0. Use {@link CryptoFileSystemProvider#initialize(Path, String, CharSequence)} explicitly.
 		 */
@@ -278,9 +284,21 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		 * @since 1.3.0
 		 */
 		public Builder withFlags(Collection<FileSystemFlags> flags) {
+			validate(flags);
 			this.flags.clear();
 			this.flags.addAll(flags);
 			return this;
+		}
+
+		private void validate(Collection<FileSystemFlags> flags) {
+			if (flags.contains(FileSystemFlags.READONLY)) {
+				if (flags.contains(FileSystemFlags.INIT_IMPLICITLY)) {
+					throw new IllegalStateException("Can not set flag INIT_IMPLICITLY in conjunction with flag READONLY.");
+				}
+				if (flags.contains(FileSystemFlags.MIGRATE_IMPLICITLY)) {
+					throw new IllegalStateException("Can not set flag MIGRATE_IMPLICITLY in conjunction with flag READONLY.");
+				}
+			}
 		}
 
 		/**
@@ -292,6 +310,8 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		@Deprecated
 		public Builder withReadonlyFlag() {
 			flags.add(FileSystemFlags.READONLY);
+			flags.remove(FileSystemFlags.INIT_IMPLICITLY);
+			flags.remove(FileSystemFlags.MIGRATE_IMPLICITLY);
 			return this;
 		}
 
