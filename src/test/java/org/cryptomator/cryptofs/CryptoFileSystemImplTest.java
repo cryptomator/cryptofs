@@ -17,6 +17,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.internal.verification.VerificationModeFactory.atLeast;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -362,6 +363,8 @@ public class CryptoFileSystemImplTest {
 			when(physicalFsProv.deleteIfExists(ciphertextFilePath)).thenReturn(true);
 
 			inTest.delete(cleartextPath);
+
+			verify(readonlyFlag).assertWritable();
 			verify(physicalFsProv).deleteIfExists(ciphertextFilePath);
 		}
 
@@ -370,6 +373,8 @@ public class CryptoFileSystemImplTest {
 			when(physicalFsProv.deleteIfExists(ciphertextFilePath)).thenReturn(false);
 
 			inTest.delete(cleartextPath);
+
+			verify(readonlyFlag).assertWritable();
 			verify(physicalFsProv).delete(ciphertextDirPath);
 			verify(physicalFsProv).deleteIfExists(ciphertextDirFilePath);
 			verify(dirIdProvider).delete(ciphertextDirFilePath);
@@ -381,6 +386,7 @@ public class CryptoFileSystemImplTest {
 			Mockito.doThrow(new NoSuchFileException("cleartext")).when(physicalFsProv).delete(ciphertextDirPath);
 
 			thrown.expect(NoSuchFileException.class);
+
 			inTest.delete(cleartextPath);
 		}
 
@@ -390,6 +396,7 @@ public class CryptoFileSystemImplTest {
 			Mockito.doThrow(new DirectoryNotEmptyException("ciphertextDir")).when(physicalFsProv).delete(ciphertextDirPath);
 
 			thrown.expect(DirectoryNotEmptyException.class);
+
 			inTest.delete(cleartextPath);
 		}
 
@@ -431,6 +438,7 @@ public class CryptoFileSystemImplTest {
 			public void moveFileToItselfDoesNothing() throws IOException {
 				inTest.move(cleartextSource, cleartextSource);
 
+				verify(readonlyFlag).assertWritable();
 				verifyZeroInteractions(cleartextSource);
 			}
 
@@ -458,7 +466,10 @@ public class CryptoFileSystemImplTest {
 
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);
+
 				inTest.move(cleartextSource, cleartextTarget, option1, option2);
+
+				verify(readonlyFlag).assertWritable();
 				verify(physicalFsProv).move(ciphertextSourceFile, ciphertextTargetFile, option1, option2);
 			}
 
@@ -468,7 +479,10 @@ public class CryptoFileSystemImplTest {
 
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);
+
 				inTest.move(cleartextSource, cleartextTarget, option1, option2);
+
+				verify(readonlyFlag).assertWritable();
 				verify(physicalFsProv).move(ciphertextSourceDirFile, ciphertextTargetDirFile, option1, option2);
 				verify(dirIdProvider).move(ciphertextSourceDirFile, ciphertextTargetDirFile);
 			}
@@ -484,6 +498,8 @@ public class CryptoFileSystemImplTest {
 				when(iter.hasNext()).thenReturn(false);
 
 				inTest.move(cleartextSource, cleartextTarget, StandardCopyOption.REPLACE_EXISTING);
+
+				verify(readonlyFlag).assertWritable();
 				verify(physicalFsProv).delete(ciphertextTargetDir);
 				verify(physicalFsProv).move(ciphertextSourceDirFile, ciphertextTargetDirFile, StandardCopyOption.REPLACE_EXISTING);
 				verify(dirIdProvider).move(ciphertextSourceDirFile, ciphertextTargetDirFile);
@@ -503,6 +519,7 @@ public class CryptoFileSystemImplTest {
 					thrown.expect(DirectoryNotEmptyException.class);
 					inTest.move(cleartextSource, cleartextTarget, StandardCopyOption.REPLACE_EXISTING);
 				} finally {
+					verify(readonlyFlag).assertWritable();
 					verify(physicalFsProv, Mockito.never()).move(Mockito.any(), Mockito.any(), Mockito.any());
 				}
 			}
@@ -515,6 +532,7 @@ public class CryptoFileSystemImplTest {
 					thrown.expect(AtomicMoveNotSupportedException.class);
 					inTest.move(cleartextSource, cleartextTarget, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 				} finally {
+					verify(readonlyFlag).assertWritable();
 					verify(physicalFsProv, Mockito.never()).move(Mockito.any(), Mockito.any(), Mockito.any());
 				}
 			}
@@ -547,6 +565,7 @@ public class CryptoFileSystemImplTest {
 			public void copyFileToItselfDoesNothing() throws IOException {
 				inTest.copy(cleartextSource, cleartextSource);
 
+				verify(readonlyFlag).assertWritable();
 				verifyZeroInteractions(cleartextSource);
 			}
 
@@ -574,7 +593,10 @@ public class CryptoFileSystemImplTest {
 
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);
+
 				inTest.copy(cleartextSource, cleartextTarget, option1, option2);
+
+				verify(readonlyFlag).assertWritable();
 				verify(physicalFsProv).copy(ciphertextSourceFile, ciphertextTargetFile, option1, option2);
 			}
 
@@ -585,6 +607,8 @@ public class CryptoFileSystemImplTest {
 				Mockito.doThrow(new NoSuchFileException("ciphertextTargetDirFile")).when(physicalFsProv).checkAccess(ciphertextTargetDirFile);
 
 				inTest.copy(cleartextSource, cleartextTarget);
+
+				verify(readonlyFlag, atLeast(1)).assertWritable();
 				verify(ciphertextTargetDirFileChannel).write(any(ByteBuffer.class));
 				verify(physicalFsProv).createDirectory(ciphertextTargetDir);
 				verify(dirIdProvider, Mockito.never()).delete(Mockito.any());
@@ -602,6 +626,8 @@ public class CryptoFileSystemImplTest {
 				when(iter.hasNext()).thenReturn(false);
 
 				inTest.copy(cleartextSource, cleartextTarget, StandardCopyOption.REPLACE_EXISTING);
+
+				verify(readonlyFlag).assertWritable();
 				verify(ciphertextTargetDirFileChannel, Mockito.never()).write(any(ByteBuffer.class));
 				verify(physicalFsProv, Mockito.never()).createDirectory(Mockito.any());
 				verify(dirIdProvider, Mockito.never()).delete(Mockito.any());
@@ -625,6 +651,8 @@ public class CryptoFileSystemImplTest {
 				when(physicalFsProv.getFileAttributeView(Mockito.same(ciphertextTargetDir), Mockito.same(BasicFileAttributeView.class), Mockito.any())).thenReturn(dstAttrView);
 
 				inTest.copy(cleartextSource, cleartextTarget, StandardCopyOption.COPY_ATTRIBUTES);
+
+				verify(readonlyFlag, atLeast(1)).assertWritable();
 				verify(dstAttrView).setTimes(lastModifiedTime, lastAccessTime, createTime);
 			}
 
@@ -642,6 +670,8 @@ public class CryptoFileSystemImplTest {
 				when(physicalFsProv.getFileAttributeView(Mockito.same(ciphertextTargetDir), Mockito.same(FileOwnerAttributeView.class), Mockito.any())).thenReturn(dstAttrView);
 
 				inTest.copy(cleartextSource, cleartextTarget, StandardCopyOption.COPY_ATTRIBUTES);
+
+				verify(readonlyFlag, atLeast(1)).assertWritable();
 				verify(dstAttrView).setOwner(owner);
 			}
 
@@ -662,6 +692,8 @@ public class CryptoFileSystemImplTest {
 				when(physicalFsProv.getFileAttributeView(Mockito.same(ciphertextTargetDir), Mockito.same(PosixFileAttributeView.class), Mockito.any())).thenReturn(dstAttrView);
 
 				inTest.copy(cleartextSource, cleartextTarget, StandardCopyOption.COPY_ATTRIBUTES);
+
+				verify(readonlyFlag, atLeast(1)).assertWritable();
 				verify(dstAttrView).setGroup(group);
 				verify(dstAttrView).setPermissions(permissions);
 			}
@@ -682,6 +714,8 @@ public class CryptoFileSystemImplTest {
 				when(physicalFsProv.getFileAttributeView(Mockito.same(ciphertextTargetDir), Mockito.same(DosFileAttributeView.class), Mockito.any())).thenReturn(dstAttrView);
 
 				inTest.copy(cleartextSource, cleartextTarget, StandardCopyOption.COPY_ATTRIBUTES);
+
+				verify(readonlyFlag, atLeast(1)).assertWritable();
 				verify(dstAttrView).setArchive(true);
 				verify(dstAttrView).setHidden(true);
 				verify(dstAttrView).setReadOnly(true);
@@ -703,6 +737,7 @@ public class CryptoFileSystemImplTest {
 					thrown.expect(DirectoryNotEmptyException.class);
 					inTest.copy(cleartextSource, cleartextTarget, StandardCopyOption.REPLACE_EXISTING);
 				} finally {
+					verify(readonlyFlag).assertWritable();
 					verify(ciphertextTargetDirFileChannel, Mockito.never()).write(any(ByteBuffer.class));
 					verify(physicalFsProv, Mockito.never()).createDirectory(Mockito.any());
 					verify(dirIdProvider, Mockito.never()).delete(Mockito.any());
@@ -739,6 +774,7 @@ public class CryptoFileSystemImplTest {
 
 			inTest.createDirectory(path);
 
+			verify(readonlyFlag).assertWritable();
 			verify(path).getParent();
 			verifyNoMoreInteractions(path);
 		}
@@ -802,6 +838,7 @@ public class CryptoFileSystemImplTest {
 
 			inTest.createDirectory(path);
 
+			verify(readonlyFlag).assertWritable();
 			assertThat(channel.data(), is(contains(dirId.getBytes(UTF_8))));
 		}
 
@@ -837,6 +874,7 @@ public class CryptoFileSystemImplTest {
 			try {
 				inTest.createDirectory(path);
 			} finally {
+				verify(readonlyFlag).assertWritable();
 				verify(provider).delete(ciphertextDirFile);
 				verify(dirIdProvider).delete(ciphertextDirFile);
 			}
@@ -1141,6 +1179,7 @@ public class CryptoFileSystemImplTest {
 
 			inTest.setAttribute(path, name, value);
 
+			verify(readonlyFlag).assertWritable();
 			verify(fileAttributeByNameProvider).setAttribute(ciphertextDirPath, name, value);
 		}
 
@@ -1157,6 +1196,7 @@ public class CryptoFileSystemImplTest {
 
 			inTest.setAttribute(path, name, value);
 
+			verify(readonlyFlag).assertWritable();
 			verify(fileAttributeByNameProvider).setAttribute(ciphertextDirPath, name, value);
 		}
 
@@ -1176,6 +1216,7 @@ public class CryptoFileSystemImplTest {
 
 			inTest.setAttribute(path, name, value);
 
+			verify(readonlyFlag).assertWritable();
 			verify(fileAttributeByNameProvider).setAttribute(ciphertextFilePath, name, value);
 		}
 

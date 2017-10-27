@@ -212,6 +212,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	/* methods delegated to by CryptoFileSystemProvider */
 
 	void setAttribute(CryptoPath cleartextPath, String attribute, Object value, LinkOption... options) throws IOException {
+		readonlyFlag.assertWritable();
 		Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
 		if (Files.notExists(ciphertextDirPath) && cleartextPath.getNameCount() > 0) {
 			Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
@@ -303,6 +304,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	void createDirectory(CryptoPath cleartextDir, FileAttribute<?>... attrs) throws IOException {
+		readonlyFlag.assertWritable();
 		CryptoPath cleartextParentDir = cleartextDir.getParent();
 		if (cleartextParentDir == null) {
 			return;
@@ -343,6 +345,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	void delete(CryptoPath cleartextPath) throws IOException {
+		readonlyFlag.assertWritable();
 		Path ciphertextFile = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
 		// try to delete ciphertext file:
 		if (!Files.deleteIfExists(ciphertextFile)) {
@@ -367,6 +370,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	void copy(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption... options) throws IOException {
+		readonlyFlag.assertWritable();
 		if (cleartextSource.equals(cleartextTarget)) {
 			return;
 		}
@@ -432,6 +436,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	void move(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption... options) throws IOException {
+		readonlyFlag.assertWritable();
 		if (cleartextSource.equals(cleartextTarget)) {
 			return;
 		}
