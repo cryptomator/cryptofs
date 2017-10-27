@@ -34,16 +34,23 @@ class CryptoFileStore extends DelegatingFileStore {
 	private static final String[] VIEW_NAMES = {VIEW_NAME_BASIC, VIEW_NAME_OWNER, VIEW_NAME_POSIX, VIEW_NAME_DOS};
 
 	private final Set<Class<? extends FileAttributeView>> supportedFileAttributeViewTypes;
+	private final ReadonlyFlag readonlyFlag;
 
 	@Inject
-	public CryptoFileStore(@PathToVault Path pathToVault, CryptoFileAttributeViewProvider attributeViewProvider) {
+	public CryptoFileStore(@PathToVault Path pathToVault, ReadonlyFlag readonlyFlag, CryptoFileAttributeViewProvider attributeViewProvider) {
 		super(rethrowUnchecked(IOException.class).from(() -> Files.getFileStore(pathToVault)));
+		this.readonlyFlag = readonlyFlag;
 		this.supportedFileAttributeViewTypes = attributeViewProvider.knownFileAttributeViewTypes().stream().filter(super::supportsFileAttributeView).collect(Collectors.toSet());
 	}
 
 	@Override
 	public boolean supportsFileAttributeView(Class<? extends FileAttributeView> type) {
 		return supportedFileAttributeViewTypes.stream().filter(type::isAssignableFrom).findAny().isPresent();
+	}
+
+	@Override
+	public boolean isReadOnly() {
+		return readonlyFlag.isSet();
 	}
 
 	@Override
