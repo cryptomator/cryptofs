@@ -49,6 +49,7 @@ public class OpenCryptoFileTest {
 	private OpenCounter openCounter = mock(OpenCounter.class);
 	private CryptoFileChannelFactory cryptoFileChannelFactory = mock(CryptoFileChannelFactory.class);
 	private CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
+	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 
 	private OpenCryptoFile inTest = new OpenCryptoFile(options, cryptor, channel, header, size, openCounter, cryptoFileChannelFactory, chunkCache, onClose, stats);
 
@@ -161,15 +162,15 @@ public class OpenCryptoFileTest {
 
 		// A change 10 bytes inside first chunk:
 		ByteBuffer buf1 = ByteBuffer.allocate(10);
-		inTest.write(EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE)), buf1, 0);
+		inTest.write(EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE), readonlyFlag), buf1, 0);
 
 		// B change complete second chunk:
 		ByteBuffer buf2 = ByteBuffer.allocate(1000);
-		inTest.write(EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE)), buf2, 1000);
+		inTest.write(EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE), readonlyFlag), buf2, 1000);
 
 		// C change complete chunk at position > maxint:
 		ByteBuffer buf3 = ByteBuffer.allocate(1000);
-		inTest.write(EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE)), buf3, 5_000_000_000l);
+		inTest.write(EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE), readonlyFlag), buf3, 5_000_000_000l);
 
 		InOrder inOrder = Mockito.inOrder(chunkCache, chunkCache, chunkCache);
 		inOrder.verify(chunkCache).get(0l); // A

@@ -19,6 +19,7 @@ import static java.nio.file.StandardOpenOption.SYNC;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 
+import java.io.IOException;
 import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
 import java.util.HashSet;
@@ -26,14 +27,16 @@ import java.util.Set;
 
 class EffectiveOpenOptions {
 
+	private final ReadonlyFlag readonlyFlag;
 	private final Set<OpenOption> options;
 
-	private EffectiveOpenOptions(Set<? extends OpenOption> options) {
+	private EffectiveOpenOptions(Set<? extends OpenOption> options, ReadonlyFlag readonlyFlag) throws IOException {
+		this.readonlyFlag = readonlyFlag;
 		this.options = cleanAndValidate(options);
 	}
 
-	public static EffectiveOpenOptions from(Set<? extends OpenOption> options) {
-		return new EffectiveOpenOptions(options);
+	public static EffectiveOpenOptions from(Set<? extends OpenOption> options, ReadonlyFlag readonlyFlag) throws IOException {
+		return new EffectiveOpenOptions(options, readonlyFlag);
 	}
 
 	/**
@@ -99,7 +102,7 @@ class EffectiveOpenOptions {
 		return options.contains(DELETE_ON_CLOSE);
 	}
 
-	private Set<OpenOption> cleanAndValidate(Set<? extends OpenOption> originalOptions) {
+	private Set<OpenOption> cleanAndValidate(Set<? extends OpenOption> originalOptions) throws IOException {
 		Set<OpenOption> cleanedOptions = new HashSet<>(originalOptions);
 		addWriteIfAppendIsPresent(cleanedOptions);
 		addReadIfWriteIsAbsent(cleanedOptions);
@@ -108,6 +111,7 @@ class EffectiveOpenOptions {
 		removeCreateIfCreateNewIsPresent(cleanedOptions);
 		removeCreateAndTruncateOptionsIfWriteIsAbsent(cleanedOptions);
 		validateNoUnsupportedOptionsArePresent(cleanedOptions);
+		assertWritableIfWriteOrDeleteOnCloseIsPresent(cleanedOptions);
 		return cleanedOptions;
 	}
 
@@ -155,15 +159,22 @@ class EffectiveOpenOptions {
 		}
 	}
 
+	private void assertWritableIfWriteOrDeleteOnCloseIsPresent(Set<OpenOption> cleanedOptions) throws IOException {
+		if (cleanedOptions.contains(WRITE) || cleanedOptions.contains(DELETE_ON_CLOSE)) {
+			readonlyFlag.assertWritable();
+		}
+	}
+
 	private boolean isSupported(OpenOption option) {
 		return StandardOpenOption.class.isInstance(option);
 	}
 
-	// TODO do not add write if filesystem is in readonly mode
 	public Set<OpenOption> createOpenOptionsForEncryptedFile() {
 		Set<OpenOption> result = new HashSet<>(options);
 		result.add(READ); // also needed during write
-		result.add(WRITE); // maybe needed when opening writable channel afterwards
+		if (!readonlyFlag.isSet()) {
+			result.add(WRITE); // maybe needed when opening writable channel afterwards
+		}
 		result.remove(APPEND);
 		return result;
 	}
