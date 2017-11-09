@@ -21,18 +21,21 @@ class DirectoryStreamFactory {
 	private final ConflictResolver conflictResolver;
 	private final CryptoPathMapper cryptoPathMapper;
 	private final FinallyUtil finallyUtil;
+	private final EncryptedNamePattern encryptedNamePattern;
 
 	private final ConcurrentMap<CryptoDirectoryStream, CryptoDirectoryStream> streams = new ConcurrentHashMap<>();
 
 	private volatile boolean closed = false;
 
 	@Inject
-	public DirectoryStreamFactory(Cryptor cryptor, LongFileNameProvider longFileNameProvider, ConflictResolver conflictResolver, CryptoPathMapper cryptoPathMapper, FinallyUtil finallyUtil) {
+	public DirectoryStreamFactory(Cryptor cryptor, LongFileNameProvider longFileNameProvider, ConflictResolver conflictResolver, CryptoPathMapper cryptoPathMapper, FinallyUtil finallyUtil,
+			EncryptedNamePattern encryptedNamePattern) {
 		this.cryptor = cryptor;
 		this.longFileNameProvider = longFileNameProvider;
 		this.conflictResolver = conflictResolver;
 		this.cryptoPathMapper = cryptoPathMapper;
 		this.finallyUtil = finallyUtil;
+		this.encryptedNamePattern = encryptedNamePattern;
 	}
 
 	public DirectoryStream<Path> newDirectoryStream(CryptoPath cleartextDir, Filter<? super Path> filter) throws IOException {
@@ -46,7 +49,8 @@ class DirectoryStreamFactory {
 				conflictResolver, //
 				filter, //
 				closed -> streams.remove(closed), //
-				finallyUtil);
+				finallyUtil, //
+				encryptedNamePattern);
 		streams.put(stream, stream);
 		if (closed) {
 			stream.close();

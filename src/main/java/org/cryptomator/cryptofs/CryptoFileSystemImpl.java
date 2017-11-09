@@ -85,6 +85,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	private final CryptoPathFactory cryptoPathFactory;
 	private final CryptoFileSystemStats stats;
 	private final FinallyUtil finallyUtil;
+	private final CiphertextDirectoryDeleter ciphertextDirDeleter;
 
 	private volatile boolean open = true;
 
@@ -92,7 +93,8 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	public CryptoFileSystemImpl(@PathToVault Path pathToVault, CryptoFileSystemProperties properties, Cryptor cryptor, CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, CryptoFileStore fileStore,
 			OpenCryptoFiles openCryptoFiles, CryptoPathMapper cryptoPathMapper, DirectoryIdProvider dirIdProvider, CryptoFileAttributeProvider fileAttributeProvider,
 			CryptoFileAttributeViewProvider fileAttributeViewProvider, PathMatcherFactory pathMatcherFactory, CryptoPathFactory cryptoPathFactory, CryptoFileSystemStats stats,
-			RootDirectoryInitializer rootDirectoryInitializer, CryptoFileAttributeByNameProvider fileAttributeByNameProvider, DirectoryStreamFactory directoryStreamFactory, FinallyUtil finallyUtil) {
+			RootDirectoryInitializer rootDirectoryInitializer, CryptoFileAttributeByNameProvider fileAttributeByNameProvider, DirectoryStreamFactory directoryStreamFactory, FinallyUtil finallyUtil,
+			CiphertextDirectoryDeleter ciphertextDirDeleter) {
 		this.cryptor = cryptor;
 		this.provider = provider;
 		this.cryptoFileSystems = cryptoFileSystems;
@@ -108,6 +110,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		this.cryptoPathFactory = cryptoPathFactory;
 		this.stats = stats;
 		this.directoryStreamFactory = directoryStreamFactory;
+		this.ciphertextDirDeleter = ciphertextDirDeleter;
 		this.rootPath = cryptoPathFactory.rootFor(this);
 		this.emptyPath = cryptoPathFactory.emptyFor(this);
 		this.finallyUtil = finallyUtil;
@@ -348,7 +351,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			Path ciphertextDir = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
 			Path ciphertextDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY);
 			try {
-				Files.delete(ciphertextDir);
+				ciphertextDirDeleter.deleteCiphertextDirIncludingNonCiphertextFiles(ciphertextDir);
 				if (!Files.deleteIfExists(ciphertextDirFile)) {
 					// should not happen. Nevertheless this is a valid state, so who no big deal...
 					LOG.warn("Successfully deleted dir {}, but didn't find corresponding dir file {}", ciphertextDir, ciphertextDirFile);

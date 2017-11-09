@@ -16,9 +16,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Consumer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -30,7 +29,6 @@ import org.slf4j.LoggerFactory;
 
 class CryptoDirectoryStream implements DirectoryStream<Path> {
 
-	private static final Pattern BASE32_PATTERN = Pattern.compile("^0?(([A-Z2-7]{8})*[A-Z2-7=]{8})");
 	private static final Logger LOG = LoggerFactory.getLogger(CryptoDirectoryStream.class);
 
 	private final String directoryId;
@@ -43,11 +41,14 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 	private final DirectoryStream.Filter<? super Path> filter;
 	private final Consumer<CryptoDirectoryStream> onClose;
 	private final FinallyUtil finallyUtil;
+	private final EncryptedNamePattern encryptedNamePattern;
 
 	public CryptoDirectoryStream(Directory ciphertextDir, Path cleartextDir, FileNameCryptor filenameCryptor, CryptoPathMapper cryptoPathMapper, LongFileNameProvider longFileNameProvider,
-			ConflictResolver conflictResolver, DirectoryStream.Filter<? super Path> filter, Consumer<CryptoDirectoryStream> onClose, FinallyUtil finallyUtil) throws IOException {
+			ConflictResolver conflictResolver, DirectoryStream.Filter<? super Path> filter, Consumer<CryptoDirectoryStream> onClose, FinallyUtil finallyUtil, EncryptedNamePattern encryptedNamePattern)
+			throws IOException {
 		this.onClose = onClose;
 		this.finallyUtil = finallyUtil;
+		this.encryptedNamePattern = encryptedNamePattern;
 		this.directoryId = ciphertextDir.dirId;
 		this.ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path, p -> true);
 		LOG.trace("OPEN {}", directoryId);
@@ -122,10 +123,9 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 	}
 
 	private Path decrypt(Path ciphertextPath) {
-		String ciphertextFileName = ciphertextPath.getFileName().toString();
-		Matcher m = BASE32_PATTERN.matcher(ciphertextFileName);
-		if (m.find()) {
-			String ciphertext = m.group(1);
+		Optional<String> encryptedName = encryptedNamePattern.extractEncryptedNameFromStart(ciphertextPath);
+		if (encryptedName.isPresent()) {
+			String ciphertext = encryptedName.get();
 			try {
 				String cleartext = filenameCryptor.decryptFilename(ciphertext, directoryId.getBytes(StandardCharsets.UTF_8));
 				return cleartextDir.resolve(cleartext);
