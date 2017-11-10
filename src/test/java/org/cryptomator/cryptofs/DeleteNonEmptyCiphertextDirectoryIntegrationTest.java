@@ -50,7 +50,6 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 		pathToVault = tempDir.resolve("vault");
 		mDir = pathToVault.resolve("m");
 		Files.createDirectory(pathToVault);
-		Files.createDirectories(mDir);
 		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
 	}
 
