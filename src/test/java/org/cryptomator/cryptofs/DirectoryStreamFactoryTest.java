@@ -41,8 +41,9 @@ public class DirectoryStreamFactoryTest {
 	private final LongFileNameProvider longFileNameProvider = mock(LongFileNameProvider.class);
 	private final ConflictResolver conflictResolver = mock(ConflictResolver.class);
 	private final CryptoPathMapper cryptoPathMapper = mock(CryptoPathMapper.class);
+	private final EncryptedNamePattern encryptedNamePattern = new EncryptedNamePattern();
 
-	private final DirectoryStreamFactory inTest = new DirectoryStreamFactory(cryptor, longFileNameProvider, conflictResolver, cryptoPathMapper, finallyUtil);
+	private final DirectoryStreamFactory inTest = new DirectoryStreamFactory(cryptor, longFileNameProvider, conflictResolver, cryptoPathMapper, finallyUtil, encryptedNamePattern);
 
 	@SuppressWarnings("unchecked")
 

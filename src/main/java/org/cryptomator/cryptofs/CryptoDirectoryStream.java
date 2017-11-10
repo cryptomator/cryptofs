@@ -16,9 +16,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Consumer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -30,7 +29,6 @@ import org.slf4j.LoggerFactory;
 
 class CryptoDirectoryStream implements DirectoryStream<Path> {
 
-	private static final Pattern BASE32_PATTERN = Pattern.compile("^0?(([A-Z2-7]{8})*[A-Z2-7=]{8})");
 	private static final Logger LOG = LoggerFactory.getLogger(CryptoDirectoryStream.class);
 
 	private final String directoryId;
@@ -43,11 +41,14 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 	private final DirectoryStream.Filter<? super Path> filter;
 	private final Consumer<CryptoDirectoryStream> onClose;
 	private final FinallyUtil finallyUtil;
+	private final EncryptedNamePattern encryptedNamePattern;
 
 	public CryptoDirectoryStream(Directory ciphertextDir, Path cleartextDir, FileNameCryptor filenameCryptor, CryptoPathMapper cryptoPathMapper, LongFileNameProvider longFileNameProvider,
-			ConflictResolver conflictResolver, DirectoryStream.Filter<? super Path> filter, Consumer<CryptoDirectoryStream> onClose, FinallyUtil finallyUtil) throws IOException {
+			ConflictResolver conflictResolver, DirectoryStream.Filter<? super Path> filter, Consumer<CryptoDirectoryStream> onClose, FinallyUtil finallyUtil, EncryptedNamePattern encryptedNamePattern)
+			throws IOException {
 		this.onClose = onClose;
 		this.finallyUtil = finallyUtil;
+		this.encryptedNamePattern = encryptedNamePattern;
 		this.directoryId = ciphertextDir.dirId;
 		this.ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path, p -> true);
 		LOG.trace("OPEN {}", directoryId);
@@ -61,36 +62,65 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 
 	@Override
 	public Iterator<Path> iterator() {
-		Stream<Path> pathIter = StreamSupport.stream(ciphertextDirStream.spliterator(), false);
-		Stream<Path> resolved = pathIter.map(this::resolveConflictingFileIfNeeded).filter(Objects::nonNull);
-		Stream<Path> sanitized = resolved.filter(this::passesPlausibilityChecks);
-		Stream<Path> inflated = sanitized.map(this::inflateIfNeeded).filter(Objects::nonNull);
-		Stream<Path> decrypted = inflated.map(this::decrypt).filter(Objects::nonNull);
-		Stream<Path> filtered = decrypted.filter(this::isAcceptableByFilter);
-		return filtered.iterator();
+		return cleartextDirectoryListing().iterator();
 	}
 
-	private Path resolveConflictingFileIfNeeded(Path potentiallyConflictingPath) {
+	private Stream<Path> cleartextDirectoryListing() {
+		return directoryListing() //
+				.map(ProcessedPaths::getCleartextPath) //
+				.filter(this::isAcceptableByFilter);
+	}
+
+	public Stream<Path> ciphertextDirectoryListing() {
+		return directoryListing().map(ProcessedPaths::getCiphertextPath);
+	}
+
+	public Stream<ProcessedPaths> directoryListing() {
+		Stream<ProcessedPaths> pathIter = StreamSupport.stream(ciphertextDirStream.spliterator(), false).map(ProcessedPaths::new);
+		Stream<ProcessedPaths> resolved = pathIter.map(this::resolveConflictingFileIfNeeded).filter(Objects::nonNull);
+		Stream<ProcessedPaths> inflated = resolved.map(this::inflateIfNeeded).filter(Objects::nonNull);
+		Stream<ProcessedPaths> decrypted = inflated.map(this::decrypt).filter(Objects::nonNull);
+		Stream<ProcessedPaths> sanitized = decrypted.filter(this::passesPlausibilityChecks);
+		return sanitized;
+	}
+
+	private ProcessedPaths resolveConflictingFileIfNeeded(ProcessedPaths paths) {
 		try {
-			return conflictResolver.resolveConflictsIfNecessary(potentiallyConflictingPath, directoryId);
+			return paths.withCiphertextPath(conflictResolver.resolveConflictsIfNecessary(paths.getCiphertextPath(), directoryId));
 		} catch (IOException e) {
-			LOG.warn("I/O exception while finding potentially conflicting file versions for {}.", potentiallyConflictingPath);
+			LOG.warn("I/O exception while finding potentially conflicting file versions for {}.", paths.getCiphertextPath());
 			return null;
 		}
 	}
 
-	private Path inflateIfNeeded(Path ciphertextPath) {
-		String fileName = ciphertextPath.getFileName().toString();
+	private ProcessedPaths inflateIfNeeded(ProcessedPaths paths) {
+		String fileName = paths.getCiphertextPath().getFileName().toString();
 		if (LongFileNameProvider.isDeflated(fileName)) {
 			try {
 				String longFileName = longFileNameProvider.inflate(fileName);
-				return ciphertextPath.resolveSibling(longFileName);
+				return paths.withInflatedPath(paths.getCiphertextPath().resolveSibling(longFileName));
 			} catch (IOException e) {
-				LOG.warn(ciphertextPath + " could not be inflated.");
+				LOG.warn(paths.getCiphertextPath() + " could not be inflated.");
 				return null;
 			}
 		} else {
-			return ciphertextPath;
+			return paths.withInflatedPath(paths.getCiphertextPath());
+		}
+	}
+
+	private ProcessedPaths decrypt(ProcessedPaths paths) {
+		Optional<String> ciphertextName = encryptedNamePattern.extractEncryptedNameFromStart(paths.getInflatedPath());
+		if (ciphertextName.isPresent()) {
+			String ciphertext = ciphertextName.get();
+			try {
+				String cleartext = filenameCryptor.decryptFilename(ciphertext, directoryId.getBytes(StandardCharsets.UTF_8));
+				return paths.withCleartextPath(cleartextDir.resolve(cleartext));
+			} catch (AuthenticationFailedException e) {
+				LOG.warn(paths.getInflatedPath() + " not decryptable due to an unauthentic ciphertext.");
+				return null;
+			}
+		} else {
+			return null;
 		}
 	}
 
@@ -100,12 +130,13 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 	 * @param ciphertextPath The path to check.
 	 * @return <code>true</code> if the file is an existing ciphertext or directory file.
 	 */
-	private boolean passesPlausibilityChecks(Path ciphertextPath) {
-		return !isBrokenDirectoryFile(ciphertextPath);
+	private boolean passesPlausibilityChecks(ProcessedPaths paths) {
+		return !isBrokenDirectoryFile(paths);
 	}
 
-	private boolean isBrokenDirectoryFile(Path potentialDirectoryFile) {
-		if (potentialDirectoryFile.getFileName().toString().startsWith(Constants.DIR_PREFIX)) {
+	private boolean isBrokenDirectoryFile(ProcessedPaths paths) {
+		Path potentialDirectoryFile = paths.getCiphertextPath();
+		if (paths.getInflatedPath().getFileName().toString().startsWith(Constants.DIR_PREFIX)) {
 			final Path dirPath;
 			try {
 				dirPath = cryptoPathMapper.resolveDirectory(potentialDirectoryFile).path;
@@ -119,23 +150,6 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 			}
 		}
 		return false;
-	}
-
-	private Path decrypt(Path ciphertextPath) {
-		String ciphertextFileName = ciphertextPath.getFileName().toString();
-		Matcher m = BASE32_PATTERN.matcher(ciphertextFileName);
-		if (m.find()) {
-			String ciphertext = m.group(1);
-			try {
-				String cleartext = filenameCryptor.decryptFilename(ciphertext, directoryId.getBytes(StandardCharsets.UTF_8));
-				return cleartextDir.resolve(cleartext);
-			} catch (AuthenticationFailedException e) {
-				LOG.warn(ciphertextPath + " not decryptable due to an unauthentic ciphertext.");
-				return null;
-			}
-		} else {
-			return null;
-		}
 	}
 
 	private boolean isAcceptableByFilter(Path path) {
@@ -153,6 +167,48 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 				() -> ciphertextDirStream.close(), //
 				() -> onClose.accept(this), //
 				() -> LOG.trace("CLOSE {}", directoryId));
+	}
+
+	private static class ProcessedPaths {
+
+		private final Path ciphertextPath;
+		private final Path inflatedPath;
+		private final Path cleartextPath;
+
+		public ProcessedPaths(Path ciphertextPath) {
+			this(ciphertextPath, null, null);
+		}
+
+		private ProcessedPaths(Path ciphertextPath, Path inflatedPath, Path cleartextPath) {
+			this.ciphertextPath = ciphertextPath;
+			this.inflatedPath = inflatedPath;
+			this.cleartextPath = cleartextPath;
+		}
+
+		public Path getCiphertextPath() {
+			return ciphertextPath;
+		}
+
+		public Path getInflatedPath() {
+			return inflatedPath;
+		}
+
+		public Path getCleartextPath() {
+			return cleartextPath;
+		}
+
+		public ProcessedPaths withCiphertextPath(Path ciphertextPath) {
+			return new ProcessedPaths(ciphertextPath, inflatedPath, cleartextPath);
+		}
+
+		public ProcessedPaths withInflatedPath(Path inflatedPath) {
+			return new ProcessedPaths(ciphertextPath, inflatedPath, cleartextPath);
+		}
+
+		public ProcessedPaths withCleartextPath(Path cleartextPath) {
+			return new ProcessedPaths(ciphertextPath, inflatedPath, cleartextPath);
+		}
+
 	}
 
 }

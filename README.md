@@ -5,27 +5,23 @@
 [![Codacy Badge](https://api.codacy.com/project/badge/Coverage/7248ca7d466843f785f79f33374302c2)](https://www.codacy.com/app/cryptomator/cryptofs?utm_source=github.com&utm_medium=referral&utm_content=cryptomator/cryptofs&utm_campaign=Badge_Coverage)
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/10006/badge.svg)](https://scan.coverity.com/projects/cryptomator-cryptofs)
 
-**CryptoFS** - Implementation of the [Cryptomator](https://github.com/cryptomator/cryptomator) encryption scheme.
-
-## Disclaimer
-
-This project is in an early stage and not ready for production use. We recommend to use it only for testing and evaluation purposes.
+**CryptoFS:** Implementation of the [Cryptomator](https://github.com/cryptomator/cryptomator) encryption scheme.
 
 ## Features
 
 - Access Cryptomator encrypted vaults from within your Java application
-- Uses a ``java.nio.file.FileSystem`` so code written against the java.nio.file API can easily be adapted to work with encrypted data
+- Uses a `java.nio.file.FileSystem` so code written against the `java.nio.file` API can easily be adapted to work with encrypted data
 - Open Source means: No backdoors, control is better than trust
 
 ### Security Architecture
 
-For more information on the security details visit [cryptomator.org](https://cryptomator.org/architecture/).
+For more information on the security details, visit [cryptomator.org](https://cryptomator.org/architecture/).
 
 ## Usage
 
-CryptoFS depends on a Java 8 JRE/JDK. In addition the JCE unlimited strength policy files (needed for 256-bit keys) must be installed.
+CryptoFS depends on Java 8 JRE/JDK. In addition, the JCE unlimited strength policy files (needed for 256-bit keys) must be installed.
 
-### Vault initialization
+### Vault Initialization
 
 ```java
 Path storageLocation = Paths.get("/home/cryptobot/vault");
@@ -33,9 +29,9 @@ Files.createDirectories(storageLocation);
 CryptoFileSystemProvider.initialize(storageLocation, "masterkey.cryptomator", "password");
 ```
 
-### Obtaining a FileSystem instance
+### Obtaining a FileSystem Instance
 
-You have the option to use the convenience method ``CryptoFileSystemProvider#newFileSystem`` as follows:  
+You have the option to use the convenience method `CryptoFileSystemProvider#newFileSystem` as follows:  
 
 ```java
 FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(
@@ -46,7 +42,7 @@ FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(
 		.build());
 ```
 
-or to use one of the standard methods from ``FileSystems#newFileSystem``:
+or to use one of the standard methods from `FileSystems#newFileSystem`:
 
 ```java
 URI uri = CryptoFileSystemUri.create(storageLocation);
@@ -58,11 +54,11 @@ FileSystem fileSystem = FileSystems.newFileSystem(
 			.build());
 ```
 
-**Note** - Instead of CryptoFileSystemProperties you can always pass in a ``java.util.Map`` with entries set accordingly.
+**Note:** Instead of `CryptoFileSystemProperties`, you can always pass in a `java.util.Map` with entries set accordingly.
 
-For more details on construction have a look at the javadoc of ``CryptoFileSytemProvider``, ``CryptoFileSytemProperties`` and ``CryptoFileSytemUris``.
+For more details on construction, have a look at the javadoc of `CryptoFileSytemProvider`, `CryptoFileSytemProperties`, and `CryptoFileSytemUris`.
 
-### Using the constructed file system
+### Using the Constructed FileSystem
 
 ```java
 try (FileSystem fileSystem = ...) { // see above
@@ -84,7 +80,7 @@ try (FileSystem fileSystem = ...) { // see above
 }
 ```
 
-For more details on how to use the constructed file system you may consult the [javadocs of the java.nio.file package](http://docs.oracle.com/javase/8/docs/api/java/nio/file/package-summary.html).
+For more details on how to use the constructed `FileSystem`, you may consult the [javadocs of the `java.nio.file` package](http://docs.oracle.com/javase/8/docs/api/java/nio/file/package-summary.html).
 
 ## Building
 
@@ -101,7 +97,7 @@ mvn clean install
 
 ## Contributing to CryptoFS
 
-Please read our [contribution guide](https://github.com/cryptomator/cryptomator/blob/master/CONTRIBUTING.md), if you would like to report a bug, ask a question or help us with coding.
+Please read our [contribution guide](https://github.com/cryptomator/cryptomator/blob/master/CONTRIBUTING.md) if you would like to report a bug, ask a question, or help us with coding.
 
 ## Code of Conduct
 
@@ -109,4 +105,4 @@ Help us keep Cryptomator open and inclusive. Please read and follow our [Code of
 
 ## License
 
-Distributed under the AGPLv3. See the `LICENSE.txt` file for more info.
+This project is dual-licensed under the AGPLv3 for FOSS projects as well as a commercial license derived from the LGPL for independent software vendors and resellers. If you want to use this library in applications that are *not* licensed under the AGPL, feel free to contact our [sales team](https://cryptomator.org/enterprise/).

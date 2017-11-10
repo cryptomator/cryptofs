@@ -223,6 +223,9 @@ public class CryptoFileSystemProviderIntegrationTest {
 		assertThat(Files.getAttribute(file, "dos:archive"), is(true));
 		assertThat(Files.getAttribute(file, "dos:readOnly"), is(true));
 
+		// set readOnly to false again to allow deletion
+		Files.setAttribute(file, "dos:readOnly", false);
+
 		MoreFiles.deleteRecursively(tmpPath, RecursiveDeleteOption.ALLOW_INSECURE);
 	}
 

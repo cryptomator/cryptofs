@@ -162,6 +162,8 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 			String rootDirHash = cryptor.fileNameCryptor().hashDirectoryId(Constants.ROOT_DIR_ID);
 			Path rootDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(rootDirHash.substring(0, 2)).resolve(rootDirHash.substring(2));
 			Files.createDirectories(rootDirPath);
+			// create "m":
+			Files.createDirectory(pathToVault.resolve(Constants.METADATA_DIR_NAME));
 		}
 		assert containsVault(pathToVault, masterkeyFilename);
 	}

@@ -61,6 +61,7 @@ public class CryptoDirectoryStreamTest {
 	private LongFileNameProvider longFileNameProvider;
 	private ConflictResolver conflictResolver;
 	private FinallyUtil finallyUtil;
+	private EncryptedNamePattern encryptedNamePattern = new EncryptedNamePattern();
 
 	@Before
 	@SuppressWarnings("unchecked")
@@ -126,7 +127,7 @@ public class CryptoDirectoryStreamTest {
 		Mockito.when(dirStream.spliterator()).thenReturn(ciphertextFileNames.stream().map(cleartextPath::resolve).spliterator());
 
 		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new Directory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, cryptoPathMapper, longFileNameProvider, conflictResolver, ACCEPT_ALL,
-				DO_NOTHING_ON_CLOSE, finallyUtil)) {
+				DO_NOTHING_ON_CLOSE, finallyUtil, encryptedNamePattern)) {
 			Iterator<Path> iter = stream.iterator();
 			Assert.assertTrue(iter.hasNext());
 			Assert.assertEquals(cleartextPath.resolve("one"), iter.next());
@@ -149,7 +150,7 @@ public class CryptoDirectoryStreamTest {
 		Mockito.when(dirStream.spliterator()).thenReturn(Spliterators.emptySpliterator());
 
 		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new Directory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, cryptoPathMapper, longFileNameProvider, conflictResolver, ACCEPT_ALL,
-				DO_NOTHING_ON_CLOSE, finallyUtil)) {
+				DO_NOTHING_ON_CLOSE, finallyUtil, encryptedNamePattern)) {
 			Iterator<Path> iter = stream.iterator();
 			Assert.assertFalse(iter.hasNext());
 			iter.next();
