@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs;
 
 import static java.nio.file.Files.walkFileTree;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
+import static org.cryptomator.cryptofs.Constants.NAME_SHORTENING_THRESHOLD;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 
@@ -20,6 +21,8 @@ import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.junit.AfterClass;
@@ -38,13 +41,16 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 
 	private static Path tempDir;
 	private static Path pathToVault;
+	private static Path mDir;
 	private static FileSystem fileSystem;
 
 	@BeforeClass
 	public static void setupClass() throws IOException {
 		tempDir = Files.createTempDirectory("DNECDIT");
 		pathToVault = tempDir.resolve("vault");
+		mDir = pathToVault.resolve("m");
 		Files.createDirectory(pathToVault);
+		Files.createDirectories(mDir);
 		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
 	}
 
@@ -55,7 +61,7 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 
 	@Test
 	public void testDeleteCiphertextDirectoryContainingNonCryptoFile() throws IOException {
-		Path cleartextDirectory = fileSystem.getPath("/a");
+		Path cleartextDirectory = fileSystem.getPath("/z");
 		Files.createDirectory(cleartextDirectory);
 
 		Path ciphertextDirectory = firstEmptyCiphertextDirectory();
@@ -86,8 +92,33 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 	}
 
 	@Test
+	public void testDeleteDirectoryContainingLongNameFileWithoutMetadata() throws IOException {
+		Path cleartextDirectory = fileSystem.getPath("/b");
+		Files.createDirectory(cleartextDirectory);
+
+		Path ciphertextDirectory = firstEmptyCiphertextDirectory();
+		createFile(ciphertextDirectory, "HHEZJURE.lng", new byte[] {65});
+
+		Files.delete(cleartextDirectory);
+	}
+
+	@Test
+	public void testDeleteDirectoryContainingUnauthenticLongNameDirectoryFile() throws IOException {
+		Path cleartextDirectory = fileSystem.getPath("/c");
+		Files.createDirectory(cleartextDirectory);
+
+		Path ciphertextDirectory = firstEmptyCiphertextDirectory();
+		createFile(ciphertextDirectory, "HHEZJURE.lng", new byte[] {65});
+		Path mSubdir = mDir.resolve("HH").resolve("EZ");
+		Files.createDirectories(mSubdir);
+		createFile(mSubdir, "HHEZJURE.lng", "0HHEZJUREHHEZJUREHHEZJURE".getBytes());
+
+		Files.delete(cleartextDirectory);
+	}
+
+	@Test
 	public void testDeleteNonEmptyDir() throws IOException {
-		Path cleartextDirectory = fileSystem.getPath("/a");
+		Path cleartextDirectory = fileSystem.getPath("/d");
 		Files.createDirectory(cleartextDirectory);
 		createFile(cleartextDirectory, "test", new byte[] {65});
 
@@ -97,8 +128,25 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 	}
 
 	@Test
+	public void testDeleteDirectoryContainingLongNamedDirectory() throws IOException {
+		Path cleartextDirectory = fileSystem.getPath("/e");
+		Files.createDirectory(cleartextDirectory);
+
+		// a
+		// .. LongNameaaa...
+		String name = "LongName" + IntStream.range(0, NAME_SHORTENING_THRESHOLD) //
+				.mapToObj(ignored -> "a") //
+				.collect(Collectors.joining());
+		createFolder(cleartextDirectory, name);
+
+		thrown.expect(DirectoryNotEmptyException.class);
+
+		Files.delete(cleartextDirectory);
+	}
+
+	@Test
 	public void testDeleteEmptyDir() throws IOException {
-		Path cleartextDirectory = fileSystem.getPath("/a");
+		Path cleartextDirectory = fileSystem.getPath("/f");
 		Files.createDirectory(cleartextDirectory);
 
 		Files.delete(cleartextDirectory);
