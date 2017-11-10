@@ -2,7 +2,6 @@ package org.cryptomator.cryptofs;
 
 import java.io.IOException;
 import java.nio.file.ClosedFileSystemException;
-import java.nio.file.DirectoryStream;
 import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,7 +37,7 @@ class DirectoryStreamFactory {
 		this.encryptedNamePattern = encryptedNamePattern;
 	}
 
-	public DirectoryStream<Path> newDirectoryStream(CryptoPath cleartextDir, Filter<? super Path> filter) throws IOException {
+	public CryptoDirectoryStream newDirectoryStream(CryptoPath cleartextDir, Filter<? super Path> filter) throws IOException {
 		Directory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
 		CryptoDirectoryStream stream = new CryptoDirectoryStream( //
 				ciphertextDir, //

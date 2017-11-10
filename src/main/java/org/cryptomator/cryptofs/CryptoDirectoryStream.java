@@ -62,13 +62,25 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 
 	@Override
 	public Iterator<Path> iterator() {
+		return cleartextDirectoryListing().iterator();
+	}
+
+	private Stream<Path> cleartextDirectoryListing() {
+		return directoryListing() //
+				.map(CiphertextAndCleartextPath::getCleartextPath) //
+				.filter(this::isAcceptableByFilter);
+	}
+
+	public Stream<Path> ciphertextDirectoryListing() {
+		return directoryListing().map(CiphertextAndCleartextPath::getCiphertextPath);
+	}
+
+	public Stream<CiphertextAndCleartextPath> directoryListing() {
 		Stream<Path> pathIter = StreamSupport.stream(ciphertextDirStream.spliterator(), false);
 		Stream<Path> resolved = pathIter.map(this::resolveConflictingFileIfNeeded).filter(Objects::nonNull);
 		Stream<Path> sanitized = resolved.filter(this::passesPlausibilityChecks);
 		Stream<Path> inflated = sanitized.map(this::inflateIfNeeded).filter(Objects::nonNull);
-		Stream<Path> decrypted = inflated.map(this::decrypt).filter(Objects::nonNull);
-		Stream<Path> filtered = decrypted.filter(this::isAcceptableByFilter);
-		return filtered.iterator();
+		return inflated.map(this::decrypt).filter(Objects::nonNull);
 	}
 
 	private Path resolveConflictingFileIfNeeded(Path potentiallyConflictingPath) {
@@ -122,13 +134,13 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 		return false;
 	}
 
-	private Path decrypt(Path ciphertextPath) {
-		Optional<String> encryptedName = encryptedNamePattern.extractEncryptedNameFromStart(ciphertextPath);
-		if (encryptedName.isPresent()) {
-			String ciphertext = encryptedName.get();
+	private CiphertextAndCleartextPath decrypt(Path ciphertextPath) {
+		Optional<String> ciphertextName = encryptedNamePattern.extractEncryptedNameFromStart(ciphertextPath);
+		if (ciphertextName.isPresent()) {
+			String ciphertext = ciphertextName.get();
 			try {
 				String cleartext = filenameCryptor.decryptFilename(ciphertext, directoryId.getBytes(StandardCharsets.UTF_8));
-				return cleartextDir.resolve(cleartext);
+				return new CiphertextAndCleartextPath(ciphertextPath, cleartextDir.resolve(cleartext));
 			} catch (AuthenticationFailedException e) {
 				LOG.warn(ciphertextPath + " not decryptable due to an unauthentic ciphertext.");
 				return null;
@@ -153,6 +165,26 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 				() -> ciphertextDirStream.close(), //
 				() -> onClose.accept(this), //
 				() -> LOG.trace("CLOSE {}", directoryId));
+	}
+
+	private static class CiphertextAndCleartextPath {
+
+		private final Path ciphertextPath;
+		private final Path cleartextPath;
+
+		public CiphertextAndCleartextPath(Path ciphertextPath, Path cleartextPath) {
+			this.ciphertextPath = ciphertextPath;
+			this.cleartextPath = cleartextPath;
+		}
+
+		public Path getCiphertextPath() {
+			return ciphertextPath;
+		}
+
+		public Path getCleartextPath() {
+			return cleartextPath;
+		}
+
 	}
 
 }

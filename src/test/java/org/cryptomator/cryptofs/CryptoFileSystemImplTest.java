@@ -361,7 +361,7 @@ public class CryptoFileSystemImplTest {
 			when(physicalFsProv.deleteIfExists(ciphertextFilePath)).thenReturn(false);
 
 			inTest.delete(cleartextPath);
-			verify(ciphertextDirDeleter).deleteCiphertextDirIncludingNonCiphertextFiles(ciphertextDirPath);
+			verify(ciphertextDirDeleter).deleteCiphertextDirIncludingNonCiphertextFiles(ciphertextDirPath, cleartextPath);
 			verify(physicalFsProv).deleteIfExists(ciphertextDirFilePath);
 			verify(dirIdProvider).delete(ciphertextDirFilePath);
 		}
@@ -369,7 +369,7 @@ public class CryptoFileSystemImplTest {
 		@Test
 		public void testDeleteNonExistingFileOrDir() throws IOException {
 			when(physicalFsProv.deleteIfExists(ciphertextFilePath)).thenReturn(false);
-			Mockito.doThrow(new NoSuchFileException("cleartext")).when(ciphertextDirDeleter).deleteCiphertextDirIncludingNonCiphertextFiles(ciphertextDirPath);
+			Mockito.doThrow(new NoSuchFileException("cleartext")).when(ciphertextDirDeleter).deleteCiphertextDirIncludingNonCiphertextFiles(ciphertextDirPath, cleartextPath);
 
 			thrown.expect(NoSuchFileException.class);
 			inTest.delete(cleartextPath);
@@ -378,7 +378,7 @@ public class CryptoFileSystemImplTest {
 		@Test
 		public void testDeleteNonEmptyDir() throws IOException {
 			when(physicalFsProv.deleteIfExists(ciphertextFilePath)).thenReturn(false);
-			Mockito.doThrow(new DirectoryNotEmptyException("ciphertextDir")).when(ciphertextDirDeleter).deleteCiphertextDirIncludingNonCiphertextFiles(ciphertextDirPath);
+			Mockito.doThrow(new DirectoryNotEmptyException("ciphertextDir")).when(ciphertextDirDeleter).deleteCiphertextDirIncludingNonCiphertextFiles(ciphertextDirPath, cleartextPath);
 
 			thrown.expect(DirectoryNotEmptyException.class);
 			inTest.delete(cleartextPath);

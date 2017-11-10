@@ -351,7 +351,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			Path ciphertextDir = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
 			Path ciphertextDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY);
 			try {
-				ciphertextDirDeleter.deleteCiphertextDirIncludingNonCiphertextFiles(ciphertextDir);
+				ciphertextDirDeleter.deleteCiphertextDirIncludingNonCiphertextFiles(ciphertextDir, cleartextPath);
 				if (!Files.deleteIfExists(ciphertextDirFile)) {
 					// should not happen. Nevertheless this is a valid state, so who no big deal...
 					LOG.warn("Successfully deleted dir {}, but didn't find corresponding dir file {}", ciphertextDir, ciphertextDirFile);
