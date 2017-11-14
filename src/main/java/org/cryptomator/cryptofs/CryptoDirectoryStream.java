@@ -75,7 +75,7 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 		return directoryListing().map(ProcessedPaths::getCiphertextPath);
 	}
 
-	public Stream<ProcessedPaths> directoryListing() {
+	private Stream<ProcessedPaths> directoryListing() {
 		Stream<ProcessedPaths> pathIter = StreamSupport.stream(ciphertextDirStream.spliterator(), false).map(ProcessedPaths::new);
 		Stream<ProcessedPaths> resolved = pathIter.map(this::resolveConflictingFileIfNeeded).filter(Objects::nonNull);
 		Stream<ProcessedPaths> inflated = resolved.map(this::inflateIfNeeded).filter(Objects::nonNull);

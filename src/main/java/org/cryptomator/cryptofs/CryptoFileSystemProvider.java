@@ -179,7 +179,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	public static boolean containsVault(Path pathToVault, String masterkeyFilename) {
 		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
 		Path dataDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME);
-		return Files.isRegularFile(masterKeyPath) && Files.isDirectory(dataDirPath);
+		return Files.isReadable(masterKeyPath) && Files.isDirectory(dataDirPath);
 	}
 
 	/**
