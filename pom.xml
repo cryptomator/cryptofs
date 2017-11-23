@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.cryptomator</groupId>
 	<artifactId>cryptofs</artifactId>
-	<version>1.4.3</version>
+	<version>1.4.4</version>
 	<name>Cryptomator Crypto Filesystem</name>
 	<description>This library provides the Java filesystem provider used by Cryptomator.</description>
 	<url>https://github.com/cryptomator/cryptofs</url>
@@ -17,7 +17,7 @@
 		<java.version>1.8</java.version>
 		<cryptolib.version>1.1.7</cryptolib.version>
 		<dagger.version>2.13</dagger.version>
-		<guava.version>23.4-jre</guava.version>
+		<guava.version>23.5-jre</guava.version>
 		<slf4j.version>1.7.25</slf4j.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
@@ -123,13 +123,6 @@
 			<version>1.1</version>
 			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>org.bouncycastle</groupId>
-			<artifactId>bcprov-jdk15on</artifactId>
-			<version>1.57</version>
-			<!-- not actually needed, but otherwise unit tests fail in Eclipe, if the "cryptolib" project is opened in the same workspace -->
-			<scope>test</scope>
-		</dependency>
 	</dependencies>
 
 	<build>
@@ -162,7 +155,7 @@
 					<plugin>
 						<groupId>org.owasp</groupId>
 						<artifactId>dependency-check-maven</artifactId>
-						<version>3.0.1</version>
+						<version>3.0.2</version>
 						<configuration>
 							<cveValidForHours>24</cveValidForHours>
 							<failBuildOnCVSS>0</failBuildOnCVSS>
