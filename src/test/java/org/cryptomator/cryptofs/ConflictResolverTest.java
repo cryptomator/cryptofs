@@ -128,7 +128,7 @@ public class ConflictResolverTest {
 	@Test
 	public void testRenameLongFile() throws IOException {
 		String longCiphertextName = "ABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGH2345====";
-		assert longCiphertextName.length() > Constants.NAME_SHORTENING_THRESHOLD;
+		assert longCiphertextName.length() > Constants.SHORT_NAMES_MAX_LENGTH;
 		Mockito.when(testFileName.toString()).thenReturn("ABCDEF== (1).lng");
 		Mockito.when(longFileNameProvider.inflate("ABCDEF==.lng")).thenReturn("FEDCBA==");
 		Mockito.when(longFileNameProvider.deflate(longCiphertextName)).thenReturn("FEDCBA==.lng");

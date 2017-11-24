@@ -1,7 +1,7 @@
 package org.cryptomator.cryptofs;
 
 import static org.cryptomator.cryptofs.Constants.DIR_PREFIX;
-import static org.cryptomator.cryptofs.Constants.NAME_SHORTENING_THRESHOLD;
+import static org.cryptomator.cryptofs.Constants.SHORT_NAMES_MAX_LENGTH;
 import static org.cryptomator.cryptofs.LongFileNameProvider.LONG_NAME_FILE_EXT;
 
 import java.io.IOException;
@@ -77,7 +77,7 @@ class ConflictResolver {
 		final boolean isDirectory;
 		final String dirPrefix;
 		final Path canonicalPath;
-		if (LongFileNameProvider.isDeflated(originalFileName)) {
+		if (longFileNameProvider.isDeflated(originalFileName)) {
 			String inflated = longFileNameProvider.inflate(base32match + LONG_NAME_FILE_EXT);
 			ciphertext = StringUtils.removeStart(inflated, DIR_PREFIX);
 			isDirectory = inflated.startsWith(DIR_PREFIX);
@@ -116,7 +116,7 @@ class ConflictResolver {
 				String alternativeCleartext = cleartext + " (Conflict " + i + ")";
 				String alternativeCiphertext = cryptor.fileNameCryptor().encryptFilename(alternativeCleartext, dirId.getBytes(StandardCharsets.UTF_8));
 				String alternativeCiphertextFileName = dirPrefix + alternativeCiphertext;
-				if (alternativeCiphertextFileName.length() >= NAME_SHORTENING_THRESHOLD) {
+				if (alternativeCiphertextFileName.length() > SHORT_NAMES_MAX_LENGTH) {
 					alternativeCiphertextFileName = longFileNameProvider.deflate(alternativeCiphertextFileName);
 				}
 				alternativePath = canonicalPath.resolveSibling(alternativeCiphertextFileName);

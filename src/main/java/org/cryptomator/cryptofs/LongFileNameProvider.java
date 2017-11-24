@@ -53,7 +53,7 @@ class LongFileNameProvider {
 
 	}
 
-	public static boolean isDeflated(String possiblyDeflatedFileName) {
+	public boolean isDeflated(String possiblyDeflatedFileName) {
 		return possiblyDeflatedFileName.endsWith(LONG_NAME_FILE_EXT);
 	}
 

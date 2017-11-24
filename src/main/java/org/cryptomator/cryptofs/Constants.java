@@ -16,7 +16,7 @@ public final class Constants {
 	static final String DATA_DIR_NAME = "d";
 	static final String METADATA_DIR_NAME = "m";
 	static final String DIR_PREFIX = "0";
-	static final int NAME_SHORTENING_THRESHOLD = 129;
+	static final int SHORT_NAMES_MAX_LENGTH = 129;
 	static final String ROOT_DIR_ID = "";
 
 	static final String SEPARATOR = "/";
