@@ -32,16 +32,6 @@ class CryptoBasicFileAttributes implements DelegatingBasicFileAttributes {
 	}
 
 	@Override
-	public boolean isRegularFile() {
-		return getDelegate().isRegularFile();
-	}
-
-	@Override
-	public boolean isDirectory() {
-		return getDelegate().isDirectory();
-	}
-
-	@Override
 	public boolean isOther() {
 		return false;
 	}
@@ -53,10 +43,14 @@ class CryptoBasicFileAttributes implements DelegatingBasicFileAttributes {
 
 	@Override
 	public long size() {
-		if (isRegularFile()) {
-			return Cryptors.cleartextSize(getDelegate().size() - cryptor.fileHeaderCryptor().headerSize(), cryptor);
-		} else {
+		if (isDirectory()) {
+			return getDelegate().size();
+		} else if (isOther()) {
 			return -1l;
+		} else if (isSymbolicLink()) {
+			return -1l;
+		} else {
+			return Cryptors.cleartextSize(getDelegate().size() - cryptor.fileHeaderCryptor().headerSize(), cryptor);
 		}
 	}
 
