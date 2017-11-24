@@ -102,8 +102,7 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 				String longFileName = longFileNameProvider.inflate(fileName);
 				if (longFileName.length() <= SHORT_NAMES_MAX_LENGTH) {
 					// "unshortify" filenames on the fly due to previously shorter threshold
-					paths = inflatePermanently(paths, longFileName);
-					return paths.withInflatedPath(paths.getCiphertextPath());
+					return inflatePermanently(paths, longFileName);
 				} else {
 					return paths.withInflatedPath(paths.getCiphertextPath().resolveSibling(longFileName));
 				}
@@ -145,7 +144,7 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 	private ProcessedPaths inflatePermanently(ProcessedPaths paths, String longFileName) throws IOException {
 		Path newCiphertextPath = paths.getCiphertextPath().resolveSibling(longFileName);
 		Files.move(paths.getCiphertextPath(), newCiphertextPath);
-		return paths.withCiphertextPath(newCiphertextPath);
+		return paths.withCiphertextPath(newCiphertextPath).withInflatedPath(newCiphertextPath);
 	}
 
 	private boolean isBrokenDirectoryFile(ProcessedPaths paths) {
