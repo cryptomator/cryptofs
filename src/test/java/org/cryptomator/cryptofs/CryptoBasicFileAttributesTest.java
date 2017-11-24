@@ -82,16 +82,26 @@ public class CryptoBasicFileAttributesTest {
 	}
 
 	@Test
-	public void testSize() throws IOException {
+	public void testSizeOfFile() throws IOException {
 		Mockito.when(delegateAttr.size()).thenReturn(88l + 16 + 1337 + 32);
-		Mockito.when(delegateAttr.isRegularFile()).thenReturn(true);
+		Mockito.when(delegateAttr.isDirectory()).thenReturn(false);
+		Mockito.when(delegateAttr.isSymbolicLink()).thenReturn(false);
+		Mockito.when(delegateAttr.isOther()).thenReturn(false);
 		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("foo"));
 
 		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor);
-		Assert.assertEquals(1337l, attr.size());
 
-		Mockito.when(delegateAttr.isRegularFile()).thenReturn(false);
-		Assert.assertEquals(-1l, attr.size());
+		Assert.assertEquals(1337l, attr.size());
+	}
+
+	@Test
+	public void testSizeOfDirectory() throws IOException {
+		Mockito.when(delegateAttr.size()).thenReturn(4096l);
+		Mockito.when(delegateAttr.isDirectory()).thenReturn(true);
+
+		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor);
+
+		Assert.assertEquals(4096l, attr.size());
 	}
 
 	@Test(expected = IllegalArgumentException.class)

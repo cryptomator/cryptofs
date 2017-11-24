@@ -10,7 +10,7 @@ package org.cryptomator.cryptofs;
 
 import static java.nio.file.Files.walkFileTree;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
-import static org.cryptomator.cryptofs.Constants.NAME_SHORTENING_THRESHOLD;
+import static org.cryptomator.cryptofs.Constants.SHORT_NAMES_MAX_LENGTH;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 
@@ -133,7 +133,7 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 
 		// a
 		// .. LongNameaaa...
-		String name = "LongName" + IntStream.range(0, NAME_SHORTENING_THRESHOLD) //
+		String name = "LongName" + IntStream.range(0, SHORT_NAMES_MAX_LENGTH) //
 				.mapToObj(ignored -> "a") //
 				.collect(Collectors.joining());
 		createFolder(cleartextDirectory, name);

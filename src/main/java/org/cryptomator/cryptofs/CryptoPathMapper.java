@@ -63,7 +63,7 @@ class CryptoPathMapper {
 		// TODO overheadhunter: cache ciphertext names
 		String prefix = (fileType == CiphertextFileType.DIRECTORY) ? DIR_PREFIX : "";
 		String ciphertextName = prefix + cryptor.fileNameCryptor().encryptFilename(cleartextName, dirId.getBytes(StandardCharsets.UTF_8));
-		if (ciphertextName.length() >= Constants.NAME_SHORTENING_THRESHOLD) {
+		if (ciphertextName.length() > Constants.SHORT_NAMES_MAX_LENGTH) {
 			return longFileNameProvider.deflate(ciphertextName);
 		} else {
 			return ciphertextName;

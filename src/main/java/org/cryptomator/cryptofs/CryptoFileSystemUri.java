@@ -12,6 +12,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * <p>
@@ -33,14 +35,33 @@ import java.nio.file.Paths;
 public class CryptoFileSystemUri {
 
 	public static final String URI_SCHEME = "cryptomator";
+	private static final Pattern UNC_URI_PATTERN = Pattern.compile("^file://[^@/]+(@SSL)?(@[0-9]+)?.*");
 
 	private final Path pathToVault;
 	private final String pathInsideVault;
 
 	private CryptoFileSystemUri(URI uri) {
 		validate(uri);
-		pathToVault = Paths.get(URI.create(uri.getAuthority()));
+		pathToVault = uncCompatibleUriToPath(URI.create(uri.getAuthority()));
 		pathInsideVault = uri.getPath();
+	}
+
+	/**
+	 * Creates Path from the given URI. On Windows this will recognize UNC paths.
+	 * 
+	 * @param uri <code>file:///file/path</code> or <code>file://server@SSL@123/actual/file/path</code>
+	 * @return <code>/file/path</code> or <code>\\server@SSL@123\actual\file\path</code>
+	 */
+	// visible for testing
+	static Path uncCompatibleUriToPath(URI uri) {
+		String in = uri.toString();
+		Matcher m = UNC_URI_PATTERN.matcher(in);
+		if (m.find() && (m.group(1) != null || m.group(2) != null)) { // this is an UNC path!
+			String out = in.substring("file:".length()).replace('/', '\\');
+			return Paths.get(out);
+		} else {
+			return Paths.get(uri);
+		}
 	}
 
 	/**

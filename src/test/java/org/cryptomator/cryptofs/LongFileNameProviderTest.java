@@ -52,8 +52,9 @@ public class LongFileNameProviderTest {
 
 	@Test
 	public void testIsDeflated() throws IOException {
-		Assert.assertTrue(LongFileNameProvider.isDeflated("foo.lng"));
-		Assert.assertFalse(LongFileNameProvider.isDeflated("foo.txt"));
+		Path aPath = tmpPath.resolve("foo");
+		Assert.assertTrue(new LongFileNameProvider(aPath).isDeflated("foo.lng"));
+		Assert.assertFalse(new LongFileNameProvider(aPath).isDeflated("foo.txt"));
 	}
 
 	@Test

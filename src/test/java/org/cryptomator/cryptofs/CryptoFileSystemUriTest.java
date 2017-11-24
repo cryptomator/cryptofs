@@ -23,6 +23,33 @@ public class CryptoFileSystemUriTest {
 	public ExpectedException thrown = ExpectedException.none();
 
 	@Test
+	public void testUncCompatibleUriToPathWithUncSslUri() throws URISyntaxException {
+		URI uri = URI.create("file://webdavserver.com@SSL/DavWWWRoot/User7ff2b01/asd/");
+
+		Path path = CryptoFileSystemUri.uncCompatibleUriToPath(uri);
+
+		assertThat(path, is(Paths.get("\\\\webdavserver.com@SSL\\DavWWWRoot\\User7ff2b01\\asd\\")));
+	}
+
+	@Test
+	public void testUncCompatibleUriToPathWithUncSslAndPortUri() throws URISyntaxException {
+		URI uri = URI.create("file://webdavserver.com@SSL@123/DavWWWRoot/User7ff2b01/asd/");
+
+		Path path = CryptoFileSystemUri.uncCompatibleUriToPath(uri);
+
+		assertThat(path, is(Paths.get("\\\\webdavserver.com@SSL@123\\DavWWWRoot\\User7ff2b01\\asd\\")));
+	}
+
+	@Test
+	public void testUncCompatibleUriToPathWithNormalUri() throws URISyntaxException {
+		URI uri = URI.create("file:///normal/file/path/");
+
+		Path path = CryptoFileSystemUri.uncCompatibleUriToPath(uri);
+
+		assertThat(path, is(Paths.get("/normal/file/path")));
+	}
+
+	@Test
 	public void testCreateWithoutPathComponents() {
 		Path absolutePathToVault = Paths.get("a").toAbsolutePath();
 

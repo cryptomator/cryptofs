@@ -120,7 +120,6 @@ public class ConflictResolverTest {
 		Mockito.when(filenameCryptor.encryptFilename(Mockito.startsWith("abcdef ("), Mockito.any())).thenReturn(ciphertextName);
 		Mockito.doThrow(new NoSuchFileException(ciphertextName)).when(testFileSystemProvider).checkAccess(Mockito.argThat(hasFileName(ciphertextName)));
 		Path resolved = conflictResolver.resolveConflictsIfNecessary(testFile, dirId);
-		Mockito.verifyNoMoreInteractions(longFileNameProvider);
 		Mockito.verify(testFileSystemProvider).move(Mockito.argThat(hasFileName("ABCDEF== (1)")), Mockito.argThat(hasFileName(ciphertextName)), Mockito.any());
 		Assert.assertEquals(ciphertextName, resolved.getFileName().toString());
 	}
@@ -128,10 +127,11 @@ public class ConflictResolverTest {
 	@Test
 	public void testRenameLongFile() throws IOException {
 		String longCiphertextName = "ABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGH2345====";
-		assert longCiphertextName.length() > Constants.NAME_SHORTENING_THRESHOLD;
+		assert longCiphertextName.length() > Constants.SHORT_NAMES_MAX_LENGTH;
 		Mockito.when(testFileName.toString()).thenReturn("ABCDEF== (1).lng");
 		Mockito.when(longFileNameProvider.inflate("ABCDEF==.lng")).thenReturn("FEDCBA==");
 		Mockito.when(longFileNameProvider.deflate(longCiphertextName)).thenReturn("FEDCBA==.lng");
+		Mockito.when(longFileNameProvider.isDeflated("ABCDEF== (1).lng")).thenReturn(true);
 		Mockito.when(filenameCryptor.decryptFilename(Mockito.eq("FEDCBA=="), Mockito.any())).thenReturn("fedcba");
 		Mockito.when(filenameCryptor.encryptFilename(Mockito.startsWith("fedcba ("), Mockito.any())).thenReturn(longCiphertextName);
 		Mockito.doThrow(new NoSuchFileException("FEDCBA==.lng")).when(testFileSystemProvider).checkAccess(Mockito.argThat(hasFileName("FEDCBA==.lng")));
@@ -187,7 +187,6 @@ public class ConflictResolverTest {
 		Mockito.when(filenameCryptor.encryptFilename(Mockito.startsWith("abcdef ("), Mockito.any())).thenReturn(ciphertext);
 		Mockito.doThrow(new NoSuchFileException(ciphertextName)).when(testFileSystemProvider).checkAccess(Mockito.argThat(hasFileName(ciphertextName)));
 		Path resolved = conflictResolver.resolveConflictsIfNecessary(testFile, dirId);
-		Mockito.verifyNoMoreInteractions(longFileNameProvider);
 		Mockito.verify(testFileSystemProvider).move(Mockito.argThat(hasFileName("0ABCDEF== (1)")), Mockito.argThat(hasFileName(ciphertextName)), Mockito.any());
 		Assert.assertEquals(ciphertextName, resolved.getFileName().toString());
 	}
