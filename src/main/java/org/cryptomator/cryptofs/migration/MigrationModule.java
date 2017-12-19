@@ -5,24 +5,36 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.migration;
 
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
-
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-
-import org.cryptomator.cryptofs.migration.api.Migrator;
-import org.cryptomator.cryptofs.migration.v6.Version6Migrator;
-import org.cryptomator.cryptolib.CryptoLibModule;
 
 import dagger.MapKey;
 import dagger.Module;
 import dagger.Provides;
 import dagger.multibindings.IntoMap;
+import org.cryptomator.cryptofs.migration.api.Migrator;
+import org.cryptomator.cryptofs.migration.v6.Version6Migrator;
+import org.cryptomator.cryptolib.api.CryptoLibVersion;
+import org.cryptomator.cryptolib.api.CryptorProvider;
 
-@Module(includes = {CryptoLibModule.class})
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+@Module
 class MigrationModule {
+
+	private final CryptorProvider version1Cryptor;
+
+	MigrationModule(CryptorProvider version1Cryptor) {
+		this.version1Cryptor = version1Cryptor;
+	}
+
+	@Provides
+	@CryptoLibVersion(CryptoLibVersion.Version.ONE)
+	CryptorProvider provideVersion1CryptorProvider() {
+		return version1Cryptor;
+	}
 
 	@Provides
 	@IntoMap

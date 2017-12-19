@@ -14,9 +14,9 @@
 	</scm>
 
 	<properties>
-		<java.version>1.8</java.version>
+		<java.version>9</java.version>
 		<cryptolib.version>1.1.7</cryptolib.version>
-		<dagger.version>2.13</dagger.version>
+		<dagger.version>2.14</dagger.version>
 		<guava.version>23.5-jre</guava.version>
 		<slf4j.version>1.7.25</slf4j.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -85,6 +85,20 @@
 			<artifactId>dagger</artifactId>
 			<version>${dagger.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>com.google.dagger</groupId>
+			<artifactId>dagger-compiler</artifactId>
+			<version>${dagger.version}</version>
+			<optional>true</optional>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.google.auto</groupId>
+			<artifactId>auto-common</artifactId>
+			<version>0.9</version>
+			<optional>true</optional>
+			<scope>provided</scope>
+		</dependency>
 
 		<!-- Test -->
 		<dependency>
@@ -135,13 +149,6 @@
 					<source>${java.version}</source>
 					<target>${java.version}</target>
 					<showWarnings>true</showWarnings>
-					<annotationProcessorPaths>
-						<path>
-							<groupId>com.google.dagger</groupId>
-							<artifactId>dagger-compiler</artifactId>
-							<version>${dagger.version}</version>
-						</path>
-					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
 		</plugins>
