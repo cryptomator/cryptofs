@@ -9,10 +9,6 @@ env:
   - secure: d3MYv+e4qOkWO2irDru7mfe+o/SMMF4O+6mwj95ZmtuICEXTceOEq/eFhlJbtC2c+JYQwCAssc/VAgMAVu5tDD6CcCnc/mtyQ/lx3I41LA9UzpQHy7X10SVK6s3Me4JUZgcLn8OUP7DCjAp7xKiCM1BvUnRrCAF6TReQL+6iAiJGRMlkQZWx6alV8lDmwqQvQ4M3RImnt6CFX9q1mYbDXnwCiD0LaRHU1cTSlQmbYTKzaXlsjsYiwyphp2DdlQsm3WxB3U578yQMkEUOSeOqknRLIgnblbCTUK5NP4/zDldDKU/0yQgcMpUX002epCaKe29YL/VFQ8atEU9KrY9MHFZAZzCPh01k/51OpdOaAGLHH7UdbrMCNH7GFBv807VSNmvoiU4bn/tXkMjOyO9Fd0mVv0T77k07eXXLZBm1bv+Ddr9kCGsJdw2xblLenqj19ik9uYftioR2Masa1qRueqZP1cigYN1GYH7td+RX9pR4/wSw7VZehr0rYRuq/34hhHos0W5mp05PWhxuAnxo1sPOrAPwIE9/e6OvfMTxcwVYZkeLld6ribJzS+z+6tfjTVwYtUrHeNM3hlJ91D8WLMqvkLSvDetTq6HU+rJCsmLyyT3tGHChqi2li/ZbORUpua7WmN6agn/2PHQvFTcAt8nj2nVMUxSUsOgMBJOctfg= # MAVEN_OSSRH_USERNAME
   - secure: aLCaSgLfFniEPpiEdvEyFLlak4cTspVE3uqeGFCncPFUyyxPZ0JW+DdyFpvO5DXBa3hr9oS240H6f1T6Eo/J4K5SaKq3gS3yIzbvs2BS5yoCE4hGIZ6yS/70sIhlxvFvujJDT9KPYo8J6KE0w5vqy8BHEMZYBMEDWWvswwrvlqdaoZqe6vaoV1TsOeWeW+2qFdYu5j1KVQgSwOgzMdQuqQVSsrdA1FH+AzmMMbk3QgdGGd1U4MnFStIeG5/YfqVHkUVpZayhYB9yFzUCObT9R5zZ1OtghdOrkX1FRTKbFPAmJouToeFrIqrZEMbaE9PWaajuUZeqL2hQD1s0A+wj65cXjgbQhz4v7Gr0J/+2AU+9N+IRAIguiq6rXtt1HeR3YbBwlxFdwmEgYJjqO7+XFZFNYbr3YPgqbqJbgXpoxeUTdPNdNwckBUEQTTN6fs89Og6wHLDgoZb5niypSKWd/SFCU81FAGQ0mxy41jJOdltxVtG1+UOfb/41PRAzS6br7CpNnaq379kKlMiyOXY4UCWuFgwW4KhlUx0dgidqi2etcYrDZhZbguHmfLRfumEQ8nCp8LJ5FwJWlkmJhE8hFTu3sGmVUl06Ly1gybMPazev8hYjyr3vaexmek7qeqDtNT6n8L96qZkResjFI2pJmzZaNIg2yK92ZS/5v073OgM= # MAVEN_OSSRH_PASSWORD
   - secure: JUBj12rP7sEsNp8R3o9Mjwl7HCYKQan58CZ1WDm7L2MteFRDBJr625P4fk4cQOTjR6fb3jiogCD7dqkHoGJQlvi2ReQJLXKBhy3Bqtnzksf4c1By9bLB5NYH6MQV1FFazzAjjPjGlQYJB+kUx+pQ8vxMJC5yzp6vpKWu3vTobEFNtuFAWZq7qM91VJBUc8z+k1awas9vqgDlqWxH+K05L2c+tpnnmqXk9/HN9Z4akkKB++oACenE+w+D9Snyiif9WyhVR3+ZcMtL44YAQDabl6LlrTdM4afNaPcwgOdFuxL7GCZyIMgMP26O8JquK4ZtE2b/ZMz5h0jtE+r6M0E+yVAN+kG7UviNd9kKItiRiokDsaYeNCWVPHndGBtw6GU5GFNJTDhEb/oeqzclI/PaFHXA4O/o4A9N+nrzb28xWaihAM/NymVOE1iNNQfyNqPb9fjsMntNOTDT/sLH3tTJ62nvVPpurUXVV0+jbSrE20xclOZ1xBbMztQwya4EB/0fS+raCiR5spXHTNHpmSp2ubKAuo6V4AUXQXk6LHxiiIvcYSRYVgnBeOcreuDYv7+09xeIejxVcSzh7Nz7aK/0Fkq42ALYs/cDOq0mJGwoJ4yC7vlMj6GQNwZtCP+bzdGM3+cjTcD2F997Hf75lEVeYXK2oNE3/ycSQjdYlc3wTl0= #COVERITY_SCAN_TOKEN
-addons:
-  apt:
-    packages:
-    - haveged
 install:
 - mvn dependency:go-offline -Pdependency-check
 - mvn dependency:go-offline -Pcoverage
@@ -22,11 +18,16 @@ before_script:
 script:
 - "mvn clean test jacoco:report verify -Pcoverage"
 after_success:
-- "bash <(curl -s https://codecov.io/bash)"
+- jdk_switcher use oraclejdk8
+- curl -O codacy-coverage-reporter-assembly-latest.jar https://github.com/codacy/codacy-coverage-reporter/releases/download/2.0.1/codacy-coverage-reporter-2.0.1-assembly.jar
+- java -cp ~/codacy-coverage-reporter-assembly-latest.jar com.codacy.CodacyCoverageReporter -l Java -r target/site/jacoco/jacoco.xml
 cache:
   directories:
   - $HOME/.m2
 addons:
+  apt:
+    packages:
+    - haveged
   coverity_scan:
     project:
       name: "cryptomator/cryptofs"

@@ -181,20 +181,6 @@
 
 		<profile>
 			<id>coverage</id>
-			<dependencies>
-				<dependency>
-					<groupId>com.codacy</groupId>
-					<artifactId>codacy-coverage-reporter</artifactId>
-					<version>2.0.1</version>
-					<classifier>assembly</classifier>
-					<exclusions>
-						<exclusion>
-							<groupId>*</groupId>
-							<artifactId>*</artifactId>
-						</exclusion>
-					</exclusions>
-				</dependency>
-			</dependencies>
 			<build>
 				<plugins>
 					<plugin>
@@ -207,28 +193,6 @@
 								<goals>
 									<goal>prepare-agent</goal>
 								</goals>
-							</execution>
-						</executions>
-					</plugin>
-					<plugin>
-						<groupId>org.codehaus.mojo</groupId>
-						<artifactId>exec-maven-plugin</artifactId>
-						<version>1.6.0</version>
-						<executions>
-							<execution>
-								<phase>verify</phase>
-								<goals>
-									<goal>java</goal>
-								</goals>
-								<configuration>
-									<mainClass>com.codacy.CodacyCoverageReporter</mainClass>
-									<arguments>
-										<argument>-l</argument>
-										<argument>Java</argument>
-										<argument>-r</argument>
-										<argument>${project.build.directory}/site/jacoco/jacoco.xml</argument>
-									</arguments>
-								</configuration>
 							</execution>
 						</executions>
 					</plugin>
