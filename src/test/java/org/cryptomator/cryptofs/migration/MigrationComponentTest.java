@@ -11,7 +11,7 @@ public class MigrationComponentTest {
 
 	@Test
 	public void testAvailableMigrators() throws NoSuchAlgorithmException {
-		MigrationModule migrationModule = new MigrationModule(Cryptors.version1(new NullSecureRandom()));
+		MigrationModule migrationModule = new MigrationModule(Cryptors.version1(NullSecureRandom.INSTANCE));
 		TestMigrationComponent comp = DaggerTestMigrationComponent.builder().migrationModule(migrationModule).build();
 		Assert.assertFalse(comp.availableMigrators().isEmpty());
 	}

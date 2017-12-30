@@ -15,9 +15,9 @@
 
 	<properties>
 		<java.version>9</java.version>
-		<cryptolib.version>1.1.7</cryptolib.version>
-		<dagger.version>2.14</dagger.version>
-		<guava.version>23.5-jre</guava.version>
+		<cryptolib.version>1.2.0-SNAPSHOT</cryptolib.version>
+		<dagger.version>2.14.1</dagger.version>
+		<guava.version>23.6-jre</guava.version>
 		<slf4j.version>1.7.25</slf4j.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
@@ -90,14 +90,6 @@
 			<artifactId>dagger-compiler</artifactId>
 			<version>${dagger.version}</version>
 			<optional>true</optional>
-			<scope>provided</scope>
-		</dependency>
-		<dependency>
-			<groupId>com.google.auto</groupId>
-			<artifactId>auto-common</artifactId>
-			<version>0.9</version>
-			<optional>true</optional>
-			<scope>provided</scope>
 		</dependency>
 
 		<!-- Test -->
@@ -148,6 +140,7 @@
 				<configuration>
 					<source>${java.version}</source>
 					<target>${java.version}</target>
+					<release>${java.version}</release>
 					<showWarnings>true</showWarnings>
 				</configuration>
 			</plugin>
@@ -228,7 +221,7 @@
 					</plugin>
 					<plugin>
 						<artifactId>maven-javadoc-plugin</artifactId>
-						<version>2.10.4</version>
+						<version>3.0.0</version>
 						<executions>
 							<execution>
 								<id>attach-javadocs</id>
