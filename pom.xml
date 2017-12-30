@@ -14,10 +14,10 @@
 	</scm>
 
 	<properties>
-		<java.version>1.8</java.version>
-		<cryptolib.version>1.1.7</cryptolib.version>
-		<dagger.version>2.13</dagger.version>
-		<guava.version>23.5-jre</guava.version>
+		<java.version>9</java.version>
+		<cryptolib.version>1.2.0-SNAPSHOT</cryptolib.version>
+		<dagger.version>2.14.1</dagger.version>
+		<guava.version>23.6-jre</guava.version>
 		<slf4j.version>1.7.25</slf4j.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
@@ -85,6 +85,12 @@
 			<artifactId>dagger</artifactId>
 			<version>${dagger.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>com.google.dagger</groupId>
+			<artifactId>dagger-compiler</artifactId>
+			<version>${dagger.version}</version>
+			<optional>true</optional>
+		</dependency>
 
 		<!-- Test -->
 		<dependency>
@@ -134,14 +140,8 @@
 				<configuration>
 					<source>${java.version}</source>
 					<target>${java.version}</target>
+					<release>${java.version}</release>
 					<showWarnings>true</showWarnings>
-					<annotationProcessorPaths>
-						<path>
-							<groupId>com.google.dagger</groupId>
-							<artifactId>dagger-compiler</artifactId>
-							<version>${dagger.version}</version>
-						</path>
-					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
 		</plugins>
@@ -174,20 +174,6 @@
 
 		<profile>
 			<id>coverage</id>
-			<dependencies>
-				<dependency>
-					<groupId>com.codacy</groupId>
-					<artifactId>codacy-coverage-reporter</artifactId>
-					<version>2.0.1</version>
-					<classifier>assembly</classifier>
-					<exclusions>
-						<exclusion>
-							<groupId>*</groupId>
-							<artifactId>*</artifactId>
-						</exclusion>
-					</exclusions>
-				</dependency>
-			</dependencies>
 			<build>
 				<plugins>
 					<plugin>
@@ -200,28 +186,6 @@
 								<goals>
 									<goal>prepare-agent</goal>
 								</goals>
-							</execution>
-						</executions>
-					</plugin>
-					<plugin>
-						<groupId>org.codehaus.mojo</groupId>
-						<artifactId>exec-maven-plugin</artifactId>
-						<version>1.6.0</version>
-						<executions>
-							<execution>
-								<phase>verify</phase>
-								<goals>
-									<goal>java</goal>
-								</goals>
-								<configuration>
-									<mainClass>com.codacy.CodacyCoverageReporter</mainClass>
-									<arguments>
-										<argument>-l</argument>
-										<argument>Java</argument>
-										<argument>-r</argument>
-										<argument>${project.build.directory}/site/jacoco/jacoco.xml</argument>
-									</arguments>
-								</configuration>
 							</execution>
 						</executions>
 					</plugin>
@@ -257,7 +221,7 @@
 					</plugin>
 					<plugin>
 						<artifactId>maven-javadoc-plugin</artifactId>
-						<version>2.10.4</version>
+						<version>3.0.0</version>
 						<executions>
 							<execution>
 								<id>attach-javadocs</id>

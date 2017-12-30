@@ -16,16 +16,16 @@ class FinallyUtil {
 
 	@SuppressWarnings({"unchecked"})
 	public <E extends Exception> void guaranteeInvocationOf(RunnableThrowingException<? extends E>... tasks) throws E {
-		guaranteeInvocationOf(Arrays.stream(tasks));
+		this.<E>guaranteeInvocationOf(Arrays.stream(tasks));
 	}
 
 	public <E extends Exception> void guaranteeInvocationOf(Iterable<RunnableThrowingException<? extends E>> tasks) throws E {
-		guaranteeInvocationOf(StreamSupport.stream(tasks.spliterator(), false));
+		this.<E>guaranteeInvocationOf(StreamSupport.stream(tasks.spliterator(), false));
 	}
 
 	@SuppressWarnings({"unchecked"})
 	public <E extends Exception> void guaranteeInvocationOf(Stream<RunnableThrowingException<? extends E>> tasks) throws E {
-		guaranteeInvocationOf(tasks.map(t -> (RunnableThrowingException<E>) t).iterator());
+		this.<E>guaranteeInvocationOf(tasks.map(t -> (RunnableThrowingException<E>) t).iterator());
 	}
 
 	@SuppressWarnings("unchecked")
