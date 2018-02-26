@@ -134,7 +134,7 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 	/**
 	 * Checks if a given file belongs into this ciphertext dir.
 	 * 
-	 * @param ciphertextPath The path to check.
+	 * @param paths The path to check.
 	 * @return <code>true</code> if the file is an existing ciphertext or directory file.
 	 */
 	private boolean passesPlausibilityChecks(ProcessedPaths paths) {
