@@ -16,7 +16,7 @@
 	<properties>
 		<java.version>9</java.version>
 		<cryptolib.version>1.2.0-SNAPSHOT</cryptolib.version>
-		<dagger.version>2.14.1</dagger.version>
+		<dagger.version>2.15</dagger.version>
 		<guava.version>23.6-jre</guava.version>
 		<slf4j.version>1.7.25</slf4j.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
