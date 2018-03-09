@@ -8,8 +8,6 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static org.cryptomator.cryptofs.Constants.SEPARATOR;
-
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -24,6 +22,8 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+
+import static org.cryptomator.cryptofs.Constants.SEPARATOR;
 
 class CryptoPath implements Path {
 
@@ -62,6 +62,11 @@ class CryptoPath implements Path {
 	@Override
 	public CryptoFileSystemImpl getFileSystem() {
 		return fileSystem;
+	}
+
+	// visible for testing
+	List<String> getElements() {
+		return elements;
 	}
 
 	@Override
