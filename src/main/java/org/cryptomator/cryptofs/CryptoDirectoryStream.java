@@ -8,11 +8,9 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static org.cryptomator.cryptofs.Constants.SHORT_NAMES_MAX_LENGTH;
-
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryIteratorException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,6 +26,8 @@ import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.cryptomator.cryptofs.Constants.SHORT_NAMES_MAX_LENGTH;
 
 class CryptoDirectoryStream implements DirectoryStream<Path> {
 
@@ -52,7 +52,7 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 		this.finallyUtil = finallyUtil;
 		this.encryptedNamePattern = encryptedNamePattern;
 		this.directoryId = ciphertextDir.dirId;
-		this.ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path, p -> true);
+		this.ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path);
 		LOG.trace("OPEN {}", directoryId);
 		this.cleartextDir = cleartextDir;
 		this.filenameCryptor = filenameCryptor;
@@ -169,7 +169,12 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 		try {
 			return filter.accept(path);
 		} catch (IOException e) {
-			throw new UncheckedIOException(e);
+			// as defined by DirectoryStream's contract:
+			// > If an I/O error is encountered when accessing the directory then it
+			// > causes the {@code Iterator}'s {@code hasNext} or {@code next} methods to
+			// > throw {@link DirectoryIteratorException} with the {@link IOException} as the
+			// > cause.
+			throw new DirectoryIteratorException(e);
 		}
 	}
 
