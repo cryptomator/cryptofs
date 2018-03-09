@@ -17,7 +17,6 @@ import javax.inject.Inject;
 
 import org.cryptomator.cryptofs.Constants;
 import org.cryptomator.cryptofs.migration.api.Migrator;
-import org.cryptomator.cryptolib.api.CryptoLibVersion;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.InvalidPassphraseException;
@@ -33,7 +32,7 @@ public class Version6Migrator implements Migrator {
 	private final CryptorProvider cryptorProvider;
 
 	@Inject
-	public Version6Migrator(@CryptoLibVersion(CryptoLibVersion.Version.ONE) CryptorProvider cryptorProvider) {
+	public Version6Migrator(CryptorProvider cryptorProvider) {
 		this.cryptorProvider = cryptorProvider;
 	}
 
