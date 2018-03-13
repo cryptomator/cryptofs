@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/cryptomator/cryptofs.svg?branch=develop)](https://travis-ci.org/cryptomator/cryptofs)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/7248ca7d466843f785f79f33374302c2)](https://www.codacy.com/app/cryptomator/cryptofs)
 [![Codacy Badge](https://api.codacy.com/project/badge/Coverage/7248ca7d466843f785f79f33374302c2)](https://www.codacy.com/app/cryptomator/cryptofs?utm_source=github.com&utm_medium=referral&utm_content=cryptomator/cryptofs&utm_campaign=Badge_Coverage)
-[![Coverity Scan Build Status](https://scan.coverity.com/projects/10006/badge.svg)](https://scan.coverity.com/projects/cryptomator-cryptofs)
+[![Known Vulnerabilities](https://snyk.io/test/github/cryptomator/cryptofs/badge.svg)](https://snyk.io/test/github/cryptomator/cryptofs)
 
 **CryptoFS:** Implementation of the [Cryptomator](https://github.com/cryptomator/cryptomator) encryption scheme.
 
