@@ -41,10 +41,14 @@ class OpenCryptoFileFactoryModule {
 
 	@Provides
 	@PerOpenFile
-	public FileHeader provideFileHader(FileChannel channel, Cryptor cryptor, EffectiveOpenOptions options) {
+	public FileHeader provideFileHeader(FileChannel channel, Cryptor cryptor, EffectiveOpenOptions options) {
 		return rethrowUnchecked(IOException.class).from(() -> {
 			if (options.truncateExisting() || isNewFile(channel, options)) {
-				return cryptor.fileHeaderCryptor().create();
+				FileHeader newHeader = cryptor.fileHeaderCryptor().create();
+				channel.position(0);
+				channel.write(cryptor.fileHeaderCryptor().encryptHeader(newHeader));
+				channel.force(false);
+				return newHeader;
 			} else {
 				ByteBuffer existingHeaderBuf = ByteBuffer.allocate(cryptor.fileHeaderCryptor().headerSize());
 				channel.position(0);

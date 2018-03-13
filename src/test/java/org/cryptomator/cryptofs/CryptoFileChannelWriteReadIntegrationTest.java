@@ -78,6 +78,17 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		inMemoryFs.close();
 	}
 
+	// tests https://github.com/cryptomator/cryptofs/issues/22
+	@Test
+	public void testFileSizeIsZeroAfterCreatingFileChannel() throws IOException {
+		long fileId = nextFileId();
+
+		try (FileChannel channel = writableChannel(fileId)) {
+			assertEquals(0, channel.size());
+			assertEquals(0, Files.size(filePath(fileId)));
+		}
+	}
+
 	@Test
 	public void testWriteAndReadNothing() throws IOException {
 		long fileId = nextFileId();
@@ -254,16 +265,20 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		return nextFileId++;
 	}
 
+	private Path filePath(long fileId) {
+		return fileSystem.getPath("/test" + fileId + ".file");
+	}
+
 	private FileChannel readableChannel(long fileId) throws IOException {
-		return FileChannel.open(fileSystem.getPath("/test" + fileId + ".file"), READ);
+		return FileChannel.open(filePath(fileId), READ);
 	}
 
 	private FileChannel writableChannel(long fileId) throws IOException {
-		return FileChannel.open(fileSystem.getPath("/test" + fileId + ".file"), CREATE, WRITE);
+		return FileChannel.open(filePath(fileId), CREATE, WRITE);
 	}
 
 	private FileChannel writableChannelInAppendMode(long fileId) throws IOException {
-		return FileChannel.open(fileSystem.getPath("/test" + fileId + ".file"), CREATE, WRITE, APPEND);
+		return FileChannel.open(filePath(fileId), CREATE, WRITE, APPEND);
 	}
 
 }
