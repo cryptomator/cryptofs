@@ -15,8 +15,16 @@ class ExceptionsDuringWrite {
 	public ExceptionsDuringWrite() {
 	}
 
-	public void add(IOException e) {
+	public synchronized void add(IOException e) {
 		exceptions.add(e);
+	}
+
+	public synchronized void throwIfPresent() throws IOException {
+		if (!exceptions.isEmpty()) {
+			IOException e = new IOException("Exceptions occured while writing");
+			exceptions.forEach(e::addSuppressed);
+			throw e;
+		}
 	}
 
 }
