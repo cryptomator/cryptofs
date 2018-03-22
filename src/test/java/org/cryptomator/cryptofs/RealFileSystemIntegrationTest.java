@@ -46,7 +46,7 @@ public class RealFileSystemIntegrationTest {
 
 	@AfterClass
 	public static void teardownClass() throws IOException {
-		walkFileTree(tempDir, new DeletingFileVisitor());
+		walkFileTree(tempDir, DeletingFileVisitor.INSTANCE);
 	}
 
 	@Test

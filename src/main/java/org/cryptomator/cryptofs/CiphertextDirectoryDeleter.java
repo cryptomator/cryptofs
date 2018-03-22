@@ -11,6 +11,7 @@ import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.DosFileAttributeView;
 import java.util.Set;
 
 import javax.inject.Inject;
@@ -27,12 +28,22 @@ class CiphertextDirectoryDeleter {
 
 	public void deleteCiphertextDirIncludingNonCiphertextFiles(Path ciphertextDir, CryptoPath cleartextDir) throws IOException {
 		try {
+			Files.getFileAttributeView(ciphertextDir, DosFileAttributeView.class).setReadOnly(false);
 			Files.deleteIfExists(ciphertextDir);
 		} catch (DirectoryNotEmptyException e) {
 			/*
 			 * The directory may not be empty due to two reasons:
-			 * 1.
-			 * 2.
+			 * 1. The directory really contains some valid ciphertext files
+			 * 2. The directory does only contain files which are no cyphertext files
+			 *
+			 * In the first case the exception must be rethrown. In the second case the non cyphertext files and the
+			 * directory must be deleted.
+			 *
+			 * Because we do not know at this point what is true we try to delete all non ciphertext files. If no non
+			 * ciphertext files were deleted, we know that case 1 is true. If we deleted non ciphertext files both,
+			 * case 1 or 2 could be true, thus we then reattempt the delete of the directory. If delete fails now, we
+			 * can be sure that case 1 was true. Otherwise the exception is directly thrown because we are sure that
+			 * case 2 is true.
 			 */
 			switch (deleteNonCiphertextFiles(ciphertextDir, cleartextDir)) {
 			case NO_FILES_DELETED:
@@ -52,7 +63,7 @@ class CiphertextDirectoryDeleter {
 		try (DirectoryStream<Path> stream = Files.newDirectoryStream(ciphertextDir, p -> !ciphertextFiles.contains(p))) {
 			for (Path path : stream) {
 				result = SOME_FILES_DELETED;
-				deleteRecursively(path, ALLOW_INSECURE);
+				Files.walkFileTree(path, DeletingFileVisitor.INSTANCE);
 			}
 		}
 		return result;
