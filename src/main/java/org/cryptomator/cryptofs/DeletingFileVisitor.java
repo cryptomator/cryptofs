@@ -8,14 +8,6 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static java.nio.file.attribute.PosixFilePermission.GROUP_READ;
-import static java.nio.file.attribute.PosixFilePermission.GROUP_WRITE;
-import static java.nio.file.attribute.PosixFilePermission.OTHERS_READ;
-import static java.nio.file.attribute.PosixFilePermission.OTHERS_WRITE;
-import static java.nio.file.attribute.PosixFilePermission.OWNER_READ;
-import static java.nio.file.attribute.PosixFilePermission.OWNER_WRITE;
-import static java.util.Arrays.asList;
-
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -26,8 +18,8 @@ import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.Set;
+
+import static java.nio.file.attribute.PosixFilePermission.*;
 
 class DeletingFileVisitor extends SimpleFileVisitor<Path> {
 
@@ -35,7 +27,8 @@ class DeletingFileVisitor extends SimpleFileVisitor<Path> {
 
 	private static final EnumSet<PosixFilePermission> POSIX_PERMISSIONS_660 = EnumSet.of(OWNER_WRITE, OWNER_READ, GROUP_WRITE, GROUP_READ);
 
-	private DeletingFileVisitor() {}
+	private DeletingFileVisitor() {
+	}
 
 	@Override
 	public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
