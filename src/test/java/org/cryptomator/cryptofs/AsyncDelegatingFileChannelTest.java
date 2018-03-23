@@ -45,9 +45,20 @@ public class AsyncDelegatingFileChannelTest {
 	@Before
 	public void setup() throws ReflectiveOperationException {
 		channel = Mockito.mock(FileChannel.class);
-		Field channelClosedField = AbstractInterruptibleChannel.class.getDeclaredField("closed");
-		channelClosedField.setAccessible(true);
-		channelClosedField.set(channel, false);
+		try {
+			Field channelOpenField = AbstractInterruptibleChannel.class.getDeclaredField("open");
+			channelOpenField.setAccessible(true);
+			channelOpenField.set(channel, true);
+		} catch (NoSuchFieldException e) {
+			// field only declared in jdk8
+		}
+		try {
+			Field channelClosedField = AbstractInterruptibleChannel.class.getDeclaredField("closed");
+			channelClosedField.setAccessible(true);
+			channelClosedField.set(channel, false);
+		} catch (NoSuchFieldException e) {
+			// field only declared in jdk 9
+		}
 		Field channelCloseLockField = AbstractInterruptibleChannel.class.getDeclaredField("closeLock");
 		channelCloseLockField.setAccessible(true);
 		channelCloseLockField.set(channel, new Object());

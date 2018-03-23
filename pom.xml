@@ -14,7 +14,7 @@
 	</scm>
 
 	<properties>
-		<java.version>9</java.version>
+		<java.version>8</java.version>
 		<cryptolib.version>1.2.0</cryptolib.version>
 		<dagger.version>2.15</dagger.version>
 		<guava.version>23.6-jre</guava.version>
@@ -140,7 +140,6 @@
 				<configuration>
 					<source>${java.version}</source>
 					<target>${java.version}</target>
-					<release>${java.version}</release>
 					<showWarnings>true</showWarnings>
 				</configuration>
 			</plugin>
