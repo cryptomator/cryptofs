@@ -1,11 +1,5 @@
 package org.cryptomator.cryptofs;
 
-import static com.google.common.io.MoreFiles.deleteRecursively;
-import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
-import static java.util.stream.Collectors.toSet;
-import static org.cryptomator.cryptofs.CiphertextDirectoryDeleter.DeleteResult.NO_FILES_DELETED;
-import static org.cryptomator.cryptofs.CiphertextDirectoryDeleter.DeleteResult.SOME_FILES_DELETED;
-
 import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.DirectoryStream;
@@ -15,6 +9,10 @@ import java.nio.file.attribute.DosFileAttributeView;
 import java.util.Set;
 
 import javax.inject.Inject;
+
+import static java.util.stream.Collectors.toSet;
+import static org.cryptomator.cryptofs.CiphertextDirectoryDeleter.DeleteResult.NO_FILES_DELETED;
+import static org.cryptomator.cryptofs.CiphertextDirectoryDeleter.DeleteResult.SOME_FILES_DELETED;
 
 @PerFileSystem
 class CiphertextDirectoryDeleter {
@@ -28,8 +26,7 @@ class CiphertextDirectoryDeleter {
 
 	public void deleteCiphertextDirIncludingNonCiphertextFiles(Path ciphertextDir, CryptoPath cleartextDir) throws IOException {
 		try {
-			Files.getFileAttributeView(ciphertextDir, DosFileAttributeView.class).setReadOnly(false);
-			Files.deleteIfExists(ciphertextDir);
+			DeletingFileVisitor.forceDeleteIfExists(ciphertextDir);
 		} catch (DirectoryNotEmptyException e) {
 			/*
 			 * The directory may not be empty due to two reasons:
@@ -75,7 +72,7 @@ class CiphertextDirectoryDeleter {
 		}
 	}
 
-	static enum DeleteResult {
+	enum DeleteResult {
 		NO_FILES_DELETED, SOME_FILES_DELETED
 	}
 
