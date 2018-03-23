@@ -18,6 +18,7 @@ import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.EnumSet;
+import java.util.Set;
 
 import static java.nio.file.attribute.PosixFilePermission.*;
 
@@ -25,29 +26,34 @@ class DeletingFileVisitor extends SimpleFileVisitor<Path> {
 
 	public static final DeletingFileVisitor INSTANCE = new DeletingFileVisitor();
 
-	private static final EnumSet<PosixFilePermission> POSIX_PERMISSIONS_660 = EnumSet.of(OWNER_WRITE, OWNER_READ, GROUP_WRITE, GROUP_READ);
+	private static final Set<PosixFilePermission> POSIX_PERMISSIONS_770 = EnumSet.of(OWNER_WRITE, OWNER_READ, OWNER_EXECUTE, GROUP_WRITE, GROUP_READ, GROUP_EXECUTE);
 
 	private DeletingFileVisitor() {
 	}
 
 	@Override
 	public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-		forceDelete(file);
+		forceDeleteIfExists(file);
 		return FileVisitResult.CONTINUE;
 	}
 
 	@Override
 	public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-		forceDelete(dir);
+		forceDeleteIfExists(dir);
 		return FileVisitResult.CONTINUE;
 	}
 
-	private void forceDelete(Path path) throws IOException {
+	/**
+	 * Tries to remove any write protection of the given file and tries to delete it afterwards.
+	 * @param path Path ot a single file or directory. Will not be deleted recursively.
+	 * @throws IOException exception thrown by delete. Any exceptions during removal of write protection will be ignored.
+	 */
+	static void forceDeleteIfExists(Path path) throws IOException {
 		setWritableSilently(path);
 		Files.deleteIfExists(path);
 	}
 
-	private void setWritableSilently(Path path) {
+	private static void setWritableSilently(Path path) {
 		try {
 			setWritable(path);
 		} catch (IOException e) {
@@ -55,7 +61,7 @@ class DeletingFileVisitor extends SimpleFileVisitor<Path> {
 		}
 	}
 
-	private void setWritable(Path path) throws IOException {
+	private static void setWritable(Path path) throws IOException {
 		DosFileAttributeView dosAttributes = Files.getFileAttributeView(path, DosFileAttributeView.class);
 		PosixFileAttributeView posixAttributes = Files.getFileAttributeView(path, PosixFileAttributeView.class);
 		if (dosAttributes != null) {
@@ -63,7 +69,7 @@ class DeletingFileVisitor extends SimpleFileVisitor<Path> {
 			dosAttributes.setSystem(false);
 		}
 		if (posixAttributes != null) {
-			posixAttributes.setPermissions(POSIX_PERMISSIONS_660);
+			posixAttributes.setPermissions(POSIX_PERMISSIONS_770);
 		}
 	}
 
