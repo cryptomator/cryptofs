@@ -39,10 +39,12 @@ class OpenCryptoFile {
 	private final OpenCounter openCounter;
 	private final CryptoFileChannelFactory cryptoFileChannelFactory;
 	private final CryptoFileSystemStats stats;
+	private final ExceptionsDuringWrite exceptionsDuringWrite;
+	private final FinallyUtil finallyUtil;
 
 	@Inject
 	public OpenCryptoFile(EffectiveOpenOptions options, Cryptor cryptor, FileChannel channel, FileHeader header, @OpenFileSize AtomicLong size, OpenCounter openCounter, CryptoFileChannelFactory cryptoFileChannelFactory,
-			ChunkCache chunkCache, @OpenFileOnCloseHandler Runnable onClose, CryptoFileSystemStats stats) {
+			ChunkCache chunkCache, @OpenFileOnCloseHandler Runnable onClose, CryptoFileSystemStats stats, ExceptionsDuringWrite exceptionsDuringWrite, FinallyUtil finallyUtil) {
 		this.cryptor = cryptor;
 		this.chunkCache = chunkCache;
 		this.openCounter = openCounter;
@@ -52,6 +54,8 @@ class OpenCryptoFile {
 		this.header = header;
 		this.size = size;
 		this.stats = stats;
+		this.exceptionsDuringWrite = exceptionsDuringWrite;
+		this.finallyUtil = finallyUtil;
 	}
 
 	public FileChannel newFileChannel(EffectiveOpenOptions options) throws IOException {
@@ -121,6 +125,11 @@ class OpenCryptoFile {
 				chunkData.copyDataStartingAt(offsetInChunk).from(source);
 				chunkCache.set(chunkIndex, chunkData);
 			} else {
+				/*
+				 * TODO performance:
+				 * We don't actually need to read the current data into the cache.
+				 * It would suffice if store the written data and do reading when storing the chunk.
+				 */
 				ChunkData chunkData = chunkCache.get(chunkIndex);
 				chunkData.copyDataStartingAt(offsetInChunk).from(source);
 			}
@@ -148,9 +157,10 @@ class OpenCryptoFile {
 	}
 
 	public synchronized void force(boolean metaData, EffectiveOpenOptions options) throws IOException {
-		chunkCache.invalidateAll(); // TODO increase performance by writing chunks but keeping them cached
+		chunkCache.invalidateAll(); // TODO performance: write chunks but keep them cached
 		if (options.writable()) {
 			channel.write(cryptor.fileHeaderCryptor().encryptHeader(header), 0);
+			exceptionsDuringWrite.throwIfPresent();
 		}
 		channel.force(metaData);
 	}
@@ -177,16 +187,15 @@ class OpenCryptoFile {
 	}
 
 	public void close(EffectiveOpenOptions options) throws IOException {
-		force(true, options);
-		if (openCounter.countClose()) {
-			try {
-				onClose.run();
-			} finally {
-				try {
-					channel.close();
-				} finally {
-					cryptor.destroy();
-				}
+		try {
+			force(true, options);
+		} finally {
+			if (openCounter.countClose()) {
+				finallyUtil.guaranteeInvocationOf(
+						() -> onClose.run(),
+						() -> channel.close(),
+						() -> cryptor.destroy()
+				);
 			}
 		}
 	}

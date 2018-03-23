@@ -35,7 +35,7 @@ public class ReadmeCodeSamplesTest {
 
 	@After
 	public void teardown() throws IOException {
-		Files.walkFileTree(storageLocation, new DeletingFileVisitor());
+		Files.walkFileTree(storageLocation, DeletingFileVisitor.INSTANCE);
 	}
 
 	@Test

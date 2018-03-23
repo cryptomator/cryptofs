@@ -85,7 +85,7 @@ public class CryptoFileSystemUriTest {
 			assertThat(parsed.pathToVault(), is(absolutePathToVault));
 			assertThat(parsed.pathInsideVault(), is("/a/b"));
 		} finally {
-			Files.walkFileTree(tempDir, new DeletingFileVisitor());
+			Files.walkFileTree(tempDir, DeletingFileVisitor.INSTANCE);
 		}
 	}
 

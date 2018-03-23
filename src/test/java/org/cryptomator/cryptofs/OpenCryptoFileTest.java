@@ -2,9 +2,7 @@ package org.cryptomator.cryptofs;
 
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -19,6 +17,7 @@ import org.cryptomator.cryptofs.OpenCounter.OpenState;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
+import org.cryptomator.cryptolib.api.FileHeaderCryptor;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.theories.Theories;
@@ -49,8 +48,10 @@ public class OpenCryptoFileTest {
 	private OpenCounter openCounter = mock(OpenCounter.class);
 	private CryptoFileChannelFactory cryptoFileChannelFactory = mock(CryptoFileChannelFactory.class);
 	private CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
+	private ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
+	private FinallyUtil finallyUtil = new FinallyUtil();
 
-	private OpenCryptoFile inTest = new OpenCryptoFile(options, cryptor, channel, header, size, openCounter, cryptoFileChannelFactory, chunkCache, onClose, stats);
+	private OpenCryptoFile inTest = new OpenCryptoFile(options, cryptor, channel, header, size, openCounter, cryptoFileChannelFactory, chunkCache, onClose, stats, exceptionsDuringWrite, finallyUtil);
 
 	@Theory
 	public void testLockDelegatesToChannel(boolean shared) throws IOException {
@@ -112,6 +113,50 @@ public class OpenCryptoFileTest {
 		inTest.close();
 
 		verify(cryptoFileChannelFactory).close();
+	}
+
+	@Test
+	public void testForceThrowsExceptionDuringWriteIfWritable() throws IOException {
+		when(options.writable()).thenReturn(true);
+		IOException expected = new IOException();
+		doThrow(expected).when(exceptionsDuringWrite).throwIfPresent();
+		FileHeaderCryptor fileHeaderCryptor = Mockito.mock(FileHeaderCryptor.class);
+		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
+
+		thrown.expect(is(expected));
+
+		inTest.force(false, options);
+	}
+
+	@Test
+	public void testForceDoesNotThrowExceptionDuringWriteIfNotWritable() throws IOException {
+		when(options.writable()).thenReturn(false);
+		IOException expected = new IOException();
+		doThrow(expected).when(exceptionsDuringWrite).throwIfPresent();
+
+		inTest.force(false, options);
+	}
+
+	@Test
+	public void testCloseThrowsExceptionDuringWriteIfWritable() throws IOException {
+		when(options.writable()).thenReturn(true);
+		IOException expected = new IOException();
+		doThrow(expected).when(exceptionsDuringWrite).throwIfPresent();
+		FileHeaderCryptor fileHeaderCryptor = Mockito.mock(FileHeaderCryptor.class);
+		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
+
+		thrown.expect(is(expected));
+
+		inTest.close(options);
+	}
+
+	@Test
+	public void testCloseDoesNotThrowExceptionDuringWriteIfNotWritable() throws IOException {
+		when(options.writable()).thenReturn(false);
+		IOException expected = new IOException();
+		doThrow(expected).when(exceptionsDuringWrite).throwIfPresent();
+
+		inTest.close(options);
 	}
 
 	@Test

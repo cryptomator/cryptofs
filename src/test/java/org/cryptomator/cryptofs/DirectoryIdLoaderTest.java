@@ -1,16 +1,5 @@
 package org.cryptomator.cryptofs;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.junit.Assert.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
@@ -26,6 +15,17 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.mockito.Mockito;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.junit.Assert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class DirectoryIdLoaderTest {
 
@@ -111,9 +111,20 @@ public class DirectoryIdLoaderTest {
 
 	private FileChannel createFileChannelMock() throws ReflectiveOperationException {
 		FileChannel channel = Mockito.mock(FileChannel.class);
-		Field channelOpenField = AbstractInterruptibleChannel.class.getDeclaredField("open");
-		channelOpenField.setAccessible(true);
-		channelOpenField.set(channel, true);
+		try {
+			Field channelOpenField = AbstractInterruptibleChannel.class.getDeclaredField("open");
+			channelOpenField.setAccessible(true);
+			channelOpenField.set(channel, true);
+		} catch (NoSuchFieldException e) {
+			// field only declared in jdk8
+		}
+		try {
+			Field channelClosedField = AbstractInterruptibleChannel.class.getDeclaredField("closed");
+			channelClosedField.setAccessible(true);
+			channelClosedField.set(channel, false);
+		} catch (NoSuchFieldException e) {
+			// field only declared in jdk 9
+		}
 		Field channelCloseLockField = AbstractInterruptibleChannel.class.getDeclaredField("closeLock");
 		channelCloseLockField.setAccessible(true);
 		channelCloseLockField.set(channel, new Object());

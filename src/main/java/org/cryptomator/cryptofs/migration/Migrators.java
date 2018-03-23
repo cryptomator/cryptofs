@@ -18,10 +18,10 @@ import javax.inject.Inject;
 import org.cryptomator.cryptofs.Constants;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.migration.api.NoApplicableMigratorException;
+import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.InvalidPassphraseException;
 import org.cryptomator.cryptolib.api.KeyFile;
 import org.cryptomator.cryptolib.api.UnsupportedVaultFormatException;
-import org.cryptomator.cryptolib.common.SecureRandomModule;
 
 /**
  * Used to perform migration from an older vault format to a newer one.
@@ -41,7 +41,7 @@ import org.cryptomator.cryptolib.common.SecureRandomModule;
 public class Migrators {
 
 	private static final MigrationComponent COMPONENT = DaggerMigrationComponent.builder() //
-			.secureRandomModule(new SecureRandomModule(strongSecureRandom())) //
+			.migrationModule(new MigrationModule(Cryptors.version1(strongSecureRandom()))) //
 			.build();
 
 	private final Map<Migration, Migrator> migrators;

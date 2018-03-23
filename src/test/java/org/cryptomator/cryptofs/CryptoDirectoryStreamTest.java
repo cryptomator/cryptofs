@@ -8,11 +8,6 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static org.mockito.AdditionalAnswers.returnsFirstArg;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.DirectoryStream.Filter;
@@ -29,30 +24,25 @@ import java.util.Spliterators;
 import java.util.function.Consumer;
 
 import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
-import org.cryptomator.cryptolib.DaggerCryptoLibComponent;
+import org.cryptomator.cryptofs.mocks.NullSecureRandom;
+import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import static org.mockito.AdditionalAnswers.returnsFirstArg;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+
 public class CryptoDirectoryStreamTest {
-
-	private static final Consumer<CryptoDirectoryStream> DO_NOTHING_ON_CLOSE = ignored -> {
-	};
+	
+	private static final Consumer<CryptoDirectoryStream> DO_NOTHING_ON_CLOSE = ignored -> {};
 	private static final Filter<? super Path> ACCEPT_ALL = ignored -> true;
-
-	private static CryptorProvider cryptorProvider;
-
-	@BeforeClass
-	public static void setupClass() {
-		cryptorProvider = DaggerCryptoLibComponent.builder() //
-				.secureRandomModule(new TestSecureRandomModule()) //
-				.build() //
-				.version1();
-	}
+	private static CryptorProvider CRYPTOR_PROVIDER = Cryptors.version1(NullSecureRandom.INSTANCE);
 
 	private FileNameCryptor filenameCryptor;
 	private Path ciphertextDirPath;
@@ -66,7 +56,7 @@ public class CryptoDirectoryStreamTest {
 	@Before
 	@SuppressWarnings("unchecked")
 	public void setup() throws IOException {
-		filenameCryptor = cryptorProvider.createNew().fileNameCryptor();
+		filenameCryptor = CRYPTOR_PROVIDER.createNew().fileNameCryptor();
 
 		ciphertextDirPath = Mockito.mock(Path.class);
 		FileSystem fs = Mockito.mock(FileSystem.class);

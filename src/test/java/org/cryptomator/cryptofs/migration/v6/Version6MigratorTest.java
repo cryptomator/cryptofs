@@ -31,7 +31,7 @@ public class Version6MigratorTest {
 
 	@Before
 	public void setup() throws IOException {
-		cryptorProvider = Cryptors.version1(new NullSecureRandom());
+		cryptorProvider = Cryptors.version1(NullSecureRandom.INSTANCE);
 		fs = Jimfs.newFileSystem(Configuration.unix());
 		pathToVault = fs.getPath("/vaultDir");
 		masterkeyFile = pathToVault.resolve("masterkey.cryptomator");

@@ -33,7 +33,7 @@ public class LongFileNameProviderTest {
 
 	@After
 	public void teardown() throws IOException {
-		Files.walkFileTree(tmpPath, new DeletingFileVisitor());
+		Files.walkFileTree(tmpPath, DeletingFileVisitor.INSTANCE);
 	}
 
 	private int countFiles(Path dir) throws IOException {
