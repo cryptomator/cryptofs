@@ -16,7 +16,7 @@
 	<properties>
 		<cryptolib.version>1.2.0</cryptolib.version>
 		<dagger.version>2.15</dagger.version>
-		<guava.version>23.6-jre</guava.version>
+		<guava.version>24.1-jre</guava.version>
 		<slf4j.version>1.7.25</slf4j.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
@@ -178,7 +178,7 @@
 					<plugin>
 						<groupId>org.jacoco</groupId>
 						<artifactId>jacoco-maven-plugin</artifactId>
-						<version>0.7.9</version>
+						<version>0.8.1</version>
 						<executions>
 							<execution>
 								<id>prepare-agent</id>
