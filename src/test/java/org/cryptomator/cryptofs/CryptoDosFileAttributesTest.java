@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.nio.file.attribute.DosFileAttributes;
+import java.util.Optional;
 
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.junit.Rule;
@@ -30,7 +31,7 @@ public class CryptoDosFileAttributesTest {
 	private CryptoPath path = mock(CryptoPath.class);
 	private Cryptor cryptor = mock(Cryptor.class);
 
-	private CryptoDosFileAttributes inTest = new CryptoDosFileAttributes(delegate, path, cryptor);
+	private CryptoDosFileAttributes inTest = new CryptoDosFileAttributes(delegate, path, cryptor, null);
 
 	@Test
 	public void testGetDelegateReturnsDelegate() {

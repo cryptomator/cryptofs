@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs;
 
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFileAttributes;
+import java.util.Optional;
 
 import org.cryptomator.cryptolib.api.Cryptor;
 
@@ -17,8 +18,8 @@ class CryptoPosixFileAttributes extends CryptoBasicFileAttributes implements Del
 
 	private final PosixFileAttributes delegate;
 
-	public CryptoPosixFileAttributes(PosixFileAttributes delegate, Path ciphertextPath, Cryptor cryptor) {
-		super(delegate, ciphertextPath, cryptor);
+	public CryptoPosixFileAttributes(PosixFileAttributes delegate, Path ciphertextPath, Cryptor cryptor, Optional<Long> sizeAccordingToOpenChannel) {
+		super(delegate, ciphertextPath, cryptor, sizeAccordingToOpenChannel);
 		this.delegate = delegate;
 	}
 

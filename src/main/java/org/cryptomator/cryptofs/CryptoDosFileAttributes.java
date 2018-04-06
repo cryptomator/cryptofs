@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs;
 
 import java.nio.file.Path;
 import java.nio.file.attribute.DosFileAttributes;
+import java.util.Optional;
 
 import org.cryptomator.cryptolib.api.Cryptor;
 
@@ -17,8 +18,8 @@ class CryptoDosFileAttributes extends CryptoBasicFileAttributes implements Deleg
 
 	private final DosFileAttributes delegate;
 
-	public CryptoDosFileAttributes(DosFileAttributes delegate, Path ciphertextPath, Cryptor cryptor) {
-		super(delegate, ciphertextPath, cryptor);
+	public CryptoDosFileAttributes(DosFileAttributes delegate, Path ciphertextPath, Cryptor cryptor, Optional<Long> sizeAccordingToOpenChannel) {
+		super(delegate, ciphertextPath, cryptor, sizeAccordingToOpenChannel);
 		this.delegate = delegate;
 	}
 
