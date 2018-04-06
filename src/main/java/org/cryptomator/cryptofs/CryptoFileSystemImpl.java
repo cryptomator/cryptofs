@@ -340,7 +340,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	FileChannel newFileChannel(CryptoPath cleartextPath, Set<? extends OpenOption> optionsSet, FileAttribute<?>... attrs) throws IOException {
 		EffectiveOpenOptions options = EffectiveOpenOptions.from(optionsSet);
 		Path ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
-		return openCryptoFiles.get(ciphertextPath, options).newFileChannel(options);
+		return openCryptoFiles.getOrCreate(ciphertextPath, options).newFileChannel(options);
 	}
 
 	void delete(CryptoPath cleartextPath) throws IOException {

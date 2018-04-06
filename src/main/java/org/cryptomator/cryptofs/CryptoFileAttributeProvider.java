@@ -16,6 +16,7 @@ import java.nio.file.attribute.DosFileAttributes;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import javax.inject.Inject;
 
@@ -26,13 +27,15 @@ class CryptoFileAttributeProvider {
 
 	private final Map<Class<? extends BasicFileAttributes>, AttributeProvider<? extends BasicFileAttributes>> attributeProviders = new HashMap<>();
 	private final Cryptor cryptor;
+	private final OpenCryptoFiles openCryptoFiles;
 
 	@Inject
-	public CryptoFileAttributeProvider(Cryptor cryptor) {
+	public CryptoFileAttributeProvider(Cryptor cryptor, OpenCryptoFiles openCryptoFiles) {
+		this.cryptor = cryptor;
+		this.openCryptoFiles = openCryptoFiles;
 		attributeProviders.put(BasicFileAttributes.class, (AttributeProvider<BasicFileAttributes>) CryptoBasicFileAttributes::new);
 		attributeProviders.put(PosixFileAttributes.class, (AttributeProvider<PosixFileAttributes>) CryptoPosixFileAttributes::new);
 		attributeProviders.put(DosFileAttributes.class, (AttributeProvider<DosFileAttributes>) CryptoDosFileAttributes::new);
-		this.cryptor = cryptor;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -40,15 +43,15 @@ class CryptoFileAttributeProvider {
 		if (attributeProviders.containsKey(type)) {
 			A ciphertextAttrs = Files.readAttributes(ciphertextPath, type);
 			AttributeProvider<A> provider = (AttributeProvider<A>) attributeProviders.get(type);
-			return provider.provide(ciphertextAttrs, ciphertextPath, cryptor);
+			return provider.provide(ciphertextAttrs, ciphertextPath, cryptor, openCryptoFiles.get(ciphertextPath).map(OpenCryptoFile::size));
 		} else {
 			throw new UnsupportedOperationException("Unsupported file attribute type: " + type);
 		}
 	}
 
 	@FunctionalInterface
-	private static interface AttributeProvider<A extends BasicFileAttributes> {
-		A provide(A delegate, Path ciphertextPath, Cryptor cryptor);
+	private interface AttributeProvider<A extends BasicFileAttributes> {
+		A provide(A delegate, Path ciphertextPath, Cryptor cryptor, Optional<Long> sizeAccordingToOpenChannel);
 	}
 
 }

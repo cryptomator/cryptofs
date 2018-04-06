@@ -12,7 +12,7 @@ public class CryptoPosixFileAttributesTest {
 
 	private PosixFileAttributes delegate = mock(PosixFileAttributes.class);
 
-	private CryptoPosixFileAttributes inTest = new CryptoPosixFileAttributes(delegate, null, null);
+	private CryptoPosixFileAttributes inTest = new CryptoPosixFileAttributes(delegate, null, null, null);
 
 	@Test
 	public void testGetDelegateReturnsDelegate() {

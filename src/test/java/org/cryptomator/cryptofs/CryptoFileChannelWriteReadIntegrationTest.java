@@ -26,6 +26,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -86,6 +87,18 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		try (FileChannel channel = writableChannel(fileId)) {
 			assertEquals(0, channel.size());
 			assertEquals(0, Files.size(filePath(fileId)));
+		}
+	}
+
+	// tests https://github.com/cryptomator/cryptofs/issues/26
+	@Test
+	public void testFileSizeIsTenAfterWritingTenBytes() throws IOException {
+		long fileId = nextFileId();
+
+		try (FileChannel channel = writableChannel(fileId)) {
+			channel.write(ByteBuffer.wrap(new byte[10]));
+			assertEquals(10, channel.size());
+			assertEquals(10, Files.size(filePath(fileId)));
 		}
 	}
 

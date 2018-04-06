@@ -13,6 +13,7 @@ import static org.cryptomator.cryptofs.UncheckedThrows.allowUncheckedThrowsOf;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -31,8 +32,12 @@ class OpenCryptoFiles {
 		this.finallyUtil = finallyUtil;
 	}
 
-	public OpenCryptoFile get(Path path, EffectiveOpenOptions options) throws IOException {
-		Path normalizedPath = path.toAbsolutePath().normalize();
+	public Optional<OpenCryptoFile> get(Path ciphertextPath) {
+		return Optional.ofNullable(openCryptoFiles.get(ciphertextPath));
+	}
+
+	public OpenCryptoFile getOrCreate(Path ciphertextPath, EffectiveOpenOptions options) throws IOException {
+		Path normalizedPath = ciphertextPath.toAbsolutePath().normalize();
 
 		OpenCryptoFile result = allowUncheckedThrowsOf(IOException.class).from(() -> {
 			return openCryptoFiles.computeIfAbsent(normalizedPath, ignored -> create(normalizedPath, options));

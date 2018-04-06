@@ -25,11 +25,13 @@ import org.mockito.Mockito;
 public class CryptoFileAttributeProviderTest {
 
 	private Cryptor cryptor;
+	private OpenCryptoFiles openCryptoFiles;
 	private Path ciphertextFilePath;
 
 	@Before
 	public void setup() throws IOException {
 		cryptor = Mockito.mock(Cryptor.class);
+		openCryptoFiles = Mockito.mock(OpenCryptoFiles.class);
 		ciphertextFilePath = Mockito.mock(Path.class);
 		FileSystem fs = Mockito.mock(FileSystem.class);
 		Mockito.when(ciphertextFilePath.getFileSystem()).thenReturn(fs);
@@ -45,21 +47,21 @@ public class CryptoFileAttributeProviderTest {
 
 	@Test
 	public void testReadBasicAttributes() throws IOException {
-		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor);
+		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor, openCryptoFiles);
 		BasicFileAttributes attr = prov.readAttributes(ciphertextFilePath, BasicFileAttributes.class);
 		Assert.assertTrue(attr instanceof BasicFileAttributes);
 	}
 
 	@Test
 	public void testReadPosixAttributes() throws IOException {
-		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor);
+		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor, openCryptoFiles);
 		PosixFileAttributes attr = prov.readAttributes(ciphertextFilePath, PosixFileAttributes.class);
 		Assert.assertTrue(attr instanceof PosixFileAttributes);
 	}
 
 	@Test
 	public void testReadDosAttributes() throws IOException {
-		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor);
+		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor, openCryptoFiles);
 		DosFileAttributes attr = prov.readAttributes(ciphertextFilePath, DosFileAttributes.class);
 		Assert.assertTrue(attr instanceof DosFileAttributes);
 	}
@@ -70,7 +72,7 @@ public class CryptoFileAttributeProviderTest {
 
 	@Test(expected = UnsupportedOperationException.class)
 	public void testReadUnsupportedAttributes() throws IOException {
-		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor);
+		CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor, openCryptoFiles);
 		prov.readAttributes(ciphertextFilePath, UnsupportedAttributes.class);
 	}
 
