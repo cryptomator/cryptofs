@@ -32,6 +32,7 @@ public class CryptoFileOwnerAttributeViewTest {
 	private FileSystem fileSystem = mock(FileSystem.class);
 	private FileSystemProvider provider = mock(FileSystemProvider.class);
 	private FileOwnerAttributeView delegate = mock(FileOwnerAttributeView.class);
+	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 
 	private CryptoFileOwnerAttributeView inTest;
 
@@ -41,7 +42,7 @@ public class CryptoFileOwnerAttributeViewTest {
 		when(fileSystem.provider()).thenReturn(provider);
 		when(provider.getFileAttributeView(path, FileOwnerAttributeView.class)).thenReturn(delegate);
 
-		inTest = new CryptoFileOwnerAttributeView(path);
+		inTest = new CryptoFileOwnerAttributeView(path, readonlyFlag);
 	}
 
 	@Test
@@ -50,7 +51,7 @@ public class CryptoFileOwnerAttributeViewTest {
 
 		thrown.expect(UnsupportedFileAttributeViewException.class);
 
-		new CryptoFileOwnerAttributeView(path);
+		new CryptoFileOwnerAttributeView(path, readonlyFlag);
 	}
 
 	@Test
@@ -72,6 +73,7 @@ public class CryptoFileOwnerAttributeViewTest {
 
 		inTest.setOwner(principal);
 
+		verify(readonlyFlag).assertWritable();
 		verify(delegate).setOwner(principal);
 	}
 

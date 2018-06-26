@@ -14,8 +14,8 @@ import java.nio.file.attribute.BasicFileAttributes;
 
 class CryptoBasicFileAttributeView extends AbstractCryptoFileAttributeView<BasicFileAttributes, BasicFileAttributeView> implements BasicFileAttributeView {
 
-	public CryptoBasicFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider) throws UnsupportedFileAttributeViewException {
-		super(ciphertextPath, fileAttributeProvider, BasicFileAttributes.class, BasicFileAttributeView.class);
+	public CryptoBasicFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag) throws UnsupportedFileAttributeViewException {
+		super(ciphertextPath, fileAttributeProvider, readonlyFlag, BasicFileAttributes.class, BasicFileAttributeView.class);
 	}
 
 	@Override

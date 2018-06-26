@@ -19,8 +19,11 @@ import java.util.Set;
 
 class CryptoPosixFileAttributeView extends AbstractCryptoFileAttributeView<PosixFileAttributes, PosixFileAttributeView> implements PosixFileAttributeView {
 
-	public CryptoPosixFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider) throws UnsupportedFileAttributeViewException {
-		super(ciphertextPath, fileAttributeProvider, PosixFileAttributes.class, PosixFileAttributeView.class);
+	private final ReadonlyFlag readonlyFlag;
+
+	public CryptoPosixFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag) throws UnsupportedFileAttributeViewException {
+		super(ciphertextPath, fileAttributeProvider, readonlyFlag, PosixFileAttributes.class, PosixFileAttributeView.class);
+		this.readonlyFlag = readonlyFlag;
 	}
 
 	@Override
@@ -35,16 +38,19 @@ class CryptoPosixFileAttributeView extends AbstractCryptoFileAttributeView<Posix
 
 	@Override
 	public void setOwner(UserPrincipal owner) throws IOException {
+		readonlyFlag.assertWritable();
 		delegate.setOwner(owner);
 	}
 
 	@Override
 	public void setPermissions(Set<PosixFilePermission> perms) throws IOException {
+		readonlyFlag.assertWritable();
 		delegate.setPermissions(perms);
 	}
 
 	@Override
 	public void setGroup(GroupPrincipal group) throws IOException {
+		readonlyFlag.assertWritable();
 		delegate.setGroup(group);
 	}
 

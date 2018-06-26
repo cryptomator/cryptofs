@@ -29,6 +29,7 @@ public class AbstractCryptoFileAttributeViewTest {
 	private Path path = mock(Path.class);
 	private FileSystem fileSystem = mock(FileSystem.class);
 	private FileSystemProvider fileSystemProvider = mock(FileSystemProvider.class);
+	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 
 	@Test
 	public void testConstructorFailsIfDelegateIsNotAvailable() throws UnsupportedFileAttributeViewException {
@@ -38,7 +39,7 @@ public class AbstractCryptoFileAttributeViewTest {
 
 		thrown.expect(UnsupportedFileAttributeViewException.class);
 
-		new AbstractCryptoFileAttributeView<DosFileAttributes, DosFileAttributeView>(path, null, DosFileAttributes.class, DosFileAttributeView.class) {
+		new AbstractCryptoFileAttributeView<DosFileAttributes, DosFileAttributeView>(path, null, readonlyFlag, DosFileAttributes.class, DosFileAttributeView.class) {
 			@Override
 			public String name() {
 				return null;
