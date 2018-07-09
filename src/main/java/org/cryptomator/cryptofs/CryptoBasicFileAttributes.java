@@ -44,6 +44,12 @@ class CryptoBasicFileAttributes implements DelegatingBasicFileAttributes {
 		return false;
 	}
 
+	/**
+	 * Gets the size of the decrypted file.
+	 *
+	 * @return the size of the encrypted file
+	 * @throws IllegalArgumentException if the computed fileSize of a normal file is negative (e.g. it is altered manually)
+	 */
 	@Override
 	public long size() {
 		if (isDirectory()) {
