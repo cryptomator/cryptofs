@@ -199,6 +199,9 @@ public class OpenCryptoFileTest {
 		size.set(10_000_000_000l); // 10 gb total file size
 
 		FileContentCryptor fileContentCryptor = Mockito.mock(FileContentCryptor.class);
+		FileHeaderCryptor fileHeaderCryptor = Mockito.mock(FileHeaderCryptor.class);
+		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
+		when(fileHeaderCryptor.encryptHeader(any())).thenReturn(ByteBuffer.allocate(10));
 		when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
 		when(fileContentCryptor.cleartextChunkSize()).thenReturn(cleartextChunkSize);
 		when(chunkCache.get(Mockito.anyLong())).then(invocation -> {

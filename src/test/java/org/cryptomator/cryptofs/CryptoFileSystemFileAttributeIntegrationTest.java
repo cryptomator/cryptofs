@@ -113,31 +113,27 @@ public class CryptoFileSystemFileAttributeIntegrationTest {
 
 	@Test
 	public void testLastModifiedDateUpdatesOnlyDuringWrite() throws IOException, InterruptedException {
-		Path file = fileSystem.getPath("/a");
+		Path file = fileSystem.getPath("/c");
 
-		FileTime t0, t1, t2, t3, t4;
+		FileTime t0, t1, t2, t3;
 		try (FileChannel ch = FileChannel.open(file, StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW)) {
 			t0 = Files.getLastModifiedTime(file);
-			Thread.sleep(50);
+			Thread.sleep(100);
 
 			ch.force(true); // nothing written yet, no changes expected
 			t1 = Files.getLastModifiedTime(file);
 			Assert.assertEquals(t0, t1);
-			Thread.sleep(50);
+			Thread.sleep(100);
 
-			ch.write(ByteBuffer.wrap(new byte[1])); // written, but not yet forced
+			ch.write(ByteBuffer.wrap(new byte[1]));
+			ch.force(true); // force after write should definitely change the lastModifiedDate
 			t2 = Files.getLastModifiedTime(file);
-			Assert.assertEquals(t1, t2);
-			Thread.sleep(50);
-
-			ch.force(true); // force after write should change lastModifiedDate
-			t3 = Files.getLastModifiedTime(file);
-			Assert.assertNotEquals(t3, t2);
-			Assert.assertThat(t3, isAfter(t2));
-			Thread.sleep(50);
+			Assert.assertNotEquals(t2, t1);
+			Assert.assertThat(t2, isAfter(t1));
+			Thread.sleep(100);
 		}
-		t4 = Files.getLastModifiedTime(file); // close after force should not change lastModifiedDate
-		Assert.assertEquals(t3, t4);
+		t3 = Files.getLastModifiedTime(file); // close after force should not change lastModifiedDate
+		Assert.assertEquals(t2, t3);
 	}
 
 	private static Matcher<FileTime> isAfter(FileTime previousFileTime) {

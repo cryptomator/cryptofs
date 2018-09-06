@@ -19,6 +19,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.inject.Inject;
@@ -41,10 +42,11 @@ class OpenCryptoFile {
 	private final CryptoFileSystemStats stats;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
 	private final FinallyUtil finallyUtil;
+	private final AtomicBoolean headerWritten;
 
 	@Inject
 	public OpenCryptoFile(EffectiveOpenOptions options, Cryptor cryptor, FileChannel channel, FileHeader header, @OpenFileSize AtomicLong size, OpenCounter openCounter, CryptoFileChannelFactory cryptoFileChannelFactory,
-			ChunkCache chunkCache, @OpenFileOnCloseHandler Runnable onClose, CryptoFileSystemStats stats, ExceptionsDuringWrite exceptionsDuringWrite, FinallyUtil finallyUtil) {
+						  ChunkCache chunkCache, @OpenFileOnCloseHandler Runnable onClose, CryptoFileSystemStats stats, ExceptionsDuringWrite exceptionsDuringWrite, FinallyUtil finallyUtil) {
 		this.cryptor = cryptor;
 		this.chunkCache = chunkCache;
 		this.openCounter = openCounter;
@@ -56,6 +58,7 @@ class OpenCryptoFile {
 		this.stats = stats;
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
 		this.finallyUtil = finallyUtil;
+		this.headerWritten = new AtomicBoolean(false);
 	}
 
 	public FileChannel newFileChannel(EffectiveOpenOptions options) throws IOException {
@@ -90,6 +93,7 @@ class OpenCryptoFile {
 	}
 
 	public synchronized int write(EffectiveOpenOptions options, ByteBuffer data, long offset) throws IOException {
+		writeHeaderIfNecessary();
 		long size = size();
 		int written = data.remaining();
 		if (size < offset) {
@@ -101,6 +105,13 @@ class OpenCryptoFile {
 		handleSync(options);
 		stats.addBytesWritten(written);
 		return written;
+	}
+
+	private void writeHeaderIfNecessary() throws IOException {
+		if (headerWritten.compareAndSet(false, true)) {
+			channel.write(cryptor.fileHeaderCryptor().encryptHeader(header), 0);
+
+		}
 	}
 
 	private void handleSync(EffectiveOpenOptions options) throws IOException {
@@ -159,7 +170,6 @@ class OpenCryptoFile {
 	public synchronized void force(boolean metaData, EffectiveOpenOptions options) throws IOException {
 		chunkCache.invalidateAll(); // TODO performance: write chunks but keep them cached
 		if (options.writable()) {
-			channel.write(cryptor.fileHeaderCryptor().encryptHeader(header), 0);
 			exceptionsDuringWrite.throwIfPresent();
 		}
 		channel.force(metaData);
