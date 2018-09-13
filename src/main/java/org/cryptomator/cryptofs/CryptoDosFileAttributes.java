@@ -18,8 +18,8 @@ class CryptoDosFileAttributes extends CryptoBasicFileAttributes implements Deleg
 
 	private final DosFileAttributes delegate;
 
-	public CryptoDosFileAttributes(DosFileAttributes delegate, Path ciphertextPath, Cryptor cryptor, Optional<Long> sizeAccordingToOpenChannel) {
-		super(delegate, ciphertextPath, cryptor, sizeAccordingToOpenChannel);
+	public CryptoDosFileAttributes(DosFileAttributes delegate, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile) {
+		super(delegate, ciphertextPath, cryptor, openCryptoFile);
 		this.delegate = delegate;
 	}
 

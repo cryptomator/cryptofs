@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributeView;
+import java.util.Base64;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -27,6 +29,12 @@ class OpenCryptoFileFactoryModule {
 	@PerOpenFile
 	public FileChannel provideFileChannel(@OpenFilePath Path path, EffectiveOpenOptions options) {
 		return rethrowUnchecked(IOException.class).from(() -> path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile()));
+	}
+
+	@Provides
+	@PerOpenFile
+	public BasicFileAttributeView provideBasicFileAttributeView(@OpenFilePath Path path) {
+		return path.getFileSystem().provider().getFileAttributeView(path,BasicFileAttributeView.class);
 	}
 
 	@Provides

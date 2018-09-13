@@ -43,7 +43,7 @@ class CryptoFileAttributeProvider {
 		if (attributeProviders.containsKey(type)) {
 			A ciphertextAttrs = Files.readAttributes(ciphertextPath, type);
 			AttributeProvider<A> provider = (AttributeProvider<A>) attributeProviders.get(type);
-			return provider.provide(ciphertextAttrs, ciphertextPath, cryptor, openCryptoFiles.get(ciphertextPath).map(OpenCryptoFile::size));
+			return provider.provide(ciphertextAttrs, ciphertextPath, cryptor, openCryptoFiles.get(ciphertextPath));
 		} else {
 			throw new UnsupportedOperationException("Unsupported file attribute type: " + type);
 		}
@@ -51,7 +51,7 @@ class CryptoFileAttributeProvider {
 
 	@FunctionalInterface
 	private interface AttributeProvider<A extends BasicFileAttributes> {
-		A provide(A delegate, Path ciphertextPath, Cryptor cryptor, Optional<Long> sizeAccordingToOpenChannel);
+		A provide(A delegate, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile);
 	}
 
 }

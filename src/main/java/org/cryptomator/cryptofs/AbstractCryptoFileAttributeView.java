@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
+import java.util.Optional;
 
 abstract class AbstractCryptoFileAttributeView<S extends BasicFileAttributes, T extends BasicFileAttributeView> implements BasicFileAttributeView {
 
@@ -21,13 +22,15 @@ abstract class AbstractCryptoFileAttributeView<S extends BasicFileAttributes, T 
 	protected final T delegate;
 	private final Class<S> attributesType;
 	private final ReadonlyFlag readonlyFlag;
+	private final Optional<OpenCryptoFile> openCryptoFile;
 
-	public AbstractCryptoFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag, Class<S> attributesType, Class<T> delegateType)
+	public AbstractCryptoFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag, Class<S> attributesType, Class<T> delegateType, Optional<OpenCryptoFile> openCryptoFile)
 			throws UnsupportedFileAttributeViewException {
 		this.ciphertextPath = ciphertextPath;
 		this.fileAttributeProvider = fileAttributeProvider;
 		this.readonlyFlag = readonlyFlag;
 		this.attributesType = attributesType;
+		this.openCryptoFile = openCryptoFile;
 		this.delegate = ciphertextPath.getFileSystem().provider().getFileAttributeView(ciphertextPath, delegateType);
 		if (delegate == null) {
 			throw new UnsupportedFileAttributeViewException();
@@ -43,6 +46,7 @@ abstract class AbstractCryptoFileAttributeView<S extends BasicFileAttributes, T 
 	public void setTimes(FileTime lastModifiedTime, FileTime lastAccessTime, FileTime createTime) throws IOException {
 		readonlyFlag.assertWritable();
 		delegate.setTimes(lastModifiedTime, lastAccessTime, createTime);
+		openCryptoFile.ifPresent(file -> file.setLastModifiedTime(lastModifiedTime));
 	}
 
 }

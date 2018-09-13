@@ -15,10 +15,7 @@ import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import javax.inject.Inject;
 
@@ -28,12 +25,14 @@ class CryptoFileAttributeViewProvider {
 	private final Map<Class<? extends FileAttributeView>, FileAttributeViewProvider<? extends FileAttributeView>> fileAttributeViewProviders = new HashMap<>();
 	private final CryptoFileAttributeProvider fileAttributeProvider;
 	private final ReadonlyFlag readonlyFlag;
+	private final OpenCryptoFiles openCryptoFiles;
 
 	@Inject
-	public CryptoFileAttributeViewProvider(CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag) {
+	public CryptoFileAttributeViewProvider(CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag, OpenCryptoFiles openCryptoFiles) {
+		this.openCryptoFiles = openCryptoFiles;
 		fileAttributeViewProviders.put(BasicFileAttributeView.class, CryptoBasicFileAttributeView::new);
 		fileAttributeViewProviders.put(PosixFileAttributeView.class, CryptoPosixFileAttributeView::new);
-		fileAttributeViewProviders.put(FileOwnerAttributeView.class, (ciphertextPath, ignored, readonly) -> new CryptoFileOwnerAttributeView(ciphertextPath, readonly));
+		fileAttributeViewProviders.put(FileOwnerAttributeView.class, (ciphertextPath, ignored, readonly, ignored2) -> new CryptoFileOwnerAttributeView(ciphertextPath, readonly));
 		fileAttributeViewProviders.put(DosFileAttributeView.class, CryptoDosFileAttributeView::new);
 		this.fileAttributeProvider = fileAttributeProvider;
 		this.readonlyFlag = readonlyFlag;
@@ -50,7 +49,7 @@ class CryptoFileAttributeViewProvider {
 			@SuppressWarnings("unchecked")
 			FileAttributeViewProvider<A> provider = (FileAttributeViewProvider<A>) fileAttributeViewProviders.get(type);
 			try {
-				return provider.provide(ciphertextPath, fileAttributeProvider, readonlyFlag);
+				return provider.provide(ciphertextPath, fileAttributeProvider, readonlyFlag, openCryptoFiles.get(ciphertextPath));
 			} catch (UnsupportedFileAttributeViewException e) {
 				return null;
 			}
@@ -66,7 +65,7 @@ class CryptoFileAttributeViewProvider {
 
 	@FunctionalInterface
 	private static interface FileAttributeViewProvider<A extends FileAttributeView> {
-		A provide(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag) throws UnsupportedFileAttributeViewException;
+		A provide(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag, Optional<OpenCryptoFile> openCryptoFile) throws UnsupportedFileAttributeViewException;
 	}
 
 }

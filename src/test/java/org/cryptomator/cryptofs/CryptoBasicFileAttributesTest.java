@@ -97,12 +97,14 @@ public class CryptoBasicFileAttributesTest {
 
 	@Test
 	public void testSizeOfOpenFile() throws IOException {
+		OpenCryptoFile openCryptoFile = Mockito.mock(OpenCryptoFile.class);
 		Mockito.when(delegateAttr.isDirectory()).thenReturn(false);
 		Mockito.when(delegateAttr.isSymbolicLink()).thenReturn(false);
 		Mockito.when(delegateAttr.isOther()).thenReturn(false);
 		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("foo"));
+		Mockito.when(openCryptoFile.size()).thenReturn(1338l);
 
-		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.of(1338l));
+		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.of(openCryptoFile));
 
 		Assert.assertEquals(1338l, attr.size());
 		Mockito.verify(delegateAttr, Mockito.never()).size();

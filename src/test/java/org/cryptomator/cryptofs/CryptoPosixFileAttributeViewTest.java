@@ -19,6 +19,7 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 import org.junit.Before;
@@ -51,7 +52,7 @@ public class CryptoPosixFileAttributeViewTest {
 		when(fileSystem.provider()).thenReturn(provider);
 		when(provider.getFileAttributeView(path, PosixFileAttributeView.class)).thenReturn(delegate);
 
-		inTest = new CryptoPosixFileAttributeView(path, fileAttributeProvider, readonlyFlag);
+		inTest = new CryptoPosixFileAttributeView(path, fileAttributeProvider, readonlyFlag, Optional.empty());
 	}
 
 	@Test
