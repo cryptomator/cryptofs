@@ -161,7 +161,6 @@ class OpenCryptoFile {
 			}
 			written += len;
 		}
-
 	}
 
 	public long size() {

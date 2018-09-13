@@ -59,7 +59,15 @@ public class OpenCryptoFileTest {
 	private BasicFileAttributeView attributeView = mock(BasicFileAttributeView.class);
 	private BasicFileAttributes attributes = mock(BasicFileAttributes.class);
 
-	private OpenCryptoFile inTest = new OpenCryptoFile(options, cryptor, channel, header, size, openCounter, cryptoFileChannelFactory, chunkCache, onClose, stats, exceptionsDuringWrite, finallyUtil, attributeView);
+	private OpenCryptoFile inTest;
+
+	@Before
+	public void setup() throws IOException{
+		Mockito.when(attributeView.readAttributes()).thenReturn(attributes);
+		Mockito.when(attributes.lastModifiedTime()).thenReturn(FileTime.from(Instant.now()));
+
+		inTest = new OpenCryptoFile(options, cryptor, channel, header, size, openCounter, cryptoFileChannelFactory, chunkCache, onClose, stats, exceptionsDuringWrite, finallyUtil, attributeView);
+	}
 
 	@Theory
 	public void testLockDelegatesToChannel(boolean shared) throws IOException {
@@ -79,12 +87,6 @@ public class OpenCryptoFileTest {
 		when(channel.tryLock(position, size, shared)).thenReturn(lock);
 
 		assertThat(inTest.tryLock(position, size, shared), is(lock));
-	}
-
-	@Before
-	public void setup() throws IOException{
-		Mockito.when(attributeView.readAttributes()).thenReturn(attributes);
-		Mockito.when(attributes.lastModifiedTime()).thenReturn(FileTime.from(Instant.now()));
 	}
 
 	@Test

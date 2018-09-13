@@ -112,51 +112,29 @@ public class CryptoFileSystemFileAttributeIntegrationTest {
 	public void testLastModifiedDateUpdatesOnlyDuringWrite() throws IOException, InterruptedException {
 		Path file = fileSystem.getPath("/c");
 
-		FileTime t0, t1, t2, t3;
+		FileTime t0, t1, t2, t3, t4;
 		try (FileChannel ch = FileChannel.open(file, StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW)) {
 			t0 = Files.getLastModifiedTime(file);
-			Thread.sleep(100);
+			Thread.sleep(10);
 
 			ch.force(true); // nothing written yet, no changes expected
 			t1 = Files.getLastModifiedTime(file);
 			Assert.assertEquals(t0, t1);
-			Thread.sleep(100);
+			Thread.sleep(10);
 
-			ch.write(ByteBuffer.wrap(new byte[1]));
+			ch.write(ByteBuffer.wrap(new byte[1])); // write should update the last modified time
 			t2 = Files.getLastModifiedTime(file);
-			ch.force(true); // force after write should definitely change the lastModifiedDate
-			t3 = Files.getLastModifiedTime(file);
 			Assert.assertNotEquals(t2, t1);
-			Assert.assertEquals(t3, t2);
 			Assert.assertThat(t2, isAfter(t1));
-			Thread.sleep(100);
-		}
-		t3 = Files.getLastModifiedTime(file); // close after force should not change lastModifiedDate
-		Assert.assertEquals(t2, t3);
-	}
+			Thread.sleep(10);
 
-	//TODO: delete this test
-	@Test
-	public void testTest() throws IOException, InterruptedException {
-		Path file = Paths.get("/home/alf/Dokumente/äää.txt");
-		FileTime t0,t1,t2,t3;
-		try(FileChannel ch = FileChannel.open(file, StandardOpenOption.WRITE, StandardOpenOption.APPEND)){
-			t0 = Files.getLastModifiedTime(file);
-			Thread.sleep(100);
-
-			ch.force(true); // nothing written yet, no changes expected
-			t1 = Files.getLastModifiedTime(file);
-			Assert.assertEquals(t0, t1);
-			Thread.sleep(100);
-
-			ch.write(ByteBuffer.wrap("Test".getBytes()));
-			t2 = Files.getLastModifiedTime(file);
-			ch.force(true); // force after write should definitely change the lastModifiedDate
+			ch.force(true); // force must not change the last modified time
 			t3 = Files.getLastModifiedTime(file);
-			Assert.assertNotEquals(t2, t1);
 			Assert.assertEquals(t3, t2);
-			Assert.assertThat(t2, isAfter(t1));
-		}
+			Thread.sleep(10);
+		} // close must not change the last modified time
+		t4 = Files.getLastModifiedTime(file); // close after force should not change lastModifiedDate
+		Assert.assertEquals(t3.toMillis(), t4.toMillis()); // round to millis, since in-memory times of opened files may have sub-milli resolution
 	}
 
 	private static Matcher<FileTime> isAfter(FileTime previousFileTime) {
