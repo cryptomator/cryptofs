@@ -18,6 +18,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
@@ -195,7 +196,11 @@ class OpenCryptoFile {
 			exceptionsDuringWrite.throwIfPresent();
 		}
 		channel.force(metaData);
-		attributeView.setTimes(FileTime.from(lastModified.get()), null, null);
+		try {
+			attributeView.setTimes(FileTime.from(lastModified.get()), null, null);
+		} catch (NoSuchFileException e) {
+			//NO-OP because file is already deleted
+		}
 	}
 
 	public FileLock lock(long position, long size, boolean shared) throws IOException {
