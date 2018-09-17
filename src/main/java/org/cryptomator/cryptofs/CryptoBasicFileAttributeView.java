@@ -11,11 +11,12 @@ package org.cryptomator.cryptofs;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Optional;
 
 class CryptoBasicFileAttributeView extends AbstractCryptoFileAttributeView<BasicFileAttributes, BasicFileAttributeView> implements BasicFileAttributeView {
 
-	public CryptoBasicFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag) throws UnsupportedFileAttributeViewException {
-		super(ciphertextPath, fileAttributeProvider, readonlyFlag, BasicFileAttributes.class, BasicFileAttributeView.class);
+	public CryptoBasicFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag, Optional<OpenCryptoFile> openCryptoFile) throws UnsupportedFileAttributeViewException {
+		super(ciphertextPath, fileAttributeProvider, readonlyFlag, BasicFileAttributes.class, BasicFileAttributeView.class, openCryptoFile);
 	}
 
 	@Override

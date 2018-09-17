@@ -1,23 +1,11 @@
 package org.cryptomator.cryptofs;
 
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.*;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
-import java.nio.file.StandardOpenOption;
-import java.util.EnumSet;
-import java.util.concurrent.atomic.AtomicLong;
-
 import org.cryptomator.cryptofs.OpenCounter.OpenState;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.theories.Theories;
@@ -28,6 +16,28 @@ import org.mockito.InOrder;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
+import java.util.EnumSet;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertThat;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @RunWith(Theories.class)
 public class OpenCryptoFileTest {
@@ -51,8 +61,18 @@ public class OpenCryptoFileTest {
 	private ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
 	private FinallyUtil finallyUtil = new FinallyUtil();
 	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
+	private BasicFileAttributeView attributeView = mock(BasicFileAttributeView.class);
+	private BasicFileAttributes attributes = mock(BasicFileAttributes.class);
 
-	private OpenCryptoFile inTest = new OpenCryptoFile(options, cryptor, channel, header, size, openCounter, cryptoFileChannelFactory, chunkCache, onClose, stats, exceptionsDuringWrite, finallyUtil);
+	private OpenCryptoFile inTest;
+
+	@Before
+	public void setup() throws IOException {
+		Mockito.when(attributeView.readAttributes()).thenReturn(attributes);
+		Mockito.when(attributes.lastModifiedTime()).thenReturn(FileTime.from(Instant.now()));
+
+		inTest = new OpenCryptoFile(options, cryptor, channel, header, size, openCounter, cryptoFileChannelFactory, chunkCache, onClose, stats, exceptionsDuringWrite, finallyUtil, attributeView);
+	}
 
 	@Theory
 	public void testLockDelegatesToChannel(boolean shared) throws IOException {
@@ -136,6 +156,13 @@ public class OpenCryptoFileTest {
 		doThrow(expected).when(exceptionsDuringWrite).throwIfPresent();
 
 		inTest.force(false, options);
+	}
+
+	@Test
+	public void testForceDoesNotThrowExceptionWhenFileDoesNotExist() throws IOException {
+		doThrow(new NoSuchFileException("No such File.")).when(attributeView).setTimes(null, null, null);
+
+		inTest.force(true, options);
 	}
 
 	@Test

@@ -12,13 +12,14 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.DosFileAttributes;
+import java.util.Optional;
 
 class CryptoDosFileAttributeView extends AbstractCryptoFileAttributeView<DosFileAttributes, DosFileAttributeView> implements DosFileAttributeView {
 
 	private final ReadonlyFlag readonlyFlag;
 
-	public CryptoDosFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag) throws UnsupportedFileAttributeViewException {
-		super(ciphertextPath, fileAttributeProvider, readonlyFlag, DosFileAttributes.class, DosFileAttributeView.class);
+	public CryptoDosFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag, Optional<OpenCryptoFile> openCryptoFile) throws UnsupportedFileAttributeViewException {
+		super(ciphertextPath, fileAttributeProvider, readonlyFlag, DosFileAttributes.class, DosFileAttributeView.class, openCryptoFile);
 		this.readonlyFlag = readonlyFlag;
 	}
 

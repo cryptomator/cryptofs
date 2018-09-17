@@ -15,14 +15,15 @@ import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
+import java.util.Optional;
 import java.util.Set;
 
 class CryptoPosixFileAttributeView extends AbstractCryptoFileAttributeView<PosixFileAttributes, PosixFileAttributeView> implements PosixFileAttributeView {
 
 	private final ReadonlyFlag readonlyFlag;
 
-	public CryptoPosixFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag) throws UnsupportedFileAttributeViewException {
-		super(ciphertextPath, fileAttributeProvider, readonlyFlag, PosixFileAttributes.class, PosixFileAttributeView.class);
+	public CryptoPosixFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag, Optional<OpenCryptoFile> openCryptoFile) throws UnsupportedFileAttributeViewException {
+		super(ciphertextPath, fileAttributeProvider, readonlyFlag, PosixFileAttributes.class, PosixFileAttributeView.class, openCryptoFile );
 		this.readonlyFlag = readonlyFlag;
 	}
 

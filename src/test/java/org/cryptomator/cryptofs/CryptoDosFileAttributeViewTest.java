@@ -11,6 +11,7 @@ import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.Optional;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -43,7 +44,7 @@ public class CryptoDosFileAttributeViewTest {
 		when(fileSystem.provider()).thenReturn(fileSystemProvider);
 		when(fileSystemProvider.getFileAttributeView(path, DosFileAttributeView.class)).thenReturn(delegate);
 
-		inTest = new CryptoDosFileAttributeView(path, cryptoFileAttributeProvider, readonlyFlag);
+		inTest = new CryptoDosFileAttributeView(path, cryptoFileAttributeProvider, readonlyFlag, Optional.empty());
 	}
 
 	@Test

@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.DosFileAttributes;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.Optional;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -39,7 +40,7 @@ public class AbstractCryptoFileAttributeViewTest {
 
 		thrown.expect(UnsupportedFileAttributeViewException.class);
 
-		new AbstractCryptoFileAttributeView<DosFileAttributes, DosFileAttributeView>(path, null, readonlyFlag, DosFileAttributes.class, DosFileAttributeView.class) {
+		new AbstractCryptoFileAttributeView<DosFileAttributes, DosFileAttributeView>(path, null, readonlyFlag, DosFileAttributes.class, DosFileAttributeView.class, Optional.empty()) {
 			@Override
 			public String name() {
 				return null;

@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs;
 
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.util.Optional;
 
 import org.cryptomator.cryptolib.Cryptors;
@@ -20,13 +21,13 @@ class CryptoBasicFileAttributes implements DelegatingBasicFileAttributes {
 	private final BasicFileAttributes delegate;
 	protected final Path ciphertextPath;
 	private final Cryptor cryptor;
-	private final Optional<Long> sizeAccordingToOpenChannel;
+	private final Optional<OpenCryptoFile> openCryptoFile;
 
-	public CryptoBasicFileAttributes(BasicFileAttributes delegate, Path ciphertextPath, Cryptor cryptor, Optional<Long> sizeAccordingToOpenChannel) {
+	public CryptoBasicFileAttributes(BasicFileAttributes delegate, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile) {
 		this.delegate = delegate;
 		this.ciphertextPath = ciphertextPath;
 		this.cryptor = cryptor;
-		this.sizeAccordingToOpenChannel = sizeAccordingToOpenChannel;
+		this.openCryptoFile = openCryptoFile;
 	}
 
 	@Override
@@ -58,11 +59,15 @@ class CryptoBasicFileAttributes implements DelegatingBasicFileAttributes {
 			return -1l;
 		} else if (isSymbolicLink()) {
 			return -1l;
-		} else if (sizeAccordingToOpenChannel.isPresent()) {
-			return sizeAccordingToOpenChannel.get();
+		} else if (openCryptoFile.isPresent()) {
+			return openCryptoFile.get().size();
 		} else {
 			return Cryptors.cleartextSize(getDelegate().size() - cryptor.fileHeaderCryptor().headerSize(), cryptor);
 		}
 	}
 
+	@Override
+	public FileTime lastModifiedTime() {
+		return openCryptoFile.map(OpenCryptoFile::getLastModifiedTime).orElseGet(delegate::lastModifiedTime);
+	}
 }
