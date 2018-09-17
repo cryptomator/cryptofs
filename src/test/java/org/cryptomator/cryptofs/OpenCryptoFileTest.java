@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -151,6 +152,13 @@ public class OpenCryptoFileTest {
 		doThrow(expected).when(exceptionsDuringWrite).throwIfPresent();
 
 		inTest.force(false, options);
+	}
+
+	@Test
+	public void testForceDoesNotThrowExceptionWhenFileDoesNotExist() throws IOException {
+		doThrow(new NoSuchFileException("No such File.")).when(attributeView).setTimes(null, null, null);
+
+		inTest.force(true, options);
 	}
 
 	@Test
