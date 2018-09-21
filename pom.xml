@@ -88,7 +88,7 @@
 			<groupId>com.google.dagger</groupId>
 			<artifactId>dagger-compiler</artifactId>
 			<version>${dagger.version}</version>
-			<optional>true</optional>
+			<scope>provided</scope>
 		</dependency>
 
 		<!-- Test -->
