@@ -8,24 +8,27 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.cryptomator.cryptofs.Constants.METADATA_DIR_NAME;
-
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.concurrent.ExecutionException;
-
-import javax.inject.Inject;
-
-import org.cryptomator.cryptolib.common.MessageDigestSupplier;
-
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.io.BaseEncoding;
 import com.google.common.util.concurrent.UncheckedExecutionException;
+import org.cryptomator.cryptolib.common.MessageDigestSupplier;
+
+import javax.inject.Inject;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.WritableByteChannel;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.cryptomator.cryptofs.Constants.METADATA_DIR_NAME;
 
 @PerFileSystem
 class LongFileNameProvider {
@@ -81,7 +84,12 @@ class LongFileNameProvider {
 			Path fileDir = file.getParent();
 			assert fileDir != null : "resolveMetadataFile returned path to a file";
 			Files.createDirectories(fileDir);
-			Files.write(file, longFileNameBytes);
+			try (WritableByteChannel ch = Files.newByteChannel(file, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW)) {
+				ch.write(ByteBuffer.wrap(longFileNameBytes));
+			} catch (FileAlreadyExistsException e) {
+				// no-op: if the file already exists, we assume its content to be what we want (or we found a SHA1 collision ;-))
+				assert Arrays.equals(Files.readAllBytes(file), longFileNameBytes);
+			}
 		}
 		return shortName;
 	}
