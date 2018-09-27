@@ -120,14 +120,14 @@ public class CryptoBasicFileAttributesTest {
 		Assert.assertEquals(4096l, attr.size());
 	}
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testSizeWithException() throws IOException {
+	@Test
+	public void testSizeSetToZeroIfCryptoHeaderToSmall() throws IOException {
 		Mockito.when(delegateAttr.size()).thenReturn(88l + 20l);
 		Mockito.when(delegateAttr.isRegularFile()).thenReturn(true);
 		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("foo"));
 
 		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.empty());
-		attr.size();
+		Assert.assertEquals(attr.size(),0);
 	}
 
 }
