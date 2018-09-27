@@ -15,8 +15,12 @@ import java.util.Optional;
 
 import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.Cryptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class CryptoBasicFileAttributes implements DelegatingBasicFileAttributes {
+
+	private static final Logger LOG = LoggerFactory.getLogger(CryptoBasicFileAttributes.class);
 
 	private final BasicFileAttributes delegate;
 	protected final Path ciphertextPath;
@@ -49,7 +53,6 @@ class CryptoBasicFileAttributes implements DelegatingBasicFileAttributes {
 	 * Gets the size of the decrypted file.
 	 *
 	 * @return the size of the decrypted file
-	 * @throws IllegalArgumentException if the delegate reports a size that is considered invalid for a well-formed ciphertext file (e.g. it has been altered manually and thus will be negative)
 	 */
 	@Override
 	public long size() {
@@ -62,7 +65,13 @@ class CryptoBasicFileAttributes implements DelegatingBasicFileAttributes {
 		} else if (openCryptoFile.isPresent()) {
 			return openCryptoFile.get().size();
 		} else {
-			return Cryptors.cleartextSize(getDelegate().size() - cryptor.fileHeaderCryptor().headerSize(), cryptor);
+			try{
+				return Cryptors.cleartextSize(getDelegate().size() - cryptor.fileHeaderCryptor().headerSize(), cryptor);
+			}catch (IllegalArgumentException e){
+				LOG.warn("Wrong cipher text file size of file {}. Returning a file size of 0.",ciphertextPath);
+				LOG.warn("Thrown exception was:",e);
+				return 0l;
+			}
 		}
 	}
 
