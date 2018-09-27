@@ -53,7 +53,6 @@ class CryptoBasicFileAttributes implements DelegatingBasicFileAttributes {
 	 * Gets the size of the decrypted file.
 	 *
 	 * @return the size of the decrypted file
-	 * @throws IllegalArgumentException if the delegate reports a size that is considered invalid for a well-formed ciphertext file (e.g. it has been altered manually and thus will be negative)
 	 */
 	@Override
 	public long size() {
@@ -69,8 +68,9 @@ class CryptoBasicFileAttributes implements DelegatingBasicFileAttributes {
 			try{
 				return Cryptors.cleartextSize(getDelegate().size() - cryptor.fileHeaderCryptor().headerSize(), cryptor);
 			}catch (IllegalArgumentException e){
-				LOG.warn("Wrong file size of file {}. Returning negative file size to zero.",ciphertextPath);
-				return -1l;
+				LOG.warn("Wrong cipher text file size of file {}. Returning a file size of 0.",ciphertextPath);
+				LOG.warn("Thrown exception was:",e);
+				return 0l;
 			}
 		}
 	}
