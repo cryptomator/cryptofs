@@ -1,13 +1,5 @@
 package org.cryptomator.cryptofs;
 
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-import java.nio.file.attribute.DosFileAttributes;
-import java.util.Optional;
-
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.junit.Rule;
 import org.junit.Test;
@@ -17,6 +9,13 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+
+import java.nio.file.attribute.DosFileAttributes;
+
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @RunWith(Theories.class)
 public class CryptoDosFileAttributesTest {
@@ -31,7 +30,7 @@ public class CryptoDosFileAttributesTest {
 	private CryptoPath path = mock(CryptoPath.class);
 	private Cryptor cryptor = mock(Cryptor.class);
 
-	private CryptoDosFileAttributes inTest = new CryptoDosFileAttributes(delegate, path, cryptor, null);
+	private CryptoDosFileAttributes inTest = new CryptoDosFileAttributes(delegate, path, cryptor, null, false);
 
 	@Test
 	public void testGetDelegateReturnsDelegate() {
@@ -54,9 +53,18 @@ public class CryptoDosFileAttributesTest {
 
 	@Theory
 	public void testIsReadOnlyDelegates(boolean value) {
+		CryptoDosFileAttributes attrs = new CryptoDosFileAttributes(delegate, null, null, null, false);
 		when(delegate.isReadOnly()).thenReturn(value);
 
-		assertThat(inTest.isReadOnly(), is(value));
+		assertThat(attrs.isReadOnly(), is(value));
+	}
+
+	@Theory
+	public void testIsReadOnlyForReadonlyFileSystem(boolean value) {
+		CryptoDosFileAttributes attrs = new CryptoDosFileAttributes(delegate, null, null, null, true);
+		when(delegate.isReadOnly()).thenReturn(value);
+
+		assertThat(attrs.isReadOnly(), is(true));
 	}
 
 	@Theory

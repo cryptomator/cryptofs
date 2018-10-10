@@ -31,7 +31,7 @@ public class CryptoBasicFileAttributesTest {
 	private BasicFileAttributes delegateAttr;
 
 	@Before
-	public void setup() throws IOException {
+	public void setup() {
 		cryptor = Mockito.mock(Cryptor.class);
 		FileHeaderCryptor headerCryptor = Mockito.mock(FileHeaderCryptor.class);
 		FileContentCryptor contentCryptor = Mockito.mock(FileContentCryptor.class);
@@ -50,7 +50,7 @@ public class CryptoBasicFileAttributesTest {
 
 	@Test
 	public void testIsDirectory() {
-		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.empty());
+		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.empty(), false);
 
 		Mockito.when(delegateAttr.isDirectory()).thenReturn(false);
 		Assert.assertFalse(attr.isDirectory());
@@ -61,7 +61,7 @@ public class CryptoBasicFileAttributesTest {
 
 	@Test
 	public void testIsRegularFile() {
-		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.empty());
+		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.empty(), false);
 
 		Mockito.when(delegateAttr.isRegularFile()).thenReturn(true);
 		Assert.assertTrue(attr.isRegularFile());
@@ -72,13 +72,13 @@ public class CryptoBasicFileAttributesTest {
 
 	@Test
 	public void testIsOther() {
-		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.empty());
+		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.empty(), false);
 		Assert.assertFalse(attr.isOther());
 	}
 
 	@Test
 	public void testIsSymbolicLink() {
-		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.empty());
+		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.empty(), false);
 		Assert.assertFalse(attr.isSymbolicLink());
 	}
 
@@ -90,19 +90,21 @@ public class CryptoBasicFileAttributesTest {
 		Mockito.when(delegateAttr.isOther()).thenReturn(false);
 		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("foo"));
 
-		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.empty());
+		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.empty(), false);
 
 		Assert.assertEquals(1337l, attr.size());
 	}
 
 	@Test
 	public void testSizeOfOpenFile() throws IOException {
+		OpenCryptoFile openCryptoFile = Mockito.mock(OpenCryptoFile.class);
 		Mockito.when(delegateAttr.isDirectory()).thenReturn(false);
 		Mockito.when(delegateAttr.isSymbolicLink()).thenReturn(false);
 		Mockito.when(delegateAttr.isOther()).thenReturn(false);
 		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("foo"));
+		Mockito.when(openCryptoFile.size()).thenReturn(1338l);
 
-		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.of(1338l));
+		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.of(openCryptoFile), false);
 
 		Assert.assertEquals(1338l, attr.size());
 		Mockito.verify(delegateAttr, Mockito.never()).size();
@@ -113,19 +115,19 @@ public class CryptoBasicFileAttributesTest {
 		Mockito.when(delegateAttr.size()).thenReturn(4096l);
 		Mockito.when(delegateAttr.isDirectory()).thenReturn(true);
 
-		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.empty());
+		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.empty(), false);
 
 		Assert.assertEquals(4096l, attr.size());
 	}
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testSizeWithException() throws IOException {
+	@Test
+	public void testSizeSetToZeroIfCryptoHeaderToSmall() throws IOException {
 		Mockito.when(delegateAttr.size()).thenReturn(88l + 20l);
 		Mockito.when(delegateAttr.isRegularFile()).thenReturn(true);
 		Mockito.when(ciphertextFilePath.getFileName()).thenReturn(Paths.get("foo"));
 
-		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.empty());
-		attr.size();
+		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, ciphertextFilePath, cryptor, Optional.empty(), false);
+		Assert.assertEquals(attr.size(),0);
 	}
 
 }

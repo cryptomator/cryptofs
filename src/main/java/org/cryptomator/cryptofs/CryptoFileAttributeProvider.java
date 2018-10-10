@@ -28,11 +28,13 @@ class CryptoFileAttributeProvider {
 	private final Map<Class<? extends BasicFileAttributes>, AttributeProvider<? extends BasicFileAttributes>> attributeProviders = new HashMap<>();
 	private final Cryptor cryptor;
 	private final OpenCryptoFiles openCryptoFiles;
+	private final CryptoFileSystemProperties fileSystemProperties;
 
 	@Inject
-	public CryptoFileAttributeProvider(Cryptor cryptor, OpenCryptoFiles openCryptoFiles) {
+	public CryptoFileAttributeProvider(Cryptor cryptor, OpenCryptoFiles openCryptoFiles, CryptoFileSystemProperties fileSystemProperties) {
 		this.cryptor = cryptor;
 		this.openCryptoFiles = openCryptoFiles;
+		this.fileSystemProperties = fileSystemProperties;
 		attributeProviders.put(BasicFileAttributes.class, (AttributeProvider<BasicFileAttributes>) CryptoBasicFileAttributes::new);
 		attributeProviders.put(PosixFileAttributes.class, (AttributeProvider<PosixFileAttributes>) CryptoPosixFileAttributes::new);
 		attributeProviders.put(DosFileAttributes.class, (AttributeProvider<DosFileAttributes>) CryptoDosFileAttributes::new);
@@ -43,7 +45,7 @@ class CryptoFileAttributeProvider {
 		if (attributeProviders.containsKey(type)) {
 			A ciphertextAttrs = Files.readAttributes(ciphertextPath, type);
 			AttributeProvider<A> provider = (AttributeProvider<A>) attributeProviders.get(type);
-			return provider.provide(ciphertextAttrs, ciphertextPath, cryptor, openCryptoFiles.get(ciphertextPath).map(OpenCryptoFile::size));
+			return provider.provide(ciphertextAttrs, ciphertextPath, cryptor, openCryptoFiles.get(ciphertextPath), fileSystemProperties.readonly());
 		} else {
 			throw new UnsupportedOperationException("Unsupported file attribute type: " + type);
 		}
@@ -51,7 +53,7 @@ class CryptoFileAttributeProvider {
 
 	@FunctionalInterface
 	private interface AttributeProvider<A extends BasicFileAttributes> {
-		A provide(A delegate, Path ciphertextPath, Cryptor cryptor, Optional<Long> sizeAccordingToOpenChannel);
+		A provide(A delegate, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonly);
 	}
 
 }

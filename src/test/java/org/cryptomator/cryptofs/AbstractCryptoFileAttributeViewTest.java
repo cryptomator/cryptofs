@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.DosFileAttributes;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.Optional;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -29,6 +30,7 @@ public class AbstractCryptoFileAttributeViewTest {
 	private Path path = mock(Path.class);
 	private FileSystem fileSystem = mock(FileSystem.class);
 	private FileSystemProvider fileSystemProvider = mock(FileSystemProvider.class);
+	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 
 	@Test
 	public void testConstructorFailsIfDelegateIsNotAvailable() throws UnsupportedFileAttributeViewException {
@@ -38,7 +40,7 @@ public class AbstractCryptoFileAttributeViewTest {
 
 		thrown.expect(UnsupportedFileAttributeViewException.class);
 
-		new AbstractCryptoFileAttributeView<DosFileAttributes, DosFileAttributeView>(path, null, DosFileAttributes.class, DosFileAttributeView.class) {
+		new AbstractCryptoFileAttributeView<DosFileAttributes, DosFileAttributeView>(path, null, readonlyFlag, DosFileAttributes.class, DosFileAttributeView.class, Optional.empty()) {
 			@Override
 			public String name() {
 				return null;

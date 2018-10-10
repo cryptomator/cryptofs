@@ -8,24 +8,29 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static java.lang.Math.max;
-import static java.lang.Math.min;
-import static org.cryptomator.cryptofs.OpenCounter.OpenState.ALREADY_CLOSED;
-import static org.cryptomator.cryptofs.OpenCounter.OpenState.WAS_OPEN;
-import static org.cryptomator.cryptolib.Cryptors.ciphertextSize;
+import org.cryptomator.cryptofs.OpenCounter.OpenState;
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.FileHeader;
 
+import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
-import javax.inject.Inject;
-
-import org.cryptomator.cryptofs.OpenCounter.OpenState;
-import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.FileHeader;
+import static java.lang.Math.max;
+import static java.lang.Math.min;
+import static org.cryptomator.cryptofs.OpenCounter.OpenState.ALREADY_CLOSED;
+import static org.cryptomator.cryptofs.OpenCounter.OpenState.WAS_OPEN;
+import static org.cryptomator.cryptolib.Cryptors.ciphertextSize;
 
 @PerOpenFile
 class OpenCryptoFile {
@@ -41,10 +46,14 @@ class OpenCryptoFile {
 	private final CryptoFileSystemStats stats;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
 	private final FinallyUtil finallyUtil;
+	private final BasicFileAttributeView attributeView;
+	private final AtomicBoolean headerWritten;
+
+	private final AtomicReference<Instant> lastModified;
 
 	@Inject
 	public OpenCryptoFile(EffectiveOpenOptions options, Cryptor cryptor, FileChannel channel, FileHeader header, @OpenFileSize AtomicLong size, OpenCounter openCounter, CryptoFileChannelFactory cryptoFileChannelFactory,
-			ChunkCache chunkCache, @OpenFileOnCloseHandler Runnable onClose, CryptoFileSystemStats stats, ExceptionsDuringWrite exceptionsDuringWrite, FinallyUtil finallyUtil) {
+						  ChunkCache chunkCache, @OpenFileOnCloseHandler Runnable onClose, CryptoFileSystemStats stats, ExceptionsDuringWrite exceptionsDuringWrite, FinallyUtil finallyUtil, BasicFileAttributeView attrView) {
 		this.cryptor = cryptor;
 		this.chunkCache = chunkCache;
 		this.openCounter = openCounter;
@@ -56,6 +65,15 @@ class OpenCryptoFile {
 		this.stats = stats;
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
 		this.finallyUtil = finallyUtil;
+		this.attributeView = attrView;
+		this.headerWritten = new AtomicBoolean(false);
+		this.lastModified = new AtomicReference<>();
+		try {
+			lastModified.set(attrView.readAttributes().lastModifiedTime().toInstant());
+		} catch (IOException e) {
+			lastModified.set(Instant.ofEpochSecond(0));
+		}
+
 	}
 
 	public FileChannel newFileChannel(EffectiveOpenOptions options) throws IOException {
@@ -90,6 +108,7 @@ class OpenCryptoFile {
 	}
 
 	public synchronized int write(EffectiveOpenOptions options, ByteBuffer data, long offset) throws IOException {
+		writeHeaderIfNecessary();
 		long size = size();
 		int written = data.remaining();
 		if (size < offset) {
@@ -100,7 +119,15 @@ class OpenCryptoFile {
 		}
 		handleSync(options);
 		stats.addBytesWritten(written);
+		lastModified.set(Instant.now());
 		return written;
+	}
+
+	private void writeHeaderIfNecessary() throws IOException {
+		if (headerWritten.compareAndSet(false, true)) {
+			channel.write(cryptor.fileHeaderCryptor().encryptHeader(header), 0);
+
+		}
 	}
 
 	private void handleSync(EffectiveOpenOptions options) throws IOException {
@@ -135,11 +162,18 @@ class OpenCryptoFile {
 			}
 			written += len;
 		}
-
 	}
 
 	public long size() {
 		return size.get();
+	}
+
+	public FileTime getLastModifiedTime() {
+		return FileTime.from(lastModified.get());
+	}
+
+	public void setLastModifiedTime(FileTime lastModifiedTime) {
+		lastModified.set(lastModifiedTime.toInstant());
 	}
 
 	public synchronized void truncate(long size) throws IOException {
@@ -159,10 +193,14 @@ class OpenCryptoFile {
 	public synchronized void force(boolean metaData, EffectiveOpenOptions options) throws IOException {
 		chunkCache.invalidateAll(); // TODO performance: write chunks but keep them cached
 		if (options.writable()) {
-			channel.write(cryptor.fileHeaderCryptor().encryptHeader(header), 0);
 			exceptionsDuringWrite.throwIfPresent();
 		}
 		channel.force(metaData);
+		try {
+			attributeView.setTimes(FileTime.from(lastModified.get()), null, null);
+		} catch (NoSuchFileException e) {
+			//NO-OP because file is already deleted
+		}
 	}
 
 	public FileLock lock(long position, long size, boolean shared) throws IOException {

@@ -11,6 +11,7 @@ import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.Optional;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -31,6 +32,7 @@ public class CryptoDosFileAttributeViewTest {
 	private FileSystem fileSystem = mock(FileSystem.class);
 	private FileSystemProvider fileSystemProvider = mock(FileSystemProvider.class);
 	private DosFileAttributeView delegate = mock(DosFileAttributeView.class);
+	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 
 	private CryptoFileAttributeProvider cryptoFileAttributeProvider = mock(CryptoFileAttributeProvider.class);
 
@@ -42,7 +44,7 @@ public class CryptoDosFileAttributeViewTest {
 		when(fileSystem.provider()).thenReturn(fileSystemProvider);
 		when(fileSystemProvider.getFileAttributeView(path, DosFileAttributeView.class)).thenReturn(delegate);
 
-		inTest = new CryptoDosFileAttributeView(path, cryptoFileAttributeProvider);
+		inTest = new CryptoDosFileAttributeView(path, cryptoFileAttributeProvider, readonlyFlag, Optional.empty());
 	}
 
 	@Test
@@ -54,6 +56,7 @@ public class CryptoDosFileAttributeViewTest {
 	public void testSetReadOnly(boolean value) throws IOException {
 		inTest.setReadOnly(value);
 
+		verify(readonlyFlag).assertWritable();
 		verify(delegate).setReadOnly(value);
 	}
 
@@ -61,6 +64,7 @@ public class CryptoDosFileAttributeViewTest {
 	public void testSetHidden(boolean value) throws IOException {
 		inTest.setHidden(value);
 
+		verify(readonlyFlag).assertWritable();
 		verify(delegate).setHidden(value);
 	}
 
@@ -68,6 +72,7 @@ public class CryptoDosFileAttributeViewTest {
 	public void testSetSystem(boolean value) throws IOException {
 		inTest.setSystem(value);
 
+		verify(readonlyFlag).assertWritable();
 		verify(delegate).setSystem(value);
 	}
 
@@ -75,6 +80,7 @@ public class CryptoDosFileAttributeViewTest {
 	public void testSetArchive(boolean value) throws IOException {
 		inTest.setArchive(value);
 
+		verify(readonlyFlag).assertWritable();
 		verify(delegate).setArchive(value);
 	}
 

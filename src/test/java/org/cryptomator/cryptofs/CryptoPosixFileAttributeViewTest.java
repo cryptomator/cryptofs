@@ -19,6 +19,7 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 import org.junit.Before;
@@ -38,6 +39,8 @@ public class CryptoPosixFileAttributeViewTest {
 
 	private CryptoFileAttributeProvider fileAttributeProvider = mock(CryptoFileAttributeProvider.class);
 
+	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
+
 	private CryptoPosixFileAttributeView inTest;
 
 	@Before
@@ -49,7 +52,7 @@ public class CryptoPosixFileAttributeViewTest {
 		when(fileSystem.provider()).thenReturn(provider);
 		when(provider.getFileAttributeView(path, PosixFileAttributeView.class)).thenReturn(delegate);
 
-		inTest = new CryptoPosixFileAttributeView(path, fileAttributeProvider);
+		inTest = new CryptoPosixFileAttributeView(path, fileAttributeProvider, readonlyFlag, Optional.empty());
 	}
 
 	@Test
@@ -73,6 +76,7 @@ public class CryptoPosixFileAttributeViewTest {
 
 		inTest.setOwner(expectedPrincipal);
 
+		verify(readonlyFlag).assertWritable();
 		verify(delegate).setOwner(expectedPrincipal);
 	}
 
@@ -82,6 +86,7 @@ public class CryptoPosixFileAttributeViewTest {
 
 		inTest.setPermissions(expectedPermissions);
 
+		verify(readonlyFlag).assertWritable();
 		verify(delegate).setPermissions(expectedPermissions);
 	}
 
@@ -91,6 +96,7 @@ public class CryptoPosixFileAttributeViewTest {
 
 		inTest.setGroup(expectedPricipal);
 
+		verify(readonlyFlag).assertWritable();
 		verify(delegate).setGroup(expectedPricipal);
 	}
 
@@ -112,6 +118,7 @@ public class CryptoPosixFileAttributeViewTest {
 
 		inTest.setTimes(lastModifiedTime, lastAccessTime, createTime);
 
+		verify(readonlyFlag).assertWritable();
 		verify(delegate).setTimes(lastModifiedTime, lastAccessTime, createTime);
 	}
 

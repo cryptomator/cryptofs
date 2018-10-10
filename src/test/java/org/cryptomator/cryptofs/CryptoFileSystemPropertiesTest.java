@@ -72,14 +72,14 @@ public class CryptoFileSystemPropertiesTest {
 		assertThat(inTest.passphrase(), is(passphrase));
 		assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
 		assertThat(inTest.readonly(), is(true));
-		assertThat(inTest.initializeImplicitly(), is(true));
-		assertThat(inTest.migrateImplicitly(), is(true));
+		assertThat(inTest.initializeImplicitly(), is(false));
+		assertThat(inTest.migrateImplicitly(), is(false));
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY, FileSystemFlags.INIT_IMPLICITLY, FileSystemFlags.MIGRATE_IMPLICITLY))));
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
 
 	@Test
@@ -96,14 +96,14 @@ public class CryptoFileSystemPropertiesTest {
 		assertThat(inTest.passphrase(), is(passphrase));
 		assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
 		assertThat(inTest.readonly(), is(true));
-		assertThat(inTest.initializeImplicitly(), is(true));
-		assertThat(inTest.migrateImplicitly(), is(true));
+		assertThat(inTest.initializeImplicitly(), is(false));
+		assertThat(inTest.migrateImplicitly(), is(false));
 		assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY, FileSystemFlags.INIT_IMPLICITLY, FileSystemFlags.MIGRATE_IMPLICITLY))));
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
 
 	@Test

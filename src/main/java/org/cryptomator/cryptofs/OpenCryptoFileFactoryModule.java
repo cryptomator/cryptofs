@@ -1,19 +1,24 @@
+/*******************************************************************************
+ * Copyright (c) 2017 Skymatic UG (haftungsbeschränkt).
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the accompanying LICENSE file.
+ *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static org.cryptomator.cryptofs.UncheckedThrows.rethrowUnchecked;
-import static org.cryptomator.cryptolib.Cryptors.cleartextSize;
+import dagger.Module;
+import dagger.Provides;
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.FileHeader;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributeView;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.FileHeader;
-
-import dagger.Module;
-import dagger.Provides;
+import static org.cryptomator.cryptofs.UncheckedThrows.rethrowUnchecked;
+import static org.cryptomator.cryptolib.Cryptors.cleartextSize;
 
 @Module
 class OpenCryptoFileFactoryModule {
@@ -22,6 +27,12 @@ class OpenCryptoFileFactoryModule {
 	@PerOpenFile
 	public FileChannel provideFileChannel(@OpenFilePath Path path, EffectiveOpenOptions options) {
 		return rethrowUnchecked(IOException.class).from(() -> path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile()));
+	}
+
+	@Provides
+	@PerOpenFile
+	public BasicFileAttributeView provideBasicFileAttributeView(@OpenFilePath Path path) {
+		return path.getFileSystem().provider().getFileAttributeView(path, BasicFileAttributeView.class);
 	}
 
 	@Provides
@@ -54,7 +65,11 @@ class OpenCryptoFileFactoryModule {
 				channel.position(0);
 				channel.read(existingHeaderBuf);
 				existingHeaderBuf.flip();
-				return cryptor.fileHeaderCryptor().decryptHeader(existingHeaderBuf);
+				try {
+					return cryptor.fileHeaderCryptor().decryptHeader(existingHeaderBuf);
+				} catch (IllegalArgumentException e) {
+					throw new IOException(e);
+				}
 			}
 		});
 	}
