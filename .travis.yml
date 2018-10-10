@@ -1,24 +1,22 @@
 language: java
 sudo: false
 jdk:
-- oraclejdk9
+- oraclejdk10
 env:
   global:
-  - secure: LT4nMSKCu4qL+jQ80BdBIOqFO3GCyAPoxNkskS0q0wvscDpEx2bvFZa9KF6/dQxubhWnfACqWxxPKfF3VadfZoKn1z01TaZ/rKHkA5GedZweFO0wBIvi/gDIcAxVX0oPOkIruugYY3iDOzOqTUuBM686cW1XWs0LEV7qPTb6KM02/IeckQs+P9SSiarqSKROlQ8dABGdyxJTXheHHphFu4mDiQsi1vtub6OoQclKLLuK2MJvFiyDeZDYYXAnjFNC/pcBUBjr5b886zPB6HLLGgvQKRLvzQudedz08ZlJdnt3k6u7HvLINbs00U60fnD/+4krQQN4EEx0Natv4L1SxFjYO4wFK2FTCKoBMkVfjINqiWzmb/yhoG33Sw9VGiYdcV45QbH32CX1oiATohV+79gfIID6p3UOL1SZuELR2XzRq70K4Kw2BXig99a0+LjYCv4ynnzetqyWVZIdhBQ1Srf/4GxUwF21Urn9TJCNr2F5BcbqGrMUMvXNjTI0WqQCTMqM+Ha9Rbe27GG7ZMtMUHd83YWP0GDiSIg2S0T0lNL2e9iQGXsGBiX3Bz+E3HEWhnE4l6XKYVgn3NXrlDjwc2B6GTGeImZXkrbFFJwQihUSujj5H6l/+5a7NxbyA1MvzNwjeTaHzdNdYovTq6ywydVtF/Kt5h7oA2KmUoajaFs= #CODACY_PROJECT_TOKEN
-  - secure: mwZwO9cYqxQjg1eyqpMdN/9Lmy9NuDpRm8EpCZbh3CMcPWeU0rLXYObK2z2OCYNF5RNwgGytR/hFsi524QW2jGxfYzyHN17Y7/OFbyexE3PFBTabJZzRT5RzZNm2WtzU/EECL0p2f7+fvIQieqPmBw4It2nnX9yX/i61FQJfOCSqZeKiZA1d0KpULtT0Pl+o6IBnshorxpNeb3L2gnTZXZLxzoQhSR4BkWahT1nUEHpU3COn3RPBVVdNtvdxkKWzmbkFMAvJC/RdQ+pzpqKDLwyQlQkezOynNW+nuwqEsI297F+SbU05Ucs9UO+WZWAh0jekGrac95ZfGt2Ws1GtOHuBTfn2L+xslZ8PvKJstRxx0zYy9dHyojHW60UF5oMQTD2JOO6AKKHzQtrAnUpmifO6eD5Ux9pLgMNLvTbGQ5KL4fF8W8e3ZiItssUkzYR0GeJIz/d0Qw4BpURXw1XO099P4EXhQc8fp8mSEakMC44CRY+tJpntlYdLkubu8cjCSw+Nglz00RWjSAO4wShSQX65WsI385xzWHxOHR6ypyFPQ4soal6wnOScVPO74Y75IPoah/bQUAmB9z41VrWBOsHzlUrU7pqZu9qTjwmL2TMTZpaR50fLgYfm2hGQ6SXnYvl+RpVlw8sCnt7Et0uIBx7CApMbdxcNCONH+2LWjrk= # MAVEN_GPG_PASSPHRASE
-  - secure: d3MYv+e4qOkWO2irDru7mfe+o/SMMF4O+6mwj95ZmtuICEXTceOEq/eFhlJbtC2c+JYQwCAssc/VAgMAVu5tDD6CcCnc/mtyQ/lx3I41LA9UzpQHy7X10SVK6s3Me4JUZgcLn8OUP7DCjAp7xKiCM1BvUnRrCAF6TReQL+6iAiJGRMlkQZWx6alV8lDmwqQvQ4M3RImnt6CFX9q1mYbDXnwCiD0LaRHU1cTSlQmbYTKzaXlsjsYiwyphp2DdlQsm3WxB3U578yQMkEUOSeOqknRLIgnblbCTUK5NP4/zDldDKU/0yQgcMpUX002epCaKe29YL/VFQ8atEU9KrY9MHFZAZzCPh01k/51OpdOaAGLHH7UdbrMCNH7GFBv807VSNmvoiU4bn/tXkMjOyO9Fd0mVv0T77k07eXXLZBm1bv+Ddr9kCGsJdw2xblLenqj19ik9uYftioR2Masa1qRueqZP1cigYN1GYH7td+RX9pR4/wSw7VZehr0rYRuq/34hhHos0W5mp05PWhxuAnxo1sPOrAPwIE9/e6OvfMTxcwVYZkeLld6ribJzS+z+6tfjTVwYtUrHeNM3hlJ91D8WLMqvkLSvDetTq6HU+rJCsmLyyT3tGHChqi2li/ZbORUpua7WmN6agn/2PHQvFTcAt8nj2nVMUxSUsOgMBJOctfg= # MAVEN_OSSRH_USERNAME
-  - secure: aLCaSgLfFniEPpiEdvEyFLlak4cTspVE3uqeGFCncPFUyyxPZ0JW+DdyFpvO5DXBa3hr9oS240H6f1T6Eo/J4K5SaKq3gS3yIzbvs2BS5yoCE4hGIZ6yS/70sIhlxvFvujJDT9KPYo8J6KE0w5vqy8BHEMZYBMEDWWvswwrvlqdaoZqe6vaoV1TsOeWeW+2qFdYu5j1KVQgSwOgzMdQuqQVSsrdA1FH+AzmMMbk3QgdGGd1U4MnFStIeG5/YfqVHkUVpZayhYB9yFzUCObT9R5zZ1OtghdOrkX1FRTKbFPAmJouToeFrIqrZEMbaE9PWaajuUZeqL2hQD1s0A+wj65cXjgbQhz4v7Gr0J/+2AU+9N+IRAIguiq6rXtt1HeR3YbBwlxFdwmEgYJjqO7+XFZFNYbr3YPgqbqJbgXpoxeUTdPNdNwckBUEQTTN6fs89Og6wHLDgoZb5niypSKWd/SFCU81FAGQ0mxy41jJOdltxVtG1+UOfb/41PRAzS6br7CpNnaq379kKlMiyOXY4UCWuFgwW4KhlUx0dgidqi2etcYrDZhZbguHmfLRfumEQ8nCp8LJ5FwJWlkmJhE8hFTu3sGmVUl06Ly1gybMPazev8hYjyr3vaexmek7qeqDtNT6n8L96qZkResjFI2pJmzZaNIg2yK92ZS/5v073OgM= # MAVEN_OSSRH_PASSWORD
-  - secure: JUBj12rP7sEsNp8R3o9Mjwl7HCYKQan58CZ1WDm7L2MteFRDBJr625P4fk4cQOTjR6fb3jiogCD7dqkHoGJQlvi2ReQJLXKBhy3Bqtnzksf4c1By9bLB5NYH6MQV1FFazzAjjPjGlQYJB+kUx+pQ8vxMJC5yzp6vpKWu3vTobEFNtuFAWZq7qM91VJBUc8z+k1awas9vqgDlqWxH+K05L2c+tpnnmqXk9/HN9Z4akkKB++oACenE+w+D9Snyiif9WyhVR3+ZcMtL44YAQDabl6LlrTdM4afNaPcwgOdFuxL7GCZyIMgMP26O8JquK4ZtE2b/ZMz5h0jtE+r6M0E+yVAN+kG7UviNd9kKItiRiokDsaYeNCWVPHndGBtw6GU5GFNJTDhEb/oeqzclI/PaFHXA4O/o4A9N+nrzb28xWaihAM/NymVOE1iNNQfyNqPb9fjsMntNOTDT/sLH3tTJ62nvVPpurUXVV0+jbSrE20xclOZ1xBbMztQwya4EB/0fS+raCiR5spXHTNHpmSp2ubKAuo6V4AUXQXk6LHxiiIvcYSRYVgnBeOcreuDYv7+09xeIejxVcSzh7Nz7aK/0Fkq42ALYs/cDOq0mJGwoJ4yC7vlMj6GQNwZtCP+bzdGM3+cjTcD2F997Hf75lEVeYXK2oNE3/ycSQjdYlc3wTl0= #COVERITY_SCAN_TOKEN
+  - secure: "LT4nMSKCu4qL+jQ80BdBIOqFO3GCyAPoxNkskS0q0wvscDpEx2bvFZa9KF6/dQxubhWnfACqWxxPKfF3VadfZoKn1z01TaZ/rKHkA5GedZweFO0wBIvi/gDIcAxVX0oPOkIruugYY3iDOzOqTUuBM686cW1XWs0LEV7qPTb6KM02/IeckQs+P9SSiarqSKROlQ8dABGdyxJTXheHHphFu4mDiQsi1vtub6OoQclKLLuK2MJvFiyDeZDYYXAnjFNC/pcBUBjr5b886zPB6HLLGgvQKRLvzQudedz08ZlJdnt3k6u7HvLINbs00U60fnD/+4krQQN4EEx0Natv4L1SxFjYO4wFK2FTCKoBMkVfjINqiWzmb/yhoG33Sw9VGiYdcV45QbH32CX1oiATohV+79gfIID6p3UOL1SZuELR2XzRq70K4Kw2BXig99a0+LjYCv4ynnzetqyWVZIdhBQ1Srf/4GxUwF21Urn9TJCNr2F5BcbqGrMUMvXNjTI0WqQCTMqM+Ha9Rbe27GG7ZMtMUHd83YWP0GDiSIg2S0T0lNL2e9iQGXsGBiX3Bz+E3HEWhnE4l6XKYVgn3NXrlDjwc2B6GTGeImZXkrbFFJwQihUSujj5H6l/+5a7NxbyA1MvzNwjeTaHzdNdYovTq6ywydVtF/Kt5h7oA2KmUoajaFs=" # CODACY_PROJECT_TOKEN
+  - secure: "JUBj12rP7sEsNp8R3o9Mjwl7HCYKQan58CZ1WDm7L2MteFRDBJr625P4fk4cQOTjR6fb3jiogCD7dqkHoGJQlvi2ReQJLXKBhy3Bqtnzksf4c1By9bLB5NYH6MQV1FFazzAjjPjGlQYJB+kUx+pQ8vxMJC5yzp6vpKWu3vTobEFNtuFAWZq7qM91VJBUc8z+k1awas9vqgDlqWxH+K05L2c+tpnnmqXk9/HN9Z4akkKB++oACenE+w+D9Snyiif9WyhVR3+ZcMtL44YAQDabl6LlrTdM4afNaPcwgOdFuxL7GCZyIMgMP26O8JquK4ZtE2b/ZMz5h0jtE+r6M0E+yVAN+kG7UviNd9kKItiRiokDsaYeNCWVPHndGBtw6GU5GFNJTDhEb/oeqzclI/PaFHXA4O/o4A9N+nrzb28xWaihAM/NymVOE1iNNQfyNqPb9fjsMntNOTDT/sLH3tTJ62nvVPpurUXVV0+jbSrE20xclOZ1xBbMztQwya4EB/0fS+raCiR5spXHTNHpmSp2ubKAuo6V4AUXQXk6LHxiiIvcYSRYVgnBeOcreuDYv7+09xeIejxVcSzh7Nz7aK/0Fkq42ALYs/cDOq0mJGwoJ4yC7vlMj6GQNwZtCP+bzdGM3+cjTcD2F997Hf75lEVeYXK2oNE3/ycSQjdYlc3wTl0=" # COVERITY_SCAN_TOKEN
+  - secure: "E5T75tGRnA6kplWe1/gxnvHzzZn5Z1/Wb58Th67Nm0MHmGK8PnR0tukcQbfNPsGMp3P3lb+wmTFfNeiuWXfan88F5CrktBJYJgsNQxWMnNk1fcT+QNyHlm7Xngpm/ntHGJCDGF/yFuJLvwzlD6SDSTAU709MxB60aoKVDtylGkkLhVWpNMtSNwgjRu2pzGjR8VxOWckt4zQw4mSXQfVZqHsQAPWGTGKktN08/ff71FyoO2uKffnzhLny9wjsUx7ora2/EyKDqFpkqMvOEN2njcMc6QF5M041VzoYw/gsURowImRHP385xqqg4kl45Fb7unHVv2rz1rRwSbWlJawGBRrzkLR+B1+sE2Jij0o30Wifijwh3HRtHIR7k0T7f893xN7B6du4VhKhKrYMVUn9xVILEWElkwHb50BnBP/3zTfrm38/nlW+KtY+vBSrvqbfAfaoKsJZQuNcJ8ezcvdMXVHuOWixozJpHROFvLRzMJJCB07mSNdGTgX8jI34se+299/M0sLpT5N8PQ8WJjs5h+YkK6FLL7KqEOR6QWHkgYamZirQF2dqYw1Rdw37x5Lad6Py938lBn5P5c+Gx00D43MwoN31tiTWdp/NlUyFbEPst225Fj1/VpLDnZiek+QcgAf6PzpejeKyS018EEiO10CYgb2J38nivQ6RuvU9kII=" # BINTRAY_API_KEY
 install:
+- curl -o $HOME/.m2/settings.xml https://gist.githubusercontent.com/cryptobot/cf5fbd909c4782aaeeeb7c7f4a1a43da/raw/e60ee486e34ee0c79f89f947abe2c83b4290c6bb/settings.xml
 - mvn source:help javadoc:help dependency:go-offline -Pdependency-check,coverage,release
 before_script:
-- "if [[ ${TRAVIS_BRANCH} == 'develop' && ${TRAVIS_PULL_REQUEST} == 'false' ]]; then mvn dependency-check:check -Pdependency-check; fi"
+- mvn --update-snapshots dependency-check:check -Pdependency-check
 script:
-- "mvn clean test jacoco:report verify -Pcoverage"
+- mvn clean test jacoco:report verify -Pcoverage -Dorg.slf4j.simpleLogger.defaultLogLevel=debug
 after_success:
-- jdk_switcher use oraclejdk8
-- curl -o ~/codacy-coverage-reporter-assembly-latest.jar https://oss.sonatype.org/service/local/repositories/releases/content/com/codacy/codacy-coverage-reporter/2.0.1/codacy-coverage-reporter-2.0.1-assembly.jar
-- $JAVA_HOME/bin/java -cp ~/codacy-coverage-reporter-assembly-latest.jar com.codacy.CodacyCoverageReporter -l Java -r target/site/jacoco/jacoco.xml
+- curl -o ~/codacy-coverage-reporter.jar https://oss.sonatype.org/service/local/repositories/releases/content/com/codacy/codacy-coverage-reporter/4.0.3/codacy-coverage-reporter-4.0.3-assembly.jar
+- $JAVA_HOME/bin/java -jar ~/codacy-coverage-reporter.jar report -l Java -r target/site/jacoco/jacoco.xml
 cache:
   directories:
   - $HOME/.m2
@@ -34,19 +32,9 @@ addons:
     build_command_prepend: "mvn clean"
     build_command: "mvn compile -DskipTests=true"
     branch_pattern: release.*
-before_deploy:
-- jdk_switcher use oraclejdk9
-- "if ! gpg --list-secret-keys 34C80F11; then gpg --import 34C80F11.gpg; fi"
 deploy:
-- provider: script # SNAPSHOTS
-  script: mvn clean deploy -DskipTests -Prelease --settings settings.xml
-  skip_cleanup: true
-  on:
-    repo: cryptomator/cryptofs
-    branch: develop
-    condition: $TRAVIS_TAG = ''
-- provider: script # RELEASES
-  script: mvn clean versions:set -DnewVersion=${TRAVIS_TAG} deploy -DskipTests -Prelease --settings settings.xml
+- provider: script
+  script: mvn clean versions:set -DnewVersion=${TRAVIS_TAG} deploy -DskipTests -Prelease
   skip_cleanup: true
   on:
     repo: cryptomator/cryptofs
@@ -62,3 +50,5 @@ deploy:
   on:
     repo: cryptomator/cryptofs
     tags: true
+after_deploy:
+  - "echo '{\"close\": \"1\"}' | curl -v -X POST -u cryptobot:${BINTRAY_API_KEY} https://api.bintray.com/maven_central_sync/cryptomator/maven/cryptofs/versions/${TRAVIS_TAG}"
