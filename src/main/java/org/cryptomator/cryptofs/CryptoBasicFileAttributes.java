@@ -26,12 +26,14 @@ class CryptoBasicFileAttributes implements DelegatingBasicFileAttributes {
 	protected final Path ciphertextPath;
 	private final Cryptor cryptor;
 	private final Optional<OpenCryptoFile> openCryptoFile;
+	protected final boolean readonly;
 
-	public CryptoBasicFileAttributes(BasicFileAttributes delegate, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile) {
+	public CryptoBasicFileAttributes(BasicFileAttributes delegate, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonly) {
 		this.delegate = delegate;
 		this.ciphertextPath = ciphertextPath;
 		this.cryptor = cryptor;
 		this.openCryptoFile = openCryptoFile;
+		this.readonly = readonly;
 	}
 
 	@Override
