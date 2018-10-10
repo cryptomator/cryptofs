@@ -199,7 +199,7 @@
 			<distributionManagement>
 				<repository>
 					<id>bintray-jcenter</id>
-					<url>https://api.bintray.com/maven/cryptomator/maven/cryptolib/;publish=1</url>
+					<url>https://api.bintray.com/maven/cryptomator/maven/cryptofs/;publish=1</url>
 				</repository>
 			</distributionManagement>
 			<build>
