@@ -26,6 +26,7 @@ class OpenCryptoFiles {
 	private final FinallyUtil finallyUtil;
 	private final ConcurrentMap<Path, OpenCryptoFile> openCryptoFiles = new ConcurrentHashMap<>();
 
+
 	@Inject
 	public OpenCryptoFiles(CryptoFileSystemComponent component, FinallyUtil finallyUtil) {
 		this.component = component;
@@ -44,6 +45,25 @@ class OpenCryptoFiles {
 		});
 		assert result != null : "computeIfAbsent will not return null";
 		return result;
+	}
+
+	public void prepareMove(Path oldCiphertextPath, Path newCiphertextPath){
+		openCryptoFiles.compute(newCiphertextPath, (key,fileAtNewCiphertextPath) -> {
+			if(fileAtNewCiphertextPath == null){
+				return openCryptoFiles.get(oldCiphertextPath);
+			} else {
+				throw new IllegalStateException("File already exists. Can't update map.");
+			}
+
+		});
+	}
+
+	public void commitMove(Path oldCiphertextPath){
+		openCryptoFiles.remove(oldCiphertextPath);
+	}
+
+	public void rollbackMove(Path newCiphertextPath){
+		openCryptoFiles.remove(newCiphertextPath);
 	}
 
 	public void close() throws IOException {
