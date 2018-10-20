@@ -8,28 +8,26 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import org.cryptomator.cryptofs.OpenCounter.OpenState;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
 
 import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
-import static org.cryptomator.cryptofs.OpenCounter.OpenState.ALREADY_CLOSED;
-import static org.cryptomator.cryptofs.OpenCounter.OpenState.WAS_OPEN;
 import static org.cryptomator.cryptolib.Cryptors.ciphertextSize;
 
 @PerOpenFile
@@ -41,7 +39,6 @@ class OpenCryptoFile {
 	private final ChunkCache chunkCache;
 	private final AtomicLong size;
 	private final Runnable onClose;
-	private final OpenCounter openCounter;
 	private final CryptoFileChannelFactory cryptoFileChannelFactory;
 	private final CryptoFileSystemStats stats;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
@@ -49,13 +46,13 @@ class OpenCryptoFile {
 	private final BasicFileAttributeView attributeView;
 	private final AtomicBoolean headerWritten;
 	private final AtomicReference<Instant> lastModified;
+	private final AtomicInteger openChannelCounter;
 
 	@Inject
-	public OpenCryptoFile(EffectiveOpenOptions options, Cryptor cryptor, FileChannel channel, FileHeader header, @OpenFileSize AtomicLong size, OpenCounter openCounter, CryptoFileChannelFactory cryptoFileChannelFactory,
+	public OpenCryptoFile(EffectiveOpenOptions options, Cryptor cryptor, FileChannel channel, FileHeader header, @OpenFileSize AtomicLong size, CryptoFileChannelFactory cryptoFileChannelFactory,
 						  ChunkCache chunkCache, @OpenFileOnCloseHandler Runnable onClose, CryptoFileSystemStats stats, ExceptionsDuringWrite exceptionsDuringWrite, FinallyUtil finallyUtil, BasicFileAttributeView attrView) {
 		this.cryptor = cryptor;
 		this.chunkCache = chunkCache;
-		this.openCounter = openCounter;
 		this.cryptoFileChannelFactory = cryptoFileChannelFactory;
 		this.onClose = onClose;
 		this.channel = channel;
@@ -72,6 +69,7 @@ class OpenCryptoFile {
 		} catch (IOException e) {
 			lastModified.set(Instant.ofEpochSecond(0));
 		}
+		this.openChannelCounter = new AtomicInteger();
 	}
 
 	public FileChannel newFileChannel(EffectiveOpenOptions options) throws IOException {
@@ -209,31 +207,23 @@ class OpenCryptoFile {
 		return channel.tryLock(position, size, shared);
 	}
 
-	public void open(EffectiveOpenOptions openOptions) throws IOException {
-		OpenState state = openCounter.countOpen();
-		if (state == ALREADY_CLOSED) {
-			throw new ClosedChannelException();
-		} else if (state == WAS_OPEN && openOptions.createNew()) {
-			throw new IOException("Failed to create new file. File exists.");
+	void increaseOpenChannelCounter() {
+		openChannelCounter.getAndIncrement();
+	}
+
+	void decreaseOpenChannelCounter() throws IOException {
+		if (openChannelCounter.decrementAndGet() == 0) {
+			close();
 		}
 	}
 
 	public void close() throws IOException {
-		cryptoFileChannelFactory.close();
-	}
-
-	public void close(EffectiveOpenOptions options) throws IOException {
-		try {
-			force(true, options);
-		} finally {
-			if (openCounter.countClose()) {
-				finallyUtil.guaranteeInvocationOf(
-						() -> onClose.run(),
-						() -> channel.close(),
-						() -> cryptor.destroy()
-				);
-			}
-		}
+		finallyUtil.guaranteeInvocationOf( //
+				onClose::run, //
+				cryptoFileChannelFactory::close, //
+				channel::close, //
+				cryptor::destroy //
+		);
 	}
 
 }

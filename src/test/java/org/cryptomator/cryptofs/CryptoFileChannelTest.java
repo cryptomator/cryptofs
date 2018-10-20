@@ -23,12 +23,15 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.function.Consumer;
 
+import org.cryptomator.cryptolib.api.FileHeaderCryptor;
+import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.InOrder;
+import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
@@ -59,18 +62,13 @@ public class CryptoFileChannelTest {
 	@SuppressWarnings("unchecked")
 	private final Consumer<CryptoFileChannel> onClose = mock(Consumer.class);
 
-	private final FinallyUtil finallyUtil = mock(FinallyUtil.class);
+	private final FinallyUtil finallyUtil = new FinallyUtil();
 
 	private CryptoFileChannel inTest;
 
 	@Before
 	public void setUp() throws IOException {
 		inTest = new CryptoFileChannel(openCryptoFile, options, onClose, finallyUtil);
-	}
-
-	@Test
-	public void testConstructorPassesOptionsToOpenCryptoFilesOpenMethod() throws IOException {
-		verify(openCryptoFile).open(options);
 	}
 
 	@Test
@@ -181,6 +179,18 @@ public class CryptoFileChannelTest {
 			verify(openCryptoFile).force(false, options);
 		}
 
+	}
+
+	public class Close {
+
+		@Test
+		public void testCloseDelegatesToCloseInOpenCryptoFile() throws IOException {
+			inTest.implCloseChannel();
+
+			verify(onClose).accept(inTest);
+			verify(openCryptoFile).force(true, options);
+			verify(openCryptoFile).decreaseOpenChannelCounter();
+		}
 	}
 
 	@Test

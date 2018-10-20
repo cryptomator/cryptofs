@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.ClosedFileSystemException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Stream;
 
 import javax.inject.Inject;
 
@@ -35,10 +36,8 @@ class CryptoFileChannelFactory {
 
 	public void close() throws IOException {
 		closed = true;
-		finallyUtil.guaranteeInvocationOf( //
-				channels.keySet().stream() //
-						.map(channel -> (RunnableThrowingException<IOException>) () -> channel.close()) //
-						.iterator());
+		Stream<RunnableThrowingException<IOException>> closers = channels.keySet().stream().map(ch -> ch::close);
+		finallyUtil.guaranteeInvocationOf(closers.iterator());
 	}
 
 }
