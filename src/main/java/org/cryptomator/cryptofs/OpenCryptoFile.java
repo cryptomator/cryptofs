@@ -48,7 +48,6 @@ class OpenCryptoFile {
 	private final FinallyUtil finallyUtil;
 	private final BasicFileAttributeView attributeView;
 	private final AtomicBoolean headerWritten;
-
 	private final AtomicReference<Instant> lastModified;
 
 	@Inject
@@ -73,7 +72,6 @@ class OpenCryptoFile {
 		} catch (IOException e) {
 			lastModified.set(Instant.ofEpochSecond(0));
 		}
-
 	}
 
 	public FileChannel newFileChannel(EffectiveOpenOptions options) throws IOException {

@@ -447,13 +447,9 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		if (Files.exists(ciphertextSourceFile)) {
 			// FILE:
 			Path ciphertextTargetFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.FILE);
-			try{
-				openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextTargetFile);
+			try (OpenCryptoFiles.OpenFileMove openFileMove = openCryptoFiles.twoPhaseMove()) {
 				Files.move(ciphertextSourceFile, ciphertextTargetFile, options);
-				openCryptoFiles.commitMove(ciphertextSourceFile);
-			} catch (IllegalStateException e){
-				openCryptoFiles.rollbackMove(ciphertextTargetFile);
-				throw new IOException();
+				openFileMove.moveOpenedFile(ciphertextSourceFile, ciphertextTargetFile);
 			}
 		} else if (Files.exists(ciphertextSourceDirFile)) {
 			// DIRECTORY:

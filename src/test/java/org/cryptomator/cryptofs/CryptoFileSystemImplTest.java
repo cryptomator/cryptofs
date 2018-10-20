@@ -60,6 +60,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
 import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
+import org.cryptomator.cryptofs.OpenCryptoFiles.OpenFileMove;
 import org.cryptomator.cryptofs.mocks.FileChannelMock;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.junit.Before;
@@ -462,7 +463,9 @@ public class CryptoFileSystemImplTest {
 
 			@Test
 			public void moveFile() throws IOException {
+				OpenFileMove openFileMove = Mockito.mock(OpenFileMove.class);
 				Mockito.doThrow(new NoSuchFileException("ciphertextSourceDirFile")).when(physicalFsProv).checkAccess(ciphertextSourceDirFile);
+				Mockito.when(openCryptoFiles.twoPhaseMove()).thenReturn(openFileMove);
 
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);
@@ -471,6 +474,7 @@ public class CryptoFileSystemImplTest {
 
 				verify(readonlyFlag).assertWritable();
 				verify(physicalFsProv).move(ciphertextSourceFile, ciphertextTargetFile, option1, option2);
+				verify(openFileMove).moveOpenedFile(ciphertextSourceFile, ciphertextTargetFile);
 			}
 
 			@Test
