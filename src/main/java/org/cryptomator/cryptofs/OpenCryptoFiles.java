@@ -73,12 +73,12 @@ class OpenCryptoFiles {
 				.withOptions(options) //
 				.build();
 		OpenCryptoFile file = component.newOpenCryptoFileComponent(module).openCryptoFile();
-		file.setPath(normalizedPath);
+		file.setCurrentFilePath(normalizedPath);
 		return file;
 	}
 
 	void close(OpenCryptoFile openCryptoFile) {
-		openCryptoFiles.remove(openCryptoFile.getPath());
+		openCryptoFiles.remove(openCryptoFile.getCurrentFilePath());
 	}
 
 	public class TwoPhaseMove implements AutoCloseable {
@@ -111,7 +111,7 @@ class OpenCryptoFiles {
 				throw new IllegalStateException();
 			}
 			if (openCryptoFile != null) {
-				openCryptoFile.setPath(dst);
+				openCryptoFile.setCurrentFilePath(dst);
 			}
 			openCryptoFiles.remove(src, openCryptoFile);
 			committed = true;

@@ -48,7 +48,7 @@ class OpenCryptoFile {
 	private final AtomicReference<Instant> lastModified;
 	private final AtomicInteger openChannelCounter;
 
-	private Path path;
+	private Path currentFilePath;
 
 	@Inject
 	public OpenCryptoFile(Cryptor cryptor, FileChannel channel, FileHeader header, @OpenFileSize AtomicLong size, CryptoFileChannelFactory cryptoFileChannelFactory,
@@ -219,12 +219,12 @@ class OpenCryptoFile {
 		}
 	}
 
-	public Path getPath() {
-		return path;
+	public Path getCurrentFilePath() {
+		return currentFilePath;
 	}
 
-	public void setPath(Path path) {
-		this.path = path;
+	public void setCurrentFilePath(Path currentFilePath) {
+		this.currentFilePath = currentFilePath;
 	}
 
 	public void close() throws IOException {
@@ -238,6 +238,6 @@ class OpenCryptoFile {
 
 	@Override
 	public String toString() {
-		return "OpenCryptoFile(path=" + path.toString() + ", numChannels=" + openChannelCounter.get() + ")";
+		return "OpenCryptoFile(path=" + currentFilePath.toString() + ", numChannels=" + openChannelCounter.get() + ")";
 	}
 }

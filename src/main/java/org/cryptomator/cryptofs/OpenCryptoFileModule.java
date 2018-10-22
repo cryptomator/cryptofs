@@ -1,7 +1,6 @@
 package org.cryptomator.cryptofs;
 
 import java.nio.file.Path;
-import java.util.function.Consumer;
 
 import dagger.Module;
 import dagger.Provides;
@@ -19,7 +18,7 @@ class OpenCryptoFileModule {
 
 	@Provides
 	@PerOpenFile
-	@OpenFilePath
+	@OriginalOpenFilePath
 	public Path providePath() {
 		return path;
 	}
