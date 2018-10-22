@@ -450,13 +450,17 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		Path ciphertextSourceDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource, CiphertextFileType.DIRECTORY);
 		if (Files.exists(ciphertextSourceFile)) {
 			// FILE:
+			// While moving a file, it is possible to keep the any channels open. In order to make this work
+			// we need to re-map the OpenCryptoFile entry.
 			Path ciphertextTargetFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.FILE);
-			try (OpenCryptoFiles.OpenFileMove openFileMove = openCryptoFiles.twoPhaseMove()) {
+			try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextTargetFile)) {
 				Files.move(ciphertextSourceFile, ciphertextTargetFile, options);
-				openFileMove.moveOpenedFile(ciphertextSourceFile, ciphertextTargetFile);
+				twoPhaseMove.commit();
 			}
 		} else if (Files.exists(ciphertextSourceDirFile)) {
 			// DIRECTORY:
+			// Since we only rename the directory file, all ciphertext paths of subresources stay the same.
+			// Hence there is no need to re-map OpenCryptoFile entries.
 			Path ciphertextTargetDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.DIRECTORY);
 			if (!ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
 				// try to move, don't replace:

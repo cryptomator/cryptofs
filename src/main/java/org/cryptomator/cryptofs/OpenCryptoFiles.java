@@ -15,8 +15,6 @@ import java.nio.file.Path;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 
 import static org.cryptomator.cryptofs.OpenCryptoFileModule.openCryptoFileModule;
@@ -28,7 +26,6 @@ class OpenCryptoFiles {
 	private final CryptoFileSystemComponent component;
 	private final FinallyUtil finallyUtil;
 	private final ConcurrentMap<Path, OpenCryptoFile> openCryptoFiles = new ConcurrentHashMap<>();
-	private final Lock lock = new ReentrantLock();
 
 	@Inject
 	public OpenCryptoFiles(CryptoFileSystemComponent component, FinallyUtil finallyUtil) {
@@ -44,6 +41,7 @@ class OpenCryptoFiles {
 	public OpenCryptoFile getOrCreate(Path ciphertextPath, EffectiveOpenOptions options) throws IOException {
 		Path normalizedPath = ciphertextPath.toAbsolutePath().normalize();
 		OpenCryptoFile result = allowUncheckedThrowsOf(IOException.class).from(() -> {
+			// ConcurrentHashMap.computeIfAbsent is atomic, "create" is called at most once:
 			return openCryptoFiles.computeIfAbsent(normalizedPath, ignored -> create(normalizedPath, options));
 		});
 		assert result != null : "computeIfAbsent will not return null";
@@ -51,70 +49,83 @@ class OpenCryptoFiles {
 	}
 
 	/**
-	 * Creates a utility allowing to update currently opened file references.
-	 * MUST be used in a try-with-resource statement to avoid deadlocks.
-	 * SHOULD be called before applying any changes to the underlying file system that might affect currently opened file handles.
+	 * Prepares to update any open file references during a move operation.
+	 * MUST be invoked using a try-with-resource statement and committed after the physical file move succeeded.
 	 *
+	 * @param src The ciphertext file path before the move
+	 * @param dst The ciphertext file path after the move
 	 * @return Utility to update OpenCryptoFile references.
+	 * @throws FileAlreadyExistsException Thrown if the destination file is an existing file that is currently opened.
 	 */
-	public OpenFileMove twoPhaseMove() {
-		return new OpenFileMove();
+	public TwoPhaseMove prepareMove(Path src, Path dst) throws FileAlreadyExistsException {
+		return new TwoPhaseMove(src, dst);
 	}
 
 	public void close() throws IOException {
-		lock.lock();
-		try {
-			Stream<RunnableThrowingException<IOException>> closers = openCryptoFiles.values().stream().map(openCryptoFile -> openCryptoFile::close);
-			finallyUtil.guaranteeInvocationOf(closers.iterator());
-		} finally {
-			lock.unlock();
-		}
+		Stream<RunnableThrowingException<IOException>> closers = openCryptoFiles.values().stream().map(openCryptoFile -> openCryptoFile::close);
+		finallyUtil.guaranteeInvocationOf(closers.iterator());
 	}
 
 	private OpenCryptoFile create(Path normalizedPath, EffectiveOpenOptions options) {
-		lock.lock();
-		try {
-			OpenCryptoFileModule module = openCryptoFileModule() //
-					.withPath(normalizedPath) //
-					.withOptions(options) //
-					.onClose(() -> openCryptoFiles.remove(normalizedPath)) //
-					.build();
-			return component.newOpenCryptoFileComponent(module).openCryptoFile();
-		} finally {
-			lock.unlock();
-		}
+		OpenCryptoFileModule module = openCryptoFileModule() //
+				.withPath(normalizedPath) //
+				.withOptions(options) //
+				.onClose(() -> openCryptoFiles.remove(normalizedPath)) //
+				.build();
+		return component.newOpenCryptoFileComponent(module).openCryptoFile();
 	}
 
-	public class OpenFileMove implements AutoCloseable {
+	public class TwoPhaseMove implements AutoCloseable {
 
-		private OpenFileMove() {
-			lock.lock();
+		private final Path src;
+		private final Path dst;
+		private final OpenCryptoFile openCryptoFile;
+		private boolean committed;
+		private boolean rolledBack;
+
+		private TwoPhaseMove(Path src, Path dst) throws FileAlreadyExistsException {
+			this.src = src;
+			this.dst = dst;
+			try {
+				// ConcurrentHashMap.compute is atomic:
+				this.openCryptoFile = openCryptoFiles.compute(dst, (k, v) -> {
+					if (v == null) {
+						return openCryptoFiles.get(src);
+					} else {
+						throw new AlreadyMappedException();
+					}
+				});
+			} catch (AlreadyMappedException e) {
+				throw new FileAlreadyExistsException(dst.toString(), null, "Destination file currently accessed by another thread.");
+			}
 		}
 
-		/**
-		 * Updates references to an opened file (if any) from src to dst.
-		 * Should be called after moving said file.
-		 *
-		 * @param src The old ciphertext path
-		 * @param dst The new ciphertext path
-		 * @throws FileAlreadyExistsException Thrown if another thread is already accessing dst.
-		 */
-		public void moveOpenedFile(Path src, Path dst) throws FileAlreadyExistsException {
-			Path normalizedSrc = src.toAbsolutePath().normalize();
-			Path normalizedDst = dst.toAbsolutePath().normalize();
-			if (openCryptoFiles.get(normalizedDst) != null) {
-				throw new FileAlreadyExistsException(normalizedDst.toString(), null, "Destination file already exists.");
+		public void commit() {
+			if (rolledBack) {
+				throw new IllegalStateException();
 			}
-			openCryptoFiles.compute(normalizedDst, (k, v) -> {
-				assert v == null; // we're exclusive lock owner and just checked that dst doesn't exist yet.
-				return openCryptoFiles.get(normalizedSrc);
-			});
+			openCryptoFiles.remove(src, openCryptoFile);
+			committed = true;
+		}
+
+		public void rollback() {
+			if (committed) {
+				throw new IllegalStateException();
+			}
+			openCryptoFiles.remove(dst, openCryptoFile);
+			rolledBack = true;
 		}
 
 		@Override
 		public void close() {
-			lock.unlock();
+			if (!committed) {
+				rollback();
+			}
 		}
+	}
+
+	private static class AlreadyMappedException extends RuntimeException {
+
 	}
 
 }
