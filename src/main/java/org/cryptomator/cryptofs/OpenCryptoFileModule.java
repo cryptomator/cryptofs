@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs;
 
 import java.nio.file.Path;
+import java.util.function.Consumer;
 
 import dagger.Module;
 import dagger.Provides;
@@ -10,11 +11,9 @@ class OpenCryptoFileModule {
 
 	private final Path path;
 	private final EffectiveOpenOptions options;
-	private final Runnable onClose;
 
 	private OpenCryptoFileModule(Builder builder) {
 		this.path = builder.path;
-		this.onClose = builder.onClose;
 		this.options = builder.options;
 	}
 
@@ -23,13 +22,6 @@ class OpenCryptoFileModule {
 	@OpenFilePath
 	public Path providePath() {
 		return path;
-	}
-
-	@Provides
-	@PerOpenFile
-	@OpenFileOnCloseHandler
-	public Runnable provideOnClose() {
-		return onClose;
 	}
 
 	@Provides
@@ -45,7 +37,6 @@ class OpenCryptoFileModule {
 	public static class Builder {
 
 		private Path path;
-		private Runnable onClose;
 		private EffectiveOpenOptions options;
 
 		private Builder() {
@@ -53,11 +44,6 @@ class OpenCryptoFileModule {
 
 		public Builder withPath(Path path) {
 			this.path = path;
-			return this;
-		}
-
-		public Builder onClose(Runnable onClose) {
-			this.onClose = onClose;
 			return this;
 		}
 
@@ -77,9 +63,6 @@ class OpenCryptoFileModule {
 			}
 			if (options == null) {
 				throw new IllegalStateException("options must be set");
-			}
-			if (onClose == null) {
-				throw new IllegalStateException("onClose must be set");
 			}
 		}
 

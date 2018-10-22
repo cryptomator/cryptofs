@@ -17,6 +17,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
@@ -35,10 +36,10 @@ class OpenCryptoFile {
 	private final Cryptor cryptor;
 	private final FileChannel channel;
 	private final FileHeader header;
-	private final ChunkCache chunkCache;
 	private final AtomicLong size;
-	private final Runnable onClose;
 	private final CryptoFileChannelFactory cryptoFileChannelFactory;
+	private final ChunkCache chunkCache;
+	private final OpenCryptoFiles openCryptoFileFactory;
 	private final CryptoFileSystemStats stats;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
 	private final FinallyUtil finallyUtil;
@@ -47,16 +48,18 @@ class OpenCryptoFile {
 	private final AtomicReference<Instant> lastModified;
 	private final AtomicInteger openChannelCounter;
 
+	private Path path;
+
 	@Inject
-	public OpenCryptoFile(EffectiveOpenOptions options, Cryptor cryptor, FileChannel channel, FileHeader header, @OpenFileSize AtomicLong size, CryptoFileChannelFactory cryptoFileChannelFactory,
-						  ChunkCache chunkCache, @OpenFileOnCloseHandler Runnable onClose, CryptoFileSystemStats stats, ExceptionsDuringWrite exceptionsDuringWrite, FinallyUtil finallyUtil, BasicFileAttributeView attrView) {
+	public OpenCryptoFile(Cryptor cryptor, FileChannel channel, FileHeader header, @OpenFileSize AtomicLong size, CryptoFileChannelFactory cryptoFileChannelFactory,
+						  ChunkCache chunkCache, OpenCryptoFiles openCryptoFileFactory, CryptoFileSystemStats stats, ExceptionsDuringWrite exceptionsDuringWrite, FinallyUtil finallyUtil, BasicFileAttributeView attrView) {
 		this.cryptor = cryptor;
-		this.chunkCache = chunkCache;
-		this.cryptoFileChannelFactory = cryptoFileChannelFactory;
-		this.onClose = onClose;
 		this.channel = channel;
 		this.header = header;
 		this.size = size;
+		this.cryptoFileChannelFactory = cryptoFileChannelFactory;
+		this.chunkCache = chunkCache;
+		this.openCryptoFileFactory = openCryptoFileFactory;
 		this.stats = stats;
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
 		this.finallyUtil = finallyUtil;
@@ -216,13 +219,25 @@ class OpenCryptoFile {
 		}
 	}
 
+	public Path getPath() {
+		return path;
+	}
+
+	public void setPath(Path path) {
+		this.path = path;
+	}
+
 	public void close() throws IOException {
 		finallyUtil.guaranteeInvocationOf( //
-				onClose::run, //
+				() -> openCryptoFileFactory.close(this), //
 				cryptoFileChannelFactory::close, //
 				channel::close, //
 				cryptor::destroy //
 		);
 	}
 
+	@Override
+	public String toString() {
+		return "OpenCryptoFile(path=" + path.toString() + ", numChannels=" + openChannelCounter.get() + ")";
+	}
 }

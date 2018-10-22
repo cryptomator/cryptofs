@@ -8,6 +8,7 @@ import java.util.stream.Stream;
 
 import javax.inject.Inject;
 
+// TODO delete, move channel-creation to OpenCryptoFile
 @PerOpenFile
 class CryptoFileChannelFactory {
 
@@ -15,13 +16,15 @@ class CryptoFileChannelFactory {
 	private volatile boolean closed = false;
 	private final FinallyUtil finallyUtil;
 
+	private OpenCryptoFile tmp;
+
 	@Inject
 	public CryptoFileChannelFactory(FinallyUtil finallyUtil) {
 		this.finallyUtil = finallyUtil;
 	}
 
-	@SuppressWarnings("finally")
 	public CryptoFileChannel create(OpenCryptoFile openCryptoFile, EffectiveOpenOptions options) throws IOException {
+		this.tmp = openCryptoFile;
 		CryptoFileChannel channel = new CryptoFileChannel(openCryptoFile, options, closed -> channels.remove(closed), finallyUtil);
 		channels.put(channel, channel);
 		if (closed) {

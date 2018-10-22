@@ -12,6 +12,7 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -70,9 +71,14 @@ class OpenCryptoFiles {
 		OpenCryptoFileModule module = openCryptoFileModule() //
 				.withPath(normalizedPath) //
 				.withOptions(options) //
-				.onClose(() -> openCryptoFiles.remove(normalizedPath)) //
 				.build();
-		return component.newOpenCryptoFileComponent(module).openCryptoFile();
+		OpenCryptoFile file = component.newOpenCryptoFileComponent(module).openCryptoFile();
+		file.setPath(normalizedPath);
+		return file;
+	}
+
+	void close(OpenCryptoFile openCryptoFile) {
+		openCryptoFiles.remove(openCryptoFile.getPath());
 	}
 
 	public class TwoPhaseMove implements AutoCloseable {
@@ -84,8 +90,8 @@ class OpenCryptoFiles {
 		private boolean rolledBack;
 
 		private TwoPhaseMove(Path src, Path dst) throws FileAlreadyExistsException {
-			this.src = src;
-			this.dst = dst;
+			this.src = Objects.requireNonNull(src);
+			this.dst = Objects.requireNonNull(dst);
 			try {
 				// ConcurrentHashMap.compute is atomic:
 				this.openCryptoFile = openCryptoFiles.compute(dst, (k, v) -> {
@@ -103,6 +109,9 @@ class OpenCryptoFiles {
 		public void commit() {
 			if (rolledBack) {
 				throw new IllegalStateException();
+			}
+			if (openCryptoFile != null) {
+				openCryptoFile.setPath(dst);
 			}
 			openCryptoFiles.remove(src, openCryptoFile);
 			committed = true;

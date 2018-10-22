@@ -28,6 +28,7 @@ import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
@@ -48,7 +49,7 @@ public class OpenCryptoFileTest {
 	private FileHeader header = mock(FileHeader.class);
 	private ChunkCache chunkCache = mock(ChunkCache.class);
 	private AtomicLong size = mock(AtomicLong.class);
-	private Runnable onClose = mock(Runnable.class);
+	private OpenCryptoFiles openCryptoFileFactory = mock(OpenCryptoFiles.class);
 	private CryptoFileChannelFactory cryptoFileChannelFactory = mock(CryptoFileChannelFactory.class);
 	private CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
 	private ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
@@ -64,7 +65,7 @@ public class OpenCryptoFileTest {
 		Mockito.when(attributeView.readAttributes()).thenReturn(attributes);
 		Mockito.when(attributes.lastModifiedTime()).thenReturn(FileTime.from(Instant.now()));
 
-		inTest = new OpenCryptoFile(options, cryptor, channel, header, size, cryptoFileChannelFactory, chunkCache, onClose, stats, exceptionsDuringWrite, finallyUtil, attributeView);
+		inTest = new OpenCryptoFile(cryptor, channel, header, size, cryptoFileChannelFactory, chunkCache, openCryptoFileFactory, stats, exceptionsDuringWrite, finallyUtil, attributeView);
 	}
 
 	@Theory
@@ -93,7 +94,7 @@ public class OpenCryptoFileTest {
 
 		inTest.close();
 
-		verify(onClose).run();
+		verify(openCryptoFileFactory).close(inTest);
 		verify(cryptoFileChannelFactory).close();
 		verify(cryptor).destroy();
 	}
