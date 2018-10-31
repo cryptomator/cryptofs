@@ -38,7 +38,7 @@ public class CryptoPosixFileAttributesTest {
 		Set<PosixFilePermission> delegatePermissions = EnumSet.allOf(PosixFilePermission.class);
 		Mockito.when(delegate.permissions()).thenReturn(delegatePermissions);
 
-		Assert.assertArrayEquals(EnumSet.of(OWNER_READ, GROUP_READ, OTHERS_READ).toArray(), attrs.permissions().toArray());
+		Assert.assertArrayEquals(EnumSet.of(OWNER_READ, GROUP_READ, OTHERS_READ, OWNER_EXECUTE, GROUP_EXECUTE, OTHERS_EXECUTE).toArray(), attrs.permissions().toArray());
 	}
 
 }
