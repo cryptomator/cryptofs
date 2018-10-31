@@ -15,8 +15,8 @@
 
 	<properties>
 		<cryptolib.version>1.2.1</cryptolib.version>
-		<dagger.version>2.17</dagger.version>
-		<guava.version>26.0-jre</guava.version>
+		<dagger.version>2.19</dagger.version>
+		<guava.version>27.0-jre</guava.version>
 		<slf4j.version>1.7.25</slf4j.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
@@ -156,7 +156,7 @@
 					<plugin>
 						<groupId>org.owasp</groupId>
 						<artifactId>dependency-check-maven</artifactId>
-						<version>3.3.2</version>
+						<version>3.3.4</version>
 						<configuration>
 							<cveValidForHours>24</cveValidForHours>
 							<failBuildOnCVSS>0</failBuildOnCVSS>
