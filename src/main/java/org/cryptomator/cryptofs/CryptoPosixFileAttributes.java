@@ -18,13 +18,13 @@ import java.util.Set;
 import com.google.common.collect.Sets;
 import org.cryptomator.cryptolib.api.Cryptor;
 
-import static java.nio.file.attribute.PosixFilePermission.GROUP_READ;
-import static java.nio.file.attribute.PosixFilePermission.OTHERS_READ;
-import static java.nio.file.attribute.PosixFilePermission.OWNER_READ;
+import static java.nio.file.attribute.PosixFilePermission.GROUP_WRITE;
+import static java.nio.file.attribute.PosixFilePermission.OTHERS_WRITE;
+import static java.nio.file.attribute.PosixFilePermission.OWNER_WRITE;
 
 class CryptoPosixFileAttributes extends CryptoBasicFileAttributes implements DelegatingPosixFileAttributes {
 
-	private static final Set<PosixFilePermission> ALL_READ = EnumSet.of(OWNER_READ, GROUP_READ, OTHERS_READ);
+	private static final Set<PosixFilePermission> ALL_WRITE = EnumSet.of(OWNER_WRITE, GROUP_WRITE, OTHERS_WRITE);
 
 	private final PosixFileAttributes delegate;
 
@@ -42,7 +42,7 @@ class CryptoPosixFileAttributes extends CryptoBasicFileAttributes implements Del
 	public Set<PosixFilePermission> permissions() {
 		Set<PosixFilePermission> delegatePermissions = delegate.permissions();
 		if (readonly) {
-			return Sets.intersection(delegatePermissions, ALL_READ);
+			return Sets.difference(delegatePermissions, ALL_WRITE);
 		} else {
 			return delegatePermissions;
 		}
