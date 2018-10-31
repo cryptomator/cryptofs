@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
  * <p>
  * this leads to cryptomator URIs of the form
  * <blockquote>
- * <i>cryptomator</i><b>{@code :}//</b><i>file:<tt>%2F%2F</tt>path<tt>%2F</tt>to<tt>%2F</tt>vault<tt>%2F</tt>as<tt>%2F</tt>uri</i><b>/</b><i>path/inside/vault</i>
+ * <i>cryptomator</i><b>{@code :}//</b><i>file:%2F%2Fpath%2Fto%2Fvault%2Fas%2Furi</i><b>/</b><i>path/inside/vault</i>
  * </blockquote>
  * 
  * @author Markus Kreusch
