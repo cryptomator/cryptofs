@@ -6,6 +6,7 @@ import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 
 import java.nio.file.Path;
+import java.util.function.Consumer;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -23,17 +24,14 @@ public class OpenCryptoFileModuleTest {
 
 	private Path path = mock(Path.class);
 	private EffectiveOpenOptions options = mock(EffectiveOpenOptions.class);
-	private Runnable onClose = mock(Runnable.class);
 
 	@Test
 	public void testBuilder() {
 		OpenCryptoFileModule inTest = openCryptoFileModule() //
 				.withOptions(options) //
 				.withPath(path) //
-				.onClose(onClose) //
 				.build();
 
-		assertThat(inTest.provideOnClose(), is(onClose));
 		assertThat(inTest.provideOptions(), is(options));
 		assertThat(inTest.providePath(), is(path));
 	}
@@ -44,7 +42,6 @@ public class OpenCryptoFileModuleTest {
 
 		openCryptoFileModule() //
 				.withOptions(options) //
-				.onClose(onClose) //
 				.build();
 	}
 
@@ -53,17 +50,6 @@ public class OpenCryptoFileModuleTest {
 		thrown.expect(IllegalStateException.class);
 
 		openCryptoFileModule() //
-				.withPath(path) //
-				.onClose(onClose) //
-				.build();
-	}
-
-	@Test
-	public void testBuilderIfOnCloseIsMissing() {
-		thrown.expect(IllegalStateException.class);
-
-		openCryptoFileModule() //
-				.withOptions(options) //
 				.withPath(path) //
 				.build();
 	}

@@ -39,7 +39,7 @@ class CryptoFileChannel extends FileChannel {
 	public CryptoFileChannel(OpenCryptoFile openCryptoFile, EffectiveOpenOptions options, Consumer<CryptoFileChannel> onClose, FinallyUtil finallyUtil) throws IOException {
 		this.openCryptoFile = Objects.requireNonNull(openCryptoFile);
 		this.options = Objects.requireNonNull(options);
-		this.openCryptoFile.open(options);
+		this.openCryptoFile.increaseOpenChannelCounter();
 		this.onClose = onClose;
 		this.finallyUtil = finallyUtil;
 	}
@@ -259,7 +259,9 @@ class CryptoFileChannel extends FileChannel {
 	protected void implCloseChannel() throws IOException {
 		finallyUtil.guaranteeInvocationOf( //
 				() -> onClose.accept(this), //
-				() -> openCryptoFile.close(options));
+				() -> openCryptoFile.force(true, options), //
+				() -> openCryptoFile.decreaseOpenChannelCounter() //
+		);
 	}
 
 	private void assertWritable() throws IOException {

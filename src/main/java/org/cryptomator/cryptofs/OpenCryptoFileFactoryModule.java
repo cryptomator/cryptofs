@@ -25,13 +25,13 @@ class OpenCryptoFileFactoryModule {
 
 	@Provides
 	@PerOpenFile
-	public FileChannel provideFileChannel(@OpenFilePath Path path, EffectiveOpenOptions options) {
+	public FileChannel provideFileChannel(@OriginalOpenFilePath Path path, EffectiveOpenOptions options) {
 		return rethrowUnchecked(IOException.class).from(() -> path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile()));
 	}
 
 	@Provides
 	@PerOpenFile
-	public BasicFileAttributeView provideBasicFileAttributeView(@OpenFilePath Path path) {
+	public BasicFileAttributeView provideBasicFileAttributeView(@OriginalOpenFilePath Path path) {
 		return path.getFileSystem().provider().getFileAttributeView(path, BasicFileAttributeView.class);
 	}
 

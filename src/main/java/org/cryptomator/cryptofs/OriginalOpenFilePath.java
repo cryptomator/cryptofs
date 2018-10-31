@@ -7,8 +7,11 @@ import java.lang.annotation.Retention;
 
 import javax.inject.Qualifier;
 
+/**
+ * The Path used to create an OpenCryptoFile
+ */
 @Qualifier
 @Documented
 @Retention(RUNTIME)
-@interface OpenFileOnCloseHandler {
+@interface OriginalOpenFilePath {
 }

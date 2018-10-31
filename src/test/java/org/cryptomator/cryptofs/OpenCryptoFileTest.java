@@ -1,6 +1,5 @@
 package org.cryptomator.cryptofs;
 
-import org.cryptomator.cryptofs.OpenCounter.OpenState;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
@@ -19,7 +18,6 @@ import org.mockito.junit.MockitoRule;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.file.NoSuchFileException;
@@ -30,14 +28,11 @@ import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @RunWith(Theories.class)
 public class OpenCryptoFileTest {
@@ -54,8 +49,7 @@ public class OpenCryptoFileTest {
 	private FileHeader header = mock(FileHeader.class);
 	private ChunkCache chunkCache = mock(ChunkCache.class);
 	private AtomicLong size = mock(AtomicLong.class);
-	private Runnable onClose = mock(Runnable.class);
-	private OpenCounter openCounter = mock(OpenCounter.class);
+	private OpenCryptoFiles openCryptoFileFactory = mock(OpenCryptoFiles.class);
 	private CryptoFileChannelFactory cryptoFileChannelFactory = mock(CryptoFileChannelFactory.class);
 	private CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
 	private ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
@@ -71,7 +65,7 @@ public class OpenCryptoFileTest {
 		Mockito.when(attributeView.readAttributes()).thenReturn(attributes);
 		Mockito.when(attributes.lastModifiedTime()).thenReturn(FileTime.from(Instant.now()));
 
-		inTest = new OpenCryptoFile(options, cryptor, channel, header, size, openCounter, cryptoFileChannelFactory, chunkCache, onClose, stats, exceptionsDuringWrite, finallyUtil, attributeView);
+		inTest = new OpenCryptoFile(cryptor, channel, header, size, cryptoFileChannelFactory, chunkCache, openCryptoFileFactory, stats, exceptionsDuringWrite, finallyUtil, attributeView);
 	}
 
 	@Theory
@@ -95,45 +89,14 @@ public class OpenCryptoFileTest {
 	}
 
 	@Test
-	public void testOpenSucceedsIfOpenCounterReturnsJustOpened() throws IOException {
-		when(openCounter.countOpen()).thenReturn(OpenState.JUST_OPENED);
-
-		inTest.open(options);
-	}
-
-	@Test
-	public void testOpenSucceedsIfOpenCounterReturnsWasOpenAndNotCreateNew() throws IOException {
-		when(openCounter.countOpen()).thenReturn(OpenState.WAS_OPEN);
-		when(options.createNew()).thenReturn(false);
-
-		inTest.open(options);
-	}
-
-	@Test
-	public void testOpenFailsIfOpenCounterReturnsWasOpenAndCreateNew() throws IOException {
-		when(openCounter.countOpen()).thenReturn(OpenState.WAS_OPEN);
-		when(options.createNew()).thenReturn(true);
-
-		thrown.expect(IOException.class);
-		thrown.expectMessage("File exists");
-
-		inTest.open(options);
-	}
-
-	@Test
-	public void testOpenFailsIfOpenCounterReturnsAlreadClosed() throws IOException {
-		when(openCounter.countOpen()).thenReturn(OpenState.ALREADY_CLOSED);
-
-		thrown.expect(ClosedChannelException.class);
-
-		inTest.open(options);
-	}
-
-	@Test
 	public void testCloseDelegatesToCryptoFileChannelFactory() throws IOException {
+		thrown.expect(NullPointerException.class); // due to unmockable method AbstractInterruptibleChannel.close
+
 		inTest.close();
 
+		verify(openCryptoFileFactory).close(inTest);
 		verify(cryptoFileChannelFactory).close();
+		verify(cryptor).destroy();
 	}
 
 	@Test
@@ -163,28 +126,6 @@ public class OpenCryptoFileTest {
 		doThrow(new NoSuchFileException("No such File.")).when(attributeView).setTimes(null, null, null);
 
 		inTest.force(true, options);
-	}
-
-	@Test
-	public void testCloseThrowsExceptionDuringWriteIfWritable() throws IOException {
-		when(options.writable()).thenReturn(true);
-		IOException expected = new IOException();
-		doThrow(expected).when(exceptionsDuringWrite).throwIfPresent();
-		FileHeaderCryptor fileHeaderCryptor = Mockito.mock(FileHeaderCryptor.class);
-		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
-
-		thrown.expect(is(expected));
-
-		inTest.close(options);
-	}
-
-	@Test
-	public void testCloseDoesNotThrowExceptionDuringWriteIfNotWritable() throws IOException {
-		when(options.writable()).thenReturn(false);
-		IOException expected = new IOException();
-		doThrow(expected).when(exceptionsDuringWrite).throwIfPresent();
-
-		inTest.close(options);
 	}
 
 	@Test

@@ -1,23 +1,19 @@
 package org.cryptomator.cryptofs;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.sameInstance;
-import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
-import static org.mockito.Mockito.when;
-import static org.mockito.internal.verification.VerificationModeFactory.atLeast;
+import de.bechte.junit.runners.context.HierarchicalContextRunner;
+import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
+import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
+import org.cryptomator.cryptofs.OpenCryptoFiles.TwoPhaseMove;
+import org.cryptomator.cryptofs.mocks.FileChannelMock;
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+import org.junit.runner.RunWith;
+import org.mockito.Mockito;
+import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoRule;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -58,20 +54,18 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
-import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
-import org.cryptomator.cryptofs.mocks.FileChannelMock;
-import org.cryptomator.cryptolib.api.Cryptor;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
-import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
-
-import de.bechte.junit.runners.context.HierarchicalContextRunner;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.sameInstance;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+import static org.mockito.internal.verification.VerificationModeFactory.atLeast;
 
 @RunWith(HierarchicalContextRunner.class)
 public class CryptoFileSystemImplTest {
@@ -462,7 +456,9 @@ public class CryptoFileSystemImplTest {
 
 			@Test
 			public void moveFile() throws IOException {
+				TwoPhaseMove openFileMove = Mockito.mock(TwoPhaseMove.class);
 				Mockito.doThrow(new NoSuchFileException("ciphertextSourceDirFile")).when(physicalFsProv).checkAccess(ciphertextSourceDirFile);
+				Mockito.when(openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextTargetFile)).thenReturn(openFileMove);
 
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);
@@ -471,6 +467,7 @@ public class CryptoFileSystemImplTest {
 
 				verify(readonlyFlag).assertWritable();
 				verify(physicalFsProv).move(ciphertextSourceFile, ciphertextTargetFile, option1, option2);
+				verify(openFileMove).commit();
 			}
 
 			@Test
