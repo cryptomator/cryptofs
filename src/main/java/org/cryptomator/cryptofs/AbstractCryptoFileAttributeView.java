@@ -46,7 +46,9 @@ abstract class AbstractCryptoFileAttributeView<S extends BasicFileAttributes, T 
 	public void setTimes(FileTime lastModifiedTime, FileTime lastAccessTime, FileTime createTime) throws IOException {
 		readonlyFlag.assertWritable();
 		delegate.setTimes(lastModifiedTime, lastAccessTime, createTime);
-		openCryptoFile.ifPresent(file -> file.setLastModifiedTime(lastModifiedTime));
+		if(lastModifiedTime != null){
+			openCryptoFile.ifPresent(file -> file.setLastModifiedTime(lastModifiedTime));
+		}
 	}
 
 }
