@@ -12,6 +12,7 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
 
 import javax.inject.Inject;
+import javax.inject.Provider;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -43,16 +44,15 @@ class OpenCryptoFile {
 	private final CryptoFileSystemStats stats;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
 	private final FinallyUtil finallyUtil;
-	private final BasicFileAttributeView attributeView;
+	private final Provider<BasicFileAttributeView> attributeViewProvider;
 	private final AtomicBoolean headerWritten;
 	private final AtomicReference<Instant> lastModified;
 	private final AtomicInteger openChannelCounter;
-
-	private Path currentFilePath;
+	private final AtomicReference<Path> currentFilePath;
 
 	@Inject
 	public OpenCryptoFile(Cryptor cryptor, FileChannel channel, FileHeader header, @OpenFileSize AtomicLong size, CryptoFileChannelFactory cryptoFileChannelFactory,
-						  ChunkCache chunkCache, OpenCryptoFiles openCryptoFileFactory, CryptoFileSystemStats stats, ExceptionsDuringWrite exceptionsDuringWrite, FinallyUtil finallyUtil, BasicFileAttributeView attrView) {
+						  ChunkCache chunkCache, OpenCryptoFiles openCryptoFileFactory, CryptoFileSystemStats stats, ExceptionsDuringWrite exceptionsDuringWrite, FinallyUtil finallyUtil, Provider<BasicFileAttributeView> attrViewProvider, @CurrentOpenFilePath AtomicReference<Path> currentFilePath) {
 		this.cryptor = cryptor;
 		this.channel = channel;
 		this.header = header;
@@ -63,11 +63,12 @@ class OpenCryptoFile {
 		this.stats = stats;
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
 		this.finallyUtil = finallyUtil;
-		this.attributeView = attrView;
+		this.attributeViewProvider = attrViewProvider;
+		this.currentFilePath = currentFilePath;
 		this.headerWritten = new AtomicBoolean(false);
 		this.lastModified = new AtomicReference<>();
 		try {
-			lastModified.set(attrView.readAttributes().lastModifiedTime().toInstant());
+			lastModified.set(attrViewProvider.get().readAttributes().lastModifiedTime().toInstant());
 		} catch (IOException e) {
 			lastModified.set(Instant.ofEpochSecond(0));
 		}
@@ -195,7 +196,7 @@ class OpenCryptoFile {
 		}
 		channel.force(metaData);
 		try {
-			attributeView.setTimes(FileTime.from(lastModified.get()), null, null);
+			attributeViewProvider.get().setTimes(FileTime.from(lastModified.get()), null, null);
 		} catch (NoSuchFileException e) {
 			//NO-OP because file is already deleted
 		}
@@ -220,11 +221,11 @@ class OpenCryptoFile {
 	}
 
 	public Path getCurrentFilePath() {
-		return currentFilePath;
+		return currentFilePath.get();
 	}
 
 	public void setCurrentFilePath(Path currentFilePath) {
-		this.currentFilePath = currentFilePath;
+		this.currentFilePath.set(currentFilePath);
 	}
 
 	public void close() throws IOException {

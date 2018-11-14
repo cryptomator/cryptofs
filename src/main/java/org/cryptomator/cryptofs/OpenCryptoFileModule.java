@@ -6,6 +6,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import dagger.Module;
 import dagger.Provides;
@@ -18,19 +19,28 @@ import static org.cryptomator.cryptolib.Cryptors.cleartextSize;
 @Module
 class OpenCryptoFileModule {
 
-	private final Path path;
+	private final Path originalPath;
+	private final AtomicReference<Path> currentPath;
 	private final EffectiveOpenOptions options;
 
 	private OpenCryptoFileModule(Builder builder) {
-		this.path = builder.path;
+		this.originalPath = builder.path;
+		this.currentPath = new AtomicReference<>(builder.path);
 		this.options = builder.options;
 	}
 
 	@Provides
 	@PerOpenFile
 	@OriginalOpenFilePath
-	public Path providePath() {
-		return path;
+	public Path provideOriginalPath() {
+		return originalPath;
+	}
+
+	@Provides
+	@PerOpenFile
+	@CurrentOpenFilePath
+	public AtomicReference<Path> provideCurrentPath() {
+		return currentPath;
 	}
 
 	@Provides
@@ -41,13 +51,14 @@ class OpenCryptoFileModule {
 
 	@Provides
 	@PerOpenFile
-	public FileChannel provideFileChannel(@OriginalOpenFilePath Path path, EffectiveOpenOptions options) {
-		return rethrowUnchecked(IOException.class).from(() -> path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile()));
+	public FileChannel provideFileChannel(EffectiveOpenOptions options) {
+		return rethrowUnchecked(IOException.class).from(() -> originalPath.getFileSystem().provider().newFileChannel(originalPath, options.createOpenOptionsForEncryptedFile()));
 	}
 
 	@Provides
 	@PerOpenFile
-	public BasicFileAttributeView provideBasicFileAttributeView(@OriginalOpenFilePath Path path) {
+	public BasicFileAttributeView provideBasicFileAttributeView() {
+		Path path = currentPath.get();
 		return path.getFileSystem().provider().getFileAttributeView(path, BasicFileAttributeView.class);
 	}
 
