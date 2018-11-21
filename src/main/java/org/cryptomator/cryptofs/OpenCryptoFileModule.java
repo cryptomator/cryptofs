@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import dagger.Module;
 import dagger.Provides;
@@ -57,9 +58,11 @@ class OpenCryptoFileModule {
 
 	@Provides
 	@PerOpenFile
-	public BasicFileAttributeView provideBasicFileAttributeView() {
-		Path path = currentPath.get();
-		return path.getFileSystem().provider().getFileAttributeView(path, BasicFileAttributeView.class);
+	public Supplier<BasicFileAttributeView> provideBasicFileAttributeViewSupplier() {
+		return () -> {
+			Path path = currentPath.get();
+			return path.getFileSystem().provider().getFileAttributeView(path, BasicFileAttributeView.class);
+		};
 	}
 
 	@Provides

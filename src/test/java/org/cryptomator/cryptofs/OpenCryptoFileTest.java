@@ -33,6 +33,7 @@ import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
@@ -60,7 +61,7 @@ public class OpenCryptoFileTest {
 	private FinallyUtil finallyUtil = new FinallyUtil();
 	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 	private BasicFileAttributeView attributeView = mock(BasicFileAttributeView.class);
-	private Provider<BasicFileAttributeView> attributeViewProvider = mock(Provider.class);
+	private Supplier<BasicFileAttributeView> attributeViewSupplier= mock(Supplier.class);
 	private BasicFileAttributes attributes = mock(BasicFileAttributes.class);
 	private AtomicReference<Path> currentFilePath = mock(AtomicReference.class);
 
@@ -68,11 +69,11 @@ public class OpenCryptoFileTest {
 
 	@Before
 	public void setup() throws IOException {
-		Mockito.when(attributeViewProvider.get()).thenReturn(attributeView);
+		Mockito.when(attributeViewSupplier.get()).thenReturn(attributeView);
 		Mockito.when(attributeView.readAttributes()).thenReturn(attributes);
 		Mockito.when(attributes.lastModifiedTime()).thenReturn(FileTime.from(Instant.now()));
 
-		inTest = new OpenCryptoFile(cryptor, channel, header, size, cryptoFileChannelFactory, chunkCache, openCryptoFileFactory, stats, exceptionsDuringWrite, finallyUtil, attributeViewProvider, currentFilePath);
+		inTest = new OpenCryptoFile(cryptor, channel, header, size, cryptoFileChannelFactory, chunkCache, openCryptoFileFactory, stats, exceptionsDuringWrite, finallyUtil, attributeViewSupplier, currentFilePath);
 	}
 
 	@Theory
