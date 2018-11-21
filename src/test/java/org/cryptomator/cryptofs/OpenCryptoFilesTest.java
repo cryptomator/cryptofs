@@ -49,8 +49,8 @@ public class OpenCryptoFilesTest {
 	@Test
 	public void testTwoPhaseMoveFailsWhenTargetIsOpened() throws IOException {
 		EffectiveOpenOptions openOptions = mock(EffectiveOpenOptions.class);
-		Path src = Paths.get("/src");
-		Path dst = Paths.get("/dst");
+		Path src = Paths.get("/src").toAbsolutePath();
+		Path dst = Paths.get("/dst").toAbsolutePath();
 		inTest.getOrCreate(dst, openOptions);
 
 		thrown.expect(FileAlreadyExistsException.class);
@@ -76,8 +76,8 @@ public class OpenCryptoFilesTest {
 	@Test
 	public void testTwoPhaseMoveChangesReferencesWhenCommitted() throws IOException {
 		EffectiveOpenOptions openOptions = mock(EffectiveOpenOptions.class);
-		Path src = Paths.get("/src");
-		Path dst = Paths.get("/dst");
+		Path src = Paths.get("/src").toAbsolutePath();
+		Path dst = Paths.get("/dst").toAbsolutePath();
 		inTest.getOrCreate(src, openOptions);
 
 		Assert.assertTrue(inTest.get(src).isPresent());

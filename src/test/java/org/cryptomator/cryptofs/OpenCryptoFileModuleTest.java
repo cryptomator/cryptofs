@@ -33,7 +33,8 @@ public class OpenCryptoFileModuleTest {
 				.build();
 
 		assertThat(inTest.provideOptions(), is(options));
-		assertThat(inTest.providePath(), is(path));
+		assertThat(inTest.provideOriginalPath(), is(path));
+		assertThat(inTest.provideCurrentPath().get(), is(path));
 	}
 
 	@Test

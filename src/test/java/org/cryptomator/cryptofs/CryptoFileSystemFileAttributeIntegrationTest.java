@@ -19,13 +19,14 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.UserPrincipal;
+import java.time.Instant;
 import java.util.Map;
 
 import static java.lang.Boolean.FALSE;
@@ -135,6 +136,25 @@ public class CryptoFileSystemFileAttributeIntegrationTest {
 		} // close must not change the last modified time
 		t4 = Files.getLastModifiedTime(file); // close after force should not change lastModifiedDate
 		Assert.assertEquals(t3.toMillis(), t4.toMillis()); // round to millis, since in-memory times of opened files may have sub-milli resolution
+	}
+
+	@Test
+	public void testFileAttributeViewUpdatesAfterMove() throws IOException {
+		Path oldpath = fileSystem.getPath("/a");
+		Path newpath = fileSystem.getPath("/b");
+		try (FileChannel channel = FileChannel.open(oldpath, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+			BasicFileAttributeView attrView = Files.getFileAttributeView(oldpath, BasicFileAttributeView.class);
+			FileTime now = FileTime.from(Instant.ofEpochSecond(123456789L));
+			attrView.setTimes(now, null, null);
+			Files.move(oldpath, newpath);
+			channel.force(true);
+			BasicFileAttributeView attrView2 = Files.getFileAttributeView(newpath, BasicFileAttributeView.class);
+			Assert.assertEquals(now, attrView2.readAttributes().lastModifiedTime());
+
+			thrown.expect(NoSuchFileException.class);
+			Files.getFileAttributeView(oldpath, BasicFileAttributeView.class).readAttributes();
+		}
+
 	}
 
 	private static Matcher<FileTime> isAfter(FileTime previousFileTime) {

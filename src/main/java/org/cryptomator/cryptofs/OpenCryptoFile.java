@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
@@ -25,6 +24,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
@@ -43,16 +43,15 @@ class OpenCryptoFile {
 	private final CryptoFileSystemStats stats;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
 	private final FinallyUtil finallyUtil;
-	private final BasicFileAttributeView attributeView;
+	private final Supplier<BasicFileAttributeView> attributeViewProvider;
 	private final AtomicBoolean headerWritten;
 	private final AtomicReference<Instant> lastModified;
 	private final AtomicInteger openChannelCounter;
-
-	private Path currentFilePath;
+	private final AtomicReference<Path> currentFilePath;
 
 	@Inject
 	public OpenCryptoFile(Cryptor cryptor, FileChannel channel, FileHeader header, @OpenFileSize AtomicLong size, CryptoFileChannelFactory cryptoFileChannelFactory,
-						  ChunkCache chunkCache, OpenCryptoFiles openCryptoFileFactory, CryptoFileSystemStats stats, ExceptionsDuringWrite exceptionsDuringWrite, FinallyUtil finallyUtil, BasicFileAttributeView attrView) {
+						  ChunkCache chunkCache, OpenCryptoFiles openCryptoFileFactory, CryptoFileSystemStats stats, ExceptionsDuringWrite exceptionsDuringWrite, FinallyUtil finallyUtil, Supplier<BasicFileAttributeView> attrViewProvider, @CurrentOpenFilePath AtomicReference<Path> currentFilePath) {
 		this.cryptor = cryptor;
 		this.channel = channel;
 		this.header = header;
@@ -63,11 +62,12 @@ class OpenCryptoFile {
 		this.stats = stats;
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
 		this.finallyUtil = finallyUtil;
-		this.attributeView = attrView;
+		this.attributeViewProvider = attrViewProvider;
+		this.currentFilePath = currentFilePath;
 		this.headerWritten = new AtomicBoolean(false);
 		this.lastModified = new AtomicReference<>();
 		try {
-			lastModified.set(attrView.readAttributes().lastModifiedTime().toInstant());
+			lastModified.set(attrViewProvider.get().readAttributes().lastModifiedTime().toInstant());
 		} catch (IOException e) {
 			lastModified.set(Instant.ofEpochSecond(0));
 		}
@@ -194,11 +194,7 @@ class OpenCryptoFile {
 			exceptionsDuringWrite.throwIfPresent();
 		}
 		channel.force(metaData);
-		try {
-			attributeView.setTimes(FileTime.from(lastModified.get()), null, null);
-		} catch (NoSuchFileException e) {
-			//NO-OP because file is already deleted
-		}
+		attributeViewProvider.get().setTimes(FileTime.from(lastModified.get()), null, null);
 	}
 
 	public FileLock lock(long position, long size, boolean shared) throws IOException {
@@ -220,11 +216,11 @@ class OpenCryptoFile {
 	}
 
 	public Path getCurrentFilePath() {
-		return currentFilePath;
+		return currentFilePath.get();
 	}
 
 	public void setCurrentFilePath(Path currentFilePath) {
-		this.currentFilePath = currentFilePath;
+		this.currentFilePath.set(currentFilePath);
 	}
 
 	public void close() throws IOException {

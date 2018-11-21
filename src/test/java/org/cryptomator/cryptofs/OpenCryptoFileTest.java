@@ -16,19 +16,24 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
+import javax.inject.Provider;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.AttributeView;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
@@ -56,16 +61,19 @@ public class OpenCryptoFileTest {
 	private FinallyUtil finallyUtil = new FinallyUtil();
 	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 	private BasicFileAttributeView attributeView = mock(BasicFileAttributeView.class);
+	private Supplier<BasicFileAttributeView> attributeViewSupplier= mock(Supplier.class);
 	private BasicFileAttributes attributes = mock(BasicFileAttributes.class);
+	private AtomicReference<Path> currentFilePath = mock(AtomicReference.class);
 
 	private OpenCryptoFile inTest;
 
 	@Before
 	public void setup() throws IOException {
+		Mockito.when(attributeViewSupplier.get()).thenReturn(attributeView);
 		Mockito.when(attributeView.readAttributes()).thenReturn(attributes);
 		Mockito.when(attributes.lastModifiedTime()).thenReturn(FileTime.from(Instant.now()));
 
-		inTest = new OpenCryptoFile(cryptor, channel, header, size, cryptoFileChannelFactory, chunkCache, openCryptoFileFactory, stats, exceptionsDuringWrite, finallyUtil, attributeView);
+		inTest = new OpenCryptoFile(cryptor, channel, header, size, cryptoFileChannelFactory, chunkCache, openCryptoFileFactory, stats, exceptionsDuringWrite, finallyUtil, attributeViewSupplier, currentFilePath);
 	}
 
 	@Theory
