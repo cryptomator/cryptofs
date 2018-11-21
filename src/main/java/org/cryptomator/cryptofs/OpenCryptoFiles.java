@@ -73,6 +73,7 @@ class OpenCryptoFiles {
 				.withOptions(options) //
 				.build();
 		OpenCryptoFile file = component.newOpenCryptoFileComponent(module).openCryptoFile();
+		//TODO: is this call necessary?
 		file.setCurrentFilePath(normalizedPath);
 		return file;
 	}

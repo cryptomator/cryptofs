@@ -9,6 +9,7 @@ import javax.inject.Qualifier;
 
 /**
  * The Path used to create an OpenCryptoFile
+ * @see CurrentOpenFilePath
  */
 @Qualifier
 @Documented
