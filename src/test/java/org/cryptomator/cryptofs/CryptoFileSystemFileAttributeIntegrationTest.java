@@ -140,8 +140,8 @@ public class CryptoFileSystemFileAttributeIntegrationTest {
 
 	@Test
 	public void testFileAttributeViewUpdatesAfterMove() throws IOException {
-		Path oldpath = fileSystem.getPath("/a");
-		Path newpath = fileSystem.getPath("/b");
+		Path oldpath = fileSystem.getPath("/x");
+		Path newpath = fileSystem.getPath("/y");
 		try (FileChannel channel = FileChannel.open(oldpath, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
 			BasicFileAttributeView attrView = Files.getFileAttributeView(oldpath, BasicFileAttributeView.class);
 			FileTime now = FileTime.from(Instant.ofEpochSecond(123456789L));
