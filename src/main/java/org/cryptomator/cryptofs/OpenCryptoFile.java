@@ -36,7 +36,7 @@ class OpenCryptoFile implements Closeable {
 
 	private final Cryptor cryptor;
 	private final FileChannel channel;
-	private final FileHeader header;
+	private final FileHeaderLoader headerLoader;
 	private final AtomicLong size;
 	private final CryptoFileChannelFactory cryptoFileChannelFactory;
 	private final ChunkCache chunkCache;
@@ -51,11 +51,11 @@ class OpenCryptoFile implements Closeable {
 	private final AtomicReference<Path> currentFilePath;
 
 	@Inject
-	public OpenCryptoFile(Cryptor cryptor, FileChannel channel, FileHeader header, @OpenFileSize AtomicLong size, CryptoFileChannelFactory cryptoFileChannelFactory,
+	public OpenCryptoFile(Cryptor cryptor, FileChannel channel, FileHeaderLoader headerLoader, @OpenFileSize AtomicLong size, CryptoFileChannelFactory cryptoFileChannelFactory,
 						  ChunkCache chunkCache, OpenCryptoFiles openCryptoFileFactory, CryptoFileSystemStats stats, ExceptionsDuringWrite exceptionsDuringWrite, FinallyUtil finallyUtil, Supplier<BasicFileAttributeView> attrViewProvider, @CurrentOpenFilePath AtomicReference<Path> currentFilePath) {
 		this.cryptor = cryptor;
 		this.channel = channel;
-		this.header = header;
+		this.headerLoader = headerLoader;
 		this.size = size;
 		this.cryptoFileChannelFactory = cryptoFileChannelFactory;
 		this.chunkCache = chunkCache;
@@ -124,7 +124,7 @@ class OpenCryptoFile implements Closeable {
 
 	private void writeHeaderIfNecessary() throws IOException {
 		if (headerWritten.compareAndSet(false, true)) {
-			channel.write(cryptor.fileHeaderCryptor().encryptHeader(header), 0);
+			channel.write(cryptor.fileHeaderCryptor().encryptHeader(headerLoader.get()), 0);
 
 		}
 	}

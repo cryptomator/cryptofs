@@ -2,7 +2,6 @@ package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
-import org.cryptomator.cryptolib.api.FileHeader;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
 import org.junit.Before;
 import org.junit.Rule;
@@ -16,7 +15,6 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
-import javax.inject.Provider;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -24,7 +22,6 @@ import java.nio.channels.FileLock;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.AttributeView;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
@@ -32,7 +29,6 @@ import java.time.Instant;
 import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static org.hamcrest.Matchers.is;
@@ -51,7 +47,7 @@ public class OpenCryptoFileTest {
 	private EffectiveOpenOptions options = mock(EffectiveOpenOptions.class);
 	private Cryptor cryptor = mock(Cryptor.class);
 	private FileChannel channel = mock(FileChannel.class);
-	private FileHeader header = mock(FileHeader.class);
+	private FileHeaderLoader headerLoader = mock(FileHeaderLoader.class);
 	private ChunkCache chunkCache = mock(ChunkCache.class);
 	private AtomicLong size = mock(AtomicLong.class);
 	private OpenCryptoFiles openCryptoFileFactory = mock(OpenCryptoFiles.class);
@@ -73,7 +69,7 @@ public class OpenCryptoFileTest {
 		Mockito.when(attributeView.readAttributes()).thenReturn(attributes);
 		Mockito.when(attributes.lastModifiedTime()).thenReturn(FileTime.from(Instant.now()));
 
-		inTest = new OpenCryptoFile(cryptor, channel, header, size, cryptoFileChannelFactory, chunkCache, openCryptoFileFactory, stats, exceptionsDuringWrite, finallyUtil, attributeViewSupplier, currentFilePath);
+		inTest = new OpenCryptoFile(cryptor, channel, headerLoader, size, cryptoFileChannelFactory, chunkCache, openCryptoFileFactory, stats, exceptionsDuringWrite, finallyUtil, attributeViewSupplier, currentFilePath);
 	}
 
 	@Theory

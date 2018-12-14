@@ -1,19 +1,6 @@
 package org.cryptomator.cryptofs;
 
-import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
-import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyZeroInteractions;
-import static org.mockito.Mockito.when;
-import static org.mockito.hamcrest.MockitoHamcrest.argThat;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.util.concurrent.atomic.AtomicLong;
-
+import com.google.common.base.Supplier;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
@@ -26,7 +13,19 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
-import com.google.common.base.Supplier;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
+import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.when;
+import static org.mockito.hamcrest.MockitoHamcrest.argThat;
 
 public class ChunkSaverTest {
 
@@ -48,13 +47,15 @@ public class ChunkSaverTest {
 	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
 	private final AtomicLong size = new AtomicLong(0L);
 	private final FileHeader header = mock(FileHeader.class);
+	private final FileHeaderLoader headerLoader = mock(FileHeaderLoader.class);
 	private final ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
-	private final ChunkSaver inTest = new ChunkSaver(cryptor, channel, header, exceptionsDuringWrite, size, stats);
+	private final ChunkSaver inTest = new ChunkSaver(cryptor, channel, headerLoader, exceptionsDuringWrite, size, stats);
 
 	@Before
-	public void setup() {
+	public void setup() throws IOException {
 		when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
+		when(headerLoader.get()).thenReturn(header);
 		when(fileContentCryptor.ciphertextChunkSize()).thenReturn(CIPHERTEXT_CHUNK_SIZE);
 		when(fileContentCryptor.cleartextChunkSize()).thenReturn(CLEARTEXT_CHUNK_SIZE);
 		when(fileHeaderCryptor.headerSize()).thenReturn(HEADER_SIZE);
@@ -95,7 +96,7 @@ public class ChunkSaverTest {
 	}
 
 	@Test
-	public void testChunkBeyondSizeIsNotWritten() {
+	public void testChunkBeyondSizeIsNotWritten() throws IOException {
 		Long chunkIndex = 43L;
 		ChunkData irrelevant = null;
 		size.set(0);
@@ -107,7 +108,7 @@ public class ChunkSaverTest {
 	}
 
 	@Test
-	public void testChunkThatWasNotWrittenIsNotWritten() {
+	public void testChunkThatWasNotWrittenIsNotWritten() throws IOException {
 		Long chunkIndex = 43L;
 		ChunkData chunkData = ChunkData.emptyWithSize(CLEARTEXT_CHUNK_SIZE);
 		size.set((chunkIndex + 10L) * CLEARTEXT_CHUNK_SIZE);
