@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This file lists false positives found by org.owasp:dependency-check-maven build plugin -->
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.2.xsd">
+	<suppress>
+		<notes><![CDATA[ Vulnerability affects org.slf4j.ext.EventData, which is part of slf4j-ext and therefore falsly reported for slf4j-api. ]]></notes>
+		<gav>org.slf4j:slf4j-api:1.7.25</gav>
+		<cve>CVE-2018-8088</cve>
+	</suppress>
+</suppressions>

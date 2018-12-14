@@ -160,6 +160,9 @@
 						<configuration>
 							<cveValidForHours>24</cveValidForHours>
 							<failBuildOnCVSS>0</failBuildOnCVSS>
+							<skipTestScope>true</skipTestScope>
+							<detail>true</detail>
+							<suppressionFile>suppression.xml</suppressionFile>
 						</configuration>
 						<executions>
 							<execution>
