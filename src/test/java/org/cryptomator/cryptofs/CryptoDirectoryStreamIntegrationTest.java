@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.cryptomator.cryptofs.CryptoDirectoryStream.ProcessedPaths;
-import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
+import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -49,7 +49,7 @@ public class CryptoDirectoryStreamIntegrationTest {
 
 		Path dir = fileSystem.getPath("crapDirDoNotUse");
 		Files.createDirectory(dir);
-		inTest = new CryptoDirectoryStream(new Directory("", dir), null, null, null, longFileNameProvider, null, null, null, null, null);
+		inTest = new CryptoDirectoryStream(new CiphertextDirectory("", dir), null, null, null, longFileNameProvider, null, null, null, null, null);
 	}
 
 	@Test

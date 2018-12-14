@@ -17,7 +17,7 @@ import java.nio.file.Path;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Iterator;
 
-import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
+import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.junit.Before;
 import org.junit.Rule;
@@ -73,7 +73,7 @@ public class DirectoryStreamFactoryTest {
 		String dirId = "dirIdAbc";
 		Path dirPath = mock(Path.class);
 		when(dirPath.getFileSystem()).thenReturn(fileSystem);
-		when(cryptoPathMapper.getCiphertextDir(path)).thenReturn(new Directory(dirId, dirPath));
+		when(cryptoPathMapper.getCiphertextDir(path)).thenReturn(new CiphertextDirectory(dirId, dirPath));
 
 		DirectoryStream<Path> directoryStream = inTest.newDirectoryStream(path, filter);
 
@@ -90,8 +90,8 @@ public class DirectoryStreamFactoryTest {
 		when(dirPathA.getFileSystem()).thenReturn(fileSystem);
 		Path dirPathB = mock(Path.class);
 		when(dirPathB.getFileSystem()).thenReturn(fileSystem);
-		when(cryptoPathMapper.getCiphertextDir(pathA)).thenReturn(new Directory("dirIdA", dirPathA));
-		when(cryptoPathMapper.getCiphertextDir(pathB)).thenReturn(new Directory("dirIdB", dirPathB));
+		when(cryptoPathMapper.getCiphertextDir(pathA)).thenReturn(new CiphertextDirectory("dirIdA", dirPathA));
+		when(cryptoPathMapper.getCiphertextDir(pathB)).thenReturn(new CiphertextDirectory("dirIdB", dirPathB));
 		DirectoryStream<Path> streamA = mock(DirectoryStream.class);
 		DirectoryStream<Path> streamB = mock(DirectoryStream.class);
 		when(provider.newDirectoryStream(same(dirPathA), any())).thenReturn(streamA);
@@ -114,7 +114,7 @@ public class DirectoryStreamFactoryTest {
 		String dirId = "dirIdAbc";
 		Path dirPath = mock(Path.class);
 		when(dirPath.getFileSystem()).thenReturn(fileSystem);
-		when(cryptoPathMapper.getCiphertextDir(path)).thenReturn(new Directory(dirId, dirPath));
+		when(cryptoPathMapper.getCiphertextDir(path)).thenReturn(new CiphertextDirectory(dirId, dirPath));
 		when(provider.newDirectoryStream(same(dirPath), any())).thenReturn(mock(DirectoryStream.class));
 
 		thrown.expect(ClosedFileSystemException.class);

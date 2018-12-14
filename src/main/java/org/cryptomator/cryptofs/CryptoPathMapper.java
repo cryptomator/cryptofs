@@ -40,7 +40,7 @@ class CryptoPathMapper {
 		this.cryptor = cryptor;
 		this.dirIdProvider = dirIdProvider;
 		this.longFileNameProvider = longFileNameProvider;
-		this.directoryPathCache = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_DIR_PATHS).build(CacheLoader.from(this::resolveDirectory));
+		this.directoryPathCache = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_DIR_PATHS).build(CacheLoader.from(this::resolveDirectoryPath));
 	}
 
 	public enum CiphertextFileType {
@@ -53,7 +53,7 @@ class CryptoPathMapper {
 		}
 		CryptoPath dirPath = cleartextPath.getParent();
 		assert dirPath != null : "namecount > 0";
-		Directory dir = getCiphertextDir(dirPath);
+		CiphertextDirectory parent = getCiphertextDir(parentPath);
 		String cleartextName = cleartextPath.getFileName().toString();
 		String ciphertextName = getCiphertextFileName(dir.dirId, cleartextName, fileType);
 		return dir.path.resolve(ciphertextName);
@@ -74,13 +74,12 @@ class CryptoPathMapper {
 		return getCiphertextDir(cleartextPath).path;
 	}
 
-	public Directory getCiphertextDir(CryptoPath cleartextPath) throws IOException {
+	public CiphertextDirectory getCiphertextDir(CryptoPath cleartextPath) throws IOException {
 		assert cleartextPath.isAbsolute();
-		if (cleartextPath.getNameCount() == 0) {
-			return new Directory(Constants.ROOT_DIR_ID, directoryPathCache.getUnchecked(Constants.ROOT_DIR_ID));
+		CryptoPath parentPath = cleartextPath.getParent();
+		if (parentPath == null) {
+			return new CiphertextDirectory(Constants.ROOT_DIR_ID, directoryPathCache.getUnchecked(Constants.ROOT_DIR_ID));
 		} else {
-			CryptoPath parentPath = cleartextPath.getParent();
-			assert parentPath != null : "namecount > 0";
 			Directory parent = getCiphertextDir(parentPath);
 			String cleartextName = cleartextPath.getFileName().toString();
 			String ciphertextName = getCiphertextFileName(parent.dirId, cleartextName, CiphertextFileType.DIRECTORY);
@@ -89,22 +88,22 @@ class CryptoPathMapper {
 		}
 	}
 
-	public Directory resolveDirectory(Path directoryFile) throws IOException {
+	public CiphertextDirectory resolveDirectory(Path directoryFile) throws IOException {
 		String dirId = dirIdProvider.load(directoryFile);
 		Path dirPath = directoryPathCache.getUnchecked(dirId);
-		return new Directory(dirId, dirPath);
+		return new CiphertextDirectory(dirId, dirPath);
 	}
 
-	private Path resolveDirectory(String dirId) {
+	private Path resolveDirectoryPath(String dirId) {
 		String dirHash = cryptor.fileNameCryptor().hashDirectoryId(dirId);
 		return dataRoot.resolve(dirHash.substring(0, 2)).resolve(dirHash.substring(2));
 	}
 
-	public static class Directory {
+	public static class CiphertextDirectory {
 		public final String dirId;
 		public final Path path;
 
-		public Directory(String dirId, Path path) {
+		public CiphertextDirectory(String dirId, Path path) {
 			this.dirId = dirId;
 			this.path = path;
 		}

@@ -56,7 +56,7 @@ import java.util.Set;
 import javax.inject.Inject;
 
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
-import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
+import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,10 +92,10 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	@Inject
 	public CryptoFileSystemImpl(@PathToVault Path pathToVault, CryptoFileSystemProperties properties, Cryptor cryptor, CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, CryptoFileStore fileStore,
-			OpenCryptoFiles openCryptoFiles, CryptoPathMapper cryptoPathMapper, DirectoryIdProvider dirIdProvider, CryptoFileAttributeProvider fileAttributeProvider,
-			CryptoFileAttributeViewProvider fileAttributeViewProvider, PathMatcherFactory pathMatcherFactory, CryptoPathFactory cryptoPathFactory, CryptoFileSystemStats stats,
-			RootDirectoryInitializer rootDirectoryInitializer, CryptoFileAttributeByNameProvider fileAttributeByNameProvider, DirectoryStreamFactory directoryStreamFactory, FinallyUtil finallyUtil,
-			CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag) {
+								OpenCryptoFiles openCryptoFiles, CryptoPathMapper cryptoPathMapper, DirectoryIdProvider dirIdProvider, CryptoFileAttributeProvider fileAttributeProvider,
+								CryptoFileAttributeViewProvider fileAttributeViewProvider, PathMatcherFactory pathMatcherFactory, CryptoPathFactory cryptoPathFactory, CryptoFileSystemStats stats,
+								RootDirectoryInitializer rootDirectoryInitializer, CryptoFileAttributeByNameProvider fileAttributeByNameProvider, DirectoryStreamFactory directoryStreamFactory, FinallyUtil finallyUtil,
+								CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag) {
 		this.cryptor = cryptor;
 		this.provider = provider;
 		this.cryptoFileSystems = cryptoFileSystems;
@@ -246,8 +246,8 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	/**
 	 * @param cleartextPath the path to the file
-	 * @param type the Class object corresponding to the file attribute view
-	 * @param options future use
+	 * @param type          the Class object corresponding to the file attribute view
+	 * @param options       future use
 	 * @return a file attribute view of the specified type, or <code>null</code> if the attribute view type is not available
 	 * @see CryptoFileAttributeViewProvider#getAttributeView(Path, Class)
 	 */
@@ -285,14 +285,14 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	private boolean hasAccess(Set<PosixFilePermission> permissions, AccessMode accessMode) {
 		switch (accessMode) {
-		case READ:
-			return permissions.contains(PosixFilePermission.OWNER_READ);
-		case WRITE:
-			return permissions.contains(PosixFilePermission.OWNER_WRITE);
-		case EXECUTE:
-			return permissions.contains(PosixFilePermission.OWNER_EXECUTE);
-		default:
-			throw new UnsupportedOperationException("AccessMode " + accessMode + " not supported.");
+			case READ:
+				return permissions.contains(PosixFilePermission.OWNER_READ);
+			case WRITE:
+				return permissions.contains(PosixFilePermission.OWNER_WRITE);
+			case EXECUTE:
+				return permissions.contains(PosixFilePermission.OWNER_EXECUTE);
+			default:
+				throw new UnsupportedOperationException("AccessMode " + accessMode + " not supported.");
 		}
 	}
 
@@ -320,7 +320,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			throw new FileAlreadyExistsException(cleartextDir.toString());
 		}
 		Path ciphertextDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextDir, CiphertextFileType.DIRECTORY);
-		Directory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
+		CiphertextDirectory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
 		// atomically check for FileAlreadyExists and create otherwise:
 		try (FileChannel channel = FileChannel.open(ciphertextDirFile, EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), attrs)) {
 			channel.write(ByteBuffer.wrap(ciphertextDir.dirId.getBytes(UTF_8)));

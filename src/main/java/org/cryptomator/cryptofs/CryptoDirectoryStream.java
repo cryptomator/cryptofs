@@ -21,7 +21,7 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
+import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.slf4j.Logger;
@@ -45,8 +45,8 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 	private final FinallyUtil finallyUtil;
 	private final EncryptedNamePattern encryptedNamePattern;
 
-	public CryptoDirectoryStream(Directory ciphertextDir, Path cleartextDir, FileNameCryptor filenameCryptor, CryptoPathMapper cryptoPathMapper, LongFileNameProvider longFileNameProvider,
-			ConflictResolver conflictResolver, DirectoryStream.Filter<? super Path> filter, Consumer<CryptoDirectoryStream> onClose, FinallyUtil finallyUtil, EncryptedNamePattern encryptedNamePattern)
+	public CryptoDirectoryStream(CiphertextDirectory ciphertextDir, Path cleartextDir, FileNameCryptor filenameCryptor, CryptoPathMapper cryptoPathMapper, LongFileNameProvider longFileNameProvider,
+								 ConflictResolver conflictResolver, DirectoryStream.Filter<? super Path> filter, Consumer<CryptoDirectoryStream> onClose, FinallyUtil finallyUtil, EncryptedNamePattern encryptedNamePattern)
 			throws IOException {
 		this.onClose = onClose;
 		this.finallyUtil = finallyUtil;

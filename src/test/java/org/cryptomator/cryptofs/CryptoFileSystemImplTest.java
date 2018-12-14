@@ -2,7 +2,7 @@ package org.cryptomator.cryptofs;
 
 import de.bechte.junit.runners.context.HierarchicalContextRunner;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
-import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
+import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptofs.OpenCryptoFiles.TwoPhaseMove;
 import org.cryptomator.cryptofs.mocks.FileChannelMock;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -551,7 +551,7 @@ public class CryptoFileSystemImplTest {
 				when(ciphertextTargetParent.getFileSystem()).thenReturn(physicalFs);
 				when(ciphertextTargetDir.getFileSystem()).thenReturn(physicalFs);
 
-				when(cryptoPathMapper.getCiphertextDir(cleartextTarget)).thenReturn(new Directory("42", ciphertextTargetDir));
+				when(cryptoPathMapper.getCiphertextDir(cleartextTarget)).thenReturn(new CiphertextDirectory("42", ciphertextTargetDir));
 				when(physicalFsProv.newFileChannel(Mockito.same(ciphertextTargetDirFile), Mockito.anySet(), Mockito.any())).thenReturn(ciphertextTargetDirFileChannel);
 				Field closeLockField = AbstractInterruptibleChannel.class.getDeclaredField("closeLock");
 				closeLockField.setAccessible(true);
@@ -820,7 +820,7 @@ public class CryptoFileSystemImplTest {
 			Path cyphertextDirPath = mock(Path.class);
 			String dirId = "DirId1234ABC";
 			FileChannelMock channel = new FileChannelMock(100);
-			Directory cyphertextDir = new Directory(dirId, cyphertextDirPath);
+			CiphertextDirectory cyphertextDir = new CiphertextDirectory(dirId, cyphertextDirPath);
 			when(path.getParent()).thenReturn(parent);
 			when(cryptoPathMapper.getCiphertextDirPath(parent)).thenReturn(cyphertextParent);
 			when(cryptoPathMapper.getCiphertextFilePath(path, CiphertextFileType.FILE)).thenReturn(cyphertextFile);
@@ -849,7 +849,7 @@ public class CryptoFileSystemImplTest {
 			Path ciphertextDirPath = mock(Path.class, "ciphertextDir");
 			String dirId = "DirId1234ABC";
 			FileChannelMock channel = new FileChannelMock(100);
-			Directory ciphertextDir = new Directory(dirId, ciphertextDirPath);
+			CiphertextDirectory ciphertextDir = new CiphertextDirectory(dirId, ciphertextDirPath);
 			when(path.getParent()).thenReturn(parent);
 			when(cryptoPathMapper.getCiphertextDirPath(parent)).thenReturn(ciphertextParent);
 			when(cryptoPathMapper.getCiphertextFilePath(path, CiphertextFileType.FILE)).thenReturn(ciphertextFile);

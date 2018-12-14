@@ -38,12 +38,12 @@ class LongFileNameProvider {
 	public static final String LONG_NAME_FILE_EXT = ".lng";
 
 	private final Path metadataRoot;
-	private final LoadingCache<String, String> ids;
+	private final LoadingCache<String, String> longNames;
 
 	@Inject
 	public LongFileNameProvider(@PathToVault Path pathToVault) {
 		this.metadataRoot = pathToVault.resolve(METADATA_DIR_NAME);
-		this.ids = CacheBuilder.newBuilder().maximumSize(MAX_CACHE_SIZE).build(new Loader());
+		this.longNames = CacheBuilder.newBuilder().maximumSize(MAX_CACHE_SIZE).build(new Loader());
 	}
 
 	private class Loader extends CacheLoader<String, String> {
@@ -62,7 +62,7 @@ class LongFileNameProvider {
 
 	public String inflate(String shortFileName) throws IOException {
 		try {
-			return ids.get(shortFileName);
+			return longNames.get(shortFileName);
 		} catch (ExecutionException e) {
 			if (e.getCause() instanceof IOException || e.getCause() instanceof UncheckedIOException) {
 				throw new IOException(e);
@@ -76,8 +76,8 @@ class LongFileNameProvider {
 		byte[] longFileNameBytes = longFileName.getBytes(UTF_8);
 		byte[] hash = MessageDigestSupplier.SHA1.get().digest(longFileNameBytes);
 		String shortName = BASE32.encode(hash) + LONG_NAME_FILE_EXT;
-		if (ids.getIfPresent(shortName) == null) {
-			ids.put(shortName, longFileName);
+		if (longNames.getIfPresent(shortName) == null) {
+			longNames.put(shortName, longFileName);
 			// TODO markuskreusch, overheadhunter: do we really want to persist this at this point?...
 			// ...maybe the caller only wanted to know if a file exists without creating anything.
 			Path file = resolveMetadataFile(shortName);
