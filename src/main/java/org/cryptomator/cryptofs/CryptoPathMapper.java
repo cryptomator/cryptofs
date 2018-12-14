@@ -49,8 +49,6 @@ class CryptoPathMapper {
 		FILE, DIRECTORY
 	};
 
-		if (cleartextPath.getNameCount() == 0) {
-			throw new IllegalArgumentException("Invalid file path " + cleartextPath);
 	public Path getCiphertextFilePath(CryptoPath cleartextPath, CiphertextFileType type) throws IOException {
 		CryptoPath parentPath = cleartextPath.getParent();
 		if (parentPath == null) {
