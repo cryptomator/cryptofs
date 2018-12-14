@@ -1,20 +1,5 @@
 package org.cryptomator.cryptofs;
 
-import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
-import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.hasAtLeastRemaining;
-import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
-import static org.junit.Assert.assertThat;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.mockito.hamcrest.MockitoHamcrest.argThat;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.util.function.Supplier;
-
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
@@ -25,6 +10,21 @@ import org.junit.Test;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.mockito.stubbing.Answer;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.util.function.Supplier;
+
+import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
+import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.hasAtLeastRemaining;
+import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
+import static org.junit.Assert.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.hamcrest.MockitoHamcrest.argThat;
 
 public class ChunkLoaderTest {
 
@@ -42,12 +42,14 @@ public class ChunkLoaderTest {
 	private final Cryptor cryptor = mock(Cryptor.class);
 	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
 	private final FileHeader header = mock(FileHeader.class);
-	private final ChunkLoader inTest = new ChunkLoader(cryptor, channel, header, stats);
+	private final FileHeaderLoader headerLoader = mock(FileHeaderLoader.class);
+	private final ChunkLoader inTest = new ChunkLoader(cryptor, channel, headerLoader, stats);
 
 	@Before
-	public void setup() {
+	public void setup() throws IOException {
 		when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
+		when(headerLoader.get()).thenReturn(header);
 		when(fileContentCryptor.ciphertextChunkSize()).thenReturn(CIPHERTEXT_CHUNK_SIZE);
 		when(fileContentCryptor.cleartextChunkSize()).thenReturn(CLEARTEXT_CHUNK_SIZE);
 		when(fileHeaderCryptor.headerSize()).thenReturn(HEADER_SIZE);
