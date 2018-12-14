@@ -22,10 +22,12 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.EnumSet;
 
 import org.cryptomator.cryptolib.api.InvalidPassphraseException;
+import org.hamcrest.CoreMatchers;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Assert;
@@ -180,6 +182,34 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 		assertThat(readAllBytes(file1), is(data));
 		assertThat(readAllBytes(file2), is(data));
+	}
+
+	@Test
+	public void testSymbolicLinks() throws IOException {
+		Path fs1Location = pathToVault.resolve("foo");
+		Files.createDirectories(fs1Location);
+		FileSystem fs1 = CryptoFileSystemProvider.newFileSystem(fs1Location, cryptoFileSystemProperties().withPassphrase("asd").build());
+
+		Path link1 = fs1.getPath("/foo/bar1");
+		Files.createDirectories(link1.getParent());
+		Files.createSymbolicLink(link1, Paths.get("/linked/target1"));
+		Path target1 = Files.readSymbolicLink(link1);
+		assertThat(target1.getFileSystem(), is(link1.getFileSystem())); // as per contract of readSymbolicLink
+		assertThat(target1.toString(), Matchers.equalTo("/linked/target1"));
+
+		Path link2 = fs1.getPath("/foo/bar2");
+		Files.createDirectories(link2.getParent());
+		Files.createSymbolicLink(link2, Paths.get("./target2"));
+		Path target2 = Files.readSymbolicLink(link2);
+		assertThat(target2.getFileSystem(), is(link2.getFileSystem()));
+		assertThat(target2.normalize().toString(), Matchers.equalTo("/foo/target2"));
+
+		Path link3 = fs1.getPath("/foo/bar3");
+		Files.createDirectories(link3.getParent());
+		Files.createSymbolicLink(link3, Paths.get("../target3"));
+		Path target3 = Files.readSymbolicLink(link3);
+		assertThat(target3.getFileSystem(), is(link3.getFileSystem()));
+		assertThat(target3.normalize().toString(), Matchers.equalTo("/target3"));
 	}
 
 	@Test

@@ -19,6 +19,8 @@ public final class Constants {
 	static final int SHORT_NAMES_MAX_LENGTH = 129;
 	static final String ROOT_DIR_ID = "";
 
+	static final int MAX_SYMLINK_LENGTH = 32767; // max path length on NTFS and FAT32: 32k-1
+
 	static final String SEPARATOR = "/";
 
 }

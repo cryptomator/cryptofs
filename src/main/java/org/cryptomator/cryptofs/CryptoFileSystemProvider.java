@@ -360,6 +360,16 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	@Override
+	public void createSymbolicLink(Path cleartextPath, Path target, FileAttribute<?>... attrs) throws IOException {
+		fileSystem(cleartextPath).createSymbolicLink(CryptoPath.castAndAssertAbsolute(cleartextPath), target, attrs);
+	}
+
+	@Override
+	public Path readSymbolicLink(Path cleartextPath) throws IOException {
+		return fileSystem(cleartextPath).readSymbolicLink(CryptoPath.castAndAssertAbsolute(cleartextPath));
+	}
+
+	@Override
 	public <V extends FileAttributeView> V getFileAttributeView(Path cleartextPath, Class<V> type, LinkOption... options) {
 		return fileSystem(cleartextPath).getFileAttributeView(CryptoPath.castAndAssertAbsolute(cleartextPath), type, options);
 	}
