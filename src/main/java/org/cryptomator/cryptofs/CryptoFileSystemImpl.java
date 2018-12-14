@@ -215,32 +215,40 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	void setAttribute(CryptoPath cleartextPath, String attribute, Object value, LinkOption... options) throws IOException {
 		readonlyFlag.assertWritable();
-		Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
-		if (Files.notExists(ciphertextDirPath) && cleartextPath.getNameCount() > 0) {
-			Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
-			fileAttributeByNameProvider.setAttribute(ciphertextFilePath, attribute, value);
-		} else {
-			fileAttributeByNameProvider.setAttribute(ciphertextDirPath, attribute, value);
+		CiphertextFileType type = cryptoPathMapper.getCiphertextFileType(cleartextPath);
+		switch (type) {
+			case DIRECTORY:
+				Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
+				fileAttributeByNameProvider.setAttribute(ciphertextDirPath, attribute, value);
+				return;
+			default:
+				Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, type);
+				fileAttributeByNameProvider.setAttribute(ciphertextFilePath, attribute, value);
+				return;
 		}
 	}
 
 	Map<String, Object> readAttributes(CryptoPath cleartextPath, String attributes, LinkOption... options) throws IOException {
-		Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
-		if (Files.notExists(ciphertextDirPath) && cleartextPath.getNameCount() > 0) {
-			Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
-			return fileAttributeByNameProvider.readAttributes(ciphertextFilePath, attributes);
-		} else {
-			return fileAttributeByNameProvider.readAttributes(ciphertextDirPath, attributes);
+		CiphertextFileType type = cryptoPathMapper.getCiphertextFileType(cleartextPath);
+		switch (type) {
+			case DIRECTORY:
+				Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
+				return fileAttributeByNameProvider.readAttributes(ciphertextDirPath, attributes);
+			default:
+				Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, type);
+				return fileAttributeByNameProvider.readAttributes(ciphertextFilePath, attributes);
 		}
 	}
 
 	<A extends BasicFileAttributes> A readAttributes(CryptoPath cleartextPath, Class<A> type, LinkOption... options) throws IOException {
-		Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
-		if (Files.notExists(ciphertextDirPath) && cleartextPath.getNameCount() > 0) {
-			Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
-			return fileAttributeProvider.readAttributes(ciphertextFilePath, type);
-		} else {
-			return fileAttributeProvider.readAttributes(ciphertextDirPath, type);
+		CiphertextFileType ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextPath);
+		switch (ciphertextFileType) {
+			case DIRECTORY:
+				Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
+				return fileAttributeProvider.readAttributes(ciphertextDirPath, type);
+			default:
+				Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, ciphertextFileType);
+				return fileAttributeProvider.readAttributes(ciphertextFilePath, type);
 		}
 	}
 
@@ -252,13 +260,16 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	 * @see CryptoFileAttributeViewProvider#getAttributeView(Path, Class)
 	 */
 	<V extends FileAttributeView> V getFileAttributeView(CryptoPath cleartextPath, Class<V> type, LinkOption... options) {
+		// TODO: lazily resolve ciphertext path, as a view for a nonexisting file can exist
 		try {
-			Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
-			if (Files.notExists(ciphertextDirPath) && cleartextPath.getNameCount() > 0) {
-				Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
-				return fileAttributeViewProvider.getAttributeView(ciphertextFilePath, type);
-			} else {
-				return fileAttributeViewProvider.getAttributeView(ciphertextDirPath, type);
+			CiphertextFileType ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextPath);
+			switch (ciphertextFileType) {
+				case DIRECTORY:
+					Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
+					return fileAttributeViewProvider.getAttributeView(ciphertextDirPath, type);
+				default:
+					Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, ciphertextFileType);
+					return fileAttributeViewProvider.getAttributeView(ciphertextFilePath, type);
 			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -315,9 +326,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		if (!Files.exists(ciphertextParentDir)) {
 			throw new NoSuchFileException(cleartextParentDir.toString());
 		}
-		Path ciphertextFile = cryptoPathMapper.getCiphertextFilePath(cleartextDir, CiphertextFileType.FILE);
-		if (Files.exists(ciphertextFile)) {
-			throw new FileAlreadyExistsException(cleartextDir.toString());
+		try {
+			CiphertextFileType typeIfExistingFile = cryptoPathMapper.getCiphertextFileType(cleartextDir);
+			throw new FileAlreadyExistsException(cleartextDir.toString(), null, "For this path there is already a " + typeIfExistingFile);
+		} catch (NoSuchFileException e) {
+			// ok, file must not yet exist...
 		}
 		Path ciphertextDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextDir, CiphertextFileType.DIRECTORY);
 		CiphertextDirectory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
@@ -352,26 +365,34 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	void delete(CryptoPath cleartextPath) throws IOException {
 		readonlyFlag.assertWritable();
-		Path ciphertextFile = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
-		// try to delete ciphertext file:
-		if (!Files.deleteIfExists(ciphertextFile)) {
-			// filePath doesn't exist, maybe it's an directory:
-			Path ciphertextDir = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
-			Path ciphertextDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY);
-			try {
-				ciphertextDirDeleter.deleteCiphertextDirIncludingNonCiphertextFiles(ciphertextDir, cleartextPath);
-				if (!Files.deleteIfExists(ciphertextDirFile)) {
-					// should not happen. Nevertheless this is a valid state, so who no big deal...
-					LOG.warn("Successfully deleted dir {}, but didn't find corresponding dir file {}", ciphertextDir, ciphertextDirFile);
-				}
-				dirIdProvider.delete(ciphertextDirFile);
-			} catch (NoSuchFileException e) {
-				// translate ciphertext path to cleartext path
-				throw new NoSuchFileException(cleartextPath.toString());
-			} catch (DirectoryNotEmptyException e) {
-				// translate ciphertext path to cleartext path
-				throw new DirectoryNotEmptyException(cleartextPath.toString());
+		CiphertextFileType ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextPath);
+		switch (ciphertextFileType) {
+			case DIRECTORY:
+				deleteDirectory(cleartextPath);
+				return;
+			default:
+				Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, ciphertextFileType);
+				Files.deleteIfExists(ciphertextFilePath);
+				return;
+		}
+	}
+
+	private void deleteDirectory(CryptoPath cleartextPath) throws IOException {
+		Path ciphertextDir = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
+		Path ciphertextDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY);
+		try {
+			ciphertextDirDeleter.deleteCiphertextDirIncludingNonCiphertextFiles(ciphertextDir, cleartextPath);
+			if (!Files.deleteIfExists(ciphertextDirFile)) {
+				// should not happen. Nevertheless this is a valid state, so who no big deal...
+				LOG.warn("Successfully deleted dir {}, but didn't find corresponding dir file {}", ciphertextDir, ciphertextDirFile);
 			}
+			dirIdProvider.delete(ciphertextDirFile);
+		} catch (NoSuchFileException e) {
+			// translate ciphertext path to cleartext path
+			throw new NoSuchFileException(cleartextPath.toString());
+		} catch (DirectoryNotEmptyException e) {
+			// translate ciphertext path to cleartext path
+			throw new DirectoryNotEmptyException(cleartextPath.toString());
 		}
 	}
 

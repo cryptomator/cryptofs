@@ -16,7 +16,10 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Objects;
 
 import static org.cryptomator.cryptofs.Constants.DATA_DIR_NAME;
@@ -46,7 +49,7 @@ class CryptoPathMapper {
 	}
 
 	public enum CiphertextFileType {
-		FILE(""), DIRECTORY(Constants.DIR_PREFIX);
+		FILE(""), DIRECTORY(DIR_PREFIX), SYMLINK("1S");
 
 		private final String prefix;
 
@@ -56,6 +59,30 @@ class CryptoPathMapper {
 
 		public String getPrefix() {
 			return prefix;
+		}
+	}
+
+	public CiphertextFileType getCiphertextFileType(CryptoPath cleartextPath) throws NoSuchFileException, IOException {
+		CryptoPath parentPath = cleartextPath.getParent();
+		if (parentPath == null) {
+			return CiphertextFileType.DIRECTORY; // ROOT
+		} else {
+			CiphertextDirectory parent = getCiphertextDir(parentPath);
+			String cleartextName = cleartextPath.getFileName().toString();
+			NoSuchFileException notFound = new NoSuchFileException(cleartextPath.toString());
+			for (CiphertextFileType type : CiphertextFileType.values()) {
+				String ciphertextName = getCiphertextFileName(parent.dirId, cleartextName, type);
+				Path ciphertextPath = parent.path.resolve(ciphertextName);
+				try {
+					// readattr is the fastest way of checking if a file exists. Doing so in this loop is still
+					// 1-2 orders of magnitude faster than iterating over directory contents
+					Files.readAttributes(ciphertextPath, BasicFileAttributes.class);
+					return type;
+				} catch (NoSuchFileException e) {
+					notFound.addSuppressed(e);
+				}
+			}
+			throw notFound;
 		}
 	}
 
