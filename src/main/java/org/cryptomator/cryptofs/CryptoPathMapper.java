@@ -8,8 +8,6 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static org.cryptomator.cryptofs.Constants.DATA_DIR_NAME;
-import static org.cryptomator.cryptofs.Constants.DIR_PREFIX;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -21,6 +19,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Objects;
 
+import static org.cryptomator.cryptofs.Constants.DATA_DIR_NAME;
+import static org.cryptomator.cryptofs.Constants.DIR_PREFIX;
 
 @PerFileSystem
 class CryptoPathMapper {
@@ -46,8 +46,18 @@ class CryptoPathMapper {
 	}
 
 	public enum CiphertextFileType {
-		FILE, DIRECTORY
-	};
+		FILE(""), DIRECTORY(Constants.DIR_PREFIX);
+
+		private final String prefix;
+
+		CiphertextFileType(String prefix) {
+			this.prefix = prefix;
+		}
+
+		public String getPrefix() {
+			return prefix;
+		}
+	}
 
 	public Path getCiphertextFilePath(CryptoPath cleartextPath, CiphertextFileType type) throws IOException {
 		CryptoPath parentPath = cleartextPath.getParent();
