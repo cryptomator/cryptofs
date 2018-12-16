@@ -1,14 +1,11 @@
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptolib.api.Cryptor;
+
+import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-
-import javax.inject.Inject;
-
-import dagger.Lazy;
-import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.FileHeader;
 
 @PerOpenFile
 class ChunkLoader {
