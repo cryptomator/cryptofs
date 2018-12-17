@@ -34,7 +34,7 @@ public class CryptoFileAttributeByNameProviderTest {
 	private CryptoFileAttributeProvider fileAttributeProvider = mock(CryptoFileAttributeProvider.class);
 	private CryptoFileAttributeViewProvider fileAttributeViewProvider = mock(CryptoFileAttributeViewProvider.class);
 
-	private Path aPath;
+	private CryptoPath path;
 
 	private CryptoFileAttributeByNameProvider inTest = new CryptoFileAttributeByNameProvider(fileAttributeProvider, fileAttributeViewProvider);
 
@@ -42,9 +42,9 @@ public class CryptoFileAttributeByNameProviderTest {
 	public void testSetAttributeWithAttributeSucceeds() throws IOException {
 		FileTime expectedFileTime = FileTime.fromMillis(4838388);
 		BasicFileAttributeView fileAttributeView = mock(BasicFileAttributeView.class);
-		when(fileAttributeViewProvider.getAttributeView(aPath, BasicFileAttributeView.class)).thenReturn(fileAttributeView);
+		when(fileAttributeViewProvider.getAttributeView(path, BasicFileAttributeView.class)).thenReturn(fileAttributeView);
 
-		inTest.setAttribute(aPath, "creationTime", expectedFileTime);
+		inTest.setAttribute(path, "creationTime", expectedFileTime);
 
 		verify(fileAttributeView).setTimes(null, null, expectedFileTime);
 	}
@@ -53,9 +53,9 @@ public class CryptoFileAttributeByNameProviderTest {
 	public void testSetAttributeWithBasicAttributeSucceeds() throws IOException {
 		FileTime expectedFileTime = FileTime.fromMillis(4838388);
 		BasicFileAttributeView fileAttributeView = mock(BasicFileAttributeView.class);
-		when(fileAttributeViewProvider.getAttributeView(aPath, BasicFileAttributeView.class)).thenReturn(fileAttributeView);
+		when(fileAttributeViewProvider.getAttributeView(path, BasicFileAttributeView.class)).thenReturn(fileAttributeView);
 
-		inTest.setAttribute(aPath, "basic:creationTime", expectedFileTime);
+		inTest.setAttribute(path, "basic:creationTime", expectedFileTime);
 
 		verify(fileAttributeView).setTimes(null, null, expectedFileTime);
 	}
@@ -65,7 +65,7 @@ public class CryptoFileAttributeByNameProviderTest {
 		thrown.expect(IllegalArgumentException.class);
 		thrown.expectMessage("Unrecognized attribute name: invalidAbc");
 
-		inTest.setAttribute(aPath, "invalidAbc", null);
+		inTest.setAttribute(path, "invalidAbc", null);
 	}
 
 	@Test
@@ -73,7 +73,7 @@ public class CryptoFileAttributeByNameProviderTest {
 		thrown.expect(IllegalArgumentException.class);
 		thrown.expectMessage("No attributes specified");
 
-		inTest.readAttributes(aPath, "");
+		inTest.readAttributes(path, "");
 	}
 
 	@Test
@@ -81,9 +81,9 @@ public class CryptoFileAttributeByNameProviderTest {
 		FileTime creationTime = FileTime.fromMillis(4888333);
 		BasicFileAttributes basicAttributes = mock(BasicFileAttributes.class);
 		when(basicAttributes.creationTime()).thenReturn(creationTime);
-		when(fileAttributeProvider.readAttributes(aPath, BasicFileAttributes.class)).thenReturn(basicAttributes);
+		when(fileAttributeProvider.readAttributes(path, BasicFileAttributes.class)).thenReturn(basicAttributes);
 
-		Map<String, Object> values = inTest.readAttributes(aPath, "basic:creationTime");
+		Map<String, Object> values = inTest.readAttributes(path, "basic:creationTime");
 
 		System.out.println(values);
 
@@ -112,9 +112,9 @@ public class CryptoFileAttributeByNameProviderTest {
 		when(basicAttributes.isOther()).thenReturn(other);
 		when(basicAttributes.size()).thenReturn(size);
 		when(basicAttributes.fileKey()).thenReturn(fileKey);
-		when(fileAttributeProvider.readAttributes(aPath, BasicFileAttributes.class)).thenReturn(basicAttributes);
+		when(fileAttributeProvider.readAttributes(path, BasicFileAttributes.class)).thenReturn(basicAttributes);
 
-		Map<String, Object> values = inTest.readAttributes(aPath, "basic:*");
+		Map<String, Object> values = inTest.readAttributes(path, "basic:*");
 
 		System.out.println(values);
 
@@ -153,9 +153,9 @@ public class CryptoFileAttributeByNameProviderTest {
 		when(basicAttributes.isOther()).thenReturn(other);
 		when(basicAttributes.size()).thenReturn(size);
 		when(basicAttributes.fileKey()).thenReturn(fileKey);
-		when(fileAttributeProvider.readAttributes(aPath, BasicFileAttributes.class)).thenReturn(basicAttributes);
+		when(fileAttributeProvider.readAttributes(path, BasicFileAttributes.class)).thenReturn(basicAttributes);
 
-		Map<String, Object> values = inTest.readAttributes(aPath, "*");
+		Map<String, Object> values = inTest.readAttributes(path, "*");
 
 		System.out.println(values);
 
@@ -183,10 +183,10 @@ public class CryptoFileAttributeByNameProviderTest {
 		when(basicAttributes.creationTime()).thenReturn(creationTime);
 		when(dosAttributes.isHidden()).thenReturn(hidden);
 		when(dosAttributes.isReadOnly()).thenReturn(readOnly);
-		when(fileAttributeProvider.readAttributes(aPath, BasicFileAttributes.class)).thenReturn(basicAttributes);
-		when(fileAttributeProvider.readAttributes(aPath, DosFileAttributes.class)).thenReturn(dosAttributes);
+		when(fileAttributeProvider.readAttributes(path, BasicFileAttributes.class)).thenReturn(basicAttributes);
+		when(fileAttributeProvider.readAttributes(path, DosFileAttributes.class)).thenReturn(dosAttributes);
 
-		Map<String, Object> values = inTest.readAttributes(aPath, "dos:readOnly,hidden");
+		Map<String, Object> values = inTest.readAttributes(path, "dos:readOnly,hidden");
 
 		System.out.println(values);
 

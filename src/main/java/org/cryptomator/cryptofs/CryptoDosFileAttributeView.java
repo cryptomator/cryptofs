@@ -8,19 +8,19 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.DosFileAttributes;
-import java.util.Optional;
+import java.nio.file.attribute.PosixFileAttributes;
 
-class CryptoDosFileAttributeView extends AbstractCryptoFileAttributeView<DosFileAttributes, DosFileAttributeView> implements DosFileAttributeView {
+@PerAttributeView
+class CryptoDosFileAttributeView extends CryptoBasicFileAttributeView implements DosFileAttributeView {
 
-	private final ReadonlyFlag readonlyFlag;
-
-	public CryptoDosFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag, Optional<OpenCryptoFile> openCryptoFile) throws UnsupportedFileAttributeViewException {
-		super(ciphertextPath, fileAttributeProvider, readonlyFlag, DosFileAttributes.class, DosFileAttributeView.class, openCryptoFile);
-		this.readonlyFlag = readonlyFlag;
+	@Inject
+	public CryptoDosFileAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, OpenCryptoFiles openCryptoFiles, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag) {
+		super(cleartextPath, pathMapper, openCryptoFiles, fileAttributeProvider, readonlyFlag);
 	}
 
 	@Override
@@ -29,27 +29,33 @@ class CryptoDosFileAttributeView extends AbstractCryptoFileAttributeView<DosFile
 	}
 
 	@Override
+	public DosFileAttributes readAttributes() throws IOException {
+		Path ciphertextPath = getCiphertextPath();
+		return fileAttributeProvider.readAttributes(ciphertextPath, DosFileAttributes.class);
+	}
+
+	@Override
 	public void setReadOnly(boolean value) throws IOException {
 		readonlyFlag.assertWritable();
-		delegate.setReadOnly(value);
+		getCiphertextAttributeView(DosFileAttributeView.class).setReadOnly(value);
 	}
 
 	@Override
 	public void setHidden(boolean value) throws IOException {
 		readonlyFlag.assertWritable();
-		delegate.setHidden(value);
+		getCiphertextAttributeView(DosFileAttributeView.class).setHidden(value);
 	}
 
 	@Override
 	public void setSystem(boolean value) throws IOException {
 		readonlyFlag.assertWritable();
-		delegate.setSystem(value);
+		getCiphertextAttributeView(DosFileAttributeView.class).setSystem(value);
 	}
 
 	@Override
 	public void setArchive(boolean value) throws IOException {
 		readonlyFlag.assertWritable();
-		delegate.setArchive(value);
+		getCiphertextAttributeView(DosFileAttributeView.class).setArchive(value);
 	}
 
 }

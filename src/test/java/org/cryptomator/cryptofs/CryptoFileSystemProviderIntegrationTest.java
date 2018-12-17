@@ -21,9 +21,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.EnumSet;
 
 import org.cryptomator.cryptolib.api.InvalidPassphraseException;
@@ -182,6 +185,26 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 		assertThat(readAllBytes(file1), is(data));
 		assertThat(readAllBytes(file2), is(data));
+	}
+
+	@Test
+	public void testLazinessOfFileAttributeViews() throws IOException {
+		Path fs1Location = pathToVault.resolve("foo");
+		Files.createDirectories(fs1Location);
+		FileSystem fs = CryptoFileSystemProvider.newFileSystem(fs1Location, cryptoFileSystemProperties().withPassphrase("asd").build());
+
+		Path file = fs.getPath("/foo.txt");
+		BasicFileAttributeView attrView = Files.getFileAttributeView(file, BasicFileAttributeView.class);
+		Assert.assertNotNull(attrView);
+
+		Files.write(file, new byte[3], StandardOpenOption.CREATE_NEW);
+		BasicFileAttributes attrs = attrView.readAttributes();
+		Assert.assertNotNull(attrs);
+		Assert.assertEquals(3, attrs.size());
+
+		Files.delete(file);
+		thrown.expect(NoSuchFileException.class);
+		attrView.readAttributes();
 	}
 
 	@Test

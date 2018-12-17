@@ -10,4 +10,6 @@ interface CryptoFileSystemComponent {
 
 	OpenCryptoFileComponent newOpenCryptoFileComponent(OpenCryptoFileModule openCryptoFileModule);
 
+	CryptoFileAttributeViewComponent.Builder newFileAttributeViewComponent();
+
 }

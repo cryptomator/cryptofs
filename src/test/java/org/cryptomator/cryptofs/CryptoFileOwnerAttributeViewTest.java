@@ -28,30 +28,28 @@ public class CryptoFileOwnerAttributeViewTest {
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
 
-	private Path path = mock(Path.class);
+	private Path ciphertextPath = mock(Path.class);
 	private FileSystem fileSystem = mock(FileSystem.class);
 	private FileSystemProvider provider = mock(FileSystemProvider.class);
 	private FileOwnerAttributeView delegate = mock(FileOwnerAttributeView.class);
+
+	private CryptoPath cleartextPath = mock(CryptoPath.class);
+	private CryptoPathMapper pathMapper = mock(CryptoPathMapper.class);
+	private OpenCryptoFiles openCryptoFiles = mock(OpenCryptoFiles.class);
 	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 
 	private CryptoFileOwnerAttributeView inTest;
 
 	@Before
-	public void setup() throws UnsupportedFileAttributeViewException {
-		when(path.getFileSystem()).thenReturn(fileSystem);
+	public void setup() throws UnsupportedFileAttributeViewException, IOException {
+		when(ciphertextPath.getFileSystem()).thenReturn(fileSystem);
 		when(fileSystem.provider()).thenReturn(provider);
-		when(provider.getFileAttributeView(path, FileOwnerAttributeView.class)).thenReturn(delegate);
+		when(provider.getFileAttributeView(ciphertextPath, FileOwnerAttributeView.class)).thenReturn(delegate);
 
-		inTest = new CryptoFileOwnerAttributeView(path, readonlyFlag);
-	}
+		when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CryptoPathMapper.CiphertextFileType.FILE);
+		when(pathMapper.getCiphertextFilePath(cleartextPath, CryptoPathMapper.CiphertextFileType.FILE)).thenReturn(ciphertextPath);
 
-	@Test
-	public void testConstructorThrowsUnsupportedFileAttributeViewExceptionIfViewIsNotSupported() throws UnsupportedFileAttributeViewException {
-		when(provider.getFileAttributeView(path, FileOwnerAttributeView.class)).thenReturn(null);
-
-		thrown.expect(UnsupportedFileAttributeViewException.class);
-
-		new CryptoFileOwnerAttributeView(path, readonlyFlag);
+		inTest = new CryptoFileOwnerAttributeView(cleartextPath, pathMapper, openCryptoFiles, readonlyFlag);
 	}
 
 	@Test

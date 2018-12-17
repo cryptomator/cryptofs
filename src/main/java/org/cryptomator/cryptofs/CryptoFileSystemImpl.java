@@ -215,17 +215,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	void setAttribute(CryptoPath cleartextPath, String attribute, Object value, LinkOption... options) throws IOException {
 		readonlyFlag.assertWritable();
-		CiphertextFileType type = cryptoPathMapper.getCiphertextFileType(cleartextPath);
-		switch (type) {
-			case DIRECTORY:
-				Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
-				fileAttributeByNameProvider.setAttribute(ciphertextDirPath, attribute, value);
-				return;
-			default:
-				Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, type);
-				fileAttributeByNameProvider.setAttribute(ciphertextFilePath, attribute, value);
-				return;
-		}
+		fileAttributeByNameProvider.setAttribute(cleartextPath, attribute, value);
 	}
 
 	Map<String, Object> readAttributes(CryptoPath cleartextPath, String attributes, LinkOption... options) throws IOException {
@@ -260,20 +250,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	 * @see CryptoFileAttributeViewProvider#getAttributeView(Path, Class)
 	 */
 	<V extends FileAttributeView> V getFileAttributeView(CryptoPath cleartextPath, Class<V> type, LinkOption... options) {
-		// TODO: lazily resolve ciphertext path, as a view for a nonexisting file can exist
-		try {
-			CiphertextFileType ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextPath);
-			switch (ciphertextFileType) {
-				case DIRECTORY:
-					Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
-					return fileAttributeViewProvider.getAttributeView(ciphertextDirPath, type);
-				default:
-					Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, ciphertextFileType);
-					return fileAttributeViewProvider.getAttributeView(ciphertextFilePath, type);
-			}
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
+		return fileAttributeViewProvider.getAttributeView(cleartextPath, type);
 	}
 
 	void checkAccess(CryptoPath cleartextPath, AccessMode... modes) throws IOException {

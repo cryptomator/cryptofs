@@ -51,15 +51,12 @@ public class CryptoFileStoreTest {
 	private final FileSystem fileSystem = mock(FileSystem.class);
 	private final FileStore delegate = mock(FileStore.class);
 	private final ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
-	@SuppressWarnings("unchecked")
-	private final Set<Class<? extends FileAttributeView>> knownFileAttributeViewTypes = Sets.newSet(BasicFileAttributeView.class, FileOwnerAttributeView.class, PosixFileAttributeView.class, DosFileAttributeView.class);
 
 	@Before
 	public void setUp() throws IOException {
 		when(path.getFileSystem()).thenReturn(fileSystem);
 		when(fileSystem.provider()).thenReturn(provider);
 		when(provider.getFileStore(path)).thenReturn(delegate);
-		when(attributeViewProvider.knownFileAttributeViewTypes()).thenReturn(knownFileAttributeViewTypes);
 	}
 
 	@Test

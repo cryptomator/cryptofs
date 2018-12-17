@@ -97,13 +97,13 @@ class CryptoFileAttributeByNameProvider {
 	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	public void setAttribute(Path path, String attributeName, Object value) throws IOException {
+	public void setAttribute(CryptoPath cleartextPath, String attributeName, Object value) throws IOException {
 		String normalizedAttributeName = normalizedAttributeName(attributeName);
 		AttributeSetter setter = SETTERS.get(normalizedAttributeName);
 		if (setter == null) {
 			throw new IllegalArgumentException("Unrecognized attribute name: " + attributeName);
 		}
-		FileAttributeView view = cryptoFileAttributeViewProvider.getAttributeView(path, setter.type());
+		FileAttributeView view = cryptoFileAttributeViewProvider.getAttributeView(cleartextPath, setter.type());
 		setter.set(view, value);
 	}
 

@@ -906,7 +906,7 @@ public class CryptoFileSystemImplTest {
 			DosFileAttributes fileAttributes = mock(DosFileAttributes.class);
 			when(fileAttributeView.readAttributes()).thenReturn(fileAttributes);
 			when(fileAttributes.isHidden()).thenReturn(true);
-			when(fileAttributeViewProvider.getAttributeView(ciphertextDirPath, DosFileAttributeView.class)).thenReturn(fileAttributeView);
+			when(fileAttributeViewProvider.getAttributeView(path, DosFileAttributeView.class)).thenReturn(fileAttributeView);
 
 			assertThat(inTest.isHidden(path), is(true));
 		}
@@ -917,7 +917,7 @@ public class CryptoFileSystemImplTest {
 			DosFileAttributes fileAttributes = mock(DosFileAttributes.class);
 			when(fileAttributeView.readAttributes()).thenReturn(fileAttributes);
 			when(fileAttributes.isHidden()).thenReturn(false);
-			when(fileAttributeViewProvider.getAttributeView(ciphertextDirPath, DosFileAttributeView.class)).thenReturn(fileAttributeView);
+			when(fileAttributeViewProvider.getAttributeView(path, DosFileAttributeView.class)).thenReturn(fileAttributeView);
 
 			assertThat(inTest.isHidden(path), is(false));
 		}
@@ -1119,7 +1119,7 @@ public class CryptoFileSystemImplTest {
 			inTest.setAttribute(path, name, value);
 
 			verify(readonlyFlag).assertWritable();
-			verify(fileAttributeByNameProvider).setAttribute(ciphertextDirPath, name, value);
+			verify(fileAttributeByNameProvider).setAttribute(path, name, value);
 		}
 
 		@Test
@@ -1135,7 +1135,7 @@ public class CryptoFileSystemImplTest {
 			inTest.setAttribute(path, name, value);
 
 			verify(readonlyFlag).assertWritable();
-			verify(fileAttributeByNameProvider).setAttribute(ciphertextDirPath, name, value);
+			verify(fileAttributeByNameProvider).setAttribute(path, name, value);
 		}
 
 		@Test
@@ -1153,7 +1153,7 @@ public class CryptoFileSystemImplTest {
 			inTest.setAttribute(path, name, value);
 
 			verify(readonlyFlag).assertWritable();
-			verify(fileAttributeByNameProvider).setAttribute(ciphertextFilePath, name, value);
+			verify(fileAttributeByNameProvider).setAttribute(path, name, value);
 		}
 
 	}

@@ -11,6 +11,8 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFileAttributeView;
@@ -19,7 +21,6 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.HashSet;
-import java.util.Optional;
 import java.util.Set;
 
 import org.junit.Before;
@@ -33,26 +34,30 @@ public class CryptoPosixFileAttributeViewTest {
 	@Rule
 	public MockitoRule mockitoRule = MockitoJUnit.rule();
 
-	private Path path = mock(Path.class);
-
+	private Path ciphertextPath = mock(Path.class);
+	private FileSystem fileSystem = mock(FileSystem.class);
+	private FileSystemProvider fileSystemProvider = mock(FileSystemProvider.class);
 	private PosixFileAttributeView delegate = mock(PosixFileAttributeView.class);
 
+	private CryptoPath cleartextPath = mock(CryptoPath.class);
+	private CryptoPathMapper pathMapper = mock(CryptoPathMapper.class);
+	private OpenCryptoFiles openCryptoFiles = mock(OpenCryptoFiles.class);
 	private CryptoFileAttributeProvider fileAttributeProvider = mock(CryptoFileAttributeProvider.class);
-
 	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 
 	private CryptoPosixFileAttributeView inTest;
 
 	@Before
-	public void setUp() throws UnsupportedFileAttributeViewException {
-		FileSystem fileSystem = mock(FileSystem.class);
-		FileSystemProvider provider = mock(FileSystemProvider.class);
+	public void setUp() throws IOException {
+		when(ciphertextPath.getFileSystem()).thenReturn(fileSystem);
+		when(fileSystem.provider()).thenReturn(fileSystemProvider);
+		when(fileSystemProvider.getFileAttributeView(ciphertextPath, PosixFileAttributeView.class)).thenReturn(delegate);
+		when(fileSystemProvider.getFileAttributeView(ciphertextPath, BasicFileAttributeView.class)).thenReturn(delegate);
 
-		when(path.getFileSystem()).thenReturn(fileSystem);
-		when(fileSystem.provider()).thenReturn(provider);
-		when(provider.getFileAttributeView(path, PosixFileAttributeView.class)).thenReturn(delegate);
+		when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CryptoPathMapper.CiphertextFileType.FILE);
+		when(pathMapper.getCiphertextFilePath(cleartextPath, CryptoPathMapper.CiphertextFileType.FILE)).thenReturn(ciphertextPath);
 
-		inTest = new CryptoPosixFileAttributeView(path, fileAttributeProvider, readonlyFlag, Optional.empty());
+		inTest = new CryptoPosixFileAttributeView(cleartextPath, pathMapper, openCryptoFiles, fileAttributeProvider, readonlyFlag);
 	}
 
 	@Test
@@ -103,7 +108,7 @@ public class CryptoPosixFileAttributeViewTest {
 	@Test
 	public void testReadAttributesUsesProvider() throws IOException {
 		PosixFileAttributes expectedAttributes = mock(PosixFileAttributes.class);
-		when(fileAttributeProvider.readAttributes(path, PosixFileAttributes.class)).thenReturn(expectedAttributes);
+		when(fileAttributeProvider.readAttributes(ciphertextPath, PosixFileAttributes.class)).thenReturn(expectedAttributes);
 
 		PosixFileAttributes result = inTest.readAttributes();
 
