@@ -34,8 +34,7 @@ class CryptoPosixFileAttributeView extends CryptoBasicFileAttributeView implemen
 
 	@Override
 	public PosixFileAttributes readAttributes() throws IOException {
-		Path ciphertextPath = getCiphertextPath();
-		return fileAttributeProvider.readAttributes(ciphertextPath, PosixFileAttributes.class);
+		return fileAttributeProvider.readAttributes(cleartextPath, PosixFileAttributes.class);
 	}
 
 	@Override

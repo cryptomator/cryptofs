@@ -107,7 +107,7 @@ class CryptoFileAttributeByNameProvider {
 		setter.set(view, value);
 	}
 
-	public Map<String, Object> readAttributes(Path path, String attributesString) throws IOException {
+	public Map<String, Object> readAttributes(CryptoPath cleartextPath, String attributesString) throws IOException {
 		if (attributesString.isEmpty()) {
 			throw new IllegalArgumentException("No attributes specified");
 		}
@@ -117,16 +117,16 @@ class CryptoFileAttributeByNameProvider {
 				.filter(entry -> getterNameFilter.apply(entry.getKey())) //
 				.map(Entry::getValue) //
 				.collect(toList());
-		return readAttributes(path, getters);
+		return readAttributes(cleartextPath, getters);
 	}
 
 	@SuppressWarnings({"rawtypes", "unchecked"})
-	private Map<String, Object> readAttributes(Path path, Collection<AttributeGetter> getters) throws IOException {
+	private Map<String, Object> readAttributes(CryptoPath cleartextPath, Collection<AttributeGetter> getters) throws IOException {
 		Map<String, Object> result = new HashMap<>();
 		BasicFileAttributes attributes = null;
 		for (AttributeGetter getter : getters) {
 			if (attributes == null) {
-				attributes = cryptoFileAttributeProvider.readAttributes(path, getter.type());
+				attributes = cryptoFileAttributeProvider.readAttributes(cleartextPath, getter.type());
 			}
 			String name = getter.name();
 			result.put(name, getter.read(attributes));

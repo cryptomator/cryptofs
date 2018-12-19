@@ -31,7 +31,12 @@ abstract class AbstractCryptoFileAttributeView implements FileAttributeView {
 		return ciphertextPath.getFileSystem().provider().getFileAttributeView(ciphertextPath, delegateType);
 	}
 
-	protected Path getCiphertextPath() throws IOException {
+	protected Optional<OpenCryptoFile> getOpenCryptoFile() throws IOException {
+		Path ciphertextPath = getCiphertextPath();
+		return openCryptoFiles.get(ciphertextPath);
+	}
+
+	private Path getCiphertextPath() throws IOException {
 		CryptoPathMapper.CiphertextFileType type = pathMapper.getCiphertextFileType(cleartextPath);
 		switch (type) {
 			case DIRECTORY:
@@ -39,11 +44,6 @@ abstract class AbstractCryptoFileAttributeView implements FileAttributeView {
 			default:
 				return pathMapper.getCiphertextFilePath(cleartextPath, type);
 		}
-	}
-
-	protected Optional<OpenCryptoFile> getOpenCryptoFile() throws IOException {
-		Path ciphertextPath = getCiphertextPath();
-		return openCryptoFiles.get(ciphertextPath);
 	}
 
 }

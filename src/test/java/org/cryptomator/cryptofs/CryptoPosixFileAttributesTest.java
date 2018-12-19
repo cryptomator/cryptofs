@@ -10,6 +10,7 @@ import java.util.EnumSet;
 import java.util.Set;
 
 import static java.nio.file.attribute.PosixFilePermission.*;
+import static org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType.FILE;
 import static org.mockito.Mockito.mock;
 
 public class CryptoPosixFileAttributesTest {
@@ -18,14 +19,14 @@ public class CryptoPosixFileAttributesTest {
 
 	@Test
 	public void testGetDelegateReturnsDelegate() {
-		CryptoPosixFileAttributes attrs = new CryptoPosixFileAttributes(delegate, null, null, null, false);
+		CryptoPosixFileAttributes attrs = new CryptoPosixFileAttributes(delegate, FILE,null, null, null, false);
 
 		Assert.assertSame(attrs.getDelegate(), delegate);
 	}
 
 	@Test
 	public void testGetPermissions() {
-		CryptoPosixFileAttributes attrs = new CryptoPosixFileAttributes(delegate, null, null, null, false);
+		CryptoPosixFileAttributes attrs = new CryptoPosixFileAttributes(delegate, FILE,null, null, null, false);
 		Set<PosixFilePermission> delegatePermissions = EnumSet.allOf(PosixFilePermission.class);
 		Mockito.when(delegate.permissions()).thenReturn(delegatePermissions);
 
@@ -34,7 +35,7 @@ public class CryptoPosixFileAttributesTest {
 
 	@Test
 	public void testGetPermissionsReadOnly() {
-		CryptoPosixFileAttributes attrs = new CryptoPosixFileAttributes(delegate, null, null, null, true);
+		CryptoPosixFileAttributes attrs = new CryptoPosixFileAttributes(delegate, FILE,null, null, null, true);
 		Set<PosixFilePermission> delegatePermissions = EnumSet.allOf(PosixFilePermission.class);
 		Mockito.when(delegate.permissions()).thenReturn(delegatePermissions);
 

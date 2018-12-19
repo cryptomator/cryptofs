@@ -30,8 +30,7 @@ class CryptoDosFileAttributeView extends CryptoBasicFileAttributeView implements
 
 	@Override
 	public DosFileAttributes readAttributes() throws IOException {
-		Path ciphertextPath = getCiphertextPath();
-		return fileAttributeProvider.readAttributes(ciphertextPath, DosFileAttributes.class);
+		return fileAttributeProvider.readAttributes(cleartextPath, DosFileAttributes.class);
 	}
 
 	@Override

@@ -28,8 +28,8 @@ class CryptoPosixFileAttributes extends CryptoBasicFileAttributes implements Del
 
 	private final PosixFileAttributes delegate;
 
-	public CryptoPosixFileAttributes(PosixFileAttributes delegate, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonly) {
-		super(delegate, ciphertextPath, cryptor, openCryptoFile, readonly);
+	public CryptoPosixFileAttributes(PosixFileAttributes delegate, CryptoPathMapper.CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonly) {
+		super(delegate, ciphertextFileType, ciphertextPath, cryptor, openCryptoFile, readonly);
 		this.delegate = delegate;
 	}
 

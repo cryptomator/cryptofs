@@ -22,17 +22,21 @@ import javax.inject.Inject;
 
 import org.cryptomator.cryptolib.api.Cryptor;
 
+import static org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType.DIRECTORY;
+
 @PerFileSystem
 class CryptoFileAttributeProvider {
 
 	private final Map<Class<? extends BasicFileAttributes>, AttributeProvider<? extends BasicFileAttributes>> attributeProviders = new HashMap<>();
 	private final Cryptor cryptor;
+	private final CryptoPathMapper pathMapper;
 	private final OpenCryptoFiles openCryptoFiles;
 	private final CryptoFileSystemProperties fileSystemProperties;
 
 	@Inject
-	public CryptoFileAttributeProvider(Cryptor cryptor, OpenCryptoFiles openCryptoFiles, CryptoFileSystemProperties fileSystemProperties) {
+	public CryptoFileAttributeProvider(Cryptor cryptor, CryptoPathMapper pathMapper, OpenCryptoFiles openCryptoFiles, CryptoFileSystemProperties fileSystemProperties) {
 		this.cryptor = cryptor;
+		this.pathMapper = pathMapper;
 		this.openCryptoFiles = openCryptoFiles;
 		this.fileSystemProperties = fileSystemProperties;
 		attributeProviders.put(BasicFileAttributes.class, (AttributeProvider<BasicFileAttributes>) CryptoBasicFileAttributes::new);
@@ -41,11 +45,15 @@ class CryptoFileAttributeProvider {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <A extends BasicFileAttributes> A readAttributes(Path ciphertextPath, Class<A> type) throws IOException {
+	public <A extends BasicFileAttributes> A readAttributes(CryptoPath cleartextPath, Class<A> type) throws IOException {
 		if (attributeProviders.containsKey(type)) {
+			CryptoPathMapper.CiphertextFileType ciphertextFileType = pathMapper.getCiphertextFileType(cleartextPath);
+			Path ciphertextPath = DIRECTORY.equals(ciphertextFileType) //
+					? pathMapper.getCiphertextDirPath(cleartextPath) //
+					: pathMapper.getCiphertextFilePath(cleartextPath, ciphertextFileType);
 			A ciphertextAttrs = Files.readAttributes(ciphertextPath, type);
 			AttributeProvider<A> provider = (AttributeProvider<A>) attributeProviders.get(type);
-			return provider.provide(ciphertextAttrs, ciphertextPath, cryptor, openCryptoFiles.get(ciphertextPath), fileSystemProperties.readonly());
+			return provider.provide(ciphertextAttrs, ciphertextFileType, ciphertextPath, cryptor, openCryptoFiles.get(ciphertextPath), fileSystemProperties.readonly());
 		} else {
 			throw new UnsupportedOperationException("Unsupported file attribute type: " + type);
 		}
@@ -53,7 +61,7 @@ class CryptoFileAttributeProvider {
 
 	@FunctionalInterface
 	private interface AttributeProvider<A extends BasicFileAttributes> {
-		A provide(A delegate, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonly);
+		A provide(A delegate, CryptoPathMapper.CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonly);
 	}
 
 }

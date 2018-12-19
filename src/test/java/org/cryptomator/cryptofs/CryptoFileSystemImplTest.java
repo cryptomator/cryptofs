@@ -948,7 +948,7 @@ public class CryptoFileSystemImplTest {
 		@Test
 		public void throwsExceptionFromReadBasicAttributesIfNeitherPosixNorDosFileAttributeViewIsSupported() throws IOException {
 			IOException expectedException = new IOException();
-			when(fileAttributeProvider.readAttributes(ciphertextDirPath, BasicFileAttributes.class)).thenThrow(expectedException);
+			when(fileAttributeProvider.readAttributes(path, BasicFileAttributes.class)).thenThrow(expectedException);
 
 			thrown.expect(is(expectedException));
 
@@ -959,7 +959,7 @@ public class CryptoFileSystemImplTest {
 		public void throwsExceptionFromReadDosAttributesIfDosFileAttributeViewIsSupported() throws IOException {
 			IOException expectedException = new IOException();
 			when(fileStore.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(true);
-			when(fileAttributeProvider.readAttributes(ciphertextDirPath, DosFileAttributes.class)).thenThrow(expectedException);
+			when(fileAttributeProvider.readAttributes(path, DosFileAttributes.class)).thenThrow(expectedException);
 
 			thrown.expect(is(expectedException));
 
@@ -971,7 +971,7 @@ public class CryptoFileSystemImplTest {
 			when(fileStore.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(true);
 			DosFileAttributes fileAttributes = mock(DosFileAttributes.class);
 			when(fileAttributes.isReadOnly()).thenReturn(true);
-			when(fileAttributeProvider.readAttributes(ciphertextDirPath, DosFileAttributes.class)).thenReturn(fileAttributes);
+			when(fileAttributeProvider.readAttributes(path, DosFileAttributes.class)).thenReturn(fileAttributes);
 
 			inTest.checkAccess(path);
 		}
@@ -981,7 +981,7 @@ public class CryptoFileSystemImplTest {
 			when(fileStore.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(true);
 			DosFileAttributes fileAttributes = mock(DosFileAttributes.class);
 			when(fileAttributes.isReadOnly()).thenReturn(false);
-			when(fileAttributeProvider.readAttributes(ciphertextDirPath, DosFileAttributes.class)).thenReturn(fileAttributes);
+			when(fileAttributeProvider.readAttributes(path, DosFileAttributes.class)).thenReturn(fileAttributes);
 
 			inTest.checkAccess(path, AccessMode.WRITE);
 		}
@@ -991,7 +991,7 @@ public class CryptoFileSystemImplTest {
 			when(fileStore.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(true);
 			DosFileAttributes fileAttributes = mock(DosFileAttributes.class);
 			when(fileAttributes.isReadOnly()).thenReturn(true);
-			when(fileAttributeProvider.readAttributes(ciphertextDirPath, DosFileAttributes.class)).thenReturn(fileAttributes);
+			when(fileAttributeProvider.readAttributes(path, DosFileAttributes.class)).thenReturn(fileAttributes);
 
 			thrown.expect(AccessDeniedException.class);
 			thrown.expectMessage(path.toString());
@@ -1004,7 +1004,7 @@ public class CryptoFileSystemImplTest {
 		public void throwsExceptionFromReadPosixAttributesIfPosixFileAttributeViewIsSupported() throws IOException {
 			IOException expectedException = new IOException();
 			when(fileStore.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(true);
-			when(fileAttributeProvider.readAttributes(ciphertextDirPath, PosixFileAttributes.class)).thenThrow(expectedException);
+			when(fileAttributeProvider.readAttributes(path, PosixFileAttributes.class)).thenThrow(expectedException);
 
 			thrown.expect(is(expectedException));
 
@@ -1015,7 +1015,7 @@ public class CryptoFileSystemImplTest {
 		public void succeedsIfPosixFileAttributeViewIsSupportedAndNoAccessModeIsChecked() throws IOException {
 			PosixFileAttributes fileAttributes = mock(PosixFileAttributes.class);
 			when(fileStore.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(true);
-			when(fileAttributeProvider.readAttributes(ciphertextDirPath, PosixFileAttributes.class)).thenReturn(fileAttributes);
+			when(fileAttributeProvider.readAttributes(path, PosixFileAttributes.class)).thenReturn(fileAttributes);
 
 			inTest.checkAccess(path);
 		}
@@ -1024,7 +1024,7 @@ public class CryptoFileSystemImplTest {
 		public void failsIfPosixFileAttributeViewIsSupportedAndReadAccessModeIsCheckedButNotSupported() throws IOException {
 			PosixFileAttributes fileAttributes = mock(PosixFileAttributes.class);
 			when(fileStore.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(true);
-			when(fileAttributeProvider.readAttributes(ciphertextDirPath, PosixFileAttributes.class)).thenReturn(fileAttributes);
+			when(fileAttributeProvider.readAttributes(path, PosixFileAttributes.class)).thenReturn(fileAttributes);
 
 			thrown.expect(AccessDeniedException.class);
 			thrown.expectMessage(path.toString());
@@ -1036,7 +1036,7 @@ public class CryptoFileSystemImplTest {
 		public void failsIfPosixFileAttributeViewIsSupportedAndWriteAccessModeIsCheckedButNotSupported() throws IOException {
 			PosixFileAttributes fileAttributes = mock(PosixFileAttributes.class);
 			when(fileStore.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(true);
-			when(fileAttributeProvider.readAttributes(ciphertextDirPath, PosixFileAttributes.class)).thenReturn(fileAttributes);
+			when(fileAttributeProvider.readAttributes(path, PosixFileAttributes.class)).thenReturn(fileAttributes);
 
 			thrown.expect(AccessDeniedException.class);
 			thrown.expectMessage(path.toString());
@@ -1048,7 +1048,7 @@ public class CryptoFileSystemImplTest {
 		public void failsIfPosixFileAttributeViewIsSupportedAndExecuteAccessModeIsCheckedButNotSupported() throws IOException {
 			PosixFileAttributes fileAttributes = mock(PosixFileAttributes.class);
 			when(fileStore.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(true);
-			when(fileAttributeProvider.readAttributes(ciphertextDirPath, PosixFileAttributes.class)).thenReturn(fileAttributes);
+			when(fileAttributeProvider.readAttributes(path, PosixFileAttributes.class)).thenReturn(fileAttributes);
 
 			thrown.expect(AccessDeniedException.class);
 			thrown.expectMessage(path.toString());
@@ -1060,7 +1060,7 @@ public class CryptoFileSystemImplTest {
 		public void succeedsIfPosixFileAttributeViewIsSupportedAndReadAccessModeIsCheckedAndSupported() throws IOException {
 			PosixFileAttributes fileAttributes = mock(PosixFileAttributes.class);
 			when(fileStore.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(true);
-			when(fileAttributeProvider.readAttributes(ciphertextDirPath, PosixFileAttributes.class)).thenReturn(fileAttributes);
+			when(fileAttributeProvider.readAttributes(path, PosixFileAttributes.class)).thenReturn(fileAttributes);
 			when(fileAttributes.permissions()).thenReturn(Collections.singleton(PosixFilePermission.OWNER_READ));
 
 			inTest.checkAccess(path, AccessMode.READ);
@@ -1070,7 +1070,7 @@ public class CryptoFileSystemImplTest {
 		public void succeedsIfPosixFileAttributeViewIsSupportedAndWriteAccessModeIsCheckedAndSupported() throws IOException {
 			PosixFileAttributes fileAttributes = mock(PosixFileAttributes.class);
 			when(fileStore.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(true);
-			when(fileAttributeProvider.readAttributes(ciphertextDirPath, PosixFileAttributes.class)).thenReturn(fileAttributes);
+			when(fileAttributeProvider.readAttributes(path, PosixFileAttributes.class)).thenReturn(fileAttributes);
 			when(fileAttributes.permissions()).thenReturn(Collections.singleton(PosixFilePermission.OWNER_WRITE));
 
 			inTest.checkAccess(path, AccessMode.WRITE);
@@ -1080,7 +1080,7 @@ public class CryptoFileSystemImplTest {
 		public void succeedsIfPosixFileAttributeViewIsSupportedAndExecuteAccessModeIsCheckedAndSupported() throws IOException {
 			PosixFileAttributes fileAttributes = mock(PosixFileAttributes.class);
 			when(fileStore.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(true);
-			when(fileAttributeProvider.readAttributes(ciphertextDirPath, PosixFileAttributes.class)).thenReturn(fileAttributes);
+			when(fileAttributeProvider.readAttributes(path, PosixFileAttributes.class)).thenReturn(fileAttributes);
 			when(fileAttributes.permissions()).thenReturn(Collections.singleton(PosixFilePermission.OWNER_EXECUTE));
 
 			inTest.checkAccess(path, AccessMode.EXECUTE);

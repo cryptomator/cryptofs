@@ -219,27 +219,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	Map<String, Object> readAttributes(CryptoPath cleartextPath, String attributes, LinkOption... options) throws IOException {
-		CiphertextFileType type = cryptoPathMapper.getCiphertextFileType(cleartextPath);
-		switch (type) {
-			case DIRECTORY:
-				Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
-				return fileAttributeByNameProvider.readAttributes(ciphertextDirPath, attributes);
-			default:
-				Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, type);
-				return fileAttributeByNameProvider.readAttributes(ciphertextFilePath, attributes);
-		}
+		return fileAttributeByNameProvider.readAttributes(cleartextPath, attributes);
 	}
 
 	<A extends BasicFileAttributes> A readAttributes(CryptoPath cleartextPath, Class<A> type, LinkOption... options) throws IOException {
-		CiphertextFileType ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextPath);
-		switch (ciphertextFileType) {
-			case DIRECTORY:
-				Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
-				return fileAttributeProvider.readAttributes(ciphertextDirPath, type);
-			default:
-				Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, ciphertextFileType);
-				return fileAttributeProvider.readAttributes(ciphertextFilePath, type);
-		}
+		return fileAttributeProvider.readAttributes(cleartextPath, type);
 	}
 
 	/**
@@ -347,6 +331,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		if (options.createNew() && openCryptoFiles.get(ciphertextPath).isPresent()) {
 			throw new FileAlreadyExistsException(cleartextPath.toString());
 		} else {
+			// might also throw FileAlreadyExists:
 			return openCryptoFiles.getOrCreate(ciphertextPath, options).newFileChannel(options);
 		}
 	}

@@ -35,8 +35,7 @@ class CryptoBasicFileAttributeView extends AbstractCryptoFileAttributeView imple
 
 	@Override
 	public BasicFileAttributes readAttributes() throws IOException {
-		Path ciphertextPath = getCiphertextPath();
-		return fileAttributeProvider.readAttributes(ciphertextPath, BasicFileAttributes.class);
+		return fileAttributeProvider.readAttributes(cleartextPath, BasicFileAttributes.class);
 	}
 
 	@Override

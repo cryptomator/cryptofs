@@ -1,10 +1,11 @@
 package org.cryptomator.cryptofs;
 
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoRule;
 
 import java.io.IOException;
 import java.nio.file.FileSystem;
@@ -13,12 +14,11 @@ import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.spi.FileSystemProvider;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class CryptoFileOwnerAttributeViewTest {
 
@@ -41,7 +41,7 @@ public class CryptoFileOwnerAttributeViewTest {
 	private CryptoFileOwnerAttributeView inTest;
 
 	@Before
-	public void setup() throws UnsupportedFileAttributeViewException, IOException {
+	public void setup() throws IOException {
 		when(ciphertextPath.getFileSystem()).thenReturn(fileSystem);
 		when(fileSystem.provider()).thenReturn(provider);
 		when(provider.getFileAttributeView(ciphertextPath, FileOwnerAttributeView.class)).thenReturn(delegate);

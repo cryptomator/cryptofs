@@ -108,7 +108,7 @@ public class CryptoPosixFileAttributeViewTest {
 	@Test
 	public void testReadAttributesUsesProvider() throws IOException {
 		PosixFileAttributes expectedAttributes = mock(PosixFileAttributes.class);
-		when(fileAttributeProvider.readAttributes(ciphertextPath, PosixFileAttributes.class)).thenReturn(expectedAttributes);
+		when(fileAttributeProvider.readAttributes(cleartextPath, PosixFileAttributes.class)).thenReturn(expectedAttributes);
 
 		PosixFileAttributes result = inTest.readAttributes();
 

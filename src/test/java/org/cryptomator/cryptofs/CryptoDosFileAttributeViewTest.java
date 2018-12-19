@@ -1,18 +1,5 @@
 package org.cryptomator.cryptofs;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.io.IOException;
-import java.nio.file.FileSystem;
-import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributeView;
-import java.nio.file.attribute.DosFileAttributeView;
-import java.nio.file.spi.FileSystemProvider;
-
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -21,6 +8,19 @@ import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+
+import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.DosFileAttributeView;
+import java.nio.file.spi.FileSystemProvider;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @RunWith(Theories.class)
 public class CryptoDosFileAttributeViewTest {
@@ -42,7 +42,7 @@ public class CryptoDosFileAttributeViewTest {
 	private CryptoDosFileAttributeView inTest;
 
 	@Before
-	public void setup() throws UnsupportedFileAttributeViewException, IOException {
+	public void setup() throws IOException {
 		when(ciphertextPath.getFileSystem()).thenReturn(fileSystem);
 		when(fileSystem.provider()).thenReturn(fileSystemProvider);
 		when(fileSystemProvider.getFileAttributeView(ciphertextPath, DosFileAttributeView.class)).thenReturn(delegate);
