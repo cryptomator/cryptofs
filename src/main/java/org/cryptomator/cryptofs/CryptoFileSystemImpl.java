@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.AccessDeniedException;
@@ -32,7 +31,6 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
-import java.nio.file.NotLinkException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
@@ -226,7 +224,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	<A extends BasicFileAttributes> A readAttributes(CryptoPath cleartextPath, Class<A> type, LinkOption... options) throws IOException {
-		return fileAttributeProvider.readAttributes(cleartextPath, type);
+		return fileAttributeProvider.readAttributes(cleartextPath, type, options);
 	}
 
 	/**
