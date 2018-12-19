@@ -220,7 +220,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	Map<String, Object> readAttributes(CryptoPath cleartextPath, String attributes, LinkOption... options) throws IOException {
-		return fileAttributeByNameProvider.readAttributes(cleartextPath, attributes);
+		return fileAttributeByNameProvider.readAttributes(cleartextPath, attributes, options);
 	}
 
 	<A extends BasicFileAttributes> A readAttributes(CryptoPath cleartextPath, Class<A> type, LinkOption... options) throws IOException {

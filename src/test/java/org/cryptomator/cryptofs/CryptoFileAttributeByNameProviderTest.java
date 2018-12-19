@@ -10,7 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
-import java.nio.file.Path;
+import java.nio.file.LinkOption;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.DosFileAttributes;
@@ -34,7 +34,7 @@ public class CryptoFileAttributeByNameProviderTest {
 	private CryptoFileAttributeProvider fileAttributeProvider = mock(CryptoFileAttributeProvider.class);
 	private CryptoFileAttributeViewProvider fileAttributeViewProvider = mock(CryptoFileAttributeViewProvider.class);
 
-	private CryptoPath path;
+	private CryptoPath path = mock(CryptoPath.class, "cleartextPath");
 
 	private CryptoFileAttributeByNameProvider inTest = new CryptoFileAttributeByNameProvider(fileAttributeProvider, fileAttributeViewProvider);
 
@@ -74,6 +74,18 @@ public class CryptoFileAttributeByNameProviderTest {
 		thrown.expectMessage("No attributes specified");
 
 		inTest.readAttributes(path, "");
+	}
+
+	@Test
+	public void testReadBasicAttributesPassesThroughLinkOptions() throws IOException {
+		FileTime creationTime = FileTime.fromMillis(4888333);
+		BasicFileAttributes basicAttributes = mock(BasicFileAttributes.class);
+		when(basicAttributes.creationTime()).thenReturn(creationTime);
+		when(fileAttributeProvider.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(basicAttributes);
+
+		inTest.readAttributes(path, "basic:creationTime", LinkOption.NOFOLLOW_LINKS);
+
+		verify(fileAttributeProvider).readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
 	}
 
 	@Test
