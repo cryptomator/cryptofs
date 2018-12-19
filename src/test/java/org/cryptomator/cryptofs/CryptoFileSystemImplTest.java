@@ -82,6 +82,7 @@ public class CryptoFileSystemImplTest {
 	private final CryptoFileSystems cryptoFileSystems = mock(CryptoFileSystems.class);
 	private final CryptoFileStore fileStore = mock(CryptoFileStore.class);
 	private final OpenCryptoFiles openCryptoFiles = mock(OpenCryptoFiles.class);
+	private final Symlinks symlinks = mock(Symlinks.class);
 	private final CryptoPathMapper cryptoPathMapper = mock(CryptoPathMapper.class);
 	private final DirectoryIdProvider dirIdProvider = mock(DirectoryIdProvider.class);
 	private final CryptoFileAttributeProvider fileAttributeProvider = mock(CryptoFileAttributeProvider.class);
@@ -106,8 +107,11 @@ public class CryptoFileSystemImplTest {
 		when(cryptoPathFactory.rootFor(any())).thenReturn(root);
 		when(cryptoPathFactory.emptyFor(any())).thenReturn(empty);
 
-		inTest = new CryptoFileSystemImpl(pathToVault, cryptor, provider, cryptoFileSystems, fileStore, openCryptoFiles, cryptoPathMapper, dirIdProvider, fileAttributeProvider, fileAttributeViewProvider,
-				pathMatcherFactory, cryptoPathFactory, stats, rootDirectoryInitializer, fileAttributeByNameProvider, directoryStreamFactory, finallyUtil, ciphertextDirDeleter, readonlyFlag);
+		inTest = new CryptoFileSystemImpl(provider, cryptoFileSystems, pathToVault, cryptor,
+				fileStore, stats, cryptoPathMapper, cryptoPathFactory,
+				pathMatcherFactory, directoryStreamFactory, dirIdProvider,
+				fileAttributeProvider, fileAttributeByNameProvider, fileAttributeViewProvider,
+				openCryptoFiles, symlinks, finallyUtil, ciphertextDirDeleter, readonlyFlag, rootDirectoryInitializer);
 	}
 
 	@Test
@@ -448,7 +452,7 @@ public class CryptoFileSystemImplTest {
 			@Test
 			public void moveToAlreadyExistingFile() throws IOException {
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.FILE);
-				when(cryptoPathMapper.getCiphertextFileType(cleartextTarget)).thenReturn(CiphertextFileType.FILE);
+				doThrow(new FileAlreadyExistsException(cleartextTarget.toString())).when(cryptoPathMapper).assertNonExisting(cleartextTarget);
 
 				thrown.expect(FileAlreadyExistsException.class);
 				inTest.move(cleartextSource, cleartextTarget);
@@ -583,7 +587,7 @@ public class CryptoFileSystemImplTest {
 			@Test
 			public void copyToAlreadyExistingFile() throws IOException {
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.FILE);
-				when(cryptoPathMapper.getCiphertextFileType(cleartextTarget)).thenReturn(CiphertextFileType.FILE);
+				doThrow(new FileAlreadyExistsException(cleartextTarget.toString())).when(cryptoPathMapper).assertNonExisting(cleartextTarget);
 
 				thrown.expect(FileAlreadyExistsException.class);
 				inTest.copy(cleartextSource, cleartextTarget);
@@ -803,12 +807,10 @@ public class CryptoFileSystemImplTest {
 			CryptoPath path = mock(CryptoPath.class);
 			CryptoPath parent = mock(CryptoPath.class);
 			Path cyphertextParent = mock(Path.class);
-			Path cyphertextFile = mock(Path.class);
 			when(path.getParent()).thenReturn(parent);
 			when(cryptoPathMapper.getCiphertextDirPath(parent)).thenReturn(cyphertextParent);
-			when(cryptoPathMapper.getCiphertextFilePath(path, CiphertextFileType.FILE)).thenReturn(cyphertextFile);
 			when(cyphertextParent.getFileSystem()).thenReturn(fileSystem);
-			when(cyphertextFile.getFileSystem()).thenReturn(fileSystem);
+			doThrow(new FileAlreadyExistsException(path.toString())).when(cryptoPathMapper).assertNonExisting(path);
 
 			thrown.expect(FileAlreadyExistsException.class);
 			thrown.expectMessage(path.toString());

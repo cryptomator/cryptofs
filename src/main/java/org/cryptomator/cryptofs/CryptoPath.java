@@ -177,7 +177,7 @@ class CryptoPath implements Path {
 	}
 
 	@Override
-	public Path resolve(Path path) {
+	public CryptoPath resolve(Path path) {
 		fileSystem.assertOpen();
 		CryptoPath other = cast(path);
 		if (other.isAbsolute()) {
@@ -191,15 +191,16 @@ class CryptoPath implements Path {
 	}
 
 	@Override
-	public Path resolve(String other) {
+	public CryptoPath resolve(String other) {
 		fileSystem.assertOpen();
 		return resolve(fileSystem.getPath(other));
 	}
 
 	@Override
-	public Path resolveSibling(Path other) {
+	public CryptoPath resolveSibling(Path path) {
 		fileSystem.assertOpen();
-		final Path parent = getParent();
+		CryptoPath parent = getParent();
+		CryptoPath other = cast(path);
 		if (parent == null || other.isAbsolute()) {
 			return other;
 		} else {
@@ -208,13 +209,13 @@ class CryptoPath implements Path {
 	}
 
 	@Override
-	public Path resolveSibling(String other) {
+	public CryptoPath resolveSibling(String other) {
 		fileSystem.assertOpen();
 		return resolveSibling(fileSystem.getPath(other));
 	}
 
 	@Override
-	public Path relativize(Path path) {
+	public CryptoPath relativize(Path path) {
 		fileSystem.assertOpen();
 		CryptoPath normalized = this.normalize();
 		CryptoPath other = cast(path).normalize();

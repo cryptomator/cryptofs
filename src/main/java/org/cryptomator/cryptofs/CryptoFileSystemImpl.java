@@ -66,56 +66,59 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	private static final Logger LOG = LoggerFactory.getLogger(CryptoFileSystemImpl.class);
 
-	private final CryptoPath rootPath;
-	private final CryptoPath emptyPath;
-
 	private final CryptoFileSystemProvider provider;
 	private final CryptoFileSystems cryptoFileSystems;
 	private final Path pathToVault;
 	private final Cryptor cryptor;
+	private final CryptoFileStore fileStore;
+	private final CryptoFileSystemStats stats;
 	private final CryptoPathMapper cryptoPathMapper;
+	private final CryptoPathFactory cryptoPathFactory;
+	private final PathMatcherFactory pathMatcherFactory;
+	private final DirectoryStreamFactory directoryStreamFactory;
 	private final DirectoryIdProvider dirIdProvider;
 	private final CryptoFileAttributeProvider fileAttributeProvider;
 	private final CryptoFileAttributeByNameProvider fileAttributeByNameProvider;
 	private final CryptoFileAttributeViewProvider fileAttributeViewProvider;
-	private final DirectoryStreamFactory directoryStreamFactory;
 	private final OpenCryptoFiles openCryptoFiles;
-	private final CryptoFileStore fileStore;
-	private final PathMatcherFactory pathMatcherFactory;
-	private final CryptoPathFactory cryptoPathFactory;
-	private final CryptoFileSystemStats stats;
+	private final Symlinks symlinks;
 	private final FinallyUtil finallyUtil;
 	private final CiphertextDirectoryDeleter ciphertextDirDeleter;
 	private final ReadonlyFlag readonlyFlag;
 
+	private final CryptoPath rootPath;
+	private final CryptoPath emptyPath;
+
 	private volatile boolean open = true;
 
 	@Inject
-	public CryptoFileSystemImpl(@PathToVault Path pathToVault, Cryptor cryptor, CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, CryptoFileStore fileStore,
-								OpenCryptoFiles openCryptoFiles, CryptoPathMapper cryptoPathMapper, DirectoryIdProvider dirIdProvider, CryptoFileAttributeProvider fileAttributeProvider,
-								CryptoFileAttributeViewProvider fileAttributeViewProvider, PathMatcherFactory pathMatcherFactory, CryptoPathFactory cryptoPathFactory, CryptoFileSystemStats stats,
-								RootDirectoryInitializer rootDirectoryInitializer, CryptoFileAttributeByNameProvider fileAttributeByNameProvider, DirectoryStreamFactory directoryStreamFactory, FinallyUtil finallyUtil,
-								CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag) {
-		this.cryptor = cryptor;
+	public CryptoFileSystemImpl(CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, @PathToVault Path pathToVault, Cryptor cryptor,
+								CryptoFileStore fileStore, CryptoFileSystemStats stats, CryptoPathMapper cryptoPathMapper, CryptoPathFactory cryptoPathFactory,
+								PathMatcherFactory pathMatcherFactory, DirectoryStreamFactory directoryStreamFactory, DirectoryIdProvider dirIdProvider,
+								CryptoFileAttributeProvider fileAttributeProvider, CryptoFileAttributeByNameProvider fileAttributeByNameProvider, CryptoFileAttributeViewProvider fileAttributeViewProvider,
+								OpenCryptoFiles openCryptoFiles, Symlinks symlinks, FinallyUtil finallyUtil, CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag, RootDirectoryInitializer rootDirectoryInitializer) {
 		this.provider = provider;
 		this.cryptoFileSystems = cryptoFileSystems;
 		this.pathToVault = pathToVault;
+		this.cryptor = cryptor;
+		this.fileStore = fileStore;
+		this.stats = stats;
 		this.cryptoPathMapper = cryptoPathMapper;
+		this.cryptoPathFactory = cryptoPathFactory;
+		this.pathMatcherFactory = pathMatcherFactory;
+		this.directoryStreamFactory = directoryStreamFactory;
 		this.dirIdProvider = dirIdProvider;
 		this.fileAttributeProvider = fileAttributeProvider;
 		this.fileAttributeByNameProvider = fileAttributeByNameProvider;
 		this.fileAttributeViewProvider = fileAttributeViewProvider;
 		this.openCryptoFiles = openCryptoFiles;
-		this.fileStore = fileStore;
-		this.pathMatcherFactory = pathMatcherFactory;
-		this.cryptoPathFactory = cryptoPathFactory;
-		this.stats = stats;
-		this.directoryStreamFactory = directoryStreamFactory;
+		this.symlinks = symlinks;
+		this.finallyUtil = finallyUtil;
 		this.ciphertextDirDeleter = ciphertextDirDeleter;
 		this.readonlyFlag = readonlyFlag;
+
 		this.rootPath = cryptoPathFactory.rootFor(this);
 		this.emptyPath = cryptoPathFactory.emptyFor(this);
-		this.finallyUtil = finallyUtil;
 
 		rootDirectoryInitializer.initialize(rootPath);
 	}
@@ -277,22 +280,6 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		}
 	}
 
-	/**
-	 * Verifies that no node exists for the given path. Otherwise a {@link FileAlreadyExistsException} will be thrown.
-	 *
-	 * @param cleartextPath A path
-	 * @throws FileAlreadyExistsException If the node exists
-	 * @throws IOException                If any I/O error occurs while attempting to resolve the ciphertext path
-	 */
-	private void assertNonExisting(CryptoPath cleartextPath) throws FileAlreadyExistsException, IOException {
-		try {
-			CiphertextFileType typeIfExistingFile = cryptoPathMapper.getCiphertextFileType(cleartextPath);
-			throw new FileAlreadyExistsException(cleartextPath.toString(), null, "For this path there is already a " + typeIfExistingFile);
-		} catch (NoSuchFileException e) {
-			// good!
-		}
-	}
-
 	void createDirectory(CryptoPath cleartextDir, FileAttribute<?>... attrs) throws IOException {
 		readonlyFlag.assertWritable();
 		CryptoPath cleartextParentDir = cleartextDir.getParent();
@@ -303,7 +290,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		if (!Files.exists(ciphertextParentDir)) {
 			throw new NoSuchFileException(cleartextParentDir.toString());
 		}
-		assertNonExisting(cleartextDir);
+		cryptoPathMapper.assertNonExisting(cleartextDir);
 		Path ciphertextDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextDir, CiphertextFileType.DIRECTORY);
 		CiphertextDirectory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
 		// atomically check for FileAlreadyExists and create otherwise:
@@ -376,7 +363,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		}
 		CiphertextFileType ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextSource);
 		if (!ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
-			assertNonExisting(cleartextTarget);
+			cryptoPathMapper.assertNonExisting(cleartextTarget);
 		}
 		switch (ciphertextFileType) {
 			case DIRECTORY:
@@ -449,7 +436,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		}
 		CiphertextFileType ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextSource);
 		if (!ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
-			assertNonExisting(cleartextTarget);
+			cryptoPathMapper.assertNonExisting(cleartextTarget);
 		}
 		switch (ciphertextFileType) {
 			case FILE:
@@ -510,6 +497,16 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		return fileStore;
 	}
 
+	void createSymbolicLink(CryptoPath cleartextPath, Path target, FileAttribute<?>[] attrs) throws IOException {
+		assertOpen();
+		symlinks.createSymbolicLink(cleartextPath, target, attrs);
+	}
+
+	CryptoPath readSymbolicLink(CryptoPath cleartextPath) throws IOException {
+		assertOpen();
+		return symlinks.readSymbolicLink(cleartextPath);
+	}
+
 	/* internal methods */
 
 	CryptoPath getRootPath() {
@@ -531,31 +528,4 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		return format("%sCryptoFileSystem(%s)", open ? "" : "closed ", pathToVault);
 	}
 
-	public void createSymbolicLink(CryptoPath cleartextPath, Path target, FileAttribute<?>[] attrs) throws IOException {
-		assertNonExisting(cleartextPath);
-		if (target.toString().length() > Constants.MAX_SYMLINK_LENGTH) {
-			throw new IOException("path length limit exceeded.");
-		}
-		Path ciphertextSymlinkFile = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.SYMLINK);
-		EffectiveOpenOptions openOptions = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW), readonlyFlag);
-		try (OpenCryptoFile f = openCryptoFiles.getOrCreate(ciphertextSymlinkFile, openOptions);
-			 FileChannel ch = f.newFileChannel(openOptions)) {
-			ch.write(ByteBuffer.wrap(target.toString().getBytes(UTF_8)));
-		}
-	}
-
-	public Path readSymbolicLink(CryptoPath cleartextPath) throws IOException {
-		Path ciphertextSymlinkFile = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.SYMLINK);
-		EffectiveOpenOptions openOptions = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.READ), readonlyFlag);
-		try (OpenCryptoFile f = openCryptoFiles.getOrCreate(ciphertextSymlinkFile, openOptions);
-			 FileChannel ch = f.newFileChannel(openOptions)) {
-			if (ch.size() > Constants.MAX_SYMLINK_LENGTH) {
-				throw new NotLinkException(cleartextPath.toString(), null, "Unreasonably large file");
-			}
-			ByteBuffer buf = ByteBuffer.allocate((int) f.size());
-			f.read(buf, 0);
-			buf.flip();
-			return cleartextPath.resolveSibling(UTF_8.decode(buf).toString());
-		}
-	}
 }

@@ -9,7 +9,6 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.FileHeader;
 
 import javax.inject.Inject;
 import java.io.Closeable;
