@@ -4,15 +4,18 @@ import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.NoSuchFileException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystemLoopException;
 import java.nio.file.NotLinkException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
 import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.Set;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -37,24 +40,35 @@ class Symlinks {
 		}
 		Path ciphertextSymlinkFile = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.SYMLINK);
 		EffectiveOpenOptions openOptions = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW), readonlyFlag);
-		try (OpenCryptoFile f = openCryptoFiles.getOrCreate(ciphertextSymlinkFile, openOptions);
-			 FileChannel ch = f.newFileChannel(openOptions)) {
-			ch.write(ByteBuffer.wrap(target.toString().getBytes(UTF_8)));
-		}
+		ByteBuffer content = UTF_8.encode(target.toString());
+		openCryptoFiles.writeCiphertextFile(ciphertextSymlinkFile, openOptions, content);
 	}
 
 	public CryptoPath readSymbolicLink(CryptoPath cleartextPath) throws IOException {
 		Path ciphertextSymlinkFile = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.SYMLINK);
 		EffectiveOpenOptions openOptions = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.READ), readonlyFlag);
-		try (OpenCryptoFile f = openCryptoFiles.getOrCreate(ciphertextSymlinkFile, openOptions);
-			 FileChannel ch = f.newFileChannel(openOptions)) {
-			if (ch.size() > Constants.MAX_SYMLINK_LENGTH) {
-				throw new NotLinkException(cleartextPath.toString(), null, "Unreasonably large file");
-			}
-			ByteBuffer buf = ByteBuffer.allocate((int) ch.size());
-			ch.read(buf);
-			buf.flip();
-			return cleartextPath.resolveSibling(UTF_8.decode(buf).toString());
+		try {
+			ByteBuffer content = openCryptoFiles.readCiphertextFile(ciphertextSymlinkFile, openOptions, Constants.MAX_SYMLINK_LENGTH);
+			return cleartextPath.resolveSibling(UTF_8.decode(content).toString());
+		} catch (BufferUnderflowException e) {
+			throw new NotLinkException(cleartextPath.toString(), null, "Unreasonably large file");
+		}
+	}
+
+	public CryptoPath resolveRecursively(CryptoPath cleartextPath) throws IOException {
+		return resolveRecursively(new HashSet<>(), cleartextPath);
+	}
+
+	private CryptoPath resolveRecursively(Set<CryptoPath> visitedLinks, CryptoPath cleartextPath) throws IOException {
+		if (visitedLinks.contains(cleartextPath)) {
+			throw new FileSystemLoopException(cleartextPath.toString());
+		}
+		CryptoPath resolvedPath = readSymbolicLink(cleartextPath);
+		if (cryptoPathMapper.getCiphertextFileType(resolvedPath) == CiphertextFileType.SYMLINK) {
+			visitedLinks.add(cleartextPath);
+			return resolveRecursively(visitedLinks, resolvedPath);
+		} else {
+			return resolvedPath;
 		}
 	}
 

@@ -139,7 +139,7 @@ public class CryptoFileAttributeProviderTest {
 		@Test
 		public void testReadBasicAttributesOfTarget() throws IOException {
 			CryptoPath targetPath = Mockito.mock(CryptoPath.class, "targetPath");
-			Mockito.when(symlinks.readSymbolicLink(cleartextPath)).thenReturn(targetPath);
+			Mockito.when(symlinks.resolveRecursively(cleartextPath)).thenReturn(targetPath);
 			Mockito.when(pathMapper.getCiphertextFileType(targetPath)).thenReturn(CryptoPathMapper.CiphertextFileType.FILE);
 			Mockito.when(pathMapper.getCiphertextFilePath(targetPath, CryptoPathMapper.CiphertextFileType.FILE)).thenReturn(ciphertextFilePath);
 
@@ -147,22 +147,6 @@ public class CryptoFileAttributeProviderTest {
 			BasicFileAttributes attr = prov.readAttributes(cleartextPath, BasicFileAttributes.class);
 			Assert.assertTrue(attr instanceof BasicFileAttributes);
 			Assert.assertTrue(attr.isRegularFile());
-		}
-
-		@Test(expected = FileSystemLoopException.class)
-		public void testFileSystemLoop() throws IOException {
-			CryptoPath target1 = Mockito.mock(CryptoPath.class, "target1");
-			CryptoPath target2 = Mockito.mock(CryptoPath.class, "target2");
-			CryptoPath target3 = Mockito.mock(CryptoPath.class, "target3");
-			Mockito.when(pathMapper.getCiphertextFileType(target1)).thenReturn(CryptoPathMapper.CiphertextFileType.SYMLINK);
-			Mockito.when(pathMapper.getCiphertextFileType(target2)).thenReturn(CryptoPathMapper.CiphertextFileType.SYMLINK);
-			Mockito.when(pathMapper.getCiphertextFileType(target3)).thenReturn(CryptoPathMapper.CiphertextFileType.SYMLINK);
-			Mockito.when(symlinks.readSymbolicLink(target1)).thenReturn(target2);
-			Mockito.when(symlinks.readSymbolicLink(target2)).thenReturn(target3);
-			Mockito.when(symlinks.readSymbolicLink(target3)).thenReturn(target1);
-
-			CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor, pathMapper, openCryptoFiles, fileSystemProperties, symlinks);
-			prov.readAttributes(target1, BasicFileAttributes.class);
 		}
 
 	}

@@ -8,8 +8,10 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptolib.api.Cryptor;
+
+import javax.inject.Inject;
 import java.io.IOException;
-import java.nio.file.FileSystemLoopException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -17,16 +19,8 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.DosFileAttributes;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-
-import javax.inject.Inject;
-
-import org.cryptomator.cryptolib.api.Cryptor;
-
-import static org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType.DIRECTORY;
 
 @PerFileSystem
 class CryptoFileAttributeProvider {
@@ -51,25 +45,18 @@ class CryptoFileAttributeProvider {
 	}
 
 	public <A extends BasicFileAttributes> A readAttributes(CryptoPath cleartextPath, Class<A> type, LinkOption... options) throws IOException {
-		if (attributeProviders.containsKey(type)) {
-			return readAttributes(new HashSet<>(), cleartextPath, type, options);
-		} else {
+		if (!attributeProviders.containsKey(type)) {
 			throw new UnsupportedOperationException("Unsupported file attribute type: " + type);
 		}
-	}
-
-	private <A extends BasicFileAttributes> A readAttributes(Set<CryptoPath> visitedLinks, CryptoPath cleartextPath, Class<A> type, LinkOption... options) throws IOException {
 		CryptoPathMapper.CiphertextFileType ciphertextFileType = pathMapper.getCiphertextFileType(cleartextPath);
 		switch (ciphertextFileType) {
 			case SYMLINK: {
 				if (ArrayUtils.contains(options, LinkOption.NOFOLLOW_LINKS)) {
 					Path ciphertextPath = pathMapper.getCiphertextFilePath(cleartextPath, ciphertextFileType);
 					return readAttributes(ciphertextFileType, ciphertextPath, type);
-				} else if (visitedLinks.contains(cleartextPath)) {
-					throw new FileSystemLoopException(cleartextPath.toString());
 				} else {
-					visitedLinks.add(cleartextPath);
-					return readAttributes(visitedLinks, symlinks.readSymbolicLink(cleartextPath), type, options);
+					CryptoPath resolved = symlinks.resolveRecursively(cleartextPath);
+					return readAttributes(resolved, type, options);
 				}
 			}
 			case DIRECTORY: {
