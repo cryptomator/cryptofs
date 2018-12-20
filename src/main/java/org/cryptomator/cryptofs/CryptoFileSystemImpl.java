@@ -216,7 +216,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	void setAttribute(CryptoPath cleartextPath, String attribute, Object value, LinkOption... options) throws IOException {
 		readonlyFlag.assertWritable();
-		fileAttributeByNameProvider.setAttribute(cleartextPath, attribute, value);
+		fileAttributeByNameProvider.setAttribute(cleartextPath, attribute, value, options);
 	}
 
 	Map<String, Object> readAttributes(CryptoPath cleartextPath, String attributes, LinkOption... options) throws IOException {
