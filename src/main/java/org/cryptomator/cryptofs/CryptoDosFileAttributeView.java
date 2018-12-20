@@ -10,17 +10,16 @@ package org.cryptomator.cryptofs;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.nio.file.Path;
+import java.nio.file.LinkOption;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.DosFileAttributes;
-import java.nio.file.attribute.PosixFileAttributes;
 
 @PerAttributeView
 class CryptoDosFileAttributeView extends CryptoBasicFileAttributeView implements DosFileAttributeView {
 
 	@Inject
-	public CryptoDosFileAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, OpenCryptoFiles openCryptoFiles, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag) {
-		super(cleartextPath, pathMapper, openCryptoFiles, fileAttributeProvider, readonlyFlag);
+	public CryptoDosFileAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, LinkOption[] linkOptions, Symlinks symlinks, OpenCryptoFiles openCryptoFiles, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag) {
+		super(cleartextPath, pathMapper, linkOptions, symlinks, openCryptoFiles, fileAttributeProvider, readonlyFlag);
 	}
 
 	@Override
@@ -30,7 +29,7 @@ class CryptoDosFileAttributeView extends CryptoBasicFileAttributeView implements
 
 	@Override
 	public DosFileAttributes readAttributes() throws IOException {
-		return fileAttributeProvider.readAttributes(cleartextPath, DosFileAttributes.class);
+		return fileAttributeProvider.readAttributes(cleartextPath, DosFileAttributes.class, linkOptions);
 	}
 
 	@Override

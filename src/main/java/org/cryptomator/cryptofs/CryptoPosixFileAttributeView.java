@@ -10,8 +10,7 @@ package org.cryptomator.cryptofs;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.LinkOption;
 import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributes;
@@ -23,8 +22,8 @@ import java.util.Set;
 class CryptoPosixFileAttributeView extends CryptoBasicFileAttributeView implements PosixFileAttributeView {
 
 	@Inject
-	public CryptoPosixFileAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, OpenCryptoFiles openCryptoFiles, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag) {
-		super(cleartextPath, pathMapper, openCryptoFiles, fileAttributeProvider, readonlyFlag);
+	public CryptoPosixFileAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, LinkOption[] linkOptions, Symlinks symlinks, OpenCryptoFiles openCryptoFiles, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag) {
+		super(cleartextPath, pathMapper, linkOptions, symlinks, openCryptoFiles, fileAttributeProvider, readonlyFlag);
 	}
 
 	@Override
@@ -34,7 +33,7 @@ class CryptoPosixFileAttributeView extends CryptoBasicFileAttributeView implemen
 
 	@Override
 	public PosixFileAttributes readAttributes() throws IOException {
-		return fileAttributeProvider.readAttributes(cleartextPath, PosixFileAttributes.class);
+		return fileAttributeProvider.readAttributes(cleartextPath, PosixFileAttributes.class, linkOptions);
 	}
 
 	@Override

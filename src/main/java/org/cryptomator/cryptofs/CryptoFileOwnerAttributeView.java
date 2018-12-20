@@ -10,8 +10,7 @@ package org.cryptomator.cryptofs;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.LinkOption;
 import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.UserPrincipal;
 
@@ -21,8 +20,8 @@ class CryptoFileOwnerAttributeView extends AbstractCryptoFileAttributeView imple
 	private final ReadonlyFlag readonlyFlag;
 
 	@Inject
-	public CryptoFileOwnerAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, OpenCryptoFiles openCryptoFiles,  ReadonlyFlag readonlyFlag) {
-		super(cleartextPath, pathMapper, openCryptoFiles);
+	public CryptoFileOwnerAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, LinkOption[] linkOptions, Symlinks symlinks, OpenCryptoFiles openCryptoFiles, ReadonlyFlag readonlyFlag) {
+		super(cleartextPath, pathMapper, linkOptions, symlinks, openCryptoFiles);
 		this.readonlyFlag = readonlyFlag;
 	}
 

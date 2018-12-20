@@ -6,11 +6,13 @@ import org.junit.Test;
 import org.junit.experimental.theories.Theories;
 import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
+import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
 import java.io.IOException;
 import java.nio.file.FileSystem;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.DosFileAttributeView;
@@ -28,13 +30,18 @@ public class CryptoDosFileAttributeViewTest {
 	@Rule
 	public MockitoRule mockitoRule = MockitoJUnit.rule();
 
+	private Path linkCiphertextPath = mock(Path.class);
+
 	private Path ciphertextPath = mock(Path.class);
 	private FileSystem fileSystem = mock(FileSystem.class);
-	private FileSystemProvider fileSystemProvider = mock(FileSystemProvider.class);
+	private FileSystemProvider provider = mock(FileSystemProvider.class);
 	private DosFileAttributeView delegate = mock(DosFileAttributeView.class);
+	private DosFileAttributeView linkDelegate = mock(DosFileAttributeView.class);
 
+	private CryptoPath link = Mockito.mock(CryptoPath.class);
 	private CryptoPath cleartextPath = mock(CryptoPath.class);
 	private CryptoPathMapper pathMapper = mock(CryptoPathMapper.class);
+	private Symlinks symlinks = mock(Symlinks.class);
 	private OpenCryptoFiles openCryptoFiles = mock(OpenCryptoFiles.class);
 	private CryptoFileAttributeProvider fileAttributeProvider = mock(CryptoFileAttributeProvider.class);
 	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
@@ -43,15 +50,21 @@ public class CryptoDosFileAttributeViewTest {
 
 	@Before
 	public void setup() throws IOException {
-		when(ciphertextPath.getFileSystem()).thenReturn(fileSystem);
-		when(fileSystem.provider()).thenReturn(fileSystemProvider);
-		when(fileSystemProvider.getFileAttributeView(ciphertextPath, DosFileAttributeView.class)).thenReturn(delegate);
-		when(fileSystemProvider.getFileAttributeView(ciphertextPath, BasicFileAttributeView.class)).thenReturn(delegate);
+		when(linkCiphertextPath.getFileSystem()).thenReturn(fileSystem);
 
+		when(ciphertextPath.getFileSystem()).thenReturn(fileSystem);
+		when(fileSystem.provider()).thenReturn(provider);
+		when(provider.getFileAttributeView(ciphertextPath, DosFileAttributeView.class)).thenReturn(delegate);
+		when(provider.getFileAttributeView(ciphertextPath, BasicFileAttributeView.class)).thenReturn(delegate);
+		when(provider.getFileAttributeView(linkCiphertextPath, DosFileAttributeView.class)).thenReturn(linkDelegate);
+
+		when(symlinks.resolveRecursively(link)).thenReturn(cleartextPath);
+		when(pathMapper.getCiphertextFileType(link)).thenReturn(CryptoPathMapper.CiphertextFileType.SYMLINK);
+		when(pathMapper.getCiphertextFilePath(link, CryptoPathMapper.CiphertextFileType.SYMLINK)).thenReturn(linkCiphertextPath);
 		when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CryptoPathMapper.CiphertextFileType.FILE);
 		when(pathMapper.getCiphertextFilePath(cleartextPath, CryptoPathMapper.CiphertextFileType.FILE)).thenReturn(ciphertextPath);
 
-		inTest = new CryptoDosFileAttributeView(cleartextPath, pathMapper, openCryptoFiles, fileAttributeProvider, readonlyFlag);
+		inTest = new CryptoDosFileAttributeView(cleartextPath, pathMapper, new LinkOption[]{}, symlinks, openCryptoFiles, fileAttributeProvider, readonlyFlag);
 	}
 
 	@Test
@@ -89,6 +102,22 @@ public class CryptoDosFileAttributeViewTest {
 
 		verify(readonlyFlag).assertWritable();
 		verify(delegate).setArchive(value);
+	}
+
+	@Theory
+	public void testSetHiddenOfSymlinkNoFollow(boolean value) throws IOException {
+		CryptoDosFileAttributeView view = new CryptoDosFileAttributeView(link, pathMapper, new LinkOption[]{LinkOption.NOFOLLOW_LINKS}, symlinks, openCryptoFiles, fileAttributeProvider, readonlyFlag);
+		view.setHidden(value);
+
+		verify(linkDelegate).setHidden(value);
+	}
+
+	@Theory
+	public void testSetHiddenOfSymlinkFollow(boolean value) throws IOException {
+		CryptoDosFileAttributeView view = new CryptoDosFileAttributeView(link, pathMapper, new LinkOption[]{}, symlinks, openCryptoFiles, fileAttributeProvider, readonlyFlag);
+		view.setHidden(value);
+
+		verify(delegate).setHidden(value);
 	}
 
 }

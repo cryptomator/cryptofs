@@ -8,14 +8,18 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import com.google.common.collect.Sets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.AttributeView;
 import java.nio.file.attribute.FileAttributeView;
+import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.Optional;
 
 @PerFileSystem
@@ -36,10 +40,11 @@ class CryptoFileAttributeViewProvider {
 	 * @return a file attribute view of the specified type, or <code>null</code> if the attribute view type is not available
 	 * @see Files#getFileAttributeView(Path, Class, java.nio.file.LinkOption...)
 	 */
-	public <A extends FileAttributeView> A getAttributeView(CryptoPath cleartextPath, Class<A> type) {
+	public <A extends FileAttributeView> A getAttributeView(CryptoPath cleartextPath, Class<A> type, LinkOption... options) {
 		Optional<FileAttributeView> view = component.newFileAttributeViewComponent() //
 				.cleartextPath(cleartextPath) //
 				.viewType(type) //
+				.linkOptions(options) //
 				.build() //
 				.attributeView();
 		if (view.isPresent() && type.isInstance(view.get())) {

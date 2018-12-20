@@ -10,7 +10,7 @@ package org.cryptomator.cryptofs;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.nio.file.Path;
+import java.nio.file.LinkOption;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
@@ -22,8 +22,8 @@ class CryptoBasicFileAttributeView extends AbstractCryptoFileAttributeView imple
 	protected final ReadonlyFlag readonlyFlag;
 
 	@Inject
-	public CryptoBasicFileAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, OpenCryptoFiles openCryptoFiles, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag) {
-		super(cleartextPath, pathMapper, openCryptoFiles);
+	public CryptoBasicFileAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, LinkOption[] linkOptions, Symlinks symlinks, OpenCryptoFiles openCryptoFiles, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag) {
+		super(cleartextPath, pathMapper, linkOptions, symlinks, openCryptoFiles);
 		this.fileAttributeProvider = fileAttributeProvider;
 		this.readonlyFlag = readonlyFlag;
 	}
@@ -35,7 +35,7 @@ class CryptoBasicFileAttributeView extends AbstractCryptoFileAttributeView imple
 
 	@Override
 	public BasicFileAttributes readAttributes() throws IOException {
-		return fileAttributeProvider.readAttributes(cleartextPath, BasicFileAttributes.class);
+		return fileAttributeProvider.readAttributes(cleartextPath, BasicFileAttributes.class, linkOptions);
 	}
 
 	@Override
