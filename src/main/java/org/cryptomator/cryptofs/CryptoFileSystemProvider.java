@@ -8,10 +8,11 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-import static java.nio.file.StandardOpenOption.CREATE_NEW;
-import static java.nio.file.StandardOpenOption.WRITE;
+import org.cryptomator.cryptofs.migration.Migrators;
+import org.cryptomator.cryptolib.Cryptors;
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.CryptorProvider;
+import org.cryptomator.cryptolib.api.InvalidPassphraseException;
 
 import java.io.IOException;
 import java.net.URI;
@@ -45,41 +46,40 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
-import org.cryptomator.cryptofs.migration.Migrators;
-import org.cryptomator.cryptolib.Cryptors;
-import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.CryptorProvider;
-import org.cryptomator.cryptolib.api.InvalidPassphraseException;
+import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import static java.nio.file.StandardOpenOption.CREATE_NEW;
+import static java.nio.file.StandardOpenOption.WRITE;
 
 /**
  * <p>
  * A {@link FileSystemProvider} for {@link CryptoFileSystem CryptoFileSystems}.
  * <p>
  * All {@code FileSystem} instances created by {@link CryptoFileSystemProvider} are instances of {@code CryptoFileSystem}.
- * <p>
+ *
  * <b>Usage</b>
  * <p>
  * It is recommended to use {@link CryptoFileSystemProvider#newFileSystem(Path, CryptoFileSystemProperties)} to create a CryptoFileSystem. To do this:
- * 
+ *
  * <blockquote>
- * 
+ *
  * <pre>
  * Path storageLocation = Paths.get("/home/cryptobot/vault");
  * FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(
  * 	storageLocation,
- * 	{@link CryptoFileSystemProperties cryptoFileSystemProperties()}
+ *    {@link CryptoFileSystemProperties cryptoFileSystemProperties()}
  * 		.withPassword("password")
  * 		.withFlags(FileSystemFlags.READONLY)
  * 		.build());
  * </pre>
- * 
+ *
  * </blockquote>
- * 
+ * <p>
  * Afterwards you can use the created {@code FileSystem} to create paths, do directory listings, create files and so on.
- * 
+ * <p>
  * <p>
  * To create a new FileSystem from a URI using {@link FileSystems#newFileSystem(URI, Map)} you may have a look at {@link CryptoFileSystemUri}.
- * 
+ *
  * @see CryptoFileSystemUri
  * @see CryptoFileSystemProperties
  * @see FileSystems
@@ -90,16 +90,20 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	private static final CryptorProvider CRYPTOR_PROVIDER = Cryptors.version1(strongSecureRandom());
 
 	private final CryptoFileSystems fileSystems;
-	private final CopyOperation copyOperation;
 	private final MoveOperation moveOperation;
+	private final CopyOperation copyOperation;
 
 	public CryptoFileSystemProvider() {
-		CryptoFileSystemProviderComponent component = DaggerCryptoFileSystemProviderComponent.builder() //
-				.cryptoFileSystemProviderModule(new CryptoFileSystemProviderModule(this, CRYPTOR_PROVIDER)) //
-				.build();
+		this(DaggerCryptoFileSystemProviderComponent.builder().cryptorProvider(CRYPTOR_PROVIDER).build());
+	}
+
+	/**
+	 * visible for testing
+	 */
+	CryptoFileSystemProvider(CryptoFileSystemProviderComponent component) {
 		this.fileSystems = component.fileSystems();
-		this.copyOperation = component.copyOperation();
 		this.moveOperation = component.moveOperation();
+		this.copyOperation = component.copyOperation();
 	}
 
 	private static SecureRandom strongSecureRandom() {
@@ -112,7 +116,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	/**
 	 * Typesafe alternative to {@link FileSystems#newFileSystem(URI, Map)}. Default way to retrieve a CryptoFS instance.
-	 * 
+	 *
 	 * @param pathToVault Path to this vault's storage location
 	 * @param properties Parameters used during initialization of the file system
 	 * @return a new file system
@@ -126,7 +130,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	/**
 	 * Creates a new vault at the given directory path.
-	 * 
+	 *
 	 * @param pathToVault Path to a not yet existing directory
 	 * @param masterkeyFilename Name of the masterkey file
 	 * @param passphrase Passphrase that should be used to unlock the vault
@@ -140,7 +144,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	/**
 	 * Creates a new vault at the given directory path.
-	 * 
+	 *
 	 * @param pathToVault Path to a not yet existing directory
 	 * @param masterkeyFilename Name of the masterkey file
 	 * @param pepper Application-specific pepper used during key derivation
@@ -170,7 +174,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	/**
 	 * Checks if the folder represented by the given path exists and contains a valid vault structure.
-	 * 
+	 *
 	 * @param pathToVault A directory path
 	 * @param masterkeyFilename Name of the masterkey file
 	 * @return <code>true</code> if the directory seems to contain a vault.
@@ -184,7 +188,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	/**
 	 * Changes the passphrase of a vault at the given path.
-	 * 
+	 *
 	 * @param pathToVault Vault directory
 	 * @param masterkeyFilename Name of the masterkey file
 	 * @param oldPassphrase Current passphrase
@@ -192,8 +196,8 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @throws InvalidPassphraseException If <code>oldPassphrase</code> can not be used to unlock the vault.
 	 * @throws FileSystemNeedsMigrationException if the vault format needs to get updated.
 	 * @throws IOException If the masterkey could not be read or written.
-	 * @since 1.1.0
 	 * @see #changePassphrase(Path, String, byte[], CharSequence, CharSequence)
+	 * @since 1.1.0
 	 */
 	public static void changePassphrase(Path pathToVault, String masterkeyFilename, CharSequence oldPassphrase, CharSequence newPassphrase)
 			throws InvalidPassphraseException, FileSystemNeedsMigrationException, IOException {
@@ -202,7 +206,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	/**
 	 * Changes the passphrase of a vault at the given path.
-	 * 
+	 *
 	 * @param pathToVault Vault directory
 	 * @param masterkeyFilename Name of the masterkey file
 	 * @param pepper An application-specific pepper added to the salt during key-derivation (if applicable)
@@ -232,16 +236,6 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @deprecated only for testing
 	 */
 	@Deprecated
-	CryptoFileSystemProvider(CryptoFileSystemProviderComponent component) {
-		this.fileSystems = component.fileSystems();
-		this.copyOperation = component.copyOperation();
-		this.moveOperation = component.moveOperation();
-	}
-
-	/**
-	 * @deprecated only for testing
-	 */
-	@Deprecated
 	CryptoFileSystems getCryptoFileSystems() {
 		return fileSystems;
 	}
@@ -260,7 +254,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		initializeFileSystemIfRequired(parsedUri, properties);
 		migrateFileSystemIfRequired(parsedUri, properties);
 
-		return fileSystems.create(parsedUri.pathToVault(), properties);
+		return fileSystems.create(this, parsedUri.pathToVault(), properties);
 	}
 
 	private void migrateFileSystemIfRequired(CryptoFileSystemUri parsedUri, CryptoFileSystemProperties properties) throws IOException, FileSystemNeedsMigrationException {
@@ -330,11 +324,15 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 
 	@Override
 	public void copy(Path cleartextSource, Path cleartextTarget, CopyOption... options) throws IOException {
+		assertSameProvider(cleartextSource);
+		assertSameProvider(cleartextTarget);
 		copyOperation.copy(CryptoPath.castAndAssertAbsolute(cleartextSource), CryptoPath.castAndAssertAbsolute(cleartextTarget), options);
 	}
 
 	@Override
 	public void move(Path cleartextSource, Path cleartextTarget, CopyOption... options) throws IOException {
+		assertSameProvider(cleartextSource);
+		assertSameProvider(cleartextTarget);
 		moveOperation.move(CryptoPath.castAndAssertAbsolute(cleartextSource), CryptoPath.castAndAssertAbsolute(cleartextTarget), options);
 	}
 
@@ -390,13 +388,15 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	private CryptoFileSystemImpl fileSystem(Path path) {
-		FileSystem fileSystem = path.getFileSystem();
-		if (fileSystem.provider() == this) {
-			CryptoFileSystemImpl cryptoFileSystem = (CryptoFileSystemImpl) fileSystem;
-			cryptoFileSystem.assertOpen();
-			return cryptoFileSystem;
-		} else {
-			throw new ProviderMismatchException("Used a path from provider " + fileSystem.provider() + " with provider " + this);
+		assertSameProvider(path);
+		CryptoFileSystemImpl fs = CryptoPath.cast(path).getFileSystem();
+		fs.assertOpen();
+		return fs;
+	}
+
+	private void assertSameProvider(Path path) {
+		if (path.getFileSystem().provider() != this) {
+			throw new ProviderMismatchException("Used a path from provider " + path.getFileSystem().provider() + " with provider " + this);
 		}
 	}
 

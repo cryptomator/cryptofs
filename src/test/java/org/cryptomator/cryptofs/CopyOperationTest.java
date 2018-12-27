@@ -42,8 +42,7 @@ public class CopyOperationTest {
 
 	private CopyOperation inTest = new CopyOperation();
 
-	private FileSystemProvider provider = mock(FileSystemProvider.class);
-
+	private CryptoFileSystemProvider provider = mock(CryptoFileSystemProvider.class);
 	private CryptoFileSystemImpl fileSystemA = mock(CryptoFileSystemImpl.class);
 	private CryptoFileSystemImpl fileSystemB = mock(CryptoFileSystemImpl.class);
 

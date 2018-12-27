@@ -134,7 +134,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	/* java.nio.file.FileSystem API */
 
 	@Override
-	public FileSystemProvider provider() {
+	public CryptoFileSystemProvider provider() {
 		assertOpen();
 		return provider;
 	}

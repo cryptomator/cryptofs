@@ -766,7 +766,7 @@ public class CryptoFileSystemImplTest {
 
 	public class CreateDirectory {
 
-		private final FileSystemProvider provider = mock(FileSystemProvider.class);
+		private final CryptoFileSystemProvider provider = mock(CryptoFileSystemProvider.class);
 		private final CryptoFileSystemImpl fileSystem = mock(CryptoFileSystemImpl.class);
 
 		@Before
@@ -883,7 +883,7 @@ public class CryptoFileSystemImplTest {
 
 	public class IsHidden {
 
-		private final FileSystemProvider provider = mock(FileSystemProvider.class);
+		private final CryptoFileSystemProvider provider = mock(CryptoFileSystemProvider.class);
 		private final CryptoFileSystemImpl fileSystem = mock(CryptoFileSystemImpl.class);
 
 		private final CryptoPath path = mock(CryptoPath.class);
@@ -928,7 +928,7 @@ public class CryptoFileSystemImplTest {
 
 	public class CheckAccess {
 
-		private final FileSystemProvider provider = mock(FileSystemProvider.class);
+		private final CryptoFileSystemProvider provider = mock(CryptoFileSystemProvider.class);
 		private final CryptoFileSystemImpl fileSystem = mock(CryptoFileSystemImpl.class);
 
 		private final CryptoPath path = mock(CryptoPath.class);
@@ -1101,7 +1101,7 @@ public class CryptoFileSystemImplTest {
 
 	public class SetAttribute {
 
-		private final FileSystemProvider provider = mock(FileSystemProvider.class);
+		private final CryptoFileSystemProvider provider = mock(CryptoFileSystemProvider.class);
 		private final CryptoFileSystemImpl fileSystem = mock(CryptoFileSystemImpl.class);
 
 		@Before
