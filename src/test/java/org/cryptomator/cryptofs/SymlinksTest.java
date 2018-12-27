@@ -36,7 +36,7 @@ public class SymlinksTest {
 	private Symlinks inTest;
 
 	@Before
-	public void setup() throws ReflectiveOperationException, IOException {
+	public void setup() throws IOException {
 		inTest = new Symlinks(cryptoPathMapper, openCryptoFiles, readonlyFlag);
 
 		Mockito.when(openCryptoFiles.getOrCreate(Mockito.eq(ciphertextPath), Mockito.any())).thenReturn(ciphertextFile);
@@ -68,6 +68,16 @@ public class SymlinksTest {
 		CryptoPath read = inTest.readSymbolicLink(cleartextPath);
 
 		Assert.assertSame(resolvedTargetPath, read);
+	}
+
+	@Test
+	public void testResolveRecursivelyForRegularFile() throws IOException {
+		CryptoPath cleartextPath1 = Mockito.mock(CryptoPath.class);
+		Mockito.when(cryptoPathMapper.getCiphertextFileType(cleartextPath1)).thenReturn(CiphertextFileType.FILE);
+
+		CryptoPath resolved = inTest.resolveRecursively(cleartextPath1);
+
+		Assert.assertSame(cleartextPath1, resolved);
 	}
 
 	@Test

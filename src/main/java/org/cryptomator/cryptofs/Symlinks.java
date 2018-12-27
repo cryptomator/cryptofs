@@ -63,12 +63,12 @@ class Symlinks {
 		if (visitedLinks.contains(cleartextPath)) {
 			throw new FileSystemLoopException(cleartextPath.toString());
 		}
-		CryptoPath resolvedPath = readSymbolicLink(cleartextPath);
-		if (cryptoPathMapper.getCiphertextFileType(resolvedPath) == CiphertextFileType.SYMLINK) {
+		if (cryptoPathMapper.getCiphertextFileType(cleartextPath) == CiphertextFileType.SYMLINK) {
+			CryptoPath resolvedPath = readSymbolicLink(cleartextPath);
 			visitedLinks.add(cleartextPath);
 			return resolveRecursively(visitedLinks, resolvedPath);
 		} else {
-			return resolvedPath;
+			return cleartextPath;
 		}
 	}
 
