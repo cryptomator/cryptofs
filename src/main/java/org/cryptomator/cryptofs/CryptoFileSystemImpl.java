@@ -367,6 +367,16 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			case DIRECTORY:
 				copyDirectory(cleartextSource, cleartextTarget, options);
 				return;
+			case SYMLINK:
+				if (!ArrayUtils.contains(options, LinkOption.NOFOLLOW_LINKS)) {
+					CryptoPath resolvedSource = symlinks.resolveRecursively(cleartextSource);
+					CryptoPath resolvedTarget = symlinks.resolveRecursively(cleartextTarget);
+					CopyOption[] resolvedOptions = ArrayUtils.without(options, LinkOption.NOFOLLOW_LINKS).toArray(CopyOption[]::new);
+					copy(resolvedSource, resolvedTarget, resolvedOptions);
+					return;
+				} else {
+					// fall through to default:
+				}
 			default:
 				Path ciphertextSourceFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource, ciphertextFileType);
 				Path ciphertextTargetFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, ciphertextFileType);
