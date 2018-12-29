@@ -34,13 +34,14 @@ public class CryptoPathMapperTest {
 	private final FileNameCryptor fileNameCryptor = Mockito.mock(FileNameCryptor.class);
 	private final DirectoryIdProvider dirIdProvider = Mockito.mock(DirectoryIdProvider.class);
 	private final LongFileNameProvider longFileNameProvider = Mockito.mock(LongFileNameProvider.class);
+	private final Symlinks symlinks = Mockito.mock(Symlinks.class);
 	private final CryptoFileSystemImpl fileSystem = Mockito.mock(CryptoFileSystemImpl.class);
 
 	@Before
 	public void setup() {
 		Mockito.when(cryptor.fileNameCryptor()).thenReturn(fileNameCryptor);
 		Mockito.when(pathToVault.resolve("d")).thenReturn(dataRoot);
-		TestHelper.prepareMockForPathCreation(fileSystem, pathToVault);
+		TestHelper.prepareMockForPathCreation(fileSystem, symlinks, pathToVault);
 	}
 
 	@Test

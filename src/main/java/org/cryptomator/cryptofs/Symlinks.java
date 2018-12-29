@@ -51,7 +51,7 @@ class Symlinks {
 			ByteBuffer content = openCryptoFiles.readCiphertextFile(ciphertextSymlinkFile, openOptions, Constants.MAX_SYMLINK_LENGTH);
 			return cleartextPath.resolveSibling(UTF_8.decode(content).toString());
 		} catch (BufferUnderflowException e) {
-			throw new NotLinkException(cleartextPath.toString(), null, "Unreasonably large file");
+			throw new NotLinkException(cleartextPath.toString(), null, "Unreasonably large symlink file");
 		}
 	}
 

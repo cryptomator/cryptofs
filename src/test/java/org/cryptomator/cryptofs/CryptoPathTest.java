@@ -8,6 +8,28 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import com.google.common.collect.Lists;
+import de.bechte.junit.runners.context.HierarchicalContextRunner;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+import org.junit.runner.RunWith;
+import org.mockito.Mockito;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.FileSystems;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.ProviderMismatchException;
+import java.nio.file.WatchEvent;
+import java.nio.file.WatchService;
+import java.util.Arrays;
+
 import static java.util.Arrays.asList;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -21,30 +43,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
-
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.file.FileSystems;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.ProviderMismatchException;
-import java.nio.file.WatchEvent;
-import java.nio.file.WatchService;
-import java.util.Arrays;
-
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
-import org.mockito.Mockito;
-
-import com.google.common.collect.Lists;
-
-import de.bechte.junit.runners.context.HierarchicalContextRunner;
 
 @RunWith(HierarchicalContextRunner.class)
 public class CryptoPathTest {
@@ -54,7 +54,8 @@ public class CryptoPathTest {
 
 	private CryptoFileSystemImpl fileSystem;
 
-	private final CryptoPathFactory cryptoPathFactory = new CryptoPathFactory();
+	private final Symlinks symlinks = Mockito.mock(Symlinks.class);
+	private final CryptoPathFactory cryptoPathFactory = new CryptoPathFactory(symlinks);
 
 	private CryptoPath rootPath;
 	private CryptoPath emptyPath;
@@ -214,51 +215,85 @@ public class CryptoPathTest {
 
 	@Test
 	public void testGetRootForAbsolutePath() {
-		CryptoPath path = new CryptoPath(fileSystem, asList("a"), true);
+		CryptoPath path = new CryptoPath(fileSystem, symlinks, asList("a"), true);
 
 		assertThat(path.getRoot(), is(rootPath));
 	}
 
 	@Test
 	public void testGetRootForNonAbsolutePath() {
-		CryptoPath path = new CryptoPath(fileSystem, asList("a"), false);
+		CryptoPath path = new CryptoPath(fileSystem, symlinks, asList("a"), false);
 
 		assertThat(path.getRoot(), is(nullValue()));
 	}
 
 	@Test
 	public void testToAbsolutePathReturnsThisIfAlreadyAbsolute() {
-		Path inTest = new CryptoPath(fileSystem, asList("a", "b"), true);
+		Path inTest = new CryptoPath(fileSystem, symlinks, asList("a", "b"), true);
 
 		assertThat(inTest.toAbsolutePath(), is(sameInstance(inTest)));
 	}
 
 	@Test
 	public void testToAbsolutePathReturnsAbsolutePathIfNotAlreadyAbsolute() {
-		Path inTest = new CryptoPath(fileSystem, asList("a", "b"), false);
-		Path absolutePath = new CryptoPath(fileSystem, asList("a", "b"), true);
+		Path inTest = new CryptoPath(fileSystem, symlinks, asList("a", "b"), false);
+		Path absolutePath = new CryptoPath(fileSystem, symlinks, asList("a", "b"), true);
 
 		assertThat(inTest.toAbsolutePath(), is(absolutePath));
 	}
 
 	@Test
 	public void testToRealPathReturnsNormalizedAndAbsolutePath() throws IOException {
-		Path inTest = new CryptoPath(fileSystem, asList("a", ".", "b", "b", ".."), false);
-		Path normalizedAndAbsolute = new CryptoPath(fileSystem, asList("a", "b"), true);
+		when(symlinks.resolveRecursively(Mockito.any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+		Path inTest = new CryptoPath(fileSystem, symlinks, asList("a", ".", "b", "c", ".."), false);
+		Path normalizedAndAbsolute = new CryptoPath(fileSystem, symlinks, asList("a", "b"), true);
 
 		assertThat(inTest.toRealPath(), is(normalizedAndAbsolute));
+	}
+
+	@Test
+	public void testToRealPathResolvesSymlinks() throws IOException {
+		CryptoPath ab = new CryptoPath(fileSystem, symlinks, asList("a", "b"), true);
+		CryptoPath f = new CryptoPath(fileSystem, symlinks, asList("f"), true);
+		CryptoPath fcde = new CryptoPath(fileSystem, symlinks, asList("f", "c", "d", "e"), true);
+		CryptoPath fcg = new CryptoPath(fileSystem, symlinks, asList("f", "c", "g"), true);
+		when(symlinks.resolveRecursively(any())).thenAnswer(invocation -> {
+			CryptoPath p = invocation.getArgument(0);
+			if (p.equals(ab)) {
+				return f;
+			} else if (p.equals(fcde)) {
+				return fcg;
+			} else {
+				return p;
+			}
+		});
+
+		Path inTest = new CryptoPath(fileSystem, symlinks, asList("a", ".", "b", "c", "d", "e"), true);
+		Path normalizedAndAbsolute = new CryptoPath(fileSystem, symlinks, asList("f", "c", "g"), true);
+
+		assertThat(inTest.toRealPath(), is(normalizedAndAbsolute));
+	}
+
+	@Test
+	public void testToRealPathDoesNotResolveSymlinksWhenNotFollowingLinks() throws IOException {
+		Path inTest = new CryptoPath(fileSystem, symlinks, asList("a", ".", "b", "c", ".."), true);
+		Path normalizedAndAbsolute = new CryptoPath(fileSystem, symlinks, asList("a", "b"), true);
+
+		assertThat(inTest.toRealPath(LinkOption.NOFOLLOW_LINKS), is(normalizedAndAbsolute));
+		verifyZeroInteractions(symlinks);
 	}
 
 	@Test
 	public void testToFileThrowsUnsupportedOperationException() {
 		thrown.expect(UnsupportedOperationException.class);
 
-		new CryptoPath(fileSystem, asList("a"), true).toFile();
+		new CryptoPath(fileSystem, symlinks, asList("a"), true).toFile();
 	}
 
 	@Test
 	public void testGetFileSystemReturnsFileSystem() {
-		Path inTest = new CryptoPath(fileSystem, asList("a"), false);
+		Path inTest = new CryptoPath(fileSystem, symlinks, asList("a"), false);
 
 		assertThat(inTest.getFileSystem(), is(fileSystem));
 	}
@@ -282,33 +317,33 @@ public class CryptoPathTest {
 
 		@Test
 		public void testResolveSiblingReturnsOtherWhenPathHasNoParent() {
-			Path pathWithoutParent = new CryptoPath(fileSystem, asList("a"), false);
-			Path other = new CryptoPath(fileSystem, asList("b"), false);
+			Path pathWithoutParent = new CryptoPath(fileSystem, symlinks, asList("a"), false);
+			Path other = new CryptoPath(fileSystem, symlinks, asList("b"), false);
 
 			assertThat(pathWithoutParent.resolveSibling(other), is(other));
 		}
 
 		@Test
 		public void testResolveSiblingReturnsOtherWhenOtherIsAbsolute() {
-			Path pathWithParent = new CryptoPath(fileSystem, asList("a", "b"), true);
-			Path other = new CryptoPath(fileSystem, asList("b"), true);
+			Path pathWithParent = new CryptoPath(fileSystem, symlinks, asList("a", "b"), true);
+			Path other = new CryptoPath(fileSystem, symlinks, asList("b"), true);
 
 			assertThat(pathWithParent.resolveSibling(other), is(other));
 		}
 
 		@Test
 		public void testResolveSiblingReturnsOtherWhenOtherIsAbsoluteAndPathHasNoParent() {
-			Path pathWithoutParent = new CryptoPath(fileSystem, asList("a"), false);
-			Path other = new CryptoPath(fileSystem, asList("b"), true);
+			Path pathWithoutParent = new CryptoPath(fileSystem, symlinks, asList("a"), false);
+			Path other = new CryptoPath(fileSystem, symlinks, asList("b"), true);
 
 			assertThat(pathWithoutParent.resolveSibling(other), is(other));
 		}
 
 		@Test
 		public void testResolveSiblingDoesNotReturnOtherWhenOtherIsNotAbsoluteAndPathHasParent() {
-			Path pathWithParent = new CryptoPath(fileSystem, asList("a", "b"), false);
-			Path other = new CryptoPath(fileSystem, asList("c"), false);
-			Path expected = new CryptoPath(fileSystem, asList("a", "c"), false);
+			Path pathWithParent = new CryptoPath(fileSystem, symlinks, asList("a", "b"), false);
+			Path other = new CryptoPath(fileSystem, symlinks, asList("c"), false);
+			Path expected = new CryptoPath(fileSystem, symlinks, asList("a", "c"), false);
 
 			assertThat(pathWithParent.resolveSibling(other), is(expected));
 		}
@@ -319,7 +354,7 @@ public class CryptoPathTest {
 
 		@Test
 		public void testPathFromOtherProviderIsNotEqual() {
-			Path inTest = new CryptoPath(fileSystem, asList("a"), false);
+			Path inTest = new CryptoPath(fileSystem, symlinks, asList("a"), false);
 			Path defaultProviderPath = Paths.get("a");
 
 			assertThat(inTest, is(not(equalTo(defaultProviderPath))));
@@ -335,8 +370,8 @@ public class CryptoPathTest {
 
 		@Test
 		public void testAbsoluteAndRelativePathsAreNotEqual() {
-			Path absolute = new CryptoPath(fileSystem, asList("a"), false);
-			Path relative = new CryptoPath(fileSystem, asList("a"), true);
+			Path absolute = new CryptoPath(fileSystem, symlinks, asList("a"), false);
+			Path relative = new CryptoPath(fileSystem, symlinks, asList("a"), true);
 
 			assertThat(absolute, is(not(equalTo(relative))));
 			assertThat(relative, is(not(equalTo(absolute))));
@@ -344,24 +379,24 @@ public class CryptoPathTest {
 
 		@Test
 		public void testAbsolutePathsWithDifferentNamesAreNotEqual() {
-			Path a = new CryptoPath(fileSystem, asList("a"), true);
-			Path b = new CryptoPath(fileSystem, asList("b"), true);
+			Path a = new CryptoPath(fileSystem, symlinks, asList("a"), true);
+			Path b = new CryptoPath(fileSystem, symlinks, asList("b"), true);
 
 			assertThat(a, is(not(equalTo(b))));
 		}
 
 		@Test
 		public void testRelativePathsWithDifferentNamesAreNotEqual() {
-			Path a = new CryptoPath(fileSystem, asList("a"), false);
-			Path b = new CryptoPath(fileSystem, asList("b"), false);
+			Path a = new CryptoPath(fileSystem, symlinks, asList("a"), false);
+			Path b = new CryptoPath(fileSystem, symlinks, asList("b"), false);
 
 			assertThat(a, is(not(equalTo(b))));
 		}
 
 		@Test
 		public void testPathsWithDifferentLengthAreNotEqual() {
-			Path a = new CryptoPath(fileSystem, asList("a/b"), false);
-			Path b = new CryptoPath(fileSystem, asList("a"), false);
+			Path a = new CryptoPath(fileSystem, symlinks, asList("a/b"), false);
+			Path b = new CryptoPath(fileSystem, symlinks, asList("a"), false);
 
 			assertThat(a, is(not(equalTo(b))));
 			assertThat(b, is(not(equalTo(a))));
@@ -369,8 +404,8 @@ public class CryptoPathTest {
 
 		@Test
 		public void testEqualPathsAreEqual() {
-			Path a = new CryptoPath(fileSystem, asList("a"), false);
-			Path b = new CryptoPath(fileSystem, asList("a"), false);
+			Path a = new CryptoPath(fileSystem, symlinks, asList("a"), false);
+			Path b = new CryptoPath(fileSystem, symlinks, asList("a"), false);
 
 			assertThat(a, is(equalTo(b)));
 			assertThat(b, is(equalTo(a)));
@@ -382,7 +417,7 @@ public class CryptoPathTest {
 
 		@Test
 		public void testCompareToThrowsClassCastExceptionIfPathIsFromDifferentProvider() {
-			Path inTest = new CryptoPath(fileSystem, asList("a"), true);
+			Path inTest = new CryptoPath(fileSystem, symlinks, asList("a"), true);
 			Path defaultProviderPath = Paths.get("a");
 
 			thrown.expect(ClassCastException.class);
@@ -392,56 +427,56 @@ public class CryptoPathTest {
 
 		@Test
 		public void testAbsolutePathIsLessThanRelativePath() {
-			Path absolute = new CryptoPath(fileSystem, asList("a"), true);
-			Path relative = new CryptoPath(fileSystem, asList("a"), false);
+			Path absolute = new CryptoPath(fileSystem, symlinks, asList("a"), true);
+			Path relative = new CryptoPath(fileSystem, symlinks, asList("a"), false);
 
 			assertThat(absolute, is(lessThan(relative)));
 		}
 
 		@Test
 		public void testRelativePathIsGreaterAbsolutePath() {
-			Path absolute = new CryptoPath(fileSystem, asList("a"), true);
-			Path relative = new CryptoPath(fileSystem, asList("a"), false);
+			Path absolute = new CryptoPath(fileSystem, symlinks, asList("a"), true);
+			Path relative = new CryptoPath(fileSystem, symlinks, asList("a"), false);
 
 			assertThat(relative, is(greaterThan(absolute)));
 		}
 
 		@Test
 		public void testPathWithSmallerNameIsSmaller() {
-			Path smaller = new CryptoPath(fileSystem, asList("a"), true);
-			Path greater = new CryptoPath(fileSystem, asList("b"), true);
+			Path smaller = new CryptoPath(fileSystem, symlinks, asList("a"), true);
+			Path greater = new CryptoPath(fileSystem, symlinks, asList("b"), true);
 
 			assertThat(smaller, is(lessThan(greater)));
 		}
 
 		@Test
 		public void testPathWithGreaterNameIsGreater() {
-			Path smaller = new CryptoPath(fileSystem, asList("a"), true);
-			Path greater = new CryptoPath(fileSystem, asList("b"), true);
+			Path smaller = new CryptoPath(fileSystem, symlinks, asList("a"), true);
+			Path greater = new CryptoPath(fileSystem, symlinks, asList("b"), true);
 
 			assertThat(greater, is(greaterThan(smaller)));
 		}
 
 		@Test
 		public void testLongerPathIsGreater() {
-			Path longer = new CryptoPath(fileSystem, asList("a/b"), true);
-			Path shorter = new CryptoPath(fileSystem, asList("a"), true);
+			Path longer = new CryptoPath(fileSystem, symlinks, asList("a/b"), true);
+			Path shorter = new CryptoPath(fileSystem, symlinks, asList("a"), true);
 
 			assertThat(longer, is(greaterThan(shorter)));
 		}
 
 		@Test
 		public void testShorterPathIsSmaller() {
-			Path longer = new CryptoPath(fileSystem, asList("a/b"), true);
-			Path shorter = new CryptoPath(fileSystem, asList("a"), true);
+			Path longer = new CryptoPath(fileSystem, symlinks, asList("a/b"), true);
+			Path shorter = new CryptoPath(fileSystem, symlinks, asList("a"), true);
 
 			assertThat(shorter, is(lessThan(longer)));
 		}
 
 		@Test
 		public void testEqualPathsAreEqualAccordingToCompareTo() {
-			Path a = new CryptoPath(fileSystem, asList("a/b"), true);
-			Path b = new CryptoPath(fileSystem, asList("a/b"), true);
+			Path a = new CryptoPath(fileSystem, symlinks, asList("a/b"), true);
+			Path b = new CryptoPath(fileSystem, symlinks, asList("a/b"), true);
 
 			assertThat(a, is(comparesEqualTo(b)));
 		}

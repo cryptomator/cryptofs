@@ -7,8 +7,8 @@ import org.mockito.Mockito;
 
 class TestHelper {
 
-	public static void prepareMockForPathCreation(CryptoFileSystemImpl fileSystemMock, Path pathToVault) {
-		CryptoPathFactory cryptoPathFactory = new CryptoPathFactory();
+	public static void prepareMockForPathCreation(CryptoFileSystemImpl fileSystemMock, Symlinks symlinksMock, Path pathToVault) {
+		CryptoPathFactory cryptoPathFactory = new CryptoPathFactory(symlinksMock);
 		Mockito.when(fileSystemMock.getPath(ArgumentMatchers.anyString(), ArgumentMatchers.any())).thenAnswer(invocation -> {
 			String first = invocation.getArgument(0);
 			if (invocation.getArguments().length == 1) {
