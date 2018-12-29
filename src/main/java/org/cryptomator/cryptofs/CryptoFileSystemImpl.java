@@ -505,7 +505,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		return fileStore;
 	}
 
-	void createSymbolicLink(CryptoPath cleartextPath, Path target, FileAttribute<?>[] attrs) throws IOException {
+	void createSymbolicLink(CryptoPath cleartextPath, Path target, FileAttribute<?>... attrs) throws IOException {
 		assertOpen();
 		symlinks.createSymbolicLink(cleartextPath, target, attrs);
 	}

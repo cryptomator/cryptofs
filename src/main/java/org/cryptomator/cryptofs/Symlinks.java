@@ -33,7 +33,7 @@ class Symlinks {
 		this.readonlyFlag = readonlyFlag;
 	}
 
-	public void createSymbolicLink(CryptoPath cleartextPath, Path target, FileAttribute<?>[] attrs) throws IOException {
+	public void createSymbolicLink(CryptoPath cleartextPath, Path target, FileAttribute<?>... attrs) throws IOException {
 		cryptoPathMapper.assertNonExisting(cleartextPath);
 		if (target.toString().length() > Constants.MAX_SYMLINK_LENGTH) {
 			throw new IOException("path length limit exceeded.");
