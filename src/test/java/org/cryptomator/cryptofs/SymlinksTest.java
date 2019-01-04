@@ -49,7 +49,7 @@ public class SymlinksTest {
 		Mockito.when(cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.SYMLINK)).thenReturn(ciphertextPath);
 		Mockito.when(target.toString()).thenReturn("/symlink/target/path");
 
-		inTest.createSymbolicLink(cleartextPath, target, null);
+		inTest.createSymbolicLink(cleartextPath, target);
 
 		ArgumentCaptor<ByteBuffer> bytesWritten = ArgumentCaptor.forClass(ByteBuffer.class);
 		Mockito.verify(openCryptoFiles).writeCiphertextFile(Mockito.eq(ciphertextPath), Mockito.any(), bytesWritten.capture());

@@ -26,6 +26,7 @@ public class OpenCryptoFilesTest {
 	public ExpectedException thrown = ExpectedException.none();
 
 	private final CryptoFileSystemComponent cryptoFileSystemComponent = mock(CryptoFileSystemComponent.class);
+	private final OpenCryptoFileComponent.Builder openCryptoFileComponentBuilder = mock(OpenCryptoFileComponent.Builder.class);
 	private final FinallyUtil finallyUtil = mock(FinallyUtil.class);
 	private final OpenCryptoFile file = mock(OpenCryptoFile.class);
 	private final FileChannel ciphertextFileChannel = Mockito.mock(FileChannel.class);
@@ -37,7 +38,11 @@ public class OpenCryptoFilesTest {
 		OpenCryptoFileComponent subComponent = mock(OpenCryptoFileComponent.class);
 		Mockito.when(subComponent.openCryptoFile()).thenReturn(file);
 
-		Mockito.when(cryptoFileSystemComponent.newOpenCryptoFileComponent(Mockito.any())).thenReturn(subComponent);
+		Mockito.when(cryptoFileSystemComponent.newOpenCryptoFileComponent()).thenReturn(openCryptoFileComponentBuilder);
+		Mockito.when(openCryptoFileComponentBuilder.openOptions(Mockito.any())).thenReturn(openCryptoFileComponentBuilder);
+		Mockito.when(openCryptoFileComponentBuilder.path(Mockito.any())).thenReturn(openCryptoFileComponentBuilder);
+		Mockito.when(openCryptoFileComponentBuilder.build()).thenReturn(subComponent);
+
 		Mockito.when(file.newFileChannel(Mockito.any())).thenReturn(ciphertextFileChannel);
 		Field closeLockField = AbstractInterruptibleChannel.class.getDeclaredField("closeLock");
 		closeLockField.setAccessible(true);
@@ -56,7 +61,8 @@ public class OpenCryptoFilesTest {
 		OpenCryptoFile file2 = mock(OpenCryptoFile.class);
 		Mockito.when(subComponent2.openCryptoFile()).thenReturn(file2);
 
-		Mockito.when(cryptoFileSystemComponent.newOpenCryptoFileComponent(Mockito.any())).thenReturn(subComponent1, subComponent2);
+		Mockito.when(cryptoFileSystemComponent.newOpenCryptoFileComponent()).thenReturn(openCryptoFileComponentBuilder);
+		Mockito.when(openCryptoFileComponentBuilder.build()).thenReturn(subComponent1, subComponent2);
 
 		EffectiveOpenOptions openOptions = mock(EffectiveOpenOptions.class);
 		Path p1 = Paths.get("/foo");

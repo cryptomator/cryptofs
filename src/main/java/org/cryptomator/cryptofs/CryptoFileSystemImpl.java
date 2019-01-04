@@ -364,25 +364,38 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			cryptoPathMapper.assertNonExisting(cleartextTarget);
 		}
 		switch (ciphertextFileType) {
+			case SYMLINK:
+				copySymlink(cleartextSource, cleartextTarget, options);
+				return;
+			case FILE:
+				copyFile(cleartextSource, cleartextTarget, options);
+				return;
 			case DIRECTORY:
 				copyDirectory(cleartextSource, cleartextTarget, options);
 				return;
-			case SYMLINK:
-				if (!ArrayUtils.contains(options, LinkOption.NOFOLLOW_LINKS)) {
-					CryptoPath resolvedSource = symlinks.resolveRecursively(cleartextSource);
-					CryptoPath resolvedTarget = symlinks.resolveRecursively(cleartextTarget);
-					CopyOption[] resolvedOptions = ArrayUtils.without(options, LinkOption.NOFOLLOW_LINKS).toArray(CopyOption[]::new);
-					copy(resolvedSource, resolvedTarget, resolvedOptions);
-					return;
-				} else {
-					// fall through to default:
-				}
 			default:
-				Path ciphertextSourceFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource, ciphertextFileType);
-				Path ciphertextTargetFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, ciphertextFileType);
-				Files.copy(ciphertextSourceFile, ciphertextTargetFile, options);
-				return;
+				throw new UnsupportedOperationException("Unhandled node type " + ciphertextFileType);
 		}
+	}
+
+	private void copySymlink(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption[] options) throws IOException {
+		if (ArrayUtils.contains(options, LinkOption.NOFOLLOW_LINKS)) {
+			Path ciphertextSourceFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource, CiphertextFileType.SYMLINK);
+			Path ciphertextTargetFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.SYMLINK);
+			CopyOption[] resolvedOptions = ArrayUtils.without(options, LinkOption.NOFOLLOW_LINKS).toArray(CopyOption[]::new);
+			Files.copy(ciphertextSourceFile, ciphertextTargetFile, resolvedOptions);
+		} else {
+			CryptoPath resolvedSource = symlinks.resolveRecursively(cleartextSource);
+			CryptoPath resolvedTarget = symlinks.resolveRecursively(cleartextTarget);
+			CopyOption[] resolvedOptions = ArrayUtils.with(options, LinkOption.NOFOLLOW_LINKS).toArray(CopyOption[]::new);
+			copy(resolvedSource, resolvedTarget, resolvedOptions);
+		}
+	}
+
+	private void copyFile(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption[] options) throws IOException {
+		Path ciphertextSourceFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource, CiphertextFileType.FILE);
+		Path ciphertextTargetFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.FILE);
+		Files.copy(ciphertextSourceFile, ciphertextTargetFile, options);
 	}
 
 	private void copyDirectory(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption[] options) throws IOException {
@@ -447,6 +460,9 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			cryptoPathMapper.assertNonExisting(cleartextTarget);
 		}
 		switch (ciphertextFileType) {
+			case SYMLINK:
+				moveSymlink(cleartextSource, cleartextTarget, options);
+				return;
 			case FILE:
 				moveFile(cleartextSource, cleartextTarget, options);
 				return;
@@ -458,9 +474,19 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		}
 	}
 
+	private void moveSymlink(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption[] options) throws IOException {
+		// according to Files.move() JavaDoc:
+		// "the symbolic link itself, not the target of the link, is moved"
+		Path ciphertextSourceFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource, CiphertextFileType.SYMLINK);
+		Path ciphertextTargetFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.SYMLINK);
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextTargetFile)) {
+			Files.move(ciphertextSourceFile, ciphertextTargetFile, options);
+			twoPhaseMove.commit();
+		}
+	}
+
 	private void moveFile(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption[] options) throws IOException {
-		// FILE:
-		// While moving a file, it is possible to keep the any channels open. In order to make this work
+		// While moving a file, it is possible to keep the channels open. In order to make this work
 		// we need to re-map the OpenCryptoFile entry.
 		Path ciphertextSourceFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource, CiphertextFileType.FILE);
 		Path ciphertextTargetFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.FILE);
@@ -471,7 +497,6 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	private void moveDirectory(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption[] options) throws IOException {
-		// DIRECTORY:
 		// Since we only rename the directory file, all ciphertext paths of subresources stay the same.
 		// Hence there is no need to re-map OpenCryptoFile entries.
 		Path ciphertextSourceDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource, CiphertextFileType.DIRECTORY);

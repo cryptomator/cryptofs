@@ -23,4 +23,8 @@ final class ArrayUtils {
 		return Arrays.stream(array).filter(x -> !obj.equals(x));
 	}
 
+	public static <T> Stream<T> with(T[] array, T obj) {
+		return Stream.concat(Arrays.stream(array), Stream.of(obj));
+	}
+
 }

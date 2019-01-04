@@ -11,7 +11,7 @@ interface CryptoFileSystemComponent {
 
 	CryptoFileSystemImpl cryptoFileSystem();
 
-	OpenCryptoFileComponent newOpenCryptoFileComponent(OpenCryptoFileModule openCryptoFileModule);
+	OpenCryptoFileComponent.Builder newOpenCryptoFileComponent();
 
 	CryptoFileAttributeViewComponent.Builder newFileAttributeViewComponent();
 

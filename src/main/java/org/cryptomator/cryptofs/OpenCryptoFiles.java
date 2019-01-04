@@ -14,18 +14,13 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.NotLinkException;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.cryptomator.cryptofs.OpenCryptoFileModule.openCryptoFileModule;
 import static org.cryptomator.cryptofs.UncheckedThrows.allowUncheckedThrowsOf;
 
 @PerFileSystem
@@ -93,14 +88,11 @@ class OpenCryptoFiles {
 	}
 
 	private OpenCryptoFile create(Path normalizedPath, EffectiveOpenOptions options) {
-		OpenCryptoFileModule module = openCryptoFileModule() //
-				.withPath(normalizedPath) //
-				.withOptions(options) //
+		OpenCryptoFileComponent openCryptoFileComponent = component.newOpenCryptoFileComponent()
+				.path(normalizedPath)
+				.openOptions(options)
 				.build();
-		OpenCryptoFile file = component.newOpenCryptoFileComponent(module).openCryptoFile();
-		//TODO: is this call necessary?
-		file.setCurrentFilePath(normalizedPath);
-		return file;
+		return openCryptoFileComponent.openCryptoFile();
 	}
 
 	void close(OpenCryptoFile openCryptoFile) {

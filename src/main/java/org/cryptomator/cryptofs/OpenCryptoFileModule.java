@@ -18,45 +18,22 @@ import static org.cryptomator.cryptolib.Cryptors.cleartextSize;
 @Module
 class OpenCryptoFileModule {
 
-	private final Path originalPath;
-	private final AtomicReference<Path> currentPath;
-	private final EffectiveOpenOptions options;
-
-	private OpenCryptoFileModule(Builder builder) {
-		this.originalPath = builder.path;
-		this.currentPath = new AtomicReference<>(builder.path);
-		this.options = builder.options;
-	}
-
-	@Provides
-	@PerOpenFile
-	@OriginalOpenFilePath
-	public Path provideOriginalPath() {
-		return originalPath;
-	}
-
 	@Provides
 	@PerOpenFile
 	@CurrentOpenFilePath
-	public AtomicReference<Path> provideCurrentPath() {
-		return currentPath;
+	public AtomicReference<Path> provideCurrentPath(@OriginalOpenFilePath Path originalPath) {
+		return new AtomicReference<>(originalPath);
 	}
 
 	@Provides
 	@PerOpenFile
-	public EffectiveOpenOptions provideOptions() {
-		return options;
-	}
-
-	@Provides
-	@PerOpenFile
-	public FileChannel provideFileChannel(EffectiveOpenOptions options) {
+	public FileChannel provideFileChannel(EffectiveOpenOptions options, @OriginalOpenFilePath Path originalPath) {
 		return rethrowUnchecked(IOException.class).from(() -> originalPath.getFileSystem().provider().newFileChannel(originalPath, options.createOpenOptionsForEncryptedFile()));
 	}
 
 	@Provides
 	@PerOpenFile
-	public Supplier<BasicFileAttributeView> provideBasicFileAttributeViewSupplier() {
+	public Supplier<BasicFileAttributeView> provideBasicFileAttributeViewSupplier(@CurrentOpenFilePath AtomicReference<Path> currentPath) {
 		return () -> {
 			Path path = currentPath.get();
 			return path.getFileSystem().provider().getFileAttributeView(path, BasicFileAttributeView.class);
@@ -76,44 +53,6 @@ class OpenCryptoFileModule {
 				return new AtomicLong(cleartextSize(size - headerSize, cryptor));
 			}
 		});
-	}
-
-	public static Builder openCryptoFileModule() {
-		return new Builder();
-	}
-
-	public static class Builder {
-
-		private Path path;
-		private EffectiveOpenOptions options;
-
-		private Builder() {
-		}
-
-		public Builder withPath(Path path) {
-			this.path = path;
-			return this;
-		}
-
-		public Builder withOptions(EffectiveOpenOptions options) {
-			this.options = options;
-			return this;
-		}
-
-		public OpenCryptoFileModule build() {
-			validate();
-			return new OpenCryptoFileModule(this);
-		}
-
-		private void validate() {
-			if (path == null) {
-				throw new IllegalStateException("path must be set");
-			}
-			if (options == null) {
-				throw new IllegalStateException("options must be set");
-			}
-		}
-
 	}
 
 }
