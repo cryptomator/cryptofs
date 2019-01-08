@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs;
 
+import static java.nio.file.LinkOption.NOFOLLOW_LINKS;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
@@ -20,6 +21,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.ReadOnlyFileSystemException;
 import java.util.HashSet;
@@ -80,6 +82,25 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
+		assertTrue(inTest.readable());
+		assertFalse(inTest.syncData());
+		assertFalse(inTest.syncDataAndMetadata());
+		assertFalse(inTest.truncateExisting());
+		assertFalse(inTest.writable());
+
+		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
+	}
+
+	@Test
+	public void testNoFollowLinks() throws IOException {
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(NOFOLLOW_LINKS)), falseReadonlyFlag);
+
+		assertFalse(inTest.append());
+		assertFalse(inTest.create());
+		assertFalse(inTest.createNew());
+		assertFalse(inTest.deleteOnClose());
+		assertTrue(inTest.noFollowLinks());
 		assertTrue(inTest.readable());
 		assertFalse(inTest.syncData());
 		assertFalse(inTest.syncDataAndMetadata());
@@ -97,6 +118,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertFalse(inTest.readable());
 		assertFalse(inTest.syncData());
 		assertFalse(inTest.syncDataAndMetadata());
@@ -114,6 +136,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertTrue(inTest.readable());
 		assertFalse(inTest.syncData());
 		assertFalse(inTest.syncDataAndMetadata());
@@ -131,6 +154,7 @@ public class EffectiveOpenOptionsTest {
 		assertTrue(inTest.create());
 		assertFalse(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertFalse(inTest.readable());
 		assertFalse(inTest.syncData());
 		assertFalse(inTest.syncDataAndMetadata());
@@ -148,6 +172,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertTrue(inTest.readable());
 		assertFalse(inTest.syncData());
 		assertFalse(inTest.syncDataAndMetadata());
@@ -165,6 +190,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertTrue(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertFalse(inTest.readable());
 		assertFalse(inTest.syncData());
 		assertFalse(inTest.syncDataAndMetadata());
@@ -182,6 +208,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertTrue(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertFalse(inTest.readable());
 		assertFalse(inTest.syncData());
 		assertFalse(inTest.syncDataAndMetadata());
@@ -199,6 +226,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
 		assertTrue(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertTrue(inTest.readable());
 		assertFalse(inTest.syncData());
 		assertFalse(inTest.syncDataAndMetadata());
@@ -216,6 +244,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertTrue(inTest.readable());
 		assertFalse(inTest.syncData());
 		assertFalse(inTest.syncDataAndMetadata());
@@ -233,6 +262,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertTrue(inTest.readable());
 		assertTrue(inTest.syncData());
 		assertTrue(inTest.syncDataAndMetadata());
@@ -250,6 +280,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertTrue(inTest.readable());
 		assertTrue(inTest.syncData());
 		assertFalse(inTest.syncDataAndMetadata());
@@ -267,6 +298,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertTrue(inTest.readable());
 		assertFalse(inTest.syncData());
 		assertFalse(inTest.syncDataAndMetadata());
@@ -284,6 +316,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertFalse(inTest.readable());
 		assertFalse(inTest.syncData());
 		assertFalse(inTest.syncDataAndMetadata());
@@ -301,6 +334,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertTrue(inTest.readable());
 		assertFalse(inTest.syncData());
 		assertFalse(inTest.syncDataAndMetadata());
@@ -325,6 +359,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertTrue(inTest.readable());
 		assertFalse(inTest.syncData());
 		assertFalse(inTest.syncDataAndMetadata());
@@ -349,6 +384,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertTrue(inTest.readable());
 		assertFalse(inTest.syncData());
 		assertFalse(inTest.syncDataAndMetadata());
@@ -387,6 +423,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertTrue(inTest.readable());
 		assertFalse(inTest.syncData());
 		assertFalse(inTest.syncDataAndMetadata());
@@ -404,6 +441,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertTrue(inTest.readable());
 		assertTrue(inTest.syncData());
 		assertTrue(inTest.syncDataAndMetadata());
@@ -421,6 +459,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertTrue(inTest.readable());
 		assertTrue(inTest.syncData());
 		assertFalse(inTest.syncDataAndMetadata());
@@ -438,6 +477,7 @@ public class EffectiveOpenOptionsTest {
 		assertFalse(inTest.create());
 		assertFalse(inTest.createNew());
 		assertFalse(inTest.deleteOnClose());
+		assertFalse(inTest.noFollowLinks());
 		assertTrue(inTest.readable());
 		assertFalse(inTest.syncData());
 		assertFalse(inTest.syncDataAndMetadata());
