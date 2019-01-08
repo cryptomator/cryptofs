@@ -15,7 +15,7 @@
 
 	<properties>
 		<cryptolib.version>1.2.1</cryptolib.version>
-		<dagger.version>2.19</dagger.version>
+		<dagger.version>2.20</dagger.version>
 		<guava.version>27.0-jre</guava.version>
 		<slf4j.version>1.7.25</slf4j.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -86,12 +86,6 @@
 			<artifactId>dagger</artifactId>
 			<version>${dagger.version}</version>
 		</dependency>
-		<dependency>
-			<groupId>com.google.dagger</groupId>
-			<artifactId>dagger-compiler</artifactId>
-			<version>${dagger.version}</version>
-			<scope>provided</scope>
-		</dependency>
 
 		<!-- Test -->
 		<dependency>
@@ -143,6 +137,13 @@
 					<target>1.8</target>
 					<release>8</release>
 					<showWarnings>true</showWarnings>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>com.google.dagger</groupId>
+							<artifactId>dagger-compiler</artifactId>
+							<version>${dagger.version}</version>
+						</path>
+					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
 		</plugins>
