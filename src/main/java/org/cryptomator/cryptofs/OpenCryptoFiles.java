@@ -10,6 +10,9 @@ package org.cryptomator.cryptofs;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -18,7 +21,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
 
-import static org.cryptomator.cryptofs.OpenCryptoFileModule.openCryptoFileModule;
 import static org.cryptomator.cryptofs.UncheckedThrows.allowUncheckedThrowsOf;
 
 @PerFileSystem
@@ -49,6 +51,24 @@ class OpenCryptoFiles {
 		return result;
 	}
 
+	public void writeCiphertextFile(Path ciphertextPath, EffectiveOpenOptions openOptions, ByteBuffer contents) throws IOException {
+		try (OpenCryptoFile f = getOrCreate(ciphertextPath, openOptions); FileChannel ch = f.newFileChannel(openOptions)) {
+			ch.write(contents);
+		}
+	}
+
+	public ByteBuffer readCiphertextFile(Path ciphertextPath, EffectiveOpenOptions openOptions, int maxBufferSize) throws BufferUnderflowException, IOException {
+		try (OpenCryptoFile f = getOrCreate(ciphertextPath, openOptions); FileChannel ch = f.newFileChannel(openOptions)) {
+			if (ch.size() > maxBufferSize) {
+				throw new BufferUnderflowException();
+			}
+			ByteBuffer buf = ByteBuffer.allocate((int) ch.size()); // ch.size() <= maxBufferSize <= Integer.MAX_VALUE
+			ch.read(buf);
+			buf.flip();
+			return buf;
+		}
+	}
+
 	/**
 	 * Prepares to update any open file references during a move operation.
 	 * MUST be invoked using a try-with-resource statement and committed after the physical file move succeeded.
@@ -68,14 +88,11 @@ class OpenCryptoFiles {
 	}
 
 	private OpenCryptoFile create(Path normalizedPath, EffectiveOpenOptions options) {
-		OpenCryptoFileModule module = openCryptoFileModule() //
-				.withPath(normalizedPath) //
-				.withOptions(options) //
+		OpenCryptoFileComponent openCryptoFileComponent = component.newOpenCryptoFileComponent()
+				.path(normalizedPath)
+				.openOptions(options)
 				.build();
-		OpenCryptoFile file = component.newOpenCryptoFileComponent(module).openCryptoFile();
-		//TODO: is this call necessary?
-		file.setCurrentFilePath(normalizedPath);
-		return file;
+		return openCryptoFileComponent.openCryptoFile();
 	}
 
 	void close(OpenCryptoFile openCryptoFile) {

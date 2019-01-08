@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs;
 
 import com.google.common.jimfs.Jimfs;
 import org.hamcrest.BaseMatcher;
+import org.hamcrest.CoreMatchers;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.junit.AfterClass;
@@ -20,6 +21,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.*;
@@ -152,7 +154,7 @@ public class CryptoFileSystemFileAttributeIntegrationTest {
 			Assert.assertEquals(now, attrView2.readAttributes().lastModifiedTime());
 
 			thrown.expect(NoSuchFileException.class);
-			Files.getFileAttributeView(oldpath, BasicFileAttributeView.class).readAttributes();
+			attrView.readAttributes();
 		}
 
 	}

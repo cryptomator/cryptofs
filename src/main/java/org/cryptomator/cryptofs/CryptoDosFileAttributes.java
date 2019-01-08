@@ -18,8 +18,8 @@ class CryptoDosFileAttributes extends CryptoBasicFileAttributes implements Deleg
 
 	private final DosFileAttributes delegate;
 
-	public CryptoDosFileAttributes(DosFileAttributes delegate, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonly) {
-		super(delegate, ciphertextPath, cryptor, openCryptoFile, readonly);
+	public CryptoDosFileAttributes(DosFileAttributes delegate, CryptoPathMapper.CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonly) {
+		super(delegate, ciphertextFileType, ciphertextPath, cryptor, openCryptoFile, readonly);
 		this.delegate = delegate;
 	}
 
@@ -30,10 +30,6 @@ class CryptoDosFileAttributes extends CryptoBasicFileAttributes implements Deleg
 
 	@Override
 	public boolean isReadOnly() {
-		if (readonly) {
-			return true;
-		} else {
-			return delegate.isReadOnly();
-		}
+		return readonly || delegate.isReadOnly();
 	}
 }

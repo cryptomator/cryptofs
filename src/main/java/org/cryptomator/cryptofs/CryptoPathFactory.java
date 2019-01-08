@@ -17,25 +17,28 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.StreamSupport.stream;
 import static org.cryptomator.cryptofs.Constants.SEPARATOR;
 
-@PerProvider
+@PerFileSystem
 class CryptoPathFactory {
 
+	private final Symlinks symlinks;
+
 	@Inject
-	public CryptoPathFactory() {
+	public CryptoPathFactory(Symlinks symlinks) {
+		this.symlinks = symlinks;
 	}
 
 	public CryptoPath getPath(CryptoFileSystemImpl fileSystem, String first, String... more) {
 		boolean isAbsolute = first.startsWith(SEPARATOR);
 		Stream<String> elements = Stream.concat(Stream.of(first), stream(more)).flatMap(this::splitPath).map(this::normalize);
-		return new CryptoPath(fileSystem, elements.collect(toList()), isAbsolute);
+		return new CryptoPath(fileSystem, symlinks, elements.collect(toList()), isAbsolute);
 	}
 
 	public CryptoPath emptyFor(CryptoFileSystemImpl fileSystem) {
-		return new CryptoPath(fileSystem, Collections.emptyList(), false);
+		return new CryptoPath(fileSystem, symlinks, Collections.emptyList(), false);
 	}
 
 	public CryptoPath rootFor(CryptoFileSystemImpl fileSystem) {
-		return new CryptoPath(fileSystem, Collections.emptyList(), true);
+		return new CryptoPath(fileSystem, symlinks, Collections.emptyList(), true);
 	}
 
 	private Stream<String> splitPath(String path) {

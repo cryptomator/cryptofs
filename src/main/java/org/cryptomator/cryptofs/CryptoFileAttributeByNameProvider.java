@@ -13,6 +13,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 import java.io.IOException;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -97,17 +98,17 @@ class CryptoFileAttributeByNameProvider {
 	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	public void setAttribute(Path path, String attributeName, Object value) throws IOException {
+	public void setAttribute(CryptoPath cleartextPath, String attributeName, Object value, LinkOption... options) throws IOException {
 		String normalizedAttributeName = normalizedAttributeName(attributeName);
 		AttributeSetter setter = SETTERS.get(normalizedAttributeName);
 		if (setter == null) {
 			throw new IllegalArgumentException("Unrecognized attribute name: " + attributeName);
 		}
-		FileAttributeView view = cryptoFileAttributeViewProvider.getAttributeView(path, setter.type());
+		FileAttributeView view = cryptoFileAttributeViewProvider.getAttributeView(cleartextPath, setter.type(), options);
 		setter.set(view, value);
 	}
 
-	public Map<String, Object> readAttributes(Path path, String attributesString) throws IOException {
+	public Map<String, Object> readAttributes(CryptoPath cleartextPath, String attributesString, LinkOption... options) throws IOException {
 		if (attributesString.isEmpty()) {
 			throw new IllegalArgumentException("No attributes specified");
 		}
@@ -117,16 +118,16 @@ class CryptoFileAttributeByNameProvider {
 				.filter(entry -> getterNameFilter.apply(entry.getKey())) //
 				.map(Entry::getValue) //
 				.collect(toList());
-		return readAttributes(path, getters);
+		return readAttributes(cleartextPath, getters, options);
 	}
 
 	@SuppressWarnings({"rawtypes", "unchecked"})
-	private Map<String, Object> readAttributes(Path path, Collection<AttributeGetter> getters) throws IOException {
+	private Map<String, Object> readAttributes(CryptoPath cleartextPath, Collection<AttributeGetter> getters, LinkOption... options) throws IOException {
 		Map<String, Object> result = new HashMap<>();
 		BasicFileAttributes attributes = null;
 		for (AttributeGetter getter : getters) {
 			if (attributes == null) {
-				attributes = cryptoFileAttributeProvider.readAttributes(path, getter.type());
+				attributes = cryptoFileAttributeProvider.readAttributes(cleartextPath, getter.type(), options);
 			}
 			String name = getter.name();
 			result.put(name, getter.read(attributes));
@@ -195,7 +196,7 @@ class CryptoFileAttributeByNameProvider {
 			return type;
 		}
 
-		public void set(T attributes, Object value) throws IOException {
+		public void set(T attributes, Object value, LinkOption... options) throws IOException {
 			setter.accept(attributes, valueType.cast(value));
 		}
 

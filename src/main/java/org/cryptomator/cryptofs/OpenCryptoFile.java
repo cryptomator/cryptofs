@@ -9,9 +9,9 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.FileHeader;
 
 import javax.inject.Inject;
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -31,7 +31,7 @@ import static java.lang.Math.min;
 import static org.cryptomator.cryptolib.Cryptors.ciphertextSize;
 
 @PerOpenFile
-class OpenCryptoFile {
+class OpenCryptoFile implements Closeable {
 
 	private final Cryptor cryptor;
 	private final FileChannel channel;

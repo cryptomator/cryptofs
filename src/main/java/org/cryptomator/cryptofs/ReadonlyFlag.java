@@ -1,30 +1,33 @@
 package org.cryptomator.cryptofs;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.ReadOnlyFileSystemException;
 
 import javax.inject.Inject;
 
 @PerFileSystem
 class ReadonlyFlag {
 
-	private final boolean value;
+	private static final Logger LOG = LoggerFactory.getLogger(ReadonlyFlag.class);
 
-	private final String notWritableError;
+	private final boolean readonly;
 
 	@Inject
 	public ReadonlyFlag(CryptoFileSystemProperties properties, @PathToVault Path pathToVault) {
 		if (properties.readonly()) {
-			value = true;
-			notWritableError = "Vault opened readonly";
+			LOG.info("Vault opened readonly.");
+			readonly = true;
+		} else if (targetFileStoreIsReadonly(pathToVault)) {
+			LOG.warn("Vault on readonly filesystem.");
+			readonly = true;
 		} else {
-			value = targetFileStoreIsReadonly(pathToVault);
-			if (value) {
-				notWritableError = "Vault on readonly filesystem";
-			} else {
-				notWritableError = null;
-			}
+			LOG.debug("Vault opened for read and write.");
+			readonly = false;
 		}
 	}
 
@@ -34,14 +37,14 @@ class ReadonlyFlag {
 				.from(() -> Files.getFileStore(pathToVault).isReadOnly());
 	}
 
-	public void assertWritable() throws IOException {
-		if (notWritableError != null) {
-			throw new IOException(notWritableError);
+	public void assertWritable() throws ReadOnlyFileSystemException {
+		if (readonly) {
+			throw new ReadOnlyFileSystemException();
 		}
 	}
 
 	public boolean isSet() {
-		return value;
+		return readonly;
 	}
 
 }

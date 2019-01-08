@@ -9,7 +9,8 @@ import org.mockito.Mockito;
 public class CryptoPathFactoryTest {
 
 	private final CryptoFileSystemImpl cryptoFileSystem = Mockito.mock(CryptoFileSystemImpl.class);
-	private final CryptoPathFactory factory = new CryptoPathFactory();
+	private final Symlinks symlinks = Mockito.mock(Symlinks.class);
+	private final CryptoPathFactory factory = new CryptoPathFactory(symlinks);
 
 	@Test
 	public void testEmptyFor() {

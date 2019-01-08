@@ -1,9 +1,6 @@
 package org.cryptomator.cryptofs;
 
-import static java.lang.String.format;
-import static org.cryptomator.cryptofs.CryptoFileSystemModule.cryptoFileSystemModule;
-import static org.cryptomator.cryptofs.UncheckedThrows.allowUncheckedThrowsOf;
-
+import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.FileSystemNotFoundException;
@@ -11,7 +8,8 @@ import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import javax.inject.Inject;
+import static java.lang.String.format;
+import static org.cryptomator.cryptofs.UncheckedThrows.allowUncheckedThrowsOf;
 
 @PerProvider
 class CryptoFileSystems {
@@ -25,15 +23,16 @@ class CryptoFileSystems {
 		this.cryptoFileSystemProviderComponent = cryptoFileSystemProviderComponent;
 	}
 
-	public CryptoFileSystemImpl create(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
+	public CryptoFileSystemImpl create(CryptoFileSystemProvider provider, Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
 		Path normalizedPathToVault = pathToVault.normalize();
 		return allowUncheckedThrowsOf(IOException.class).from(() -> fileSystems.compute(normalizedPathToVault, (key, value) -> {
 			if (value == null) {
 				return cryptoFileSystemProviderComponent //
-						.newCryptoFileSystemComponent(cryptoFileSystemModule() //
-								.withPathToVault(key) //
-								.withCryptoFileSystemProperties(properties) //
-								.build()) //
+						.newCryptoFileSystemComponent() //
+						.pathToVault(key) //
+						.properties(properties) //
+						.provider(provider) //
+						.build() //
 						.cryptoFileSystem();
 			} else {
 				throw new FileSystemAlreadyExistsException();

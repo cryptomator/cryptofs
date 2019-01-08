@@ -8,12 +8,14 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static java.lang.String.format;
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.cryptomator.cryptofs.Constants.SEPARATOR;
+import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
+import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.AccessDeniedException;
@@ -46,76 +48,74 @@ import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipalLookupService;
-import java.nio.file.spi.FileSystemProvider;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
-import javax.inject.Inject;
-
-import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
-import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
-import org.cryptomator.cryptolib.api.Cryptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static java.lang.String.format;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.cryptomator.cryptofs.Constants.SEPARATOR;
 
 @PerFileSystem
 class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	private static final Logger LOG = LoggerFactory.getLogger(CryptoFileSystemImpl.class);
 
-	private final CryptoPath rootPath;
-	private final CryptoPath emptyPath;
-
 	private final CryptoFileSystemProvider provider;
 	private final CryptoFileSystems cryptoFileSystems;
 	private final Path pathToVault;
 	private final Cryptor cryptor;
+	private final CryptoFileStore fileStore;
+	private final CryptoFileSystemStats stats;
 	private final CryptoPathMapper cryptoPathMapper;
+	private final CryptoPathFactory cryptoPathFactory;
+	private final PathMatcherFactory pathMatcherFactory;
+	private final DirectoryStreamFactory directoryStreamFactory;
 	private final DirectoryIdProvider dirIdProvider;
 	private final CryptoFileAttributeProvider fileAttributeProvider;
 	private final CryptoFileAttributeByNameProvider fileAttributeByNameProvider;
 	private final CryptoFileAttributeViewProvider fileAttributeViewProvider;
-	private final DirectoryStreamFactory directoryStreamFactory;
 	private final OpenCryptoFiles openCryptoFiles;
-	private final CryptoFileStore fileStore;
-	private final PathMatcherFactory pathMatcherFactory;
-	private final CryptoPathFactory cryptoPathFactory;
-	private final CryptoFileSystemStats stats;
+	private final Symlinks symlinks;
 	private final FinallyUtil finallyUtil;
 	private final CiphertextDirectoryDeleter ciphertextDirDeleter;
 	private final ReadonlyFlag readonlyFlag;
 
+	private final CryptoPath rootPath;
+	private final CryptoPath emptyPath;
+
 	private volatile boolean open = true;
 
 	@Inject
-	public CryptoFileSystemImpl(@PathToVault Path pathToVault, CryptoFileSystemProperties properties, Cryptor cryptor, CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, CryptoFileStore fileStore,
-								OpenCryptoFiles openCryptoFiles, CryptoPathMapper cryptoPathMapper, DirectoryIdProvider dirIdProvider, CryptoFileAttributeProvider fileAttributeProvider,
-								CryptoFileAttributeViewProvider fileAttributeViewProvider, PathMatcherFactory pathMatcherFactory, CryptoPathFactory cryptoPathFactory, CryptoFileSystemStats stats,
-								RootDirectoryInitializer rootDirectoryInitializer, CryptoFileAttributeByNameProvider fileAttributeByNameProvider, DirectoryStreamFactory directoryStreamFactory, FinallyUtil finallyUtil,
-								CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag) {
-		this.cryptor = cryptor;
+	public CryptoFileSystemImpl(CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, @PathToVault Path pathToVault, Cryptor cryptor,
+								CryptoFileStore fileStore, CryptoFileSystemStats stats, CryptoPathMapper cryptoPathMapper, CryptoPathFactory cryptoPathFactory,
+								PathMatcherFactory pathMatcherFactory, DirectoryStreamFactory directoryStreamFactory, DirectoryIdProvider dirIdProvider,
+								CryptoFileAttributeProvider fileAttributeProvider, CryptoFileAttributeByNameProvider fileAttributeByNameProvider, CryptoFileAttributeViewProvider fileAttributeViewProvider,
+								OpenCryptoFiles openCryptoFiles, Symlinks symlinks, FinallyUtil finallyUtil, CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag, RootDirectoryInitializer rootDirectoryInitializer) {
 		this.provider = provider;
 		this.cryptoFileSystems = cryptoFileSystems;
 		this.pathToVault = pathToVault;
+		this.cryptor = cryptor;
+		this.fileStore = fileStore;
+		this.stats = stats;
 		this.cryptoPathMapper = cryptoPathMapper;
+		this.cryptoPathFactory = cryptoPathFactory;
+		this.pathMatcherFactory = pathMatcherFactory;
+		this.directoryStreamFactory = directoryStreamFactory;
 		this.dirIdProvider = dirIdProvider;
 		this.fileAttributeProvider = fileAttributeProvider;
 		this.fileAttributeByNameProvider = fileAttributeByNameProvider;
 		this.fileAttributeViewProvider = fileAttributeViewProvider;
 		this.openCryptoFiles = openCryptoFiles;
-		this.fileStore = fileStore;
-		this.pathMatcherFactory = pathMatcherFactory;
-		this.cryptoPathFactory = cryptoPathFactory;
-		this.stats = stats;
-		this.directoryStreamFactory = directoryStreamFactory;
+		this.symlinks = symlinks;
+		this.finallyUtil = finallyUtil;
 		this.ciphertextDirDeleter = ciphertextDirDeleter;
 		this.readonlyFlag = readonlyFlag;
+
 		this.rootPath = cryptoPathFactory.rootFor(this);
 		this.emptyPath = cryptoPathFactory.emptyFor(this);
-		this.finallyUtil = finallyUtil;
 
 		rootDirectoryInitializer.initialize(rootPath);
 	}
@@ -133,7 +133,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	/* java.nio.file.FileSystem API */
 
 	@Override
-	public FileSystemProvider provider() {
+	public CryptoFileSystemProvider provider() {
 		assertOpen();
 		return provider;
 	}
@@ -215,33 +215,15 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	void setAttribute(CryptoPath cleartextPath, String attribute, Object value, LinkOption... options) throws IOException {
 		readonlyFlag.assertWritable();
-		Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
-		if (Files.notExists(ciphertextDirPath) && cleartextPath.getNameCount() > 0) {
-			Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
-			fileAttributeByNameProvider.setAttribute(ciphertextFilePath, attribute, value);
-		} else {
-			fileAttributeByNameProvider.setAttribute(ciphertextDirPath, attribute, value);
-		}
+		fileAttributeByNameProvider.setAttribute(cleartextPath, attribute, value, options);
 	}
 
 	Map<String, Object> readAttributes(CryptoPath cleartextPath, String attributes, LinkOption... options) throws IOException {
-		Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
-		if (Files.notExists(ciphertextDirPath) && cleartextPath.getNameCount() > 0) {
-			Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
-			return fileAttributeByNameProvider.readAttributes(ciphertextFilePath, attributes);
-		} else {
-			return fileAttributeByNameProvider.readAttributes(ciphertextDirPath, attributes);
-		}
+		return fileAttributeByNameProvider.readAttributes(cleartextPath, attributes, options);
 	}
 
 	<A extends BasicFileAttributes> A readAttributes(CryptoPath cleartextPath, Class<A> type, LinkOption... options) throws IOException {
-		Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
-		if (Files.notExists(ciphertextDirPath) && cleartextPath.getNameCount() > 0) {
-			Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
-			return fileAttributeProvider.readAttributes(ciphertextFilePath, type);
-		} else {
-			return fileAttributeProvider.readAttributes(ciphertextDirPath, type);
-		}
+		return fileAttributeProvider.readAttributes(cleartextPath, type, options);
 	}
 
 	/**
@@ -249,20 +231,10 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	 * @param type          the Class object corresponding to the file attribute view
 	 * @param options       future use
 	 * @return a file attribute view of the specified type, or <code>null</code> if the attribute view type is not available
-	 * @see CryptoFileAttributeViewProvider#getAttributeView(Path, Class)
+	 * @see CryptoFileAttributeViewProvider#getAttributeView(CryptoPath, Class, LinkOption...)
 	 */
 	<V extends FileAttributeView> V getFileAttributeView(CryptoPath cleartextPath, Class<V> type, LinkOption... options) {
-		try {
-			Path ciphertextDirPath = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
-			if (Files.notExists(ciphertextDirPath) && cleartextPath.getNameCount() > 0) {
-				Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
-				return fileAttributeViewProvider.getAttributeView(ciphertextFilePath, type);
-			} else {
-				return fileAttributeViewProvider.getAttributeView(ciphertextDirPath, type);
-			}
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
+		return fileAttributeViewProvider.getAttributeView(cleartextPath, type, options);
 	}
 
 	void checkAccess(CryptoPath cleartextPath, AccessMode... modes) throws IOException {
@@ -315,10 +287,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		if (!Files.exists(ciphertextParentDir)) {
 			throw new NoSuchFileException(cleartextParentDir.toString());
 		}
-		Path ciphertextFile = cryptoPathMapper.getCiphertextFilePath(cleartextDir, CiphertextFileType.FILE);
-		if (Files.exists(ciphertextFile)) {
-			throw new FileAlreadyExistsException(cleartextDir.toString());
-		}
+		cryptoPathMapper.assertNonExisting(cleartextDir);
 		Path ciphertextDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextDir, CiphertextFileType.DIRECTORY);
 		CiphertextDirectory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
 		// atomically check for FileAlreadyExists and create otherwise:
@@ -342,36 +311,74 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	FileChannel newFileChannel(CryptoPath cleartextPath, Set<? extends OpenOption> optionsSet, FileAttribute<?>... attrs) throws IOException {
 		EffectiveOpenOptions options = EffectiveOpenOptions.from(optionsSet, readonlyFlag);
-		Path ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
+		if (options.writable()) {
+			readonlyFlag.assertWritable();
+		}
+		CiphertextFileType ciphertextFileType;
+		try {
+			ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextPath);
+		} catch (NoSuchFileException e) {
+			if (options.create() || options.createNew()) {
+				ciphertextFileType = CiphertextFileType.FILE;
+			} else {
+				throw e;
+			}
+		}
+		switch (ciphertextFileType) {
+			case SYMLINK:
+				if (options.noFollowLinks()) {
+					throw new UnsupportedOperationException("Unsupported OpenOption LinkOption.NOFOLLOW_LINKS. Can not create file channel for symbolic link.");
+				} else {
+					CryptoPath resolvedPath = symlinks.resolveRecursively(cleartextPath);
+					return newFileChannel(resolvedPath, options, attrs);
+				}
+			case FILE:
+				return newFileChannel(cleartextPath, options, attrs);
+			default:
+				throw new UnsupportedOperationException("Can not create file channel for " + ciphertextFileType.name());
+		}
+	}
+
+	private FileChannel newFileChannel(CryptoPath cleartextFilePath, EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
+		Path ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextFilePath, CiphertextFileType.FILE);
 		if (options.createNew() && openCryptoFiles.get(ciphertextPath).isPresent()) {
-			throw new FileAlreadyExistsException(cleartextPath.toString());
+			throw new FileAlreadyExistsException(cleartextFilePath.toString());
 		} else {
+			// might also throw FileAlreadyExists:
 			return openCryptoFiles.getOrCreate(ciphertextPath, options).newFileChannel(options);
 		}
 	}
 
 	void delete(CryptoPath cleartextPath) throws IOException {
 		readonlyFlag.assertWritable();
-		Path ciphertextFile = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
-		// try to delete ciphertext file:
-		if (!Files.deleteIfExists(ciphertextFile)) {
-			// filePath doesn't exist, maybe it's an directory:
-			Path ciphertextDir = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
-			Path ciphertextDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY);
-			try {
-				ciphertextDirDeleter.deleteCiphertextDirIncludingNonCiphertextFiles(ciphertextDir, cleartextPath);
-				if (!Files.deleteIfExists(ciphertextDirFile)) {
-					// should not happen. Nevertheless this is a valid state, so who no big deal...
-					LOG.warn("Successfully deleted dir {}, but didn't find corresponding dir file {}", ciphertextDir, ciphertextDirFile);
-				}
-				dirIdProvider.delete(ciphertextDirFile);
-			} catch (NoSuchFileException e) {
-				// translate ciphertext path to cleartext path
-				throw new NoSuchFileException(cleartextPath.toString());
-			} catch (DirectoryNotEmptyException e) {
-				// translate ciphertext path to cleartext path
-				throw new DirectoryNotEmptyException(cleartextPath.toString());
+		CiphertextFileType ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextPath);
+		switch (ciphertextFileType) {
+			case DIRECTORY:
+				deleteDirectory(cleartextPath);
+				return;
+			default:
+				Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, ciphertextFileType);
+				Files.deleteIfExists(ciphertextFilePath);
+				return;
+		}
+	}
+
+	private void deleteDirectory(CryptoPath cleartextPath) throws IOException {
+		Path ciphertextDir = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
+		Path ciphertextDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY);
+		try {
+			ciphertextDirDeleter.deleteCiphertextDirIncludingNonCiphertextFiles(ciphertextDir, cleartextPath);
+			if (!Files.deleteIfExists(ciphertextDirFile)) {
+				// should not happen. Nevertheless this is a valid state, so who no big deal...
+				LOG.warn("Successfully deleted dir {}, but didn't find corresponding dir file {}", ciphertextDir, ciphertextDirFile);
 			}
+			dirIdProvider.delete(ciphertextDirFile);
+		} catch (NoSuchFileException e) {
+			// translate ciphertext path to cleartext path
+			throw new NoSuchFileException(cleartextPath.toString());
+		} catch (DirectoryNotEmptyException e) {
+			// translate ciphertext path to cleartext path
+			throw new DirectoryNotEmptyException(cleartextPath.toString());
 		}
 	}
 
@@ -380,36 +387,66 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		if (cleartextSource.equals(cleartextTarget)) {
 			return;
 		}
+		CiphertextFileType ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextSource);
+		if (!ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
+			cryptoPathMapper.assertNonExisting(cleartextTarget);
+		}
+		switch (ciphertextFileType) {
+			case SYMLINK:
+				copySymlink(cleartextSource, cleartextTarget, options);
+				return;
+			case FILE:
+				copyFile(cleartextSource, cleartextTarget, options);
+				return;
+			case DIRECTORY:
+				copyDirectory(cleartextSource, cleartextTarget, options);
+				return;
+			default:
+				throw new UnsupportedOperationException("Unhandled node type " + ciphertextFileType);
+		}
+	}
+
+	private void copySymlink(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption[] options) throws IOException {
+		if (ArrayUtils.contains(options, LinkOption.NOFOLLOW_LINKS)) {
+			Path ciphertextSourceFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource, CiphertextFileType.SYMLINK);
+			Path ciphertextTargetFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.SYMLINK);
+			CopyOption[] resolvedOptions = ArrayUtils.without(options, LinkOption.NOFOLLOW_LINKS).toArray(CopyOption[]::new);
+			Files.copy(ciphertextSourceFile, ciphertextTargetFile, resolvedOptions);
+		} else {
+			CryptoPath resolvedSource = symlinks.resolveRecursively(cleartextSource);
+			CryptoPath resolvedTarget = symlinks.resolveRecursively(cleartextTarget);
+			CopyOption[] resolvedOptions = ArrayUtils.with(options, LinkOption.NOFOLLOW_LINKS).toArray(CopyOption[]::new);
+			copy(resolvedSource, resolvedTarget, resolvedOptions);
+		}
+	}
+
+	private void copyFile(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption[] options) throws IOException {
 		Path ciphertextSourceFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource, CiphertextFileType.FILE);
-		Path ciphertextSourceDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource, CiphertextFileType.DIRECTORY);
-		if (Files.exists(ciphertextSourceFile)) {
-			// FILE:
-			Path ciphertextTargetFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.FILE);
-			Files.copy(ciphertextSourceFile, ciphertextTargetFile, options);
-		} else if (Files.exists(ciphertextSourceDirFile)) {
-			// DIRECTORY (non-recursive as per contract):
-			Path ciphertextTargetDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.DIRECTORY);
-			if (!Files.exists(ciphertextTargetDirFile)) {
-				// create new:
-				createDirectory(cleartextTarget);
-			} else if (ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
-				// keep existing (if empty):
-				Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDirPath(cleartextTarget);
-				try (DirectoryStream<Path> ds = Files.newDirectoryStream(ciphertextTargetDir)) {
-					if (ds.iterator().hasNext()) {
-						throw new DirectoryNotEmptyException(cleartextTarget.toString());
-					}
+		Path ciphertextTargetFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.FILE);
+		Files.copy(ciphertextSourceFile, ciphertextTargetFile, options);
+	}
+
+	private void copyDirectory(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption[] options) throws IOException {
+		// DIRECTORY (non-recursive as per contract):
+		Path ciphertextTargetDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.DIRECTORY);
+		if (Files.notExists(ciphertextTargetDirFile)) {
+			// create new:
+			createDirectory(cleartextTarget);
+		} else if (ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
+			// keep existing (if empty):
+			Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDirPath(cleartextTarget);
+			try (DirectoryStream<Path> ds = Files.newDirectoryStream(ciphertextTargetDir)) {
+				if (ds.iterator().hasNext()) {
+					throw new DirectoryNotEmptyException(cleartextTarget.toString());
 				}
-			} else {
-				throw new FileAlreadyExistsException(cleartextTarget.toString());
-			}
-			if (ArrayUtils.contains(options, StandardCopyOption.COPY_ATTRIBUTES)) {
-				Path ciphertextSourceDir = cryptoPathMapper.getCiphertextDirPath(cleartextSource);
-				Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDirPath(cleartextTarget);
-				copyAttributes(ciphertextSourceDir, ciphertextTargetDir);
 			}
 		} else {
-			throw new NoSuchFileException(cleartextSource.toString());
+			throw new FileAlreadyExistsException(cleartextTarget.toString(), null, "Ciphertext file already exists: " + ciphertextTargetDirFile);
+		}
+		if (ArrayUtils.contains(options, StandardCopyOption.COPY_ATTRIBUTES)) {
+			Path ciphertextSourceDir = cryptoPathMapper.getCiphertextDirPath(cleartextSource);
+			Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDirPath(cleartextTarget);
+			copyAttributes(ciphertextSourceDir, ciphertextTargetDir);
 		}
 	}
 
@@ -446,52 +483,89 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		if (cleartextSource.equals(cleartextTarget)) {
 			return;
 		}
-		Path ciphertextSourceFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource, CiphertextFileType.FILE);
-		Path ciphertextSourceDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource, CiphertextFileType.DIRECTORY);
-		if (Files.exists(ciphertextSourceFile)) {
-			// FILE:
-			// While moving a file, it is possible to keep the any channels open. In order to make this work
-			// we need to re-map the OpenCryptoFile entry.
-			Path ciphertextTargetFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.FILE);
-			try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextTargetFile)) {
-				Files.move(ciphertextSourceFile, ciphertextTargetFile, options);
-				twoPhaseMove.commit();
-			}
-		} else if (Files.exists(ciphertextSourceDirFile)) {
-			// DIRECTORY:
-			// Since we only rename the directory file, all ciphertext paths of subresources stay the same.
-			// Hence there is no need to re-map OpenCryptoFile entries.
-			Path ciphertextTargetDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.DIRECTORY);
-			if (!ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
-				// try to move, don't replace:
-				Files.move(ciphertextSourceDirFile, ciphertextTargetDirFile, options);
-			} else if (ArrayUtils.contains(options, StandardCopyOption.ATOMIC_MOVE)) {
-				// replace atomically (impossible):
-				assert ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING);
-				throw new AtomicMoveNotSupportedException(cleartextSource.toString(), cleartextTarget.toString(), "Replacing directories during move requires non-atomic status checks.");
-			} else {
-				// move and replace (if dir is empty):
-				assert ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING);
-				assert !ArrayUtils.contains(options, StandardCopyOption.ATOMIC_MOVE);
-				if (Files.exists(ciphertextTargetDirFile)) {
-					Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDirPath(cleartextTarget);
-					try (DirectoryStream<Path> ds = Files.newDirectoryStream(ciphertextTargetDir)) {
-						if (ds.iterator().hasNext()) {
-							throw new DirectoryNotEmptyException(cleartextTarget.toString());
-						}
-					}
-					Files.delete(ciphertextTargetDir);
-				}
-				Files.move(ciphertextSourceDirFile, ciphertextTargetDirFile, options);
-			}
-			dirIdProvider.move(ciphertextSourceDirFile, ciphertextTargetDirFile);
-		} else {
-			throw new NoSuchFileException(cleartextSource.toString());
+		CiphertextFileType ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextSource);
+		if (!ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
+			cryptoPathMapper.assertNonExisting(cleartextTarget);
 		}
+		switch (ciphertextFileType) {
+			case SYMLINK:
+				moveSymlink(cleartextSource, cleartextTarget, options);
+				return;
+			case FILE:
+				moveFile(cleartextSource, cleartextTarget, options);
+				return;
+			case DIRECTORY:
+				moveDirectory(cleartextSource, cleartextTarget, options);
+				return;
+			default:
+				throw new UnsupportedOperationException("Unhandled node type " + ciphertextFileType);
+		}
+	}
+
+	private void moveSymlink(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption[] options) throws IOException {
+		// according to Files.move() JavaDoc:
+		// "the symbolic link itself, not the target of the link, is moved"
+		Path ciphertextSourceFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource, CiphertextFileType.SYMLINK);
+		Path ciphertextTargetFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.SYMLINK);
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextTargetFile)) {
+			Files.move(ciphertextSourceFile, ciphertextTargetFile, options);
+			twoPhaseMove.commit();
+		}
+	}
+
+	private void moveFile(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption[] options) throws IOException {
+		// While moving a file, it is possible to keep the channels open. In order to make this work
+		// we need to re-map the OpenCryptoFile entry.
+		Path ciphertextSourceFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource, CiphertextFileType.FILE);
+		Path ciphertextTargetFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.FILE);
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextTargetFile)) {
+			Files.move(ciphertextSourceFile, ciphertextTargetFile, options);
+			twoPhaseMove.commit();
+		}
+	}
+
+	private void moveDirectory(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption[] options) throws IOException {
+		// Since we only rename the directory file, all ciphertext paths of subresources stay the same.
+		// Hence there is no need to re-map OpenCryptoFile entries.
+		Path ciphertextSourceDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource, CiphertextFileType.DIRECTORY);
+		Path ciphertextTargetDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget, CiphertextFileType.DIRECTORY);
+		if (!ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
+			// try to move, don't replace:
+			Files.move(ciphertextSourceDirFile, ciphertextTargetDirFile, options);
+		} else if (ArrayUtils.contains(options, StandardCopyOption.ATOMIC_MOVE)) {
+			// replace atomically (impossible):
+			assert ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING);
+			throw new AtomicMoveNotSupportedException(cleartextSource.toString(), cleartextTarget.toString(), "Replacing directories during move requires non-atomic status checks.");
+		} else {
+			// move and replace (if dir is empty):
+			assert ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING);
+			assert !ArrayUtils.contains(options, StandardCopyOption.ATOMIC_MOVE);
+			if (Files.exists(ciphertextTargetDirFile)) {
+				Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDirPath(cleartextTarget);
+				try (DirectoryStream<Path> ds = Files.newDirectoryStream(ciphertextTargetDir)) {
+					if (ds.iterator().hasNext()) {
+						throw new DirectoryNotEmptyException(cleartextTarget.toString());
+					}
+				}
+				Files.delete(ciphertextTargetDir);
+			}
+			Files.move(ciphertextSourceDirFile, ciphertextTargetDirFile, options);
+		}
+		dirIdProvider.move(ciphertextSourceDirFile, ciphertextTargetDirFile);
 	}
 
 	CryptoFileStore getFileStore() {
 		return fileStore;
+	}
+
+	void createSymbolicLink(CryptoPath cleartextPath, Path target, FileAttribute<?>... attrs) throws IOException {
+		assertOpen();
+		symlinks.createSymbolicLink(cleartextPath, target, attrs);
+	}
+
+	CryptoPath readSymbolicLink(CryptoPath cleartextPath) throws IOException {
+		assertOpen();
+		return symlinks.readSymbolicLink(cleartextPath);
 	}
 
 	/* internal methods */

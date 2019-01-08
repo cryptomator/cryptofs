@@ -8,6 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import com.google.common.base.Splitter;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -16,11 +17,27 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.text.Normalizer;
+import java.util.Collections;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
+import static java.util.Arrays.stream;
+import static java.util.Spliterator.IMMUTABLE;
+import static java.util.Spliterator.NONNULL;
+import static java.util.Spliterator.ORDERED;
+import static java.util.Spliterators.spliteratorUnknownSize;
+import static java.util.stream.Collectors.toList;
 import static org.cryptomator.cryptofs.Constants.DATA_DIR_NAME;
 import static org.cryptomator.cryptofs.Constants.DIR_PREFIX;
+import static org.cryptomator.cryptofs.Constants.SEPARATOR;
 
 @PerFileSystem
 class CryptoPathMapper {
@@ -46,7 +63,7 @@ class CryptoPathMapper {
 	}
 
 	public enum CiphertextFileType {
-		FILE(""), DIRECTORY(Constants.DIR_PREFIX);
+		FILE(""), DIRECTORY(DIR_PREFIX), SYMLINK("1S");
 
 		private final String prefix;
 
@@ -56,6 +73,46 @@ class CryptoPathMapper {
 
 		public String getPrefix() {
 			return prefix;
+		}
+	}
+
+	/**
+	 * Verifies that no node exists for the given path. Otherwise a {@link FileAlreadyExistsException} will be thrown.
+	 *
+	 * @param cleartextPath A path
+	 * @throws FileAlreadyExistsException If the node exists
+	 * @throws IOException                If any I/O error occurs while attempting to resolve the ciphertext path
+	 */
+	public void assertNonExisting(CryptoPath cleartextPath) throws FileAlreadyExistsException, IOException {
+		try {
+			CiphertextFileType type = getCiphertextFileType(cleartextPath);
+			throw new FileAlreadyExistsException(cleartextPath.toString(), null, "For this path there is already a " + type.name());
+		} catch (NoSuchFileException e) {
+			// good!
+		}
+	}
+
+	public CiphertextFileType getCiphertextFileType(CryptoPath cleartextPath) throws NoSuchFileException, IOException {
+		CryptoPath parentPath = cleartextPath.getParent();
+		if (parentPath == null) {
+			return CiphertextFileType.DIRECTORY; // ROOT
+		} else {
+			CiphertextDirectory parent = getCiphertextDir(parentPath);
+			String cleartextName = cleartextPath.getFileName().toString();
+			NoSuchFileException notFound = new NoSuchFileException(cleartextPath.toString());
+			for (CiphertextFileType type : CiphertextFileType.values()) {
+				String ciphertextName = getCiphertextFileName(parent.dirId, cleartextName, type);
+				Path ciphertextPath = parent.path.resolve(ciphertextName);
+				try {
+					// readattr is the fastest way of checking if a file exists. Doing so in this loop is still
+					// 1-2 orders of magnitude faster than iterating over directory contents
+					Files.readAttributes(ciphertextPath, BasicFileAttributes.class);
+					return type;
+				} catch (NoSuchFileException e) {
+					notFound.addSuppressed(e);
+				}
+			}
+			throw notFound;
 		}
 	}
 

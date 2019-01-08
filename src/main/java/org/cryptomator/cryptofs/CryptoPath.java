@@ -31,12 +31,14 @@ class CryptoPath implements Path {
 	private static final String PARENT_DIR = "..";
 
 	private final CryptoFileSystemImpl fileSystem;
+	private final Symlinks symlinks;
 	private final List<String> elements;
 	private final boolean absolute;
 
-	public CryptoPath(CryptoFileSystemImpl fileSystem, List<String> elements, boolean absolute) {
+	public CryptoPath(CryptoFileSystemImpl fileSystem, Symlinks symlinks, List<String> elements, boolean absolute) {
 		fileSystem.assertOpen();
 		this.fileSystem = fileSystem;
+		this.symlinks = symlinks;
 		this.elements = Collections.unmodifiableList(elements);
 		this.absolute = absolute;
 	}
@@ -82,7 +84,7 @@ class CryptoPath implements Path {
 	}
 
 	@Override
-	public Path getFileName() {
+	public CryptoPath getFileName() {
 		fileSystem.assertOpen();
 		int elementCount = getNameCount();
 		if (elementCount == 0) {
@@ -102,7 +104,7 @@ class CryptoPath implements Path {
 		} else if (elementCount == 1) {
 			return getRoot();
 		} else {
-			return null;
+			return null; // only root and the "empty" path don't have a parent
 		}
 	}
 
@@ -113,7 +115,7 @@ class CryptoPath implements Path {
 	}
 
 	@Override
-	public Path getName(int index) {
+	public CryptoPath getName(int index) {
 		fileSystem.assertOpen();
 		return subpath(index, index + 1);
 	}
@@ -121,7 +123,7 @@ class CryptoPath implements Path {
 	@Override
 	public CryptoPath subpath(int beginIndex, int endIndex) {
 		fileSystem.assertOpen();
-		return new CryptoPath(fileSystem, elements.subList(beginIndex, endIndex), false);
+		return new CryptoPath(fileSystem, symlinks, elements.subList(beginIndex, endIndex), false);
 	}
 
 	@Override
@@ -177,7 +179,7 @@ class CryptoPath implements Path {
 	}
 
 	@Override
-	public Path resolve(Path path) {
+	public CryptoPath resolve(Path path) {
 		fileSystem.assertOpen();
 		CryptoPath other = cast(path);
 		if (other.isAbsolute()) {
@@ -191,15 +193,16 @@ class CryptoPath implements Path {
 	}
 
 	@Override
-	public Path resolve(String other) {
+	public CryptoPath resolve(String other) {
 		fileSystem.assertOpen();
 		return resolve(fileSystem.getPath(other));
 	}
 
 	@Override
-	public Path resolveSibling(Path other) {
+	public CryptoPath resolveSibling(Path path) {
 		fileSystem.assertOpen();
-		final Path parent = getParent();
+		CryptoPath parent = getParent();
+		CryptoPath other = cast(path);
 		if (parent == null || other.isAbsolute()) {
 			return other;
 		} else {
@@ -208,13 +211,13 @@ class CryptoPath implements Path {
 	}
 
 	@Override
-	public Path resolveSibling(String other) {
+	public CryptoPath resolveSibling(String other) {
 		fileSystem.assertOpen();
 		return resolveSibling(fileSystem.getPath(other));
 	}
 
 	@Override
-	public Path relativize(Path path) {
+	public CryptoPath relativize(Path path) {
 		fileSystem.assertOpen();
 		CryptoPath normalized = this.normalize();
 		CryptoPath other = cast(path).normalize();
@@ -247,7 +250,7 @@ class CryptoPath implements Path {
 	}
 
 	@Override
-	public Path toAbsolutePath() {
+	public CryptoPath toAbsolutePath() {
 		fileSystem.assertOpen();
 		if (isAbsolute()) {
 			return this;
@@ -257,9 +260,23 @@ class CryptoPath implements Path {
 	}
 
 	@Override
-	public Path toRealPath(LinkOption... options) throws IOException {
+	public CryptoPath toRealPath(LinkOption... options) throws IOException {
 		fileSystem.assertOpen();
-		return normalize().toAbsolutePath();
+		CryptoPath normalized = normalize().toAbsolutePath();
+		if (!ArrayUtils.contains(options, LinkOption.NOFOLLOW_LINKS)) {
+			return normalized.resolveAllSymlinksInPath();
+		} else {
+			return normalized;
+		}
+	}
+
+	private CryptoPath resolveAllSymlinksInPath() throws IOException {
+		if (getNameCount() > 1) {
+			CryptoPath p = getParent().resolveAllSymlinksInPath().resolve(getFileName());
+			return symlinks.resolveRecursively(p).normalize();
+		} else {
+			return symlinks.resolveRecursively(this).normalize();
+		}
 	}
 
 	@Override
@@ -340,16 +357,16 @@ class CryptoPath implements Path {
 		return prefix + String.join(SEPARATOR, elements);
 	}
 
-	public CryptoPath copyWithElements(List<String> elements) {
-		return new CryptoPath(fileSystem, elements, absolute);
+	private CryptoPath copyWithElements(List<String> elements) {
+		return new CryptoPath(fileSystem, symlinks, elements, absolute);
 	}
 
-	public CryptoPath copyWithAbsolute(boolean absolute) {
-		return new CryptoPath(fileSystem, elements, absolute);
+	private CryptoPath copyWithAbsolute(boolean absolute) {
+		return new CryptoPath(fileSystem, symlinks, elements, absolute);
 	}
 
-	public CryptoPath copyWithElementsAndAbsolute(List<String> elements, boolean absolute) {
-		return new CryptoPath(fileSystem, elements, absolute);
+	private CryptoPath copyWithElementsAndAbsolute(List<String> elements, boolean absolute) {
+		return new CryptoPath(fileSystem, symlinks, elements, absolute);
 	}
 
 }

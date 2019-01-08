@@ -8,23 +8,22 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import javax.inject.Inject;
 import java.io.IOException;
-import java.nio.file.Path;
+import java.nio.file.LinkOption;
 import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
-import java.util.Optional;
 import java.util.Set;
 
-class CryptoPosixFileAttributeView extends AbstractCryptoFileAttributeView<PosixFileAttributes, PosixFileAttributeView> implements PosixFileAttributeView {
+@PerAttributeView
+class CryptoPosixFileAttributeView extends CryptoBasicFileAttributeView implements PosixFileAttributeView {
 
-	private final ReadonlyFlag readonlyFlag;
-
-	public CryptoPosixFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag, Optional<OpenCryptoFile> openCryptoFile) throws UnsupportedFileAttributeViewException {
-		super(ciphertextPath, fileAttributeProvider, readonlyFlag, PosixFileAttributes.class, PosixFileAttributeView.class, openCryptoFile );
-		this.readonlyFlag = readonlyFlag;
+	@Inject
+	public CryptoPosixFileAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, LinkOption[] linkOptions, Symlinks symlinks, OpenCryptoFiles openCryptoFiles, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag) {
+		super(cleartextPath, pathMapper, linkOptions, symlinks, openCryptoFiles, fileAttributeProvider, readonlyFlag);
 	}
 
 	@Override
@@ -33,26 +32,31 @@ class CryptoPosixFileAttributeView extends AbstractCryptoFileAttributeView<Posix
 	}
 
 	@Override
+	public PosixFileAttributes readAttributes() throws IOException {
+		return fileAttributeProvider.readAttributes(cleartextPath, PosixFileAttributes.class, linkOptions);
+	}
+
+	@Override
 	public UserPrincipal getOwner() throws IOException {
-		return delegate.getOwner();
+		return getCiphertextAttributeView(PosixFileAttributeView.class).getOwner();
 	}
 
 	@Override
 	public void setOwner(UserPrincipal owner) throws IOException {
 		readonlyFlag.assertWritable();
-		delegate.setOwner(owner);
+		getCiphertextAttributeView(PosixFileAttributeView.class).setOwner(owner);
 	}
 
 	@Override
 	public void setPermissions(Set<PosixFilePermission> perms) throws IOException {
 		readonlyFlag.assertWritable();
-		delegate.setPermissions(perms);
+		getCiphertextAttributeView(PosixFileAttributeView.class).setPermissions(perms);
 	}
 
 	@Override
 	public void setGroup(GroupPrincipal group) throws IOException {
 		readonlyFlag.assertWritable();
-		delegate.setGroup(group);
+		getCiphertextAttributeView(PosixFileAttributeView.class).setGroup(group);
 	}
 
 }

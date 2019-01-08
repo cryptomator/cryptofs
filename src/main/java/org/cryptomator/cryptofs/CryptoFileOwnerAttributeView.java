@@ -8,39 +8,37 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import javax.inject.Inject;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.LinkOption;
 import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.UserPrincipal;
 
-class CryptoFileOwnerAttributeView implements FileOwnerAttributeView {
+@PerAttributeView
+class CryptoFileOwnerAttributeView extends AbstractCryptoFileAttributeView implements FileOwnerAttributeView {
 
-	private final FileOwnerAttributeView delegate;
 	private final ReadonlyFlag readonlyFlag;
 
-	public CryptoFileOwnerAttributeView(Path ciphertextPath, ReadonlyFlag readonlyFlag) throws UnsupportedFileAttributeViewException {
+	@Inject
+	public CryptoFileOwnerAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, LinkOption[] linkOptions, Symlinks symlinks, OpenCryptoFiles openCryptoFiles, ReadonlyFlag readonlyFlag) {
+		super(cleartextPath, pathMapper, linkOptions, symlinks, openCryptoFiles);
 		this.readonlyFlag = readonlyFlag;
-		this.delegate = Files.getFileAttributeView(ciphertextPath, FileOwnerAttributeView.class);
-		if (delegate == null) {
-			throw new UnsupportedFileAttributeViewException();
-		}
-	}
-
-	@Override
-	public UserPrincipal getOwner() throws IOException {
-		return delegate.getOwner();
-	}
-
-	@Override
-	public void setOwner(UserPrincipal owner) throws IOException {
-		readonlyFlag.assertWritable();
-		delegate.setOwner(owner);
 	}
 
 	@Override
 	public String name() {
 		return "owner";
+	}
+
+	@Override
+	public UserPrincipal getOwner() throws IOException {
+		return getCiphertextAttributeView(FileOwnerAttributeView.class).getOwner();
+	}
+
+	@Override
+	public void setOwner(UserPrincipal owner) throws IOException {
+		readonlyFlag.assertWritable();
+		getCiphertextAttributeView(FileOwnerAttributeView.class).setOwner(owner);
 	}
 
 }
