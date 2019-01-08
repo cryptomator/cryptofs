@@ -8,13 +8,11 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static java.util.Arrays.stream;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
+import com.google.common.base.Predicate;
 
+import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.file.LinkOption;
-import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.DosFileAttributeView;
@@ -34,9 +32,9 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.Function;
 
-import javax.inject.Inject;
-
-import com.google.common.base.Predicate;
+import static java.util.Arrays.stream;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 @PerFileSystem
 class CryptoFileAttributeByNameProvider {

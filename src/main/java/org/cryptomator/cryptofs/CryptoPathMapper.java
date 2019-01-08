@@ -8,7 +8,6 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import com.google.common.base.Splitter;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -22,22 +21,10 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.text.Normalizer;
-import java.util.Collections;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
-import static java.util.Arrays.stream;
-import static java.util.Spliterator.IMMUTABLE;
-import static java.util.Spliterator.NONNULL;
-import static java.util.Spliterator.ORDERED;
-import static java.util.Spliterators.spliteratorUnknownSize;
-import static java.util.stream.Collectors.toList;
 import static org.cryptomator.cryptofs.Constants.DATA_DIR_NAME;
 import static org.cryptomator.cryptofs.Constants.DIR_PREFIX;
-import static org.cryptomator.cryptofs.Constants.SEPARATOR;
 
 @PerFileSystem
 class CryptoPathMapper {
