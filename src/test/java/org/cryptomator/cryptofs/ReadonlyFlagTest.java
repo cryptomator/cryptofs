@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
+import java.nio.file.ReadOnlyFileSystemException;
 import java.nio.file.spi.FileSystemProvider;
 
 import org.junit.Before;
@@ -80,8 +81,7 @@ public class ReadonlyFlagTest {
 			inTest = new ReadonlyFlag(properties, path);
 		});
 
-		thrown.expect(IOException.class);
-		thrown.expectMessage("Vault opened readonly");
+		thrown.expect(ReadOnlyFileSystemException.class);
 
 		inTest.assertWritable();
 	}
@@ -95,8 +95,7 @@ public class ReadonlyFlagTest {
 			inTest = new ReadonlyFlag(properties, path);
 		});
 
-		thrown.expect(IOException.class);
-		thrown.expectMessage("Vault on readonly filesystem");
+		thrown.expect(ReadOnlyFileSystemException.class);
 
 		inTest.assertWritable();
 	}

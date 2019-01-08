@@ -21,6 +21,7 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.nio.file.OpenOption;
+import java.nio.file.ReadOnlyFileSystemException;
 import java.util.HashSet;
 
 import org.junit.Before;
@@ -34,7 +35,7 @@ public class EffectiveOpenOptionsTest {
 
 	private ReadonlyFlag falseReadonlyFlag = mock(ReadonlyFlag.class);
 	private ReadonlyFlag trueReadonlyFlag = mock(ReadonlyFlag.class);
-	private IOException readonlyException = new IOException();
+	private ReadOnlyFileSystemException readonlyException = new ReadOnlyFileSystemException();
 
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
