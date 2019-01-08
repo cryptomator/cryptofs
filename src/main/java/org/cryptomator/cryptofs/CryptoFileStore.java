@@ -10,10 +10,10 @@ package org.cryptomator.cryptofs;
 
 import com.google.common.collect.Sets;
 
-import static org.cryptomator.cryptofs.UncheckedThrows.rethrowUnchecked;
-
+import javax.inject.Inject;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.io.UncheckedIOException;
+import java.nio.file.FileStore;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.DosFileAttributeView;
@@ -24,8 +24,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import javax.inject.Inject;
 
 @PerFileSystem
 class CryptoFileStore extends DelegatingFileStore {
@@ -42,9 +40,17 @@ class CryptoFileStore extends DelegatingFileStore {
 
 	@Inject
 	public CryptoFileStore(@PathToVault Path pathToVault, ReadonlyFlag readonlyFlag, CryptoFileAttributeViewProvider attributeViewProvider) {
-		super(rethrowUnchecked(IOException.class).from(() -> Files.getFileStore(pathToVault)));
+		super(getFileStore(pathToVault));
 		this.readonlyFlag = readonlyFlag;
 		this.supportedFileAttributeViewTypes = KNOWN_VIEWS.stream().filter(super::supportsFileAttributeView).collect(Collectors.toSet());
+	}
+
+	private static FileStore getFileStore(Path path) {
+		try {
+			return path.getFileSystem().provider().getFileStore(path);
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 	}
 
 	@Override

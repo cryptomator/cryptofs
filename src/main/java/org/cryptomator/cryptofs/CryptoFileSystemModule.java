@@ -12,11 +12,11 @@ import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.KeyFile;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-import static org.cryptomator.cryptofs.UncheckedThrows.rethrowUnchecked;
 
 @Module
 class CryptoFileSystemModule {
@@ -24,7 +24,7 @@ class CryptoFileSystemModule {
 	@Provides
 	@PerFileSystem
 	public Cryptor provideCryptor(CryptorProvider cryptorProvider, @PathToVault Path pathToVault, CryptoFileSystemProperties properties, ReadonlyFlag readonlyFlag) {
-		return rethrowUnchecked(IOException.class).from(() -> {
+		try {
 			Path masterKeyPath = pathToVault.resolve(properties.masterkeyFilename());
 			Path backupKeyPath = pathToVault.resolve(properties.masterkeyFilename() + Constants.MASTERKEY_BACKUP_SUFFIX);
 			assert Files.exists(masterKeyPath); // since 1.3.0 a file system can only be created for existing vaults. initialization is done before.
@@ -32,7 +32,9 @@ class CryptoFileSystemModule {
 			Cryptor cryptor = cryptorProvider.createFromKeyFile(KeyFile.parse(keyFileContents), properties.passphrase(), properties.pepper(), Constants.VAULT_VERSION);
 			backupMasterkeyFileIfRequired(masterKeyPath, backupKeyPath, readonlyFlag);
 			return cryptor;
-		});
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 	}
 
 	private void backupMasterkeyFileIfRequired(Path masterKeyPath, Path backupKeyPath, ReadonlyFlag readonlyFlag) throws IOException {

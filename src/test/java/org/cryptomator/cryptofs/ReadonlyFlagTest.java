@@ -42,9 +42,7 @@ public class ReadonlyFlagTest {
 	public void testReadonlyFlagIsSetIfReadonlyIsSetOnProperties() throws IOException {
 		when(properties.readonly()).thenReturn(true);
 
-		UncheckedThrows.allowUncheckedThrowsOf(IOException.class).from(() -> {
-			inTest = new ReadonlyFlag(properties, path);
-		});
+		inTest = new ReadonlyFlag(properties, path);
 
 		assertThat(inTest.isSet(), is(true));
 	}
@@ -54,9 +52,7 @@ public class ReadonlyFlagTest {
 		when(properties.readonly()).thenReturn(false);
 		when(fileStore.isReadOnly()).thenReturn(true);
 
-		UncheckedThrows.allowUncheckedThrowsOf(IOException.class).from(() -> {
-			inTest = new ReadonlyFlag(properties, path);
-		});
+		inTest = new ReadonlyFlag(properties, path);
 
 		assertThat(inTest.isSet(), is(true));
 	}
@@ -66,9 +62,7 @@ public class ReadonlyFlagTest {
 		when(properties.readonly()).thenReturn(false);
 		when(fileStore.isReadOnly()).thenReturn(false);
 
-		UncheckedThrows.allowUncheckedThrowsOf(IOException.class).from(() -> {
-			inTest = new ReadonlyFlag(properties, path);
-		});
+		inTest = new ReadonlyFlag(properties, path);
 
 		assertThat(inTest.isSet(), is(false));
 	}
@@ -77,9 +71,7 @@ public class ReadonlyFlagTest {
 	public void testAssertWritableThrowsIOExceptionIfReadonlyIsSetOnProperties() throws IOException {
 		when(properties.readonly()).thenReturn(true);
 
-		UncheckedThrows.allowUncheckedThrowsOf(IOException.class).from(() -> {
-			inTest = new ReadonlyFlag(properties, path);
-		});
+		inTest = new ReadonlyFlag(properties, path);
 
 		thrown.expect(ReadOnlyFileSystemException.class);
 
@@ -91,9 +83,7 @@ public class ReadonlyFlagTest {
 		when(properties.readonly()).thenReturn(false);
 		when(fileStore.isReadOnly()).thenReturn(true);
 
-		UncheckedThrows.allowUncheckedThrowsOf(IOException.class).from(() -> {
-			inTest = new ReadonlyFlag(properties, path);
-		});
+		inTest = new ReadonlyFlag(properties, path);
 
 		thrown.expect(ReadOnlyFileSystemException.class);
 
@@ -105,9 +95,7 @@ public class ReadonlyFlagTest {
 		when(properties.readonly()).thenReturn(false);
 		when(fileStore.isReadOnly()).thenReturn(false);
 
-		UncheckedThrows.allowUncheckedThrowsOf(IOException.class).from(() -> {
-			inTest = new ReadonlyFlag(properties, path);
-		});
+		inTest = new ReadonlyFlag(properties, path);
 
 		inTest.assertWritable();
 	}

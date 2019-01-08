@@ -2,14 +2,15 @@ package org.cryptomator.cryptofs;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Path;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import static java.lang.String.format;
-import static org.cryptomator.cryptofs.UncheckedThrows.allowUncheckedThrowsOf;
 
 @PerProvider
 class CryptoFileSystems {
@@ -24,20 +25,24 @@ class CryptoFileSystems {
 	}
 
 	public CryptoFileSystemImpl create(CryptoFileSystemProvider provider, Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
-		Path normalizedPathToVault = pathToVault.normalize();
-		return allowUncheckedThrowsOf(IOException.class).from(() -> fileSystems.compute(normalizedPathToVault, (key, value) -> {
-			if (value == null) {
-				return cryptoFileSystemProviderComponent //
-						.newCryptoFileSystemComponent() //
-						.pathToVault(key) //
-						.properties(properties) //
-						.provider(provider) //
-						.build() //
-						.cryptoFileSystem();
-			} else {
-				throw new FileSystemAlreadyExistsException();
-			}
-		}));
+		try {
+			Path normalizedPathToVault = pathToVault.normalize();
+			return fileSystems.compute(normalizedPathToVault, (key, value) -> {
+				if (value == null) {
+					return cryptoFileSystemProviderComponent //
+							.newCryptoFileSystemComponent() //
+							.pathToVault(key) //
+							.properties(properties) //
+							.provider(provider) //
+							.build() //
+							.cryptoFileSystem();
+				} else {
+					throw new FileSystemAlreadyExistsException();
+				}
+			});
+		} catch (UncheckedIOException e) {
+			throw new IOException("Error during file system creation.", e);
+		}
 	}
 
 	public void remove(CryptoFileSystemImpl cryptoFileSystem) {
@@ -50,9 +55,12 @@ class CryptoFileSystems {
 
 	public CryptoFileSystemImpl get(Path pathToVault) {
 		Path normalizedPathToVault = pathToVault.normalize();
-		return fileSystems.computeIfAbsent(normalizedPathToVault, key -> {
+		CryptoFileSystemImpl fs = fileSystems.get(normalizedPathToVault);
+		if (fs == null) {
 			throw new FileSystemNotFoundException(format("CryptoFileSystem at %s not initialized", pathToVault));
-		});
+		} else {
+			return fs;
+		}
 	}
 
 }

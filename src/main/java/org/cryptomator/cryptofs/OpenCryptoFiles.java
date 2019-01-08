@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -20,8 +21,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
-
-import static org.cryptomator.cryptofs.UncheckedThrows.allowUncheckedThrowsOf;
 
 @PerFileSystem
 class OpenCryptoFiles {
@@ -43,12 +42,12 @@ class OpenCryptoFiles {
 
 	public OpenCryptoFile getOrCreate(Path ciphertextPath, EffectiveOpenOptions options) throws IOException {
 		Path normalizedPath = ciphertextPath.toAbsolutePath().normalize();
-		OpenCryptoFile result = allowUncheckedThrowsOf(IOException.class).from(() -> {
+		try {
 			// ConcurrentHashMap.computeIfAbsent is atomic, "create" is called at most once:
 			return openCryptoFiles.computeIfAbsent(normalizedPath, ignored -> create(normalizedPath, options));
-		});
-		assert result != null : "computeIfAbsent will not return null";
-		return result;
+		} catch (UncheckedIOException e) {
+			throw new IOException("Error opening file: " + normalizedPath, e);
+		}
 	}
 
 	public void writeCiphertextFile(Path ciphertextPath, EffectiveOpenOptions openOptions, ByteBuffer contents) throws IOException {
