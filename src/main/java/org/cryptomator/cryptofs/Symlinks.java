@@ -6,9 +6,8 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystemLoopException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.NotLinkException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -63,7 +62,14 @@ class Symlinks {
 		if (visitedLinks.contains(cleartextPath)) {
 			throw new FileSystemLoopException(cleartextPath.toString());
 		}
-		if (cryptoPathMapper.getCiphertextFileType(cleartextPath) == CiphertextFileType.SYMLINK) {
+		CiphertextFileType ciphertextFileType;
+		try {
+			ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextPath);
+		} catch (NoSuchFileException e) {
+			// if it doesn't exist, it can't be a symlink. therefore cleartextPath is fully resolved.
+			return cleartextPath;
+		}
+		if (ciphertextFileType == CiphertextFileType.SYMLINK) {
 			CryptoPath resolvedPath = readSymbolicLink(cleartextPath);
 			visitedLinks.add(cleartextPath);
 			return resolveRecursively(visitedLinks, resolvedPath);

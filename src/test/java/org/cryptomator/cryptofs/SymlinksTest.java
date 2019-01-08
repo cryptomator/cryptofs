@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystemLoopException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 
 public class SymlinksTest {
@@ -100,6 +101,22 @@ public class SymlinksTest {
 		CryptoPath resolved = inTest.resolveRecursively(cleartextPath1);
 
 		Assert.assertSame(cleartextPath3, resolved);
+	}
+
+	@Test
+	public void testResolveRecursivelyWithNonExistingTarget() throws IOException {
+		CryptoPath cleartextPath1 = Mockito.mock(CryptoPath.class);
+		CryptoPath cleartextPath2 = Mockito.mock(CryptoPath.class);
+		Path ciphertextPath1 = Mockito.mock(Path.class);
+		Mockito.when(cryptoPathMapper.getCiphertextFileType(cleartextPath1)).thenReturn(CiphertextFileType.SYMLINK);
+		Mockito.when(cryptoPathMapper.getCiphertextFileType(cleartextPath2)).thenThrow(new NoSuchFileException("cleartextPath2"));
+		Mockito.when(cryptoPathMapper.getCiphertextFilePath(cleartextPath1, CiphertextFileType.SYMLINK)).thenReturn(ciphertextPath1);
+		Mockito.when(openCryptoFiles.readCiphertextFile(Mockito.eq(ciphertextPath1), Mockito.any(), Mockito.anyInt())).thenReturn(StandardCharsets.UTF_8.encode("file2"));
+		Mockito.when(cleartextPath1.resolveSibling("file2")).thenReturn(cleartextPath2);
+
+		CryptoPath resolved = inTest.resolveRecursively(cleartextPath1);
+
+		Assert.assertSame(cleartextPath2, resolved);
 	}
 
 	@Test
