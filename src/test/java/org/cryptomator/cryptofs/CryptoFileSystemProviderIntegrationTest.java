@@ -16,7 +16,10 @@ import static org.junit.Assert.assertThat;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -129,6 +132,24 @@ public class CryptoFileSystemProviderIntegrationTest {
 		FileSystem fs = CryptoFileSystemProvider.newFileSystem(pathToVault, cryptoFileSystemProperties().withPassphrase("asd").build());
 		try (FileChannel ch = FileChannel.open(fs.getPath("/foo"), EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW))) {
 			Assert.assertTrue(ch instanceof CryptoFileChannel);
+		}
+	}
+
+	@Test
+	public void testReadAndWriteToFileChannelOnSymlink() throws IOException {
+		FileSystem fs = CryptoFileSystemProvider.newFileSystem(pathToVault, cryptoFileSystemProperties().withPassphrase("asd").build());
+		Path link = fs.getPath("/link");
+		Path target = fs.getPath("/target");
+		Files.createSymbolicLink(link, target);
+		try (WritableByteChannel ch = Files.newByteChannel(link, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW)) {
+			ch.write(StandardCharsets.US_ASCII.encode("hello world"));
+		}
+		try (ReadableByteChannel ch = Files.newByteChannel(target, StandardOpenOption.READ)) {
+			ByteBuffer buf = ByteBuffer.allocate(100);
+			ch.read(buf);
+			buf.flip();
+			String str = StandardCharsets.US_ASCII.decode(buf).toString();
+			Assert.assertEquals("hello world", str);
 		}
 	}
 

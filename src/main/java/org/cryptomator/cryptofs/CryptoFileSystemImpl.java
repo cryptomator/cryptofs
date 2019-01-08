@@ -48,7 +48,6 @@ import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipalLookupService;
-import java.nio.file.spi.FileSystemProvider;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -312,9 +311,38 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	FileChannel newFileChannel(CryptoPath cleartextPath, Set<? extends OpenOption> optionsSet, FileAttribute<?>... attrs) throws IOException {
 		EffectiveOpenOptions options = EffectiveOpenOptions.from(optionsSet, readonlyFlag);
-		Path ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE);
+		if (options.writable()) {
+			readonlyFlag.assertWritable();
+		}
+		CiphertextFileType ciphertextFileType;
+		try {
+			ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextPath);
+		} catch (NoSuchFileException e) {
+			if (options.create() || options.createNew()) {
+				ciphertextFileType = CiphertextFileType.FILE;
+			} else {
+				throw e;
+			}
+		}
+		switch (ciphertextFileType) {
+			case SYMLINK:
+				if (options.noFollowLinks()) {
+					throw new UnsupportedOperationException("Unsupported OpenOption LinkOption.NOFOLLOW_LINKS. Can not create file channel for symbolic link.");
+				} else {
+					CryptoPath resolvedPath = symlinks.resolveRecursively(cleartextPath);
+					return newFileChannel(resolvedPath, options, attrs);
+				}
+			case FILE:
+				return newFileChannel(cleartextPath, options, attrs);
+			default:
+				throw new UnsupportedOperationException("Can not create file channel for " + ciphertextFileType.name());
+		}
+	}
+
+	private FileChannel newFileChannel(CryptoPath cleartextFilePath, EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
+		Path ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextFilePath, CiphertextFileType.FILE);
 		if (options.createNew() && openCryptoFiles.get(ciphertextPath).isPresent()) {
-			throw new FileAlreadyExistsException(cleartextPath.toString());
+			throw new FileAlreadyExistsException(cleartextFilePath.toString());
 		} else {
 			// might also throw FileAlreadyExists:
 			return openCryptoFiles.getOrCreate(ciphertextPath, options).newFileChannel(options);
