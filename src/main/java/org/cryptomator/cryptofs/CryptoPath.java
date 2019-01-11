@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 import static org.cryptomator.cryptofs.Constants.SEPARATOR;
 
@@ -37,10 +38,10 @@ class CryptoPath implements Path {
 
 	public CryptoPath(CryptoFileSystemImpl fileSystem, Symlinks symlinks, List<String> elements, boolean absolute) {
 		fileSystem.assertOpen();
-		this.fileSystem = fileSystem;
-		this.symlinks = symlinks;
+		this.fileSystem = Objects.requireNonNull(fileSystem);
+		this.symlinks = Objects.requireNonNull(symlinks);
 		this.elements = Collections.unmodifiableList(elements);
-		this.absolute = absolute;
+		this.absolute = Objects.requireNonNull(absolute);
 	}
 
 	public static CryptoPath castAndAssertAbsolute(Path path) {
@@ -129,6 +130,9 @@ class CryptoPath implements Path {
 	@Override
 	public boolean startsWith(Path path) {
 		fileSystem.assertOpen();
+		if (!this.getFileSystem().equals(path.getFileSystem())) {
+			return false;
+		}
 		CryptoPath other = cast(path);
 		boolean matchesAbsolute = this.isAbsolute() == other.isAbsolute();
 		if (matchesAbsolute && other.elements.size() <= this.elements.size()) {
@@ -147,6 +151,9 @@ class CryptoPath implements Path {
 	@Override
 	public boolean endsWith(Path path) {
 		fileSystem.assertOpen();
+		if (!this.getFileSystem().equals(path.getFileSystem())) {
+			return false;
+		}
 		CryptoPath other = cast(path);
 		if (other.elements.size() <= this.elements.size()) {
 			return this.elements.subList(this.elements.size() - other.elements.size(), this.elements.size()).equals(other.elements);
