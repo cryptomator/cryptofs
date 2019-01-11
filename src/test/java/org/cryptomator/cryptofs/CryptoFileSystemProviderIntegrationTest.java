@@ -236,24 +236,27 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 		Path link1 = fs1.getPath("/foo/bar1");
 		Files.createDirectories(link1.getParent());
-		Files.createSymbolicLink(link1, Paths.get("/linked/target1"));
+		Files.createSymbolicLink(link1, fs1.getPath("/linked/target1"));
 		Path target1 = Files.readSymbolicLink(link1);
 		assertThat(target1.getFileSystem(), is(link1.getFileSystem())); // as per contract of readSymbolicLink
 		assertThat(target1.toString(), Matchers.equalTo("/linked/target1"));
+		assertThat(link1.resolveSibling(target1).toString(), Matchers.equalTo("/linked/target1"));
 
 		Path link2 = fs1.getPath("/foo/bar2");
 		Files.createDirectories(link2.getParent());
-		Files.createSymbolicLink(link2, Paths.get("./target2"));
+		Files.createSymbolicLink(link2, fs1.getPath("./target2"));
 		Path target2 = Files.readSymbolicLink(link2);
 		assertThat(target2.getFileSystem(), is(link2.getFileSystem()));
-		assertThat(target2.normalize().toString(), Matchers.equalTo("/foo/target2"));
+		assertThat(target2.toString(), Matchers.equalTo("./target2"));
+		assertThat(link2.resolveSibling(target2).normalize().toString(), Matchers.equalTo("/foo/target2"));
 
 		Path link3 = fs1.getPath("/foo/bar3");
 		Files.createDirectories(link3.getParent());
-		Files.createSymbolicLink(link3, Paths.get("../target3"));
+		Files.createSymbolicLink(link3, fs1.getPath("../target3"));
 		Path target3 = Files.readSymbolicLink(link3);
 		assertThat(target3.getFileSystem(), is(link3.getFileSystem()));
-		assertThat(target3.normalize().toString(), Matchers.equalTo("/target3"));
+		assertThat(target3.toString(), Matchers.equalTo("../target3"));
+		assertThat(link3.resolveSibling(target3).normalize().toString(), Matchers.equalTo("/target3"));
 	}
 
 	@Test
