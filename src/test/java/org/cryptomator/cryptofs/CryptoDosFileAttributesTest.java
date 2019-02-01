@@ -11,6 +11,7 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
 import java.nio.file.attribute.DosFileAttributes;
+import java.util.Optional;
 
 import static org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType.FILE;
 import static org.hamcrest.Matchers.is;
@@ -30,49 +31,39 @@ public class CryptoDosFileAttributesTest {
 	private DosFileAttributes delegate = mock(DosFileAttributes.class);
 	private CryptoPath path = mock(CryptoPath.class);
 	private Cryptor cryptor = mock(Cryptor.class);
+	private OpenCryptoFile openCryptoFile = mock(OpenCryptoFile.class);
 
-	private CryptoDosFileAttributes inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, null, false);
+	private CryptoDosFileAttributes inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), false);
 
 	@Test
-	public void testGetDelegateReturnsDelegate() {
-		assertThat(inTest.getDelegate(), is(delegate));
+	public void testIsArchiveDelegates() {
+		assertThat(inTest.isArchive(), is(false));
 	}
 
-	@Theory
-	public void testIsArchiveDelegates(boolean value) {
-		when(delegate.isArchive()).thenReturn(value);
-
-		assertThat(inTest.isArchive(), is(value));
-	}
-
-	@Theory
-	public void testIsHiddenDelegates(boolean value) {
-		when(delegate.isHidden()).thenReturn(value);
-
-		assertThat(inTest.isHidden(), is(value));
+	@Test
+	public void testIsHiddenIsFAlse() {
+		assertThat(inTest.isHidden(), is(false));
 	}
 
 	@Theory
 	public void testIsReadOnlyDelegates(boolean value) {
-		CryptoDosFileAttributes attrs = new CryptoDosFileAttributes(delegate, FILE,null, null, null, false);
 		when(delegate.isReadOnly()).thenReturn(value);
 
+		CryptoDosFileAttributes attrs = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), false);
 		assertThat(attrs.isReadOnly(), is(value));
 	}
 
 	@Theory
 	public void testIsReadOnlyForReadonlyFileSystem(boolean value) {
-		CryptoDosFileAttributes attrs = new CryptoDosFileAttributes(delegate, FILE,null, null, null, true);
 		when(delegate.isReadOnly()).thenReturn(value);
 
+		CryptoDosFileAttributes attrs = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), true);
 		assertThat(attrs.isReadOnly(), is(true));
 	}
 
-	@Theory
-	public void testIsSystemDelegates(boolean value) {
-		when(delegate.isSystem()).thenReturn(value);
-
-		assertThat(inTest.isSystem(), is(value));
+	@Test
+	public void testIsSystemDelegates() {
+		assertThat(inTest.isSystem(), is(false));
 	}
 
 }

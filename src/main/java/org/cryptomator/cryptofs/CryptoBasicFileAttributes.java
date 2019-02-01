@@ -17,31 +17,69 @@ import org.slf4j.LoggerFactory;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
+import java.time.Instant;
 import java.util.Optional;
 
-class CryptoBasicFileAttributes implements DelegatingBasicFileAttributes {
+class CryptoBasicFileAttributes implements BasicFileAttributes {
 
 	private static final Logger LOG = LoggerFactory.getLogger(CryptoBasicFileAttributes.class);
 
-	private final BasicFileAttributes delegate;
 	private final CiphertextFileType ciphertextFileType;
-	protected final Path ciphertextPath;
-	private final Cryptor cryptor;
-	private final Optional<OpenCryptoFile> openCryptoFile;
-	protected final boolean readonly;
+	private final long size;
+	private final FileTime lastModifiedTime;
+	private final FileTime lastAccessTime;
+	private final FileTime creationTime;
+	private final Object fileKey;
 
 	public CryptoBasicFileAttributes(BasicFileAttributes delegate, CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonly) {
-		this.delegate = delegate;
 		this.ciphertextFileType = ciphertextFileType;
-		this.ciphertextPath = ciphertextPath;
-		this.cryptor = cryptor;
-		this.openCryptoFile = openCryptoFile;
-		this.readonly = readonly;
+		switch (ciphertextFileType) {
+			case SYMLINK:
+				this.size = -1;
+				break;
+			case DIRECTORY:
+				this.size = delegate.size();
+				break;
+			case FILE:
+				this.size = getPlaintextFileSize(ciphertextPath, delegate.size(), openCryptoFile, cryptor);
+				break;
+			default:
+				throw new IllegalArgumentException("Unsupported ciphertext file type: " + ciphertextFileType);
+		}
+		this.lastModifiedTime = openCryptoFile.map(OpenCryptoFile::getLastModifiedTime).orElseGet(delegate::lastModifiedTime);
+		this.lastAccessTime = openCryptoFile.map(openFile -> FileTime.from(Instant.now())).orElseGet(delegate::lastAccessTime);
+		this.creationTime = delegate.creationTime();
+		this.fileKey = delegate.fileKey();
+	}
+
+	private static long getPlaintextFileSize(Path ciphertextPath, long size, Optional<OpenCryptoFile> openCryptoFile, Cryptor cryptor) {
+		return openCryptoFile.map(OpenCryptoFile::size).orElseGet(() -> calculatePlaintextFileSize(ciphertextPath, size, cryptor));
+	}
+
+	private static long calculatePlaintextFileSize(Path ciphertextPath, long size, Cryptor cryptor) {
+		try {
+			return Cryptors.cleartextSize(size - cryptor.fileHeaderCryptor().headerSize(), cryptor);
+		} catch (IllegalArgumentException e) {
+			LOG.warn("Wrong cipher text file size of file {}. Returning a file size of 0.", ciphertextPath);
+			LOG.warn("Thrown exception was:", e);
+			return 0l;
+		}
+	}
+
+
+	@Override
+	public FileTime lastModifiedTime() {
+		return lastModifiedTime;
 	}
 
 	@Override
-	public BasicFileAttributes getDelegate() {
-		return delegate;
+	public FileTime lastAccessTime() {
+		return lastAccessTime;
+	}
+
+	@Override
+	public FileTime creationTime() {
+		return creationTime;
 	}
 
 	@Override
@@ -64,41 +102,14 @@ class CryptoBasicFileAttributes implements DelegatingBasicFileAttributes {
 		return !isRegularFile() && !isDirectory() && !isSymbolicLink();
 	}
 
-	/**
-	 * Gets the size of the decrypted file.
-	 *
-	 * @return the size of the decrypted file
-	 */
 	@Override
 	public long size() {
-		if (isDirectory()) {
-			return getDelegate().size();
-		} else if (isRegularFile()) {
-			return fileSize();
-		} else if (isSymbolicLink()) {
-			return -1l;
-		} else {
-			assert isOther();
-			return -1l;
-		}
-	}
-
-	private long fileSize() {
-		if (openCryptoFile.isPresent()) {
-			return openCryptoFile.get().size();
-		} else {
-			try {
-				return Cryptors.cleartextSize(getDelegate().size() - cryptor.fileHeaderCryptor().headerSize(), cryptor);
-			} catch (IllegalArgumentException e) {
-				LOG.warn("Wrong cipher text file size of file {}. Returning a file size of 0.", ciphertextPath);
-				LOG.warn("Thrown exception was:", e);
-				return 0l;
-			}
-		}
+		return size;
 	}
 
 	@Override
-	public FileTime lastModifiedTime() {
-		return openCryptoFile.map(OpenCryptoFile::getLastModifiedTime).orElseGet(delegate::lastModifiedTime);
+	public Object fileKey() {
+		return fileKey;
 	}
+
 }

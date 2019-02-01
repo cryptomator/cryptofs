@@ -14,22 +14,32 @@ import java.util.Optional;
 
 import org.cryptomator.cryptolib.api.Cryptor;
 
-class CryptoDosFileAttributes extends CryptoBasicFileAttributes implements DelegatingDosFileAttributes {
+class CryptoDosFileAttributes extends CryptoBasicFileAttributes implements DosFileAttributes {
 
-	private final DosFileAttributes delegate;
+	private final boolean readonly;
 
 	public CryptoDosFileAttributes(DosFileAttributes delegate, CryptoPathMapper.CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonly) {
 		super(delegate, ciphertextFileType, ciphertextPath, cryptor, openCryptoFile, readonly);
-		this.delegate = delegate;
-	}
-
-	@Override
-	public DosFileAttributes getDelegate() {
-		return delegate;
+		this.readonly = readonly || delegate.isReadOnly();
 	}
 
 	@Override
 	public boolean isReadOnly() {
-		return readonly || delegate.isReadOnly();
+		return readonly;
+	}
+
+	@Override
+	public boolean isHidden() {
+		return false;
+	}
+
+	@Override
+	public boolean isArchive() {
+		return false;
+	}
+
+	@Override
+	public boolean isSystem() {
+		return false;
 	}
 }

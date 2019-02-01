@@ -20,6 +20,8 @@ import java.nio.file.spi.FileSystemProvider;
 
 import de.bechte.junit.runners.context.HierarchicalContextRunner;
 import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.FileContentCryptor;
+import org.cryptomator.cryptolib.api.FileHeaderCryptor;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,6 +61,20 @@ public class CryptoFileAttributeProviderTest {
 
 		Mockito.when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CryptoPathMapper.CiphertextFileType.FILE);
 		Mockito.when(pathMapper.getCiphertextFilePath(cleartextPath, CryptoPathMapper.CiphertextFileType.FILE)).thenReturn(ciphertextFilePath);
+
+		// needed for cleartxt file size calculation
+		FileHeaderCryptor fileHeaderCryptor = Mockito.mock(FileHeaderCryptor.class);
+		FileContentCryptor fileContentCryptor = Mockito.mock(FileContentCryptor.class);
+		Mockito.when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
+		Mockito.when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
+		Mockito.when(fileHeaderCryptor.headerSize()).thenReturn(10);
+		Mockito.when(fileContentCryptor.ciphertextChunkSize()).thenReturn(50);
+		Mockito.when(fileContentCryptor.cleartextChunkSize()).thenReturn(40);
+
+		// results in 2 full chunks = 80 cleartext bytes:
+		Mockito.when(basicAttr.size()).thenReturn(110l);
+		Mockito.when(posixAttr.size()).thenReturn(110l);
+		Mockito.when(dosAttr.size()).thenReturn(110l);
 	}
 
 	public class Files {
@@ -147,6 +163,7 @@ public class CryptoFileAttributeProviderTest {
 			BasicFileAttributes attr = prov.readAttributes(cleartextPath, BasicFileAttributes.class);
 			Assert.assertTrue(attr instanceof BasicFileAttributes);
 			Assert.assertTrue(attr.isRegularFile());
+			Assert.assertSame(80l, attr.size());
 		}
 
 	}
