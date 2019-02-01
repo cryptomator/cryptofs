@@ -99,7 +99,8 @@ class CryptoBasicFileAttributes implements BasicFileAttributes {
 
 	@Override
 	public boolean isOther() {
-		return !isRegularFile() && !isDirectory() && !isSymbolicLink();
+		assert isRegularFile() || isDirectory() || isSymbolicLink();
+		return false;
 	}
 
 	@Override
