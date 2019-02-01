@@ -124,7 +124,6 @@ class OpenCryptoFile implements Closeable {
 	private void writeHeaderIfNecessary() throws IOException {
 		if (headerWritten.compareAndSet(false, true)) {
 			channel.write(cryptor.fileHeaderCryptor().encryptHeader(headerLoader.get()), 0);
-
 		}
 	}
 
@@ -188,9 +187,16 @@ class OpenCryptoFile implements Closeable {
 		}
 	}
 
+	/**
+	 * Flushes any pending bytes to the physical file. To be called when closing a cleartext channel.
+	 * @param metaData Also flush metadata (see {@link FileChannel#force(boolean)}.
+	 * @param options
+	 * @throws IOException
+	 */
 	public synchronized void force(boolean metaData, EffectiveOpenOptions options) throws IOException {
-		chunkCache.invalidateAll(); // TODO performance: write chunks but keep them cached
 		if (options.writable()) {
+			writeHeaderIfNecessary();
+			chunkCache.invalidateAll(); // TODO performance: write chunks but keep them cached
 			exceptionsDuringWrite.throwIfPresent();
 		}
 		channel.force(metaData);
