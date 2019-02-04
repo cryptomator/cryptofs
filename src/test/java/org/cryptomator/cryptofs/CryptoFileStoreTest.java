@@ -43,7 +43,6 @@ public class CryptoFileStoreTest {
 	public ExpectedException thrown = ExpectedException.none();
 
 	private final Path path = mock(Path.class);
-	private final CryptoFileAttributeViewProvider attributeViewProvider = mock(CryptoFileAttributeViewProvider.class);
 	private final FileSystemProvider provider = mock(FileSystemProvider.class);
 	private final FileSystem fileSystem = mock(FileSystem.class);
 	private final FileStore delegate = mock(FileStore.class);
@@ -60,7 +59,7 @@ public class CryptoFileStoreTest {
 	public void testIsReadonlyReturnsTrueIfReadonlyFlagIsSet() {
 		when(readonlyFlag.isSet()).thenReturn(true);
 
-		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag, attributeViewProvider);
+		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag);
 
 		assertThat(inTest.isReadOnly(), is(true));
 	}
@@ -69,7 +68,7 @@ public class CryptoFileStoreTest {
 	public void testIsReadonlyReturnsFalseIfReadonlyFlagIsNotSet() {
 		when(readonlyFlag.isSet()).thenReturn(false);
 
-		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag, attributeViewProvider);
+		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag);
 
 		assertThat(inTest.isReadOnly(), is(false));
 	}
@@ -81,7 +80,7 @@ public class CryptoFileStoreTest {
 		when(delegate.supportsFileAttributeView(BasicFileAttributeView.class)).thenReturn(true);
 		when(delegate.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(false);
 
-		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag, attributeViewProvider);
+		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag);
 
 		Set<Class<? extends FileAttributeView>> result = inTest.supportedFileAttributeViewTypes();
 		assertTrue(result.contains(PosixFileAttributeView.class));
@@ -97,7 +96,7 @@ public class CryptoFileStoreTest {
 		when(delegate.supportsFileAttributeView(BasicFileAttributeView.class)).thenReturn(true);
 		when(delegate.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(false);
 
-		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag, attributeViewProvider);
+		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag);
 
 		Set<String> result = inTest.supportedFileAttributeViewNames();
 		assertTrue(result.contains("posix"));
@@ -113,7 +112,7 @@ public class CryptoFileStoreTest {
 		when(delegate.supportsFileAttributeView(BasicFileAttributeView.class)).thenReturn(true);
 		when(delegate.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(false);
 
-		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag, attributeViewProvider);
+		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag);
 
 		assertTrue(inTest.supportsFileAttributeView(PosixFileAttributeView.class));
 		assertTrue(inTest.supportsFileAttributeView(FileOwnerAttributeView.class));
@@ -128,7 +127,7 @@ public class CryptoFileStoreTest {
 		when(delegate.supportsFileAttributeView(BasicFileAttributeView.class)).thenReturn(true);
 		when(delegate.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(false);
 
-		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag, attributeViewProvider);
+		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag);
 
 		assertTrue(inTest.supportsFileAttributeView("posix"));
 		assertTrue(inTest.supportsFileAttributeView("owner"));
@@ -142,7 +141,7 @@ public class CryptoFileStoreTest {
 		when(provider.getFileStore(path)).thenThrow(e);
 
 		thrown.expectCause(is(e));
-		new CryptoFileStore(path, readonlyFlag, attributeViewProvider);
+		new CryptoFileStore(path, readonlyFlag);
 	}
 
 }

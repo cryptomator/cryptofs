@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
-import java.nio.file.Path;
 import java.nio.file.attribute.FileAttributeView;
 import java.util.Optional;
 
@@ -34,7 +33,7 @@ class CryptoFileAttributeViewProvider {
 	 * @param cleartextPath the unencrypted path to the file
 	 * @param type          the Class object corresponding to the file attribute view
 	 * @return a file attribute view of the specified type, or <code>null</code> if the attribute view type is not available
-	 * @see Files#getFileAttributeView(Path, Class, java.nio.file.LinkOption...)
+	 * @see Files#getFileAttributeView(java.nio.file.Path, Class, java.nio.file.LinkOption...)
 	 */
 	public <A extends FileAttributeView> A getAttributeView(CryptoPath cleartextPath, Class<A> type, LinkOption... options) {
 		Optional<FileAttributeView> view = component.newFileAttributeViewComponent() //
