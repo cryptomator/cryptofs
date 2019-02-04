@@ -40,7 +40,13 @@ import static java.util.stream.Collectors.toSet;
 class CryptoFileAttributeByNameProvider {
 
 	private static final SortedMap<String, AttributeGetter<?>> GETTERS = new TreeMap<>();
+	private static final SortedMap<String, AttributeSetter<?, ?>> SETTERS = new TreeMap<>();
+
+	private final CryptoFileAttributeProvider cryptoFileAttributeProvider;
+	private final CryptoFileAttributeViewProvider cryptoFileAttributeViewProvider;
+
 	static {
+		// GETTERS:
 		attribute("basic:lastModifiedTime", BasicFileAttributes.class, BasicFileAttributes::lastModifiedTime);
 		attribute("basic:lastAccessTime", BasicFileAttributes.class, BasicFileAttributes::lastAccessTime);
 		attribute("basic:creationTime", BasicFileAttributes.class, BasicFileAttributes::creationTime);
@@ -59,10 +65,8 @@ class CryptoFileAttributeByNameProvider {
 		attribute("posix:owner", PosixFileAttributes.class, PosixFileAttributes::owner);
 		attribute("posix:group", PosixFileAttributes.class, PosixFileAttributes::group);
 		attribute("posix:permissions", PosixFileAttributes.class, PosixFileAttributes::permissions);
-	}
 
-	private static final SortedMap<String, AttributeSetter<?, ?>> SETTERS = new TreeMap<>();
-	static {
+		// SETTERS:
 		attribute("basic:lastModifiedTime", BasicFileAttributeView.class, FileTime.class, (view, lastModifiedTime) -> view.setTimes(lastModifiedTime, null, null));
 		attribute("basic:lastAccessTime", BasicFileAttributeView.class, FileTime.class, (view, lastAccessTime) -> view.setTimes(null, lastAccessTime, null));
 		attribute("basic:creationTime", BasicFileAttributeView.class, FileTime.class, (view, creationTime) -> view.setTimes(null, null, creationTime));
@@ -85,9 +89,6 @@ class CryptoFileAttributeByNameProvider {
 	private static <T extends BasicFileAttributeView, V> void attribute(String name, Class<T> type, Class<V> valueType, BiConsumerThrowingException<T, V, IOException> setter) {
 		SETTERS.put(name, new AttributeSetter<>(type, valueType, setter));
 	}
-
-	private final CryptoFileAttributeProvider cryptoFileAttributeProvider;
-	private final CryptoFileAttributeViewProvider cryptoFileAttributeViewProvider;
 
 	@Inject
 	public CryptoFileAttributeByNameProvider(CryptoFileAttributeProvider cryptoFileAttributeProvider, CryptoFileAttributeViewProvider cryptoFileAttributeViewProvider) {

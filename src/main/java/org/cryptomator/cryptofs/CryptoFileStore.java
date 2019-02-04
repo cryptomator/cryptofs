@@ -39,7 +39,7 @@ class CryptoFileStore extends DelegatingFileStore {
 	private final ReadonlyFlag readonlyFlag;
 
 	@Inject
-	public CryptoFileStore(@PathToVault Path pathToVault, ReadonlyFlag readonlyFlag, CryptoFileAttributeViewProvider attributeViewProvider) {
+	public CryptoFileStore(@PathToVault Path pathToVault, ReadonlyFlag readonlyFlag) {
 		super(getFileStore(pathToVault));
 		this.readonlyFlag = readonlyFlag;
 		this.supportedFileAttributeViewTypes = KNOWN_VIEWS.stream().filter(super::supportsFileAttributeView).collect(Collectors.toSet());

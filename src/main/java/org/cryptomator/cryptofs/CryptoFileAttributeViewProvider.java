@@ -8,7 +8,6 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import com.google.common.collect.Sets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,10 +15,7 @@ import javax.inject.Inject;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.attribute.AttributeView;
 import java.nio.file.attribute.FileAttributeView;
-import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.Optional;
 
 @PerFileSystem
