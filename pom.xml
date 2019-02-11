@@ -235,6 +235,15 @@
 								</goals>
 							</execution>
 						</executions>
+						<configuration>
+							<additionalDependencies>
+								<additionalDependency>
+									<groupId>javax.annotation</groupId>
+									<artifactId>jsr250-api</artifactId>
+									<version>1.0</version>
+								</additionalDependency>
+							</additionalDependencies>
+						</configuration>
 					</plugin>
 					<plugin>
 						<artifactId>maven-dependency-plugin</artifactId>
