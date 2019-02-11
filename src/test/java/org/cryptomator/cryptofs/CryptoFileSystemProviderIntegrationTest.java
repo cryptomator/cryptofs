@@ -295,9 +295,9 @@ public class CryptoFileSystemProviderIntegrationTest {
 		Files.setAttribute(file, "dos:archive", true);
 		Files.setAttribute(file, "dos:readOnly", true);
 
-		assertThat(Files.getAttribute(file, "dos:hidden"), is(true));
-		assertThat(Files.getAttribute(file, "dos:system"), is(true));
-		assertThat(Files.getAttribute(file, "dos:archive"), is(true));
+		assertThat(Files.getAttribute(file, "dos:hidden"), is(false));
+		assertThat(Files.getAttribute(file, "dos:system"), is(false));
+		assertThat(Files.getAttribute(file, "dos:archive"), is(false));
 		assertThat(Files.getAttribute(file, "dos:readOnly"), is(true));
 
 		Files.setAttribute(file, "dos:hidden", false);
