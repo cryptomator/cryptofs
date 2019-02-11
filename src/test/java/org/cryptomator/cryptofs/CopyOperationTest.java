@@ -1,5 +1,23 @@
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.mocks.FileChannelMock;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoRule;
+
+import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
+import java.util.EnumSet;
+
 import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
@@ -13,25 +31,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
-import java.io.IOException;
-import java.net.URI;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.BasicFileAttributeView;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.FileTime;
-import java.nio.file.spi.FileSystemProvider;
-import java.util.EnumSet;
-
-import org.cryptomator.cryptofs.mocks.FileChannelMock;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
-
 public class CopyOperationTest {
 
 	@Rule
@@ -41,8 +40,6 @@ public class CopyOperationTest {
 	public ExpectedException thrown = ExpectedException.none();
 
 	private CopyOperation inTest = new CopyOperation();
-
-	private FileSystemProvider provider = mock(FileSystemProvider.class);
 
 	private CryptoFileSystemImpl fileSystemA = mock(CryptoFileSystemImpl.class);
 	private CryptoFileSystemImpl fileSystemB = mock(CryptoFileSystemImpl.class);
@@ -59,9 +56,6 @@ public class CopyOperationTest {
 		when(anotherPathFromFsA.getFileSystem()).thenReturn(fileSystemA);
 		when(aPathFromFsB.getFileSystem()).thenReturn(fileSystemB);
 		when(anotherPathFromFsB.getFileSystem()).thenReturn(fileSystemB);
-
-		when(fileSystemA.provider()).thenReturn(provider);
-		when(fileSystemB.provider()).thenReturn(provider);
 	}
 
 	@Test
@@ -82,10 +76,11 @@ public class CopyOperationTest {
 	public void testCopyExistingFileToNonExistingFileOnDifferentFileSystem() throws IOException {
 		FileChannelMock targetFile = new FileChannelMock(100);
 		BasicFileAttributes aPathFromFsAAttributes = mock(BasicFileAttributes.class);
-		when(provider.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
-		when(provider.readAttributes(aPathFromFsB, BasicFileAttributes.class)).thenThrow(new NoSuchFileException("aPathFromFsB"));
-		when(provider.newFileChannel(aPathFromFsA, EnumSet.of(READ))).thenReturn(new FileChannelMock(repeat(42).times(20).asByteBuffer()));
-		when(provider.newFileChannel(aPathFromFsB, EnumSet.of(CREATE_NEW, WRITE))).thenReturn(targetFile);
+		when(fileSystemA.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
+		when(fileSystemB.readAttributes(aPathFromFsB, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(new NoSuchFileException("aPathFromFsB"));
+		when(aPathFromFsAAttributes.isRegularFile()).thenReturn(true);
+		when(fileSystemA.newFileChannel(aPathFromFsA, EnumSet.of(READ))).thenReturn(new FileChannelMock(repeat(42).times(20).asByteBuffer()));
+		when(fileSystemB.newFileChannel(aPathFromFsB, EnumSet.of(CREATE_NEW, WRITE))).thenReturn(targetFile);
 
 		inTest.copy(aPathFromFsA, aPathFromFsB);
 
@@ -95,24 +90,22 @@ public class CopyOperationTest {
 	@Test
 	public void testCopyExistingDirectoryToNonExistingDirectoryOnDifferentFileSystem() throws IOException {
 		BasicFileAttributes aPathFromFsAAttributes = mock(BasicFileAttributes.class);
-		when(provider.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
-		when(provider.readAttributes(aPathFromFsB, BasicFileAttributes.class)).thenThrow(new NoSuchFileException("aPathFromFsB"));
+		when(fileSystemA.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
+		when(fileSystemB.readAttributes(aPathFromFsB, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(new NoSuchFileException("aPathFromFsB"));
 		when(aPathFromFsAAttributes.isDirectory()).thenReturn(true);
 
 		inTest.copy(aPathFromFsA, aPathFromFsB);
 
-		verify(provider).createDirectory(aPathFromFsB);
+		verify(fileSystemB).createDirectory(aPathFromFsB);
 	}
 
 	@Test
 	public void testCopyNonExistingFileOnDifferentFileSystem() throws IOException {
-		URI uri = URI.create("uriOfAPathFromFsA");
-		when(provider.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenThrow(new NoSuchFileException("aPathFromFsA"));
-		when(provider.readAttributes(aPathFromFsB, BasicFileAttributes.class)).thenThrow(new NoSuchFileException("aPathFromFsB"));
-		when(aPathFromFsA.toUri()).thenReturn(uri);
+		when(fileSystemA.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenThrow(new NoSuchFileException("aPathFromFsA"));
+		when(fileSystemB.readAttributes(aPathFromFsB, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(new NoSuchFileException("aPathFromFsB"));
 
 		thrown.expect(NoSuchFileException.class);
-		thrown.expectMessage(uri.toString());
+		thrown.expectMessage(aPathFromFsA.toString());
 
 		inTest.copy(aPathFromFsA, aPathFromFsB);
 	}
@@ -122,28 +115,27 @@ public class CopyOperationTest {
 		FileChannelMock targetFile = new FileChannelMock(100);
 		BasicFileAttributes aPathFromFsAAttributes = mock(BasicFileAttributes.class);
 		BasicFileAttributes aPathFromFsBAttributes = mock(BasicFileAttributes.class);
-		when(provider.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
-		when(provider.readAttributes(aPathFromFsB, BasicFileAttributes.class)).thenReturn(aPathFromFsBAttributes);
-		when(provider.newFileChannel(aPathFromFsA, EnumSet.of(READ))).thenReturn(new FileChannelMock(repeat(42).times(20).asByteBuffer()));
-		when(provider.newFileChannel(aPathFromFsB, EnumSet.of(CREATE_NEW, WRITE))).thenReturn(targetFile);
+		when(fileSystemA.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
+		when(fileSystemB.readAttributes(aPathFromFsB, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(aPathFromFsBAttributes);
+		when(aPathFromFsAAttributes.isRegularFile()).thenReturn(true);
+		when(fileSystemA.newFileChannel(aPathFromFsA, EnumSet.of(READ))).thenReturn(new FileChannelMock(repeat(42).times(20).asByteBuffer()));
+		when(fileSystemB.newFileChannel(aPathFromFsB, EnumSet.of(CREATE_NEW, WRITE))).thenReturn(targetFile);
 
 		inTest.copy(aPathFromFsA, aPathFromFsB, REPLACE_EXISTING);
 
-		verify(provider).delete(aPathFromFsB);
+		verify(fileSystemB).delete(aPathFromFsB);
 		assertThat(targetFile.data(), contains(repeat(42).times(20).asByteBuffer()));
 	}
 
 	@Test
 	public void testCopyExistingFileToExistingFileOnDifferentFileSystemWithoutReplaceExistingFlag() throws IOException {
-		URI uri = URI.create("uriOfAPathFromFsB");
 		BasicFileAttributes aPathFromFsAAttributes = mock(BasicFileAttributes.class);
 		BasicFileAttributes aPathFromFsBAttributes = mock(BasicFileAttributes.class);
-		when(provider.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
-		when(provider.readAttributes(aPathFromFsB, BasicFileAttributes.class)).thenReturn(aPathFromFsBAttributes);
-		when(aPathFromFsB.toUri()).thenReturn(uri);
+		when(fileSystemA.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
+		when(fileSystemB.readAttributes(aPathFromFsB, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(aPathFromFsBAttributes);
 
 		thrown.expect(FileAlreadyExistsException.class);
-		thrown.expectMessage(uri.toString());
+		thrown.expectMessage(aPathFromFsB.toString());
 
 		inTest.copy(aPathFromFsA, aPathFromFsB);
 	}
@@ -156,11 +148,12 @@ public class CopyOperationTest {
 		FileChannelMock targetFile = new FileChannelMock(100);
 		BasicFileAttributes aPathFromFsAAttributes = mock(BasicFileAttributes.class);
 		BasicFileAttributeView aPathFromFsBAttributeView = mock(BasicFileAttributeView.class);
-		when(provider.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
-		when(provider.getFileAttributeView(aPathFromFsB, BasicFileAttributeView.class)).thenReturn(aPathFromFsBAttributeView);
-		when(provider.readAttributes(aPathFromFsB, BasicFileAttributes.class)).thenThrow(new NoSuchFileException("aPathFromFsB"));
-		when(provider.newFileChannel(aPathFromFsA, EnumSet.of(READ))).thenReturn(new FileChannelMock(repeat(42).times(20).asByteBuffer()));
-		when(provider.newFileChannel(aPathFromFsB, EnumSet.of(CREATE_NEW, WRITE))).thenReturn(targetFile);
+		when(fileSystemA.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
+		when(fileSystemB.getFileAttributeView(aPathFromFsB, BasicFileAttributeView.class)).thenReturn(aPathFromFsBAttributeView);
+		when(fileSystemB.readAttributes(aPathFromFsB, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(new NoSuchFileException("aPathFromFsB"));
+		when(fileSystemA.newFileChannel(aPathFromFsA, EnumSet.of(READ))).thenReturn(new FileChannelMock(repeat(42).times(20).asByteBuffer()));
+		when(fileSystemB.newFileChannel(aPathFromFsB, EnumSet.of(CREATE_NEW, WRITE))).thenReturn(targetFile);
+		when(aPathFromFsAAttributes.isRegularFile()).thenReturn(true);
 		when(aPathFromFsAAttributes.creationTime()).thenReturn(creationTime);
 		when(aPathFromFsAAttributes.lastModifiedTime()).thenReturn(lastModifiedTime);
 		when(aPathFromFsAAttributes.lastAccessTime()).thenReturn(lastAccessTime);
@@ -175,15 +168,29 @@ public class CopyOperationTest {
 	public void testCopyExistingFileToNonExistingFileOnDifferentFileSystemWithCopyAttributesFlagDoesNotSetFileTimesIfNoAttributeViewIsAvailable() throws IOException {
 		FileChannelMock targetFile = new FileChannelMock(100);
 		BasicFileAttributes aPathFromFsAAttributes = mock(BasicFileAttributes.class);
-		when(provider.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
-		when(provider.getFileAttributeView(aPathFromFsB, BasicFileAttributeView.class)).thenReturn(null);
-		when(provider.readAttributes(aPathFromFsB, BasicFileAttributes.class)).thenThrow(new NoSuchFileException("aPathFromFsB"));
-		when(provider.newFileChannel(aPathFromFsA, EnumSet.of(READ))).thenReturn(new FileChannelMock(repeat(42).times(20).asByteBuffer()));
-		when(provider.newFileChannel(aPathFromFsB, EnumSet.of(CREATE_NEW, WRITE))).thenReturn(targetFile);
+		when(fileSystemA.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
+		when(fileSystemB.getFileAttributeView(aPathFromFsB, BasicFileAttributeView.class)).thenReturn(null);
+		when(fileSystemB.readAttributes(aPathFromFsB, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(new NoSuchFileException("aPathFromFsB"));
+		when(aPathFromFsAAttributes.isRegularFile()).thenReturn(true);
+		when(fileSystemA.newFileChannel(aPathFromFsA, EnumSet.of(READ))).thenReturn(new FileChannelMock(repeat(42).times(20).asByteBuffer()));
+		when(fileSystemB.newFileChannel(aPathFromFsB, EnumSet.of(CREATE_NEW, WRITE))).thenReturn(targetFile);
 
 		inTest.copy(aPathFromFsA, aPathFromFsB, COPY_ATTRIBUTES);
 
 		assertThat(targetFile.data(), contains(repeat(42).times(20).asByteBuffer()));
+	}
+
+	@Test
+	public void testCopyExistingSymlinkToNonExistingFileOnDifferentFileSystem() throws IOException {
+		BasicFileAttributes aPathFromFsAAttributes = mock(BasicFileAttributes.class);
+		when(fileSystemA.readAttributes(aPathFromFsA, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(aPathFromFsAAttributes);
+		when(fileSystemB.readAttributes(aPathFromFsB, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(new NoSuchFileException("aPathFromFsB"));
+		when(aPathFromFsAAttributes.isSymbolicLink()).thenReturn(true);
+		when(fileSystemA.readSymbolicLink(aPathFromFsA)).thenReturn(anotherPathFromFsA);
+
+		inTest.copy(aPathFromFsA, aPathFromFsB, LinkOption.NOFOLLOW_LINKS);
+
+		verify(fileSystemB).createSymbolicLink(aPathFromFsB, anotherPathFromFsA);
 	}
 
 }

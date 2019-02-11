@@ -16,16 +16,24 @@ import static org.junit.Assert.assertThat;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.EnumSet;
 
 import org.cryptomator.cryptolib.api.InvalidPassphraseException;
+import org.hamcrest.CoreMatchers;
 import org.hamcrest.Matchers;
 import org.junit.After;
 import org.junit.Assert;
@@ -128,6 +136,24 @@ public class CryptoFileSystemProviderIntegrationTest {
 	}
 
 	@Test
+	public void testReadAndWriteToFileChannelOnSymlink() throws IOException {
+		FileSystem fs = CryptoFileSystemProvider.newFileSystem(pathToVault, cryptoFileSystemProperties().withPassphrase("asd").build());
+		Path link = fs.getPath("/link");
+		Path target = fs.getPath("/target");
+		Files.createSymbolicLink(link, target);
+		try (WritableByteChannel ch = Files.newByteChannel(link, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW)) {
+			ch.write(StandardCharsets.US_ASCII.encode("hello world"));
+		}
+		try (ReadableByteChannel ch = Files.newByteChannel(target, StandardOpenOption.READ)) {
+			ByteBuffer buf = ByteBuffer.allocate(100);
+			ch.read(buf);
+			buf.flip();
+			String str = StandardCharsets.US_ASCII.decode(buf).toString();
+			Assert.assertEquals("hello world", str);
+		}
+	}
+
+	@Test
 	public void testLongFileNames() throws IOException {
 		FileSystem fs = CryptoFileSystemProvider.newFileSystem(pathToVault, cryptoFileSystemProperties().withPassphrase("asd").build());
 		Path longNamePath = fs.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen");
@@ -183,6 +209,57 @@ public class CryptoFileSystemProviderIntegrationTest {
 	}
 
 	@Test
+	public void testLazinessOfFileAttributeViews() throws IOException {
+		Path fs1Location = pathToVault.resolve("foo");
+		Files.createDirectories(fs1Location);
+		FileSystem fs = CryptoFileSystemProvider.newFileSystem(fs1Location, cryptoFileSystemProperties().withPassphrase("asd").build());
+
+		Path file = fs.getPath("/foo.txt");
+		BasicFileAttributeView attrView = Files.getFileAttributeView(file, BasicFileAttributeView.class);
+		Assert.assertNotNull(attrView);
+
+		Files.write(file, new byte[3], StandardOpenOption.CREATE_NEW);
+		BasicFileAttributes attrs = attrView.readAttributes();
+		Assert.assertNotNull(attrs);
+		Assert.assertEquals(3, attrs.size());
+
+		Files.delete(file);
+		thrown.expect(NoSuchFileException.class);
+		attrView.readAttributes();
+	}
+
+	@Test
+	public void testSymbolicLinks() throws IOException {
+		Path fs1Location = pathToVault.resolve("foo");
+		Files.createDirectories(fs1Location);
+		FileSystem fs1 = CryptoFileSystemProvider.newFileSystem(fs1Location, cryptoFileSystemProperties().withPassphrase("asd").build());
+
+		Path link1 = fs1.getPath("/foo/bar1");
+		Files.createDirectories(link1.getParent());
+		Files.createSymbolicLink(link1, fs1.getPath("/linked/target1"));
+		Path target1 = Files.readSymbolicLink(link1);
+		assertThat(target1.getFileSystem(), is(link1.getFileSystem())); // as per contract of readSymbolicLink
+		assertThat(target1.toString(), Matchers.equalTo("/linked/target1"));
+		assertThat(link1.resolveSibling(target1).toString(), Matchers.equalTo("/linked/target1"));
+
+		Path link2 = fs1.getPath("/foo/bar2");
+		Files.createDirectories(link2.getParent());
+		Files.createSymbolicLink(link2, fs1.getPath("./target2"));
+		Path target2 = Files.readSymbolicLink(link2);
+		assertThat(target2.getFileSystem(), is(link2.getFileSystem()));
+		assertThat(target2.toString(), Matchers.equalTo("./target2"));
+		assertThat(link2.resolveSibling(target2).normalize().toString(), Matchers.equalTo("/foo/target2"));
+
+		Path link3 = fs1.getPath("/foo/bar3");
+		Files.createDirectories(link3.getParent());
+		Files.createSymbolicLink(link3, fs1.getPath("../target3"));
+		Path target3 = Files.readSymbolicLink(link3);
+		assertThat(target3.getFileSystem(), is(link3.getFileSystem()));
+		assertThat(target3.toString(), Matchers.equalTo("../target3"));
+		assertThat(link3.resolveSibling(target3).normalize().toString(), Matchers.equalTo("/target3"));
+	}
+
+	@Test
 	public void testMoveFileFromOneCryptoFileSystemToAnother() throws IOException {
 		byte[] data = new byte[] {1, 2, 3, 4, 5, 6, 7};
 
@@ -218,9 +295,9 @@ public class CryptoFileSystemProviderIntegrationTest {
 		Files.setAttribute(file, "dos:archive", true);
 		Files.setAttribute(file, "dos:readOnly", true);
 
-		assertThat(Files.getAttribute(file, "dos:hidden"), is(true));
-		assertThat(Files.getAttribute(file, "dos:system"), is(true));
-		assertThat(Files.getAttribute(file, "dos:archive"), is(true));
+		assertThat(Files.getAttribute(file, "dos:hidden"), is(false));
+		assertThat(Files.getAttribute(file, "dos:system"), is(false));
+		assertThat(Files.getAttribute(file, "dos:archive"), is(false));
 		assertThat(Files.getAttribute(file, "dos:readOnly"), is(true));
 
 		Files.setAttribute(file, "dos:hidden", false);

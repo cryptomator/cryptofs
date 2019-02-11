@@ -1,11 +1,9 @@
 package org.cryptomator.cryptofs;
 
-import static org.cryptomator.cryptofs.UncheckedThrows.rethrowUnchecked;
-
-import java.io.IOException;
-import java.nio.file.Path;
-
 import javax.inject.Inject;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
 
 @PerFileSystem
 class RootDirectoryInitializer {
@@ -25,10 +23,12 @@ class RootDirectoryInitializer {
 		if (readonlyFlag.isSet()) {
 			return;
 		}
-		rethrowUnchecked(IOException.class).from(() -> {
+		try {
 			Path ciphertextRoot = cryptoPathMapper.getCiphertextDirPath(cleartextRoot);
 			files.createDirectories(ciphertextRoot);
-		});
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 	}
 
 }

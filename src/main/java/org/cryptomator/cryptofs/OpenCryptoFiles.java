@@ -10,6 +10,10 @@ package org.cryptomator.cryptofs;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.BufferUnderflowException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -17,9 +21,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
-
-import static org.cryptomator.cryptofs.OpenCryptoFileModule.openCryptoFileModule;
-import static org.cryptomator.cryptofs.UncheckedThrows.allowUncheckedThrowsOf;
 
 @PerFileSystem
 class OpenCryptoFiles {
@@ -41,12 +42,30 @@ class OpenCryptoFiles {
 
 	public OpenCryptoFile getOrCreate(Path ciphertextPath, EffectiveOpenOptions options) throws IOException {
 		Path normalizedPath = ciphertextPath.toAbsolutePath().normalize();
-		OpenCryptoFile result = allowUncheckedThrowsOf(IOException.class).from(() -> {
+		try {
 			// ConcurrentHashMap.computeIfAbsent is atomic, "create" is called at most once:
 			return openCryptoFiles.computeIfAbsent(normalizedPath, ignored -> create(normalizedPath, options));
-		});
-		assert result != null : "computeIfAbsent will not return null";
-		return result;
+		} catch (UncheckedIOException e) {
+			throw new IOException("Error opening file: " + normalizedPath, e);
+		}
+	}
+
+	public void writeCiphertextFile(Path ciphertextPath, EffectiveOpenOptions openOptions, ByteBuffer contents) throws IOException {
+		try (OpenCryptoFile f = getOrCreate(ciphertextPath, openOptions); FileChannel ch = f.newFileChannel(openOptions)) {
+			ch.write(contents);
+		}
+	}
+
+	public ByteBuffer readCiphertextFile(Path ciphertextPath, EffectiveOpenOptions openOptions, int maxBufferSize) throws BufferUnderflowException, IOException {
+		try (OpenCryptoFile f = getOrCreate(ciphertextPath, openOptions); FileChannel ch = f.newFileChannel(openOptions)) {
+			if (ch.size() > maxBufferSize) {
+				throw new BufferUnderflowException();
+			}
+			ByteBuffer buf = ByteBuffer.allocate((int) ch.size()); // ch.size() <= maxBufferSize <= Integer.MAX_VALUE
+			ch.read(buf);
+			buf.flip();
+			return buf;
+		}
 	}
 
 	/**
@@ -68,14 +87,11 @@ class OpenCryptoFiles {
 	}
 
 	private OpenCryptoFile create(Path normalizedPath, EffectiveOpenOptions options) {
-		OpenCryptoFileModule module = openCryptoFileModule() //
-				.withPath(normalizedPath) //
-				.withOptions(options) //
+		OpenCryptoFileComponent openCryptoFileComponent = component.newOpenCryptoFileComponent()
+				.path(normalizedPath)
+				.openOptions(options)
 				.build();
-		OpenCryptoFile file = component.newOpenCryptoFileComponent(module).openCryptoFile();
-		//TODO: is this call necessary?
-		file.setCurrentFilePath(normalizedPath);
-		return file;
+		return openCryptoFileComponent.openCryptoFile();
 	}
 
 	void close(OpenCryptoFile openCryptoFile) {

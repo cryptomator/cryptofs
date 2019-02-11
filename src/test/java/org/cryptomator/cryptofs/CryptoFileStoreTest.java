@@ -8,14 +8,12 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static org.cryptomator.cryptofs.UncheckedThrows.allowUncheckedThrowsOf;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.sameInstance;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+import org.mockito.junit.MockitoJUnit;
+import org.mockito.junit.MockitoRule;
 
 import java.io.IOException;
 import java.nio.file.FileStore;
@@ -29,13 +27,12 @@ import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Set;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.mockito.internal.util.collections.Sets;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class CryptoFileStoreTest {
 
@@ -46,48 +43,44 @@ public class CryptoFileStoreTest {
 	public ExpectedException thrown = ExpectedException.none();
 
 	private final Path path = mock(Path.class);
-	private final CryptoFileAttributeViewProvider attributeViewProvider = mock(CryptoFileAttributeViewProvider.class);
 	private final FileSystemProvider provider = mock(FileSystemProvider.class);
 	private final FileSystem fileSystem = mock(FileSystem.class);
 	private final FileStore delegate = mock(FileStore.class);
 	private final ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
-	@SuppressWarnings("unchecked")
-	private final Set<Class<? extends FileAttributeView>> knownFileAttributeViewTypes = Sets.newSet(BasicFileAttributeView.class, FileOwnerAttributeView.class, PosixFileAttributeView.class, DosFileAttributeView.class);
 
 	@Before
 	public void setUp() throws IOException {
 		when(path.getFileSystem()).thenReturn(fileSystem);
 		when(fileSystem.provider()).thenReturn(provider);
 		when(provider.getFileStore(path)).thenReturn(delegate);
-		when(attributeViewProvider.knownFileAttributeViewTypes()).thenReturn(knownFileAttributeViewTypes);
 	}
 
 	@Test
-	public void testIsReadonlyReturnsTrueIfReadonlyFlagIsSet() throws IOException {
+	public void testIsReadonlyReturnsTrueIfReadonlyFlagIsSet() {
 		when(readonlyFlag.isSet()).thenReturn(true);
 
-		CryptoFileStore inTest = allowUncheckedThrowsOf(IOException.class).from(() -> new CryptoFileStore(path, readonlyFlag, attributeViewProvider));
+		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag);
 
 		assertThat(inTest.isReadOnly(), is(true));
 	}
 
 	@Test
-	public void testIsReadonlyReturnsFalseIfReadonlyFlagIsNotSet() throws IOException {
+	public void testIsReadonlyReturnsFalseIfReadonlyFlagIsNotSet() {
 		when(readonlyFlag.isSet()).thenReturn(false);
 
-		CryptoFileStore inTest = allowUncheckedThrowsOf(IOException.class).from(() -> new CryptoFileStore(path, readonlyFlag, attributeViewProvider));
+		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag);
 
 		assertThat(inTest.isReadOnly(), is(false));
 	}
 
 	@Test
-	public void testSupportedFileAttributeViewTypes() throws IOException {
+	public void testSupportedFileAttributeViewTypes() {
 		when(delegate.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(true);
 		when(delegate.supportsFileAttributeView(FileOwnerAttributeView.class)).thenReturn(true);
 		when(delegate.supportsFileAttributeView(BasicFileAttributeView.class)).thenReturn(true);
 		when(delegate.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(false);
 
-		CryptoFileStore inTest = allowUncheckedThrowsOf(IOException.class).from(() -> new CryptoFileStore(path, readonlyFlag, attributeViewProvider));
+		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag);
 
 		Set<Class<? extends FileAttributeView>> result = inTest.supportedFileAttributeViewTypes();
 		assertTrue(result.contains(PosixFileAttributeView.class));
@@ -97,13 +90,13 @@ public class CryptoFileStoreTest {
 	}
 
 	@Test
-	public void testSupportedFileAttributeViewNames() throws IOException {
+	public void testSupportedFileAttributeViewNames() {
 		when(delegate.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(true);
 		when(delegate.supportsFileAttributeView(FileOwnerAttributeView.class)).thenReturn(true);
 		when(delegate.supportsFileAttributeView(BasicFileAttributeView.class)).thenReturn(true);
 		when(delegate.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(false);
 
-		CryptoFileStore inTest = allowUncheckedThrowsOf(IOException.class).from(() -> new CryptoFileStore(path, readonlyFlag, attributeViewProvider));
+		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag);
 
 		Set<String> result = inTest.supportedFileAttributeViewNames();
 		assertTrue(result.contains("posix"));
@@ -113,13 +106,13 @@ public class CryptoFileStoreTest {
 	}
 
 	@Test
-	public void testSupportsFileAttributeViewByType() throws IOException {
+	public void testSupportsFileAttributeViewByType() {
 		when(delegate.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(true);
 		when(delegate.supportsFileAttributeView(FileOwnerAttributeView.class)).thenReturn(true);
 		when(delegate.supportsFileAttributeView(BasicFileAttributeView.class)).thenReturn(true);
 		when(delegate.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(false);
 
-		CryptoFileStore inTest = allowUncheckedThrowsOf(IOException.class).from(() -> new CryptoFileStore(path, readonlyFlag, attributeViewProvider));
+		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag);
 
 		assertTrue(inTest.supportsFileAttributeView(PosixFileAttributeView.class));
 		assertTrue(inTest.supportsFileAttributeView(FileOwnerAttributeView.class));
@@ -128,13 +121,13 @@ public class CryptoFileStoreTest {
 	}
 
 	@Test
-	public void testSupportsFileAttributeViewByName() throws IOException {
+	public void testSupportsFileAttributeViewByName() {
 		when(delegate.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(true);
 		when(delegate.supportsFileAttributeView(FileOwnerAttributeView.class)).thenReturn(true);
 		when(delegate.supportsFileAttributeView(BasicFileAttributeView.class)).thenReturn(true);
 		when(delegate.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(false);
 
-		CryptoFileStore inTest = allowUncheckedThrowsOf(IOException.class).from(() -> new CryptoFileStore(path, readonlyFlag, attributeViewProvider));
+		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag);
 
 		assertTrue(inTest.supportsFileAttributeView("posix"));
 		assertTrue(inTest.supportsFileAttributeView("owner"));
@@ -147,9 +140,8 @@ public class CryptoFileStoreTest {
 		IOException e = new IOException();
 		when(provider.getFileStore(path)).thenThrow(e);
 
-		thrown.expect(sameInstance(e));
-
-		allowUncheckedThrowsOf(IOException.class).from(() -> new CryptoFileStore(path, readonlyFlag, attributeViewProvider));
+		thrown.expectCause(is(e));
+		new CryptoFileStore(path, readonlyFlag);
 	}
 
 }

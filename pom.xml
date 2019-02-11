@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.cryptomator</groupId>
 	<artifactId>cryptofs</artifactId>
-	<version>1.6.2</version>
+	<version>1.7.0</version>
 	<name>Cryptomator Crypto Filesystem</name>
 	<description>This library provides the Java filesystem provider used by Cryptomator.</description>
 	<url>https://github.com/cryptomator/cryptofs</url>
@@ -15,7 +15,7 @@
 
 	<properties>
 		<cryptolib.version>1.2.1</cryptolib.version>
-		<dagger.version>2.19</dagger.version>
+		<dagger.version>2.20</dagger.version>
 		<guava.version>27.0-jre</guava.version>
 		<slf4j.version>1.7.25</slf4j.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -86,12 +86,6 @@
 			<artifactId>dagger</artifactId>
 			<version>${dagger.version}</version>
 		</dependency>
-		<dependency>
-			<groupId>com.google.dagger</groupId>
-			<artifactId>dagger-compiler</artifactId>
-			<version>${dagger.version}</version>
-			<scope>provided</scope>
-		</dependency>
 
 		<!-- Test -->
 		<dependency>
@@ -139,10 +133,15 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.0</version>
 				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
 					<release>8</release>
 					<showWarnings>true</showWarnings>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>com.google.dagger</groupId>
+							<artifactId>dagger-compiler</artifactId>
+							<version>${dagger.version}</version>
+						</path>
+					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
 		</plugins>
@@ -156,10 +155,13 @@
 					<plugin>
 						<groupId>org.owasp</groupId>
 						<artifactId>dependency-check-maven</artifactId>
-						<version>3.3.4</version>
+						<version>4.0.2</version>
 						<configuration>
 							<cveValidForHours>24</cveValidForHours>
 							<failBuildOnCVSS>0</failBuildOnCVSS>
+							<skipTestScope>true</skipTestScope>
+							<detail>true</detail>
+							<suppressionFile>suppression.xml</suppressionFile>
 						</configuration>
 						<executions>
 							<execution>
@@ -180,12 +182,18 @@
 					<plugin>
 						<groupId>org.jacoco</groupId>
 						<artifactId>jacoco-maven-plugin</artifactId>
-						<version>0.8.2</version>
+						<version>0.8.3</version>
 						<executions>
 							<execution>
 								<id>prepare-agent</id>
 								<goals>
 									<goal>prepare-agent</goal>
+								</goals>
+							</execution>
+							<execution>
+								<id>report</id>
+								<goals>
+									<goal>report</goal>
 								</goals>
 							</execution>
 						</executions>

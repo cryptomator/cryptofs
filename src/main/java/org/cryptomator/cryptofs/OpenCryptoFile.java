@@ -9,9 +9,9 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.FileHeader;
 
 import javax.inject.Inject;
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -31,11 +31,11 @@ import static java.lang.Math.min;
 import static org.cryptomator.cryptolib.Cryptors.ciphertextSize;
 
 @PerOpenFile
-class OpenCryptoFile {
+class OpenCryptoFile implements Closeable {
 
 	private final Cryptor cryptor;
 	private final FileChannel channel;
-	private final FileHeader header;
+	private final FileHeaderLoader headerLoader;
 	private final AtomicLong size;
 	private final CryptoFileChannelFactory cryptoFileChannelFactory;
 	private final ChunkCache chunkCache;
@@ -50,11 +50,11 @@ class OpenCryptoFile {
 	private final AtomicReference<Path> currentFilePath;
 
 	@Inject
-	public OpenCryptoFile(Cryptor cryptor, FileChannel channel, FileHeader header, @OpenFileSize AtomicLong size, CryptoFileChannelFactory cryptoFileChannelFactory,
+	public OpenCryptoFile(Cryptor cryptor, FileChannel channel, FileHeaderLoader headerLoader, @OpenFileSize AtomicLong size, CryptoFileChannelFactory cryptoFileChannelFactory,
 						  ChunkCache chunkCache, OpenCryptoFiles openCryptoFileFactory, CryptoFileSystemStats stats, ExceptionsDuringWrite exceptionsDuringWrite, FinallyUtil finallyUtil, Supplier<BasicFileAttributeView> attrViewProvider, @CurrentOpenFilePath AtomicReference<Path> currentFilePath) {
 		this.cryptor = cryptor;
 		this.channel = channel;
-		this.header = header;
+		this.headerLoader = headerLoader;
 		this.size = size;
 		this.cryptoFileChannelFactory = cryptoFileChannelFactory;
 		this.chunkCache = chunkCache;
@@ -123,8 +123,7 @@ class OpenCryptoFile {
 
 	private void writeHeaderIfNecessary() throws IOException {
 		if (headerWritten.compareAndSet(false, true)) {
-			channel.write(cryptor.fileHeaderCryptor().encryptHeader(header), 0);
-
+			channel.write(cryptor.fileHeaderCryptor().encryptHeader(headerLoader.get()), 0);
 		}
 	}
 
@@ -188,9 +187,16 @@ class OpenCryptoFile {
 		}
 	}
 
+	/**
+	 * Flushes any pending bytes to the physical file. To be called when closing a cleartext channel.
+	 * @param metaData Also flush metadata (see {@link FileChannel#force(boolean)}.
+	 * @param options
+	 * @throws IOException
+	 */
 	public synchronized void force(boolean metaData, EffectiveOpenOptions options) throws IOException {
-		chunkCache.invalidateAll(); // TODO performance: write chunks but keep them cached
 		if (options.writable()) {
+			writeHeaderIfNecessary();
+			chunkCache.invalidateAll(); // TODO performance: write chunks but keep them cached
 			exceptionsDuringWrite.throwIfPresent();
 		}
 		channel.force(metaData);

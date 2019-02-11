@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs;
 
 import com.google.common.jimfs.Jimfs;
 import org.hamcrest.BaseMatcher;
+import org.hamcrest.CoreMatchers;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.junit.AfterClass;
@@ -20,10 +21,12 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.UserPrincipal;
 import java.time.Instant;
@@ -139,6 +142,34 @@ public class CryptoFileSystemFileAttributeIntegrationTest {
 	}
 
 	@Test
+	public void testGetFileSizeWhileStillWritingToNewFile() throws IOException {
+		Path file = fileSystem.getPath("/d");
+
+		try (FileChannel ch = FileChannel.open(file, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW)) {
+			BasicFileAttributes attr1 = Files.readAttributes(file, BasicFileAttributes.class);
+			Assert.assertEquals(0, ch.size());
+			Assert.assertEquals(0, attr1.size());
+			Assert.assertEquals(0, Files.size(file));
+
+			ch.write(ByteBuffer.wrap(new byte[2]));
+			BasicFileAttributes attr2 = Files.readAttributes(file, BasicFileAttributes.class);
+			Assert.assertEquals(2, ch.size());
+			Assert.assertEquals(0, attr1.size());
+			Assert.assertEquals(2, attr2.size());
+			Assert.assertEquals(2, Files.size(file));
+
+			ch.write(ByteBuffer.wrap(new byte[2]));
+			BasicFileAttributes attr3 = Files.readAttributes(file, BasicFileAttributes.class);
+			Assert.assertEquals(0, attr1.size());
+			Assert.assertEquals(2, attr2.size());
+			Assert.assertEquals(4, attr3.size());
+			Assert.assertEquals(4, ch.size());
+			Assert.assertEquals(4, Files.size(file));
+		}
+		Assert.assertEquals(4, Files.size(file));
+	}
+
+	@Test
 	public void testFileAttributeViewUpdatesAfterMove() throws IOException {
 		Path oldpath = fileSystem.getPath("/x");
 		Path newpath = fileSystem.getPath("/y");
@@ -152,9 +183,8 @@ public class CryptoFileSystemFileAttributeIntegrationTest {
 			Assert.assertEquals(now, attrView2.readAttributes().lastModifiedTime());
 
 			thrown.expect(NoSuchFileException.class);
-			Files.getFileAttributeView(oldpath, BasicFileAttributeView.class).readAttributes();
+			attrView.readAttributes();
 		}
-
 	}
 
 	private static Matcher<FileTime> isAfter(FileTime previousFileTime) {

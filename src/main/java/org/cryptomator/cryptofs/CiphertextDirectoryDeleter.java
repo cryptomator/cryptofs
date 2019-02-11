@@ -1,14 +1,12 @@
 package org.cryptomator.cryptofs;
 
+import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.DosFileAttributeView;
 import java.util.Set;
-
-import javax.inject.Inject;
 
 import static java.util.stream.Collectors.toSet;
 import static org.cryptomator.cryptofs.CiphertextDirectoryDeleter.DeleteResult.NO_FILES_DELETED;

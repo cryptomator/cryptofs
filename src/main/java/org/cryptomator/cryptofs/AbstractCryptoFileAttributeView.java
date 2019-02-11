@@ -9,45 +9,51 @@
 package org.cryptomator.cryptofs;
 
 import java.io.IOException;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributeView;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.FileTime;
+import java.nio.file.attribute.FileAttributeView;
 import java.util.Optional;
 
-abstract class AbstractCryptoFileAttributeView<S extends BasicFileAttributes, T extends BasicFileAttributeView> implements BasicFileAttributeView {
+abstract class AbstractCryptoFileAttributeView implements FileAttributeView {
 
-	protected final Path ciphertextPath;
-	protected final CryptoFileAttributeProvider fileAttributeProvider;
-	protected final T delegate;
-	private final Class<S> attributesType;
-	private final ReadonlyFlag readonlyFlag;
-	private final Optional<OpenCryptoFile> openCryptoFile;
+	protected final CryptoPath cleartextPath;
+	private final CryptoPathMapper pathMapper;
+	protected final LinkOption[] linkOptions;
+	private final Symlinks symlinks;
+	private final OpenCryptoFiles openCryptoFiles;
 
-	public AbstractCryptoFileAttributeView(Path ciphertextPath, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag, Class<S> attributesType, Class<T> delegateType, Optional<OpenCryptoFile> openCryptoFile)
-			throws UnsupportedFileAttributeViewException {
-		this.ciphertextPath = ciphertextPath;
-		this.fileAttributeProvider = fileAttributeProvider;
-		this.readonlyFlag = readonlyFlag;
-		this.attributesType = attributesType;
-		this.openCryptoFile = openCryptoFile;
-		this.delegate = ciphertextPath.getFileSystem().provider().getFileAttributeView(ciphertextPath, delegateType);
-		if (delegate == null) {
-			throw new UnsupportedFileAttributeViewException();
-		}
+	public AbstractCryptoFileAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, LinkOption[] linkOptions, Symlinks symlinks, OpenCryptoFiles openCryptoFiles) {
+		this.cleartextPath = cleartextPath;
+		this.pathMapper = pathMapper;
+		this.linkOptions = linkOptions;
+		this.symlinks = symlinks;
+		this.openCryptoFiles = openCryptoFiles;
 	}
 
-	@Override
-	public final S readAttributes() throws IOException {
-		return fileAttributeProvider.readAttributes(ciphertextPath, attributesType);
+	protected <T extends FileAttributeView> T getCiphertextAttributeView(Class<T> delegateType) throws IOException {
+		Path ciphertextPath = getCiphertextPath(cleartextPath);
+		return ciphertextPath.getFileSystem().provider().getFileAttributeView(ciphertextPath, delegateType);
 	}
 
-	@Override
-	public void setTimes(FileTime lastModifiedTime, FileTime lastAccessTime, FileTime createTime) throws IOException {
-		readonlyFlag.assertWritable();
-		delegate.setTimes(lastModifiedTime, lastAccessTime, createTime);
-		if(lastModifiedTime != null){
-			openCryptoFile.ifPresent(file -> file.setLastModifiedTime(lastModifiedTime));
+	protected Optional<OpenCryptoFile> getOpenCryptoFile() throws IOException {
+		Path ciphertextPath = getCiphertextPath(cleartextPath);
+		return openCryptoFiles.get(ciphertextPath);
+	}
+
+	private Path getCiphertextPath(CryptoPath path) throws IOException {
+		CryptoPathMapper.CiphertextFileType type = pathMapper.getCiphertextFileType(path);
+		switch (type) {
+			case SYMLINK:
+				if (ArrayUtils.contains(linkOptions, LinkOption.NOFOLLOW_LINKS)) {
+					return pathMapper.getCiphertextFilePath(path, type);
+				} else {
+					CryptoPath resolved = symlinks.resolveRecursively(path);
+					return getCiphertextPath(resolved);
+				}
+			case DIRECTORY:
+				return pathMapper.getCiphertextDirPath(path);
+			default:
+				return pathMapper.getCiphertextFilePath(path, type);
 		}
 	}
 

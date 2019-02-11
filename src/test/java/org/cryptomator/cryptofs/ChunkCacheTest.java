@@ -84,7 +84,7 @@ public class ChunkCacheTest {
 	}
 
 	@Test
-	public void testGetInvokesSaverIfMaxEntriesInCacheAreReachedAndAnEntryNotInCacheIsSet() {
+	public void testGetInvokesSaverIfMaxEntriesInCacheAreReachedAndAnEntryNotInCacheIsSet() throws IOException {
 		long firstIndex = 42L;
 		long indexNotInCache = 40L;
 		ChunkData firstData = mock(ChunkData.class);
@@ -100,7 +100,7 @@ public class ChunkCacheTest {
 	}
 
 	@Test
-	public void testGetInvokesSaverIfMaxEntriesInCacheAreReachedAndAnEntryInCacheIsSet() {
+	public void testGetInvokesSaverIfMaxEntriesInCacheAreReachedAndAnEntryInCacheIsSet() throws IOException {
 		// TODO markuskreusch: this behaviour isn't actually needed, maybe we can somehow prevent saving in such situations?
 		long firstIndex = 42L;
 		ChunkData firstData = mock(ChunkData.class);

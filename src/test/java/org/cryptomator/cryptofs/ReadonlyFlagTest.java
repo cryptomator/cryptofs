@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
+import java.nio.file.ReadOnlyFileSystemException;
 import java.nio.file.spi.FileSystemProvider;
 
 import org.junit.Before;
@@ -41,9 +42,7 @@ public class ReadonlyFlagTest {
 	public void testReadonlyFlagIsSetIfReadonlyIsSetOnProperties() throws IOException {
 		when(properties.readonly()).thenReturn(true);
 
-		UncheckedThrows.allowUncheckedThrowsOf(IOException.class).from(() -> {
-			inTest = new ReadonlyFlag(properties, path);
-		});
+		inTest = new ReadonlyFlag(properties, path);
 
 		assertThat(inTest.isSet(), is(true));
 	}
@@ -53,9 +52,7 @@ public class ReadonlyFlagTest {
 		when(properties.readonly()).thenReturn(false);
 		when(fileStore.isReadOnly()).thenReturn(true);
 
-		UncheckedThrows.allowUncheckedThrowsOf(IOException.class).from(() -> {
-			inTest = new ReadonlyFlag(properties, path);
-		});
+		inTest = new ReadonlyFlag(properties, path);
 
 		assertThat(inTest.isSet(), is(true));
 	}
@@ -65,9 +62,7 @@ public class ReadonlyFlagTest {
 		when(properties.readonly()).thenReturn(false);
 		when(fileStore.isReadOnly()).thenReturn(false);
 
-		UncheckedThrows.allowUncheckedThrowsOf(IOException.class).from(() -> {
-			inTest = new ReadonlyFlag(properties, path);
-		});
+		inTest = new ReadonlyFlag(properties, path);
 
 		assertThat(inTest.isSet(), is(false));
 	}
@@ -76,12 +71,9 @@ public class ReadonlyFlagTest {
 	public void testAssertWritableThrowsIOExceptionIfReadonlyIsSetOnProperties() throws IOException {
 		when(properties.readonly()).thenReturn(true);
 
-		UncheckedThrows.allowUncheckedThrowsOf(IOException.class).from(() -> {
-			inTest = new ReadonlyFlag(properties, path);
-		});
+		inTest = new ReadonlyFlag(properties, path);
 
-		thrown.expect(IOException.class);
-		thrown.expectMessage("Vault opened readonly");
+		thrown.expect(ReadOnlyFileSystemException.class);
 
 		inTest.assertWritable();
 	}
@@ -91,12 +83,9 @@ public class ReadonlyFlagTest {
 		when(properties.readonly()).thenReturn(false);
 		when(fileStore.isReadOnly()).thenReturn(true);
 
-		UncheckedThrows.allowUncheckedThrowsOf(IOException.class).from(() -> {
-			inTest = new ReadonlyFlag(properties, path);
-		});
+		inTest = new ReadonlyFlag(properties, path);
 
-		thrown.expect(IOException.class);
-		thrown.expectMessage("Vault on readonly filesystem");
+		thrown.expect(ReadOnlyFileSystemException.class);
 
 		inTest.assertWritable();
 	}
@@ -106,9 +95,7 @@ public class ReadonlyFlagTest {
 		when(properties.readonly()).thenReturn(false);
 		when(fileStore.isReadOnly()).thenReturn(false);
 
-		UncheckedThrows.allowUncheckedThrowsOf(IOException.class).from(() -> {
-			inTest = new ReadonlyFlag(properties, path);
-		});
+		inTest = new ReadonlyFlag(properties, path);
 
 		inTest.assertWritable();
 	}

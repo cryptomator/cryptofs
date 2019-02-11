@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 class ConflictResolver {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ConflictResolver.class);
-	private static final Pattern BASE32_PATTERN = Pattern.compile("0?(([A-Z2-7]{8})*[A-Z2-7=]{8})");
+	private static final Pattern BASE32_PATTERN = Pattern.compile("(0|1[A-Z0-9])?(([A-Z2-7]{8})*[A-Z2-7=]{8})");
 	private static final int MAX_DIR_FILE_SIZE = 87; // "normal" file header has 88 bytes
 
 	private final LongFileNameProvider longFileNameProvider;
@@ -54,7 +54,7 @@ class ConflictResolver {
 		Matcher m = BASE32_PATTERN.matcher(basename);
 		if (!m.matches() && m.find(0)) {
 			// no full match, but still contains base32 -> partial match
-			return resolveConflict(ciphertextPath, m.group(1), dirId);
+			return resolveConflict(ciphertextPath, m.group(2), dirId);
 		} else {
 			// full match or no match at all -> nothing to resolve
 			return ciphertextPath;

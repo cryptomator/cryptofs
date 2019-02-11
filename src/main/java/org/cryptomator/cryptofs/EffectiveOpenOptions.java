@@ -20,6 +20,7 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 
 import java.io.IOException;
+import java.nio.file.LinkOption;
 import java.nio.file.OpenOption;
 import java.nio.file.StandardOpenOption;
 import java.util.HashSet;
@@ -37,6 +38,13 @@ class EffectiveOpenOptions {
 
 	public static EffectiveOpenOptions from(Set<? extends OpenOption> options, ReadonlyFlag readonlyFlag) throws IOException {
 		return new EffectiveOpenOptions(options, readonlyFlag);
+	}
+
+	/**
+	 * @see LinkOption#NOFOLLOW_LINKS
+	 */
+	public boolean noFollowLinks() {
+		return options.contains(LinkOption.NOFOLLOW_LINKS);
 	}
 
 	/**
@@ -166,7 +174,7 @@ class EffectiveOpenOptions {
 	}
 
 	private boolean isSupported(OpenOption option) {
-		return StandardOpenOption.class.isInstance(option);
+		return StandardOpenOption.class.isInstance(option) || LinkOption.class.isInstance(option);
 	}
 
 	public Set<OpenOption> createOpenOptionsForEncryptedFile() {
@@ -175,6 +183,7 @@ class EffectiveOpenOptions {
 		if (!readonlyFlag.isSet()) {
 			result.add(WRITE); // maybe needed when opening writable channel afterwards
 		}
+		result.remove(LinkOption.NOFOLLOW_LINKS);
 		result.remove(APPEND);
 		return result;
 	}

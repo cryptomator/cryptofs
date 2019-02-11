@@ -8,10 +8,12 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static org.cryptomator.cryptofs.UncheckedThrows.rethrowUnchecked;
+import com.google.common.collect.Sets;
 
+import javax.inject.Inject;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.io.UncheckedIOException;
+import java.nio.file.FileStore;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.DosFileAttributeView;
@@ -19,10 +21,9 @@ import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import javax.inject.Inject;
 
 @PerFileSystem
 class CryptoFileStore extends DelegatingFileStore {
@@ -32,15 +33,24 @@ class CryptoFileStore extends DelegatingFileStore {
 	private static final String VIEW_NAME_POSIX = "posix";
 	private static final String VIEW_NAME_DOS = "dos";
 	private static final String[] VIEW_NAMES = {VIEW_NAME_BASIC, VIEW_NAME_OWNER, VIEW_NAME_POSIX, VIEW_NAME_DOS};
+	private static final Collection<Class<? extends FileAttributeView>> KNOWN_VIEWS = Sets.newHashSet(BasicFileAttributeView.class, FileOwnerAttributeView.class, PosixFileAttributeView.class, DosFileAttributeView.class);
 
 	private final Set<Class<? extends FileAttributeView>> supportedFileAttributeViewTypes;
 	private final ReadonlyFlag readonlyFlag;
 
 	@Inject
-	public CryptoFileStore(@PathToVault Path pathToVault, ReadonlyFlag readonlyFlag, CryptoFileAttributeViewProvider attributeViewProvider) {
-		super(rethrowUnchecked(IOException.class).from(() -> Files.getFileStore(pathToVault)));
+	public CryptoFileStore(@PathToVault Path pathToVault, ReadonlyFlag readonlyFlag) {
+		super(getFileStore(pathToVault));
 		this.readonlyFlag = readonlyFlag;
-		this.supportedFileAttributeViewTypes = attributeViewProvider.knownFileAttributeViewTypes().stream().filter(super::supportsFileAttributeView).collect(Collectors.toSet());
+		this.supportedFileAttributeViewTypes = KNOWN_VIEWS.stream().filter(super::supportsFileAttributeView).collect(Collectors.toSet());
+	}
+
+	private static FileStore getFileStore(Path path) {
+		try {
+			return path.getFileSystem().provider().getFileStore(path);
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 	}
 
 	@Override

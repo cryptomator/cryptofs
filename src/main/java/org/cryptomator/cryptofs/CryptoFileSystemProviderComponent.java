@@ -1,17 +1,27 @@
 package org.cryptomator.cryptofs;
 
+import dagger.BindsInstance;
 import dagger.Component;
+import org.cryptomator.cryptolib.api.CryptorProvider;
 
 @PerProvider
-@Component(modules = {CryptoFileSystemProviderModule.class})
+@Component
 interface CryptoFileSystemProviderComponent {
 
 	CryptoFileSystems fileSystems();
 
-	CryptoFileSystemComponent newCryptoFileSystemComponent(CryptoFileSystemModule cryptoFileSystemModule);
+	MoveOperation moveOperation();
 
 	CopyOperation copyOperation();
 
-	MoveOperation moveOperation();
+	CryptoFileSystemComponent.Builder newCryptoFileSystemComponent();
+
+	@Component.Builder
+	interface Builder {
+		@BindsInstance
+		Builder cryptorProvider(CryptorProvider cryptorProvider);
+
+		CryptoFileSystemProviderComponent build();
+	}
 
 }

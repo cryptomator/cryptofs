@@ -1,20 +1,20 @@
 package org.cryptomator.cryptofs;
 
-import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
-import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
-
+import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.spi.FileSystemProvider;
+import java.util.Arrays;
 import java.util.Optional;
 
-import javax.inject.Inject;
+import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
+import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
 
 @PerProvider
 class MoveOperation {
@@ -30,13 +30,15 @@ class MoveOperation {
 		if (source.equals(target)) {
 			return;
 		}
-		if (pathsBelongToSameFileSystem(source, target)) {
+		if (source.getFileSystem() == target.getFileSystem()) {
 			source.getFileSystem().move(source, target, options);
 		} else {
 			if (ArrayUtils.contains(options, ATOMIC_MOVE)) {
 				throw new AtomicMoveNotSupportedException(source.toUri().toString(), target.toUri().toString(), "Move of encrypted file to different FileSystem");
 			}
 			if (isNonEmptyDirectory(source)) {
+				// according to Files.move() JavaDoc:
+				// "When moving a directory requires that its entries be moved then this method fails (by throwing an IOException)."
 				throw new IOException("Can not move non empty directory to different FileSystem");
 			}
 			boolean success = false;
@@ -51,32 +53,21 @@ class MoveOperation {
 				if (cleanup) {
 					// do a best effort to clean a partially copied file
 					try {
-						provider(target).deleteIfExists(target);
+						target.getFileSystem().delete(target);
 					} catch (IOException e) {
 						// ignore
 					}
 				}
-			}
-			if (success) {
-				provider(source).deleteIfExists(source);
+				if (success) {
+					source.getFileSystem().delete(source);
+				}
 			}
 		}
-	}
-
-	private boolean pathsBelongToSameFileSystem(CryptoPath source, CryptoPath target) {
-		return source.getFileSystem() == target.getFileSystem();
-	}
-
-	private FileSystemProvider provider(CryptoPath path) {
-		return path.getFileSystem().provider();
 	}
 
 	private CopyOption[] addCopyAttributesTo(CopyOption[] options) {
-		CopyOption[] result = new CopyOption[options.length + 1];
-		for (int i = 0; i < options.length; i++) {
-			result[i] = options[i];
-		}
-		result[options.length] = COPY_ATTRIBUTES;
+		CopyOption[] result = Arrays.copyOf(options, options.length + 1);
+		result[result.length - 1] = COPY_ATTRIBUTES;
 		return result;
 	}
 
@@ -85,14 +76,14 @@ class MoveOperation {
 		if (!sourceAttrs.map(BasicFileAttributes::isDirectory).orElse(false)) {
 			return false;
 		}
-		try (DirectoryStream<Path> contents = provider(source).newDirectoryStream(source, ignored -> true)) {
+		try (DirectoryStream<Path> contents = source.getFileSystem().newDirectoryStream(source, ignored -> true)) {
 			return contents.iterator().hasNext();
 		}
 	}
 
-	private Optional<BasicFileAttributes> attributes(CryptoPath path) {
+	private Optional<BasicFileAttributes> attributes(CryptoPath path, LinkOption... linkOptions) {
 		try {
-			return Optional.of(provider(path).readAttributes(path, BasicFileAttributes.class));
+			return Optional.of(path.getFileSystem().readAttributes(path, BasicFileAttributes.class, linkOptions));
 		} catch (IOException e) {
 			return Optional.empty();
 		}

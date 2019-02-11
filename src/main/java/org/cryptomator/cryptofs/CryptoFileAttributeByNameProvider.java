@@ -8,12 +8,11 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static java.util.Arrays.stream;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
+import com.google.common.base.Predicate;
 
+import javax.inject.Inject;
 import java.io.IOException;
-import java.nio.file.Path;
+import java.nio.file.LinkOption;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.DosFileAttributeView;
@@ -33,15 +32,21 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.Function;
 
-import javax.inject.Inject;
-
-import com.google.common.base.Predicate;
+import static java.util.Arrays.stream;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 @PerFileSystem
 class CryptoFileAttributeByNameProvider {
 
 	private static final SortedMap<String, AttributeGetter<?>> GETTERS = new TreeMap<>();
+	private static final SortedMap<String, AttributeSetter<?, ?>> SETTERS = new TreeMap<>();
+
+	private final CryptoFileAttributeProvider cryptoFileAttributeProvider;
+	private final CryptoFileAttributeViewProvider cryptoFileAttributeViewProvider;
+
 	static {
+		// GETTERS:
 		attribute("basic:lastModifiedTime", BasicFileAttributes.class, BasicFileAttributes::lastModifiedTime);
 		attribute("basic:lastAccessTime", BasicFileAttributes.class, BasicFileAttributes::lastAccessTime);
 		attribute("basic:creationTime", BasicFileAttributes.class, BasicFileAttributes::creationTime);
@@ -60,10 +65,8 @@ class CryptoFileAttributeByNameProvider {
 		attribute("posix:owner", PosixFileAttributes.class, PosixFileAttributes::owner);
 		attribute("posix:group", PosixFileAttributes.class, PosixFileAttributes::group);
 		attribute("posix:permissions", PosixFileAttributes.class, PosixFileAttributes::permissions);
-	}
 
-	private static final SortedMap<String, AttributeSetter<?, ?>> SETTERS = new TreeMap<>();
-	static {
+		// SETTERS:
 		attribute("basic:lastModifiedTime", BasicFileAttributeView.class, FileTime.class, (view, lastModifiedTime) -> view.setTimes(lastModifiedTime, null, null));
 		attribute("basic:lastAccessTime", BasicFileAttributeView.class, FileTime.class, (view, lastAccessTime) -> view.setTimes(null, lastAccessTime, null));
 		attribute("basic:creationTime", BasicFileAttributeView.class, FileTime.class, (view, creationTime) -> view.setTimes(null, null, creationTime));
@@ -87,9 +90,6 @@ class CryptoFileAttributeByNameProvider {
 		SETTERS.put(name, new AttributeSetter<>(type, valueType, setter));
 	}
 
-	private final CryptoFileAttributeProvider cryptoFileAttributeProvider;
-	private final CryptoFileAttributeViewProvider cryptoFileAttributeViewProvider;
-
 	@Inject
 	public CryptoFileAttributeByNameProvider(CryptoFileAttributeProvider cryptoFileAttributeProvider, CryptoFileAttributeViewProvider cryptoFileAttributeViewProvider) {
 		this.cryptoFileAttributeProvider = cryptoFileAttributeProvider;
@@ -97,17 +97,17 @@ class CryptoFileAttributeByNameProvider {
 	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	public void setAttribute(Path path, String attributeName, Object value) throws IOException {
+	public void setAttribute(CryptoPath cleartextPath, String attributeName, Object value, LinkOption... options) throws IOException {
 		String normalizedAttributeName = normalizedAttributeName(attributeName);
 		AttributeSetter setter = SETTERS.get(normalizedAttributeName);
 		if (setter == null) {
 			throw new IllegalArgumentException("Unrecognized attribute name: " + attributeName);
 		}
-		FileAttributeView view = cryptoFileAttributeViewProvider.getAttributeView(path, setter.type());
+		FileAttributeView view = cryptoFileAttributeViewProvider.getAttributeView(cleartextPath, setter.type(), options);
 		setter.set(view, value);
 	}
 
-	public Map<String, Object> readAttributes(Path path, String attributesString) throws IOException {
+	public Map<String, Object> readAttributes(CryptoPath cleartextPath, String attributesString, LinkOption... options) throws IOException {
 		if (attributesString.isEmpty()) {
 			throw new IllegalArgumentException("No attributes specified");
 		}
@@ -117,16 +117,16 @@ class CryptoFileAttributeByNameProvider {
 				.filter(entry -> getterNameFilter.apply(entry.getKey())) //
 				.map(Entry::getValue) //
 				.collect(toList());
-		return readAttributes(path, getters);
+		return readAttributes(cleartextPath, getters, options);
 	}
 
 	@SuppressWarnings({"rawtypes", "unchecked"})
-	private Map<String, Object> readAttributes(Path path, Collection<AttributeGetter> getters) throws IOException {
+	private Map<String, Object> readAttributes(CryptoPath cleartextPath, Collection<AttributeGetter> getters, LinkOption... options) throws IOException {
 		Map<String, Object> result = new HashMap<>();
 		BasicFileAttributes attributes = null;
 		for (AttributeGetter getter : getters) {
 			if (attributes == null) {
-				attributes = cryptoFileAttributeProvider.readAttributes(path, getter.type());
+				attributes = cryptoFileAttributeProvider.readAttributes(cleartextPath, getter.type(), options);
 			}
 			String name = getter.name();
 			result.put(name, getter.read(attributes));
@@ -195,7 +195,7 @@ class CryptoFileAttributeByNameProvider {
 			return type;
 		}
 
-		public void set(T attributes, Object value) throws IOException {
+		public void set(T attributes, Object value, LinkOption... options) throws IOException {
 			setter.accept(attributes, valueType.cast(value));
 		}
 

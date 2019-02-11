@@ -1,14 +1,12 @@
 package org.cryptomator.cryptofs;
 
+import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.file.ClosedFileSystemException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
 
-import javax.inject.Inject;
-
-// TODO delete, move channel-creation to OpenCryptoFile
 @PerOpenFile
 class CryptoFileChannelFactory {
 
@@ -16,16 +14,13 @@ class CryptoFileChannelFactory {
 	private volatile boolean closed = false;
 	private final FinallyUtil finallyUtil;
 
-	private OpenCryptoFile tmp;
-
 	@Inject
 	public CryptoFileChannelFactory(FinallyUtil finallyUtil) {
 		this.finallyUtil = finallyUtil;
 	}
 
 	public CryptoFileChannel create(OpenCryptoFile openCryptoFile, EffectiveOpenOptions options) throws IOException {
-		this.tmp = openCryptoFile;
-		CryptoFileChannel channel = new CryptoFileChannel(openCryptoFile, options, closed -> channels.remove(closed), finallyUtil);
+		CryptoFileChannel channel = new CryptoFileChannel(openCryptoFile, options, channels::remove, finallyUtil);
 		channels.put(channel, channel);
 		if (closed) {
 			try {

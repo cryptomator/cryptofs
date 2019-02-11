@@ -236,9 +236,9 @@ public class CryptoFileSystemProviderTest {
 				.withMasterkeyFilename("masterkey.cryptomator") //
 				.withPassphrase("asd") //
 				.build();
-		when(fileSystems.create(eq(pathToVault), eq(properties))).thenReturn(cryptoFileSystem);
+		when(fileSystems.create(eq(inTest), eq(pathToVault), eq(properties))).thenReturn(cryptoFileSystem);
 		FileSystem result = inTest.newFileSystem(uri, properties);
-		verify(fileSystems).create(eq(pathToVault), eq(properties));
+		verify(fileSystems).create(eq(inTest), eq(pathToVault), eq(properties));
 
 		Assert.assertThat(result, is(cryptoFileSystem));
 		Assert.assertTrue(Files.isDirectory(dataDir));

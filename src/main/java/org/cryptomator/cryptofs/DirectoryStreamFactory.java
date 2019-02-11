@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import javax.inject.Inject;
 
-import org.cryptomator.cryptofs.CryptoPathMapper.Directory;
+import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptolib.api.Cryptor;
 
 @PerFileSystem
@@ -38,7 +38,7 @@ class DirectoryStreamFactory {
 	}
 
 	public CryptoDirectoryStream newDirectoryStream(CryptoPath cleartextDir, Filter<? super Path> filter) throws IOException {
-		Directory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
+		CiphertextDirectory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
 		CryptoDirectoryStream stream = new CryptoDirectoryStream( //
 				ciphertextDir, //
 				cleartextDir, //
