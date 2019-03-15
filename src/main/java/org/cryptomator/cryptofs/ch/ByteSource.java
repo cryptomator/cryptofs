@@ -107,7 +107,7 @@ interface ByteSource {
 		private void copyZeroesTo(ByteBuffer target) {
 			int amountOfZeroesAsInt = (int) min(amountOfZeroes, Integer.MAX_VALUE);
 			int amountOfZeroesToCopy = min(amountOfZeroesAsInt, target.remaining());
-			ByteBuffer zeroes = ByteBuffer.allocate(amountOfZeroesToCopy);
+			ByteBuffer zeroes = ByteBuffer.allocate(amountOfZeroesToCopy); // TODO: do we really need ZEROs? Or is it sufficient to simply SKIP to the target pos?
 			target.put(zeroes);
 			amountOfZeroes -= amountOfZeroesToCopy;
 		}

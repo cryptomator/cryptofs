@@ -3,6 +3,7 @@ package org.cryptomator.cryptofs;
 import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.ch.ChannelComponent;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -27,6 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 public class OpenCryptoFileTest {
 
@@ -36,13 +38,15 @@ public class OpenCryptoFileTest {
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
 
-	private FileSystem fs = Jimfs.newFileSystem("test");
+	private FileSystem fs;
 	private AtomicReference<Path> currentFilePath;
 	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 	private BasicFileAttributeView attributeView = mock(BasicFileAttributeView.class);
+	private OpenCryptoFiles openCryptoFiles = mock(OpenCryptoFiles.class);
 	private Supplier<BasicFileAttributeView> attributeViewSupplier= mock(Supplier.class);
 	private BasicFileAttributes attributes = mock(BasicFileAttributes.class);
 	private AtomicLong fileSize = new AtomicLong();
+	private AtomicReference<Instant> lastModified = new AtomicReference(Instant.ofEpochMilli(0));
 	private OpenCryptoFileComponent openCryptoFileComponent = mock(OpenCryptoFileComponent.class);
 	private ChannelComponent.Builder channelComponentBuilder = mock(ChannelComponent.Builder.class);
 	private ChannelComponent channelComponent = mock(ChannelComponent.class);
@@ -51,6 +55,7 @@ public class OpenCryptoFileTest {
 
 	@Before
 	public void setup() throws IOException {
+		fs = Jimfs.newFileSystem("OpenCryptoFileTest");
 		currentFilePath = new AtomicReference<>(fs.getPath("currentFile"));
 		Mockito.when(attributeViewSupplier.get()).thenReturn(attributeView);
 		Mockito.when(attributeView.readAttributes()).thenReturn(attributes);
@@ -59,9 +64,15 @@ public class OpenCryptoFileTest {
 		Mockito.when(channelComponentBuilder.ciphertextChannel(Mockito.any())).thenReturn(channelComponentBuilder);
 		Mockito.when(channelComponentBuilder.openOptions(Mockito.any())).thenReturn(channelComponentBuilder);
 		Mockito.when(channelComponentBuilder.lock(Mockito.any())).thenReturn(channelComponentBuilder);
+		Mockito.when(channelComponentBuilder.onClose(Mockito.any())).thenReturn(channelComponentBuilder);
 		Mockito.when(channelComponentBuilder.build()).thenReturn(channelComponent);
 
-		inTest = new OpenCryptoFile(attributeViewSupplier, currentFilePath, fileSize, openCryptoFileComponent);
+		inTest = new OpenCryptoFile(openCryptoFiles, attributeViewSupplier, currentFilePath, fileSize, lastModified, openCryptoFileComponent);
+	}
+
+	@After
+	public void tearDown() throws IOException {
+		fs.close();
 	}
 
 	@Test
@@ -72,6 +83,12 @@ public class OpenCryptoFileTest {
 
 		FileChannel ch = inTest.newFileChannel(options);
 		Assert.assertEquals(cleartextFileChannel, ch);
+	}
+
+	@Test
+	public void testCloseTriggersCloseListener() {
+		inTest.close();
+		verify(openCryptoFiles).close(inTest);
 	}
 
 }

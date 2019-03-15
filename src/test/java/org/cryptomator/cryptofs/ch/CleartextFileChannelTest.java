@@ -25,8 +25,13 @@ import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
+import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
+import java.util.function.Supplier;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -56,7 +61,11 @@ public class CleartextFileChannelTest {
 	private Lock lock = mock(Lock.class);
 	private EffectiveOpenOptions options = mock(EffectiveOpenOptions.class);
 	private AtomicLong fileSize = new AtomicLong(100);
+	private AtomicReference<Instant> lastModified = new AtomicReference(Instant.ofEpochMilli(0));
+	private Supplier<BasicFileAttributeView> attributeViewSupplier = mock(Supplier.class);
+	private BasicFileAttributeView attributeView = mock(BasicFileAttributeView.class);
 	private ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
+	private ChannelCloseListener closeListener = mock(ChannelCloseListener.class);
 
 	private CleartextFileChannel inTest;
 
@@ -69,8 +78,15 @@ public class CleartextFileChannelTest {
 		when(fileContentCryptor.cleartextChunkSize()).thenReturn(100);
 		when(fileContentCryptor.ciphertextChunkSize()).thenReturn(110);
 		when(ciphertextFileChannel.size()).thenReturn(160l); // initial cleartext size will be 100
+		when(attributeViewSupplier.get()).thenReturn(attributeView);
 
-		inTest = new CleartextFileChannel(lock, ciphertextFileChannel, cryptor, chunkCache, options, fileSize, exceptionsDuringWrite);
+		inTest = new CleartextFileChannel(lock, ciphertextFileChannel, cryptor, chunkCache, options, fileSize, lastModified, attributeViewSupplier, exceptionsDuringWrite, closeListener);
+	}
+
+	@Test
+	public void testCloseTriggersCloseListener() throws IOException {
+		inTest.close();
+		verify(closeListener).closed(inTest);
 	}
 
 	@Test
@@ -173,6 +189,17 @@ public class CleartextFileChannelTest {
 			verify(chunkCache).invalidateAll();
 		}
 
+		@Test
+		public void testForceUpdatesLastModifiedTime() throws IOException {
+			when(options.writable()).thenReturn(true);
+			lastModified.set(Instant.ofEpochMilli(123456789000l));
+			FileTime fileTime = FileTime.from(lastModified.get());
+
+			inTest.force(false);
+
+			verify(attributeView).setTimes(fileTime, null, null);
+		}
+
 	}
 
 	public class Close {
@@ -262,7 +289,7 @@ public class CleartextFileChannelTest {
 			when(ciphertextFileChannel.size()).thenReturn(5_500_000_160l); // initial cleartext size will be 5_000_000_100l
 			when(options.readable()).thenReturn(true);
 
-			inTest = new CleartextFileChannel(lock, ciphertextFileChannel, cryptor, chunkCache, options, fileSize, exceptionsDuringWrite);
+			inTest = new CleartextFileChannel(lock, ciphertextFileChannel, cryptor, chunkCache, options, fileSize, lastModified, attributeViewSupplier, exceptionsDuringWrite, closeListener);
 			ByteBuffer buf = ByteBuffer.allocate(10);
 
 			// A read from frist chunk:

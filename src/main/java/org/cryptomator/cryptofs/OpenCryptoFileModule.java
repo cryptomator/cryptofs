@@ -12,6 +12,8 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -36,6 +38,14 @@ class OpenCryptoFileModule {
 			Path path = currentPath.get();
 			return path.getFileSystem().provider().getFileAttributeView(path, BasicFileAttributeView.class);
 		};
+	}
+
+	@Provides
+	@PerOpenFile
+	@OpenFileModifiedDate
+	public AtomicReference<Instant> provideLastModifiedDate(@OriginalOpenFilePath Path originalPath) {
+		Instant lastModifiedDate = readBasicAttributes(originalPath).map(BasicFileAttributes::lastModifiedTime).map(FileTime::toInstant).orElse(Instant.ofEpochMilli(0));
+		return new AtomicReference<>(lastModifiedDate);
 	}
 
 	@Provides

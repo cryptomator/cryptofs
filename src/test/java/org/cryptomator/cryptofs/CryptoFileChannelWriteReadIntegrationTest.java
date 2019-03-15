@@ -229,6 +229,7 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		assertEquals(cleartextSize, Files.size(filePath(fileId)));
 
 		try (FileChannel channel = readableChannel(fileId)) {
+			assertEquals(cleartextSize, channel.size());
 			ByteBuffer buffer = ByteBuffer.allocate(cleartextSize);
 			int result = channel.read(buffer);
 			assertEquals(cleartextSize, result);
@@ -241,36 +242,29 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 	}
 
 	@Theory
-	public void testAppend(@FromDataPoints("dataSizes") int dataSize, @FromDataPoints("writeOffsets") int writeOffset) throws IOException {
-		assumeTrue(dataSize != 0 || writeOffset != 0);
+	public void testAppend(@FromDataPoints("dataSizes") int dataSize) throws IOException {
+		assumeTrue(dataSize != 0);
 
 		long fileId = nextFileId();
 
-		int cleartextSize = dataSize + writeOffset;
-
 		try (FileChannel channel = writableChannelInAppendMode(fileId)) {
 			assertEquals(0, channel.size());
-			if (writeOffset > 0) {
-				channel.write(repeat(1).times(1).asByteBuffer(), writeOffset - 1);
-				assertEquals(writeOffset, channel.size());
-			}
-			channel.write(repeat(2).times(dataSize).asByteBuffer());
-			assertEquals(cleartextSize, channel.size());
+			channel.write(repeat(1).times(dataSize).asByteBuffer());
+			assertEquals(dataSize, channel.size());
+		}
+
+		try (FileChannel channel = writableChannelInAppendMode(fileId)) {
+			assertEquals(dataSize, channel.size());
+			channel.write(repeat(1).times(dataSize).asByteBuffer());
+			channel.write(repeat(1).times(dataSize).asByteBuffer());
+			assertEquals(3*dataSize, channel.size());
 		}
 
 		try (FileChannel channel = readableChannel(fileId)) {
-			ByteBuffer buffer = ByteBuffer.allocate(cleartextSize);
+			ByteBuffer buffer = ByteBuffer.allocate(3*dataSize);
 			int result = channel.read(buffer);
-			assertEquals(cleartextSize, result);
+			assertEquals(3*dataSize, result);
 			assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
-			buffer.flip();
-			for (int i = 0; i < cleartextSize; i++) {
-				if (i >= writeOffset) {
-					assertEquals(format("byte(%d) = 2", i), 2, buffer.get(i));
-				} else if (i == writeOffset - 1) {
-					assertEquals(format("byte(%d) = 1", i), 1, buffer.get(i));
-				}
-			}
 		}
 	}
 

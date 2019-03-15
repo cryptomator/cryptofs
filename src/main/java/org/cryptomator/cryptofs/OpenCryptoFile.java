@@ -9,6 +9,7 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.ch.ChannelComponent;
+import org.cryptomator.cryptofs.ch.CleartextFileChannel;
 import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.Cryptor;
 
@@ -19,10 +20,15 @@ import java.io.UncheckedIOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLockInterruptionException;
 import java.nio.channels.InterruptedByTimeoutException;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -36,24 +42,22 @@ class OpenCryptoFile implements Closeable {
 
 	private static final int LOCK_TIMEOUT_MS = 100;
 
+	private final OpenCryptoFiles openCryptoFiles;
 	private final ReentrantReadWriteLock lock;
 	private final AtomicReference<Instant> lastModified;
 	private final AtomicReference<Path> currentFilePath;
 	private final AtomicLong fileSize;
 	private final OpenCryptoFileComponent component;
+	private final ConcurrentMap<CleartextFileChannel, Boolean> openChannels = new ConcurrentHashMap<>();
 
 	@Inject
-	public OpenCryptoFile(Supplier<BasicFileAttributeView> attrViewProvider, @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, OpenCryptoFileComponent component) {
+	public OpenCryptoFile(OpenCryptoFiles openCryptoFiles, Supplier<BasicFileAttributeView> attrViewProvider, @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
 		this.lock = new ReentrantReadWriteLock();
+		this.openCryptoFiles = openCryptoFiles;
 		this.currentFilePath = currentFilePath;
 		this.fileSize = fileSize;
 		this.component = component;
-		this.lastModified = new AtomicReference<>();
-		try {
-			lastModified.set(attrViewProvider.get().readAttributes().lastModifiedTime().toInstant());
-		} catch (IOException e) {
-			lastModified.set(Instant.ofEpochSecond(0));
-		}
+		this.lastModified = lastModified;
 	}
 
 	public FileChannel newFileChannel(EffectiveOpenOptions options) throws IOException {
@@ -66,9 +70,12 @@ class OpenCryptoFile implements Closeable {
 					.ciphertextChannel(ciphertextFileChannel) //
 					.openOptions(options) //
 					.lock(lock) //
+					.onClose(this::channelClosed) //
 					.build();
 			success = true;
-			return channelComponent.channel();
+			CleartextFileChannel cleartextFileChannel = channelComponent.channel();
+			openChannels.put(cleartextFileChannel, Boolean.TRUE);
+			return cleartextFileChannel;
 		} finally {
 			if (!success) {
 				lock.unlock();
@@ -116,8 +123,15 @@ class OpenCryptoFile implements Closeable {
 		this.currentFilePath.set(currentFilePath);
 	}
 
-	public void close() throws IOException {
+	private synchronized void channelClosed(CleartextFileChannel channel) {
+		openChannels.remove(channel);
+		if (openChannels.isEmpty()) {
+			close();
+		}
+	}
 
+	public void close() {
+		openCryptoFiles.close(this);
 	}
 
 	@Override

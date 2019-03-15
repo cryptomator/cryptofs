@@ -23,6 +23,9 @@ public interface ChannelComponent {
 		Builder lock(Lock lock);
 
 		@BindsInstance
+		Builder onClose(ChannelCloseListener listener);
+
+		@BindsInstance
 		Builder ciphertextChannel(FileChannel ciphertextChannel);
 
 		ChannelComponent build();

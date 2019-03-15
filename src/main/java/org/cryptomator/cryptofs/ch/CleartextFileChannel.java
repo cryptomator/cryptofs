@@ -2,6 +2,7 @@ package org.cryptomator.cryptofs.ch;
 
 import com.google.common.base.Preconditions;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
+import org.cryptomator.cryptofs.OpenFileModifiedDate;
 import org.cryptomator.cryptofs.OpenFileSize;
 import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -13,10 +14,16 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
+import java.util.function.Supplier;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
@@ -33,20 +40,29 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private final ChunkCache chunkCache;
 	private final EffectiveOpenOptions options;
 	private final AtomicLong fileSize;
+	private final AtomicReference<Instant> lastModified;
+	private final Supplier<BasicFileAttributeView> attrViewProvider;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
+	private final ChannelCloseListener closeListener;
 
 	private long position;
 
 	@Inject
-	public CleartextFileChannel(Lock lock, FileChannel ciphertextFileChannel, Cryptor cryptor, ChunkCache chunkCache, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, ExceptionsDuringWrite exceptionsDuringWrite) {
+	public CleartextFileChannel(Lock lock, FileChannel ciphertextFileChannel, Cryptor cryptor, ChunkCache chunkCache, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, Supplier<BasicFileAttributeView> attrViewProvider, ExceptionsDuringWrite exceptionsDuringWrite, ChannelCloseListener closeListener) {
 		this.lock = lock;
 		this.ciphertextFileChannel = ciphertextFileChannel;
 		this.cryptor = cryptor;
 		this.chunkCache = chunkCache;
 		this.options = options;
 		this.fileSize = fileSize;
+		this.lastModified = lastModified;
+		this.attrViewProvider = attrViewProvider;
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
+		this.closeListener = closeListener;
 		updateFileSize();
+		if (options.append()) {
+			position = fileSize.get();
+		}
 	}
 
 	private void updateFileSize() {
@@ -126,28 +142,42 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	}
 
 	@Override
-	public int write(ByteBuffer src, final long position) throws IOException {
+	public int write(ByteBuffer src, long position) throws IOException {
+		assertOpen();
+		assertWritable();
+
+		long oldFileSize = fileSize.get();
+		if (position > oldFileSize) {
+			// we need to fill the gap:
+			long gapLen = position - oldFileSize;
+			final ByteSource byteSource = ByteSource.repeatingZeroes(gapLen).followedBy(src); // prepend zeros to the original src
+			return writeInternal(byteSource, oldFileSize); // fill the gap by beginning to write from old EOF
+		} else {
+			final ByteSource byteSource = ByteSource.from(src);
+			return writeInternal(byteSource, position);
+		}
+	}
+
+	private int writeInternal(ByteSource src, long position) throws IOException {
+		Preconditions.checkArgument(position <= fileSize.get());
 		assertOpen();
 		assertWritable();
 		boolean completed = false;
 		try {
 			beginBlocking();
-			// grow file if position is beyond old EOF:
-			final long fillBytes = max(0, position - fileSize.get());
-			final ByteSource source = ByteSource.repeatingZeroes(fillBytes).followedBy(src);
 			int cleartextChunkSize = cryptor.fileContentCryptor().cleartextChunkSize();
 			int written = 0;
-			while (source.hasRemaining()) {
+			while (src.hasRemaining()) {
 				long currentPosition = position + written;
 				long chunkIndex = currentPosition / cleartextChunkSize; // floor by int-truncation
 				assert chunkIndex >= 0;
 				int offsetInChunk = (int) (currentPosition % cleartextChunkSize); // known to fit in int, because cleartextChunkSize is int
-				int len = (int) min(source.remaining(), cleartextChunkSize - offsetInChunk); // known to fit in int, because second argument is int
+				int len = (int) min(src.remaining(), cleartextChunkSize - offsetInChunk); // known to fit in int, because second argument is int
 				assert len <= cleartextChunkSize;
 				if (offsetInChunk == 0 && len == cleartextChunkSize) {
 					// complete chunk, no need to load and decrypt from file
 					ChunkData chunkData = ChunkData.emptyWithSize(cleartextChunkSize);
-					chunkData.copyData().from(source);
+					chunkData.copyData().from(src);
 					chunkCache.set(chunkIndex, chunkData);
 				} else {
 					/*
@@ -156,12 +186,13 @@ public class CleartextFileChannel extends AbstractFileChannel {
 					 * It would suffice if store the written data and do reading when storing the chunk.
 					 */
 					ChunkData chunkData = chunkCache.get(chunkIndex);
-					chunkData.copyDataStartingAt(offsetInChunk).from(source);
+					chunkData.copyDataStartingAt(offsetInChunk).from(src);
 				}
 				written += len;
 			}
-			long minSize = position + written - fillBytes;
+			long minSize = position + written;
 			fileSize.updateAndGet(size -> max(minSize, size));
+			lastModified.set(Instant.now());
 			completed = true;
 			return written;
 		} finally {
@@ -209,6 +240,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 				ciphertextFileChannel.truncate(ciphertextFileSize);
 				position = min(newSize, position);
 				fileSize.set(newSize);
+				lastModified.set(Instant.now());
 			}
 			completed = true;
 			return this;
@@ -229,6 +261,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			exceptionsDuringWrite.throwIfPresent();
 		}
 		ciphertextFileChannel.force(metaData);
+		attrViewProvider.get().setTimes(FileTime.from(lastModified.get()), null, null);
 	}
 
 	@Override
@@ -255,6 +288,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		} finally {
 			super.implCloseChannel();
 			lock.unlock();
+			closeListener.closed(this);
 		}
 	}
 }
