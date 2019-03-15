@@ -1,7 +1,10 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.FileContentCryptor;
+import org.cryptomator.cryptolib.api.FileHeaderCryptor;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -14,12 +17,25 @@ import java.util.Set;
 import static java.nio.file.attribute.PosixFilePermission.*;
 import static org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType.FILE;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class CryptoPosixFileAttributesTest {
 
 	private PosixFileAttributes delegate = mock(PosixFileAttributes.class);
 	private Cryptor cryptor = mock(Cryptor.class);
+	private FileHeaderCryptor headerCryptor = mock(FileHeaderCryptor.class);
+	private FileContentCryptor contentCryptor = mock(FileContentCryptor.class);
 	private OpenCryptoFile openCryptoFile = mock(OpenCryptoFile.class);
+
+	@Before
+	public void setup() {
+		when(delegate.size()).thenReturn(0l);
+		when(cryptor.fileHeaderCryptor()).thenReturn(headerCryptor);
+		when(cryptor.fileContentCryptor()).thenReturn(contentCryptor);
+		when(headerCryptor.headerSize()).thenReturn(0);
+		when(contentCryptor.ciphertextChunkSize()).thenReturn(100);
+		when(contentCryptor.cleartextChunkSize()).thenReturn(100);
+	}
 
 	@Test
 	public void testGetPermissions() {

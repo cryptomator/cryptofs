@@ -226,6 +226,8 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			assertEquals(cleartextSize, channel.size());
 		}
 
+		assertEquals(cleartextSize, Files.size(filePath(fileId)));
+
 		try (FileChannel channel = readableChannel(fileId)) {
 			ByteBuffer buffer = ByteBuffer.allocate(cleartextSize);
 			int result = channel.read(buffer);

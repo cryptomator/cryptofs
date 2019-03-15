@@ -13,5 +13,5 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Qualifier
 @Documented
 @Retention(RUNTIME)
-@interface CurrentOpenFilePath {
+public @interface CurrentOpenFilePath {
 }

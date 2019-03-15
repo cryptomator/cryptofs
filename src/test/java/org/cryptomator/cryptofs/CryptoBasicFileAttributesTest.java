@@ -81,15 +81,6 @@ public class CryptoBasicFileAttributesTest {
 	}
 
 	@Test
-	public void testSizeOfOpenFile() {
-		Mockito.when(delegateAttr.size()).thenReturn(42l);
-		OpenCryptoFile openCryptoFile = Mockito.mock(OpenCryptoFile.class);
-		Mockito.when(openCryptoFile.size()).thenReturn(1338l);
-		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, FILE, ciphertextFilePath, cryptor, Optional.of(openCryptoFile), false);
-		Assert.assertEquals(1338l, attr.size());
-	}
-
-	@Test
 	public void testSizeOfDirectory() {
 		Mockito.when(delegateAttr.size()).thenReturn(4096l);
 		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, DIRECTORY, ciphertextFilePath, cryptor, Optional.empty(), false);

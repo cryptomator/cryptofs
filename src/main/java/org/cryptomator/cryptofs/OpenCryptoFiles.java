@@ -40,24 +40,24 @@ class OpenCryptoFiles {
 		return Optional.ofNullable(openCryptoFiles.get(normalizedPath));
 	}
 
-	public OpenCryptoFile getOrCreate(Path ciphertextPath, EffectiveOpenOptions options) throws IOException {
+	public OpenCryptoFile getOrCreate(Path ciphertextPath) throws IOException {
 		Path normalizedPath = ciphertextPath.toAbsolutePath().normalize();
 		try {
 			// ConcurrentHashMap.computeIfAbsent is atomic, "create" is called at most once:
-			return openCryptoFiles.computeIfAbsent(normalizedPath, ignored -> create(normalizedPath, options));
+			return openCryptoFiles.computeIfAbsent(normalizedPath, ignored -> create(normalizedPath));
 		} catch (UncheckedIOException e) {
 			throw new IOException("Error opening file: " + normalizedPath, e);
 		}
 	}
 
 	public void writeCiphertextFile(Path ciphertextPath, EffectiveOpenOptions openOptions, ByteBuffer contents) throws IOException {
-		try (OpenCryptoFile f = getOrCreate(ciphertextPath, openOptions); FileChannel ch = f.newFileChannel(openOptions)) {
+		try (OpenCryptoFile f = getOrCreate(ciphertextPath); FileChannel ch = f.newFileChannel(openOptions)) {
 			ch.write(contents);
 		}
 	}
 
 	public ByteBuffer readCiphertextFile(Path ciphertextPath, EffectiveOpenOptions openOptions, int maxBufferSize) throws BufferUnderflowException, IOException {
-		try (OpenCryptoFile f = getOrCreate(ciphertextPath, openOptions); FileChannel ch = f.newFileChannel(openOptions)) {
+		try (OpenCryptoFile f = getOrCreate(ciphertextPath); FileChannel ch = f.newFileChannel(openOptions)) {
 			if (ch.size() > maxBufferSize) {
 				throw new BufferUnderflowException();
 			}
@@ -86,10 +86,9 @@ class OpenCryptoFiles {
 		finallyUtil.guaranteeInvocationOf(closers.iterator());
 	}
 
-	private OpenCryptoFile create(Path normalizedPath, EffectiveOpenOptions options) {
+	private OpenCryptoFile create(Path normalizedPath) {
 		OpenCryptoFileComponent openCryptoFileComponent = component.newOpenCryptoFileComponent()
 				.path(normalizedPath)
-				.openOptions(options)
 				.build();
 		return openCryptoFileComponent.openCryptoFile();
 	}

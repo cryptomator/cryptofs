@@ -1,6 +1,7 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.ch;
 
 import com.google.common.base.Supplier;
+import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
@@ -45,17 +46,16 @@ public class ChunkSaverTest {
 	private final FileHeaderCryptor fileHeaderCryptor = mock(FileHeaderCryptor.class);
 	private final Cryptor cryptor = mock(Cryptor.class);
 	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
-	private final AtomicLong size = new AtomicLong(0L);
 	private final FileHeader header = mock(FileHeader.class);
-	private final FileHeaderLoader headerLoader = mock(FileHeaderLoader.class);
+	private final FileHeaderHandler headerHandler = mock(FileHeaderHandler.class);
 	private final ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
-	private final ChunkSaver inTest = new ChunkSaver(cryptor, channel, headerLoader, exceptionsDuringWrite, size, stats);
+	private final ChunkSaver inTest = new ChunkSaver(cryptor, channel, headerHandler, exceptionsDuringWrite, stats);
 
 	@Before
 	public void setup() throws IOException {
 		when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
-		when(headerLoader.get()).thenReturn(header);
+		when(headerHandler.get()).thenReturn(header);
 		when(fileContentCryptor.ciphertextChunkSize()).thenReturn(CIPHERTEXT_CHUNK_SIZE);
 		when(fileContentCryptor.cleartextChunkSize()).thenReturn(CLEARTEXT_CHUNK_SIZE);
 		when(fileHeaderCryptor.headerSize()).thenReturn(HEADER_SIZE);
@@ -69,7 +69,6 @@ public class ChunkSaverTest {
 		Supplier<ByteBuffer> cleartext = () -> repeat(42).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer();
 		Supplier<ByteBuffer> ciphertext = () -> repeat(50).times(CIPHERTEXT_CHUNK_SIZE).asByteBuffer();
 		chunkData.copyData().from(cleartext.get());
-		size.set((chunkIndex + 10L) * CLEARTEXT_CHUNK_SIZE);
 		when(fileContentCryptor.encryptChunk(argThat(contains(cleartext.get())), eq(chunkIndex), eq(header))).thenReturn(ciphertext.get());
 
 		inTest.save(chunkIndex, chunkData);
@@ -86,7 +85,6 @@ public class ChunkSaverTest {
 		Supplier<ByteBuffer> cleartext = () -> repeat(42).times(CLEARTEXT_CHUNK_SIZE - 10).asByteBuffer();
 		Supplier<ByteBuffer> ciphertext = () -> repeat(50).times(CIPHERTEXT_CHUNK_SIZE - 10).asByteBuffer();
 		chunkData.copyData().from(cleartext.get());
-		size.set((chunkIndex + 10L) * CLEARTEXT_CHUNK_SIZE);
 		when(fileContentCryptor.encryptChunk(argThat(contains(cleartext.get())), eq(chunkIndex), eq(header))).thenReturn(ciphertext.get());
 
 		inTest.save(chunkIndex, chunkData);
@@ -96,22 +94,9 @@ public class ChunkSaverTest {
 	}
 
 	@Test
-	public void testChunkBeyondSizeIsNotWritten() throws IOException {
-		Long chunkIndex = 43L;
-		ChunkData irrelevant = null;
-		size.set(0);
-
-		inTest.save(chunkIndex, irrelevant);
-
-		verifyZeroInteractions(channel);
-		verifyZeroInteractions(stats);
-	}
-
-	@Test
 	public void testChunkThatWasNotWrittenIsNotWritten() throws IOException {
 		Long chunkIndex = 43L;
 		ChunkData chunkData = ChunkData.emptyWithSize(CLEARTEXT_CHUNK_SIZE);
-		size.set((chunkIndex + 10L) * CLEARTEXT_CHUNK_SIZE);
 
 		inTest.save(chunkIndex, chunkData);
 
@@ -128,7 +113,6 @@ public class ChunkSaverTest {
 		Supplier<ByteBuffer> cleartext = () -> repeat(42).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer();
 		Supplier<ByteBuffer> ciphertext = () -> repeat(50).times(CIPHERTEXT_CHUNK_SIZE).asByteBuffer();
 		chunkData.copyData().from(cleartext.get());
-		size.set((chunkIndex + 10L) * CLEARTEXT_CHUNK_SIZE);
 		when(fileContentCryptor.encryptChunk(argThat(contains(cleartext.get())), eq(chunkIndex), eq(header))).thenReturn(ciphertext.get());
 		when(channel.write(argThat(contains(ciphertext.get())), eq(expectedPosition))).thenThrow(ioException);
 

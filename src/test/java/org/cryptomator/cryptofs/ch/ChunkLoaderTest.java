@@ -1,5 +1,6 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.ch;
 
+import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
@@ -42,7 +43,7 @@ public class ChunkLoaderTest {
 	private final Cryptor cryptor = mock(Cryptor.class);
 	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
 	private final FileHeader header = mock(FileHeader.class);
-	private final FileHeaderLoader headerLoader = mock(FileHeaderLoader.class);
+	private final FileHeaderHandler headerLoader = mock(FileHeaderHandler.class);
 	private final ChunkLoader inTest = new ChunkLoader(cryptor, channel, headerLoader, stats);
 
 	@Before

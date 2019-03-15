@@ -32,6 +32,7 @@ import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.EnumSet;
 
+import org.cryptomator.cryptofs.ch.CleartextFileChannel;
 import org.cryptomator.cryptolib.api.InvalidPassphraseException;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.Matchers;
@@ -131,7 +132,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 	public void testOpenAndCloseFileChannel() throws IOException {
 		FileSystem fs = CryptoFileSystemProvider.newFileSystem(pathToVault, cryptoFileSystemProperties().withPassphrase("asd").build());
 		try (FileChannel ch = FileChannel.open(fs.getPath("/foo"), EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW))) {
-			Assert.assertTrue(ch instanceof CryptoFileChannel);
+			Assert.assertTrue(ch instanceof CleartextFileChannel);
 		}
 	}
 

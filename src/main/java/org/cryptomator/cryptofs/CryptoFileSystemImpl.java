@@ -345,7 +345,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			throw new FileAlreadyExistsException(cleartextFilePath.toString());
 		} else {
 			// might also throw FileAlreadyExists:
-			return openCryptoFiles.getOrCreate(ciphertextPath, options).newFileChannel(options);
+			return openCryptoFiles.getOrCreate(ciphertextPath).newFileChannel(options);
 		}
 	}
 

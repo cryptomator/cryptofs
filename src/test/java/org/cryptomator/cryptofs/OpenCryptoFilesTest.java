@@ -39,7 +39,6 @@ public class OpenCryptoFilesTest {
 		Mockito.when(subComponent.openCryptoFile()).thenReturn(file);
 
 		Mockito.when(cryptoFileSystemComponent.newOpenCryptoFileComponent()).thenReturn(openCryptoFileComponentBuilder);
-		Mockito.when(openCryptoFileComponentBuilder.openOptions(Mockito.any())).thenReturn(openCryptoFileComponentBuilder);
 		Mockito.when(openCryptoFileComponentBuilder.path(Mockito.any())).thenReturn(openCryptoFileComponentBuilder);
 		Mockito.when(openCryptoFileComponentBuilder.build()).thenReturn(subComponent);
 
@@ -64,13 +63,12 @@ public class OpenCryptoFilesTest {
 		Mockito.when(cryptoFileSystemComponent.newOpenCryptoFileComponent()).thenReturn(openCryptoFileComponentBuilder);
 		Mockito.when(openCryptoFileComponentBuilder.build()).thenReturn(subComponent1, subComponent2);
 
-		EffectiveOpenOptions openOptions = mock(EffectiveOpenOptions.class);
 		Path p1 = Paths.get("/foo");
 		Path p2 = Paths.get("/bar");
 
-		Assert.assertSame(file1, inTest.getOrCreate(p1, openOptions));
-		Assert.assertSame(file1, inTest.getOrCreate(p1, openOptions));
-		Assert.assertSame(file2, inTest.getOrCreate(p2, openOptions));
+		Assert.assertSame(file1, inTest.getOrCreate(p1));
+		Assert.assertSame(file1, inTest.getOrCreate(p1));
+		Assert.assertSame(file2, inTest.getOrCreate(p2));
 		Assert.assertNotSame(file1, file2);
 	}
 
@@ -107,10 +105,9 @@ public class OpenCryptoFilesTest {
 
 	@Test
 	public void testTwoPhaseMoveFailsWhenTargetIsOpened() throws IOException {
-		EffectiveOpenOptions openOptions = mock(EffectiveOpenOptions.class);
 		Path src = Paths.get("/src").toAbsolutePath();
 		Path dst = Paths.get("/dst").toAbsolutePath();
-		inTest.getOrCreate(dst, openOptions);
+		inTest.getOrCreate(dst);
 
 		thrown.expect(FileAlreadyExistsException.class);
 		inTest.prepareMove(src, dst);
@@ -118,10 +115,9 @@ public class OpenCryptoFilesTest {
 
 	@Test
 	public void testTwoPhaseMoveDoesntChangeAnythingWhenRolledBack() throws IOException {
-		EffectiveOpenOptions openOptions = mock(EffectiveOpenOptions.class);
 		Path src = Paths.get("/src");
 		Path dst = Paths.get("/dst");
-		inTest.getOrCreate(src, openOptions);
+		inTest.getOrCreate(src);
 
 		Assert.assertTrue(inTest.get(src).isPresent());
 		Assert.assertFalse(inTest.get(dst).isPresent());
@@ -134,10 +130,9 @@ public class OpenCryptoFilesTest {
 
 	@Test
 	public void testTwoPhaseMoveChangesReferencesWhenCommitted() throws IOException {
-		EffectiveOpenOptions openOptions = mock(EffectiveOpenOptions.class);
 		Path src = Paths.get("/src").toAbsolutePath();
 		Path dst = Paths.get("/dst").toAbsolutePath();
-		inTest.getOrCreate(src, openOptions);
+		inTest.getOrCreate(src);
 
 		Assert.assertTrue(inTest.get(src).isPresent());
 		Assert.assertFalse(inTest.get(dst).isPresent());

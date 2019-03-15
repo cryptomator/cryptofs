@@ -42,7 +42,7 @@ public class SymlinksTest {
 		inTest = new Symlinks(cryptoPathMapper, openCryptoFiles, readonlyFlag);
 
 		Mockito.when(cleartextPath.getFileSystem()).thenReturn(fs);
-		Mockito.when(openCryptoFiles.getOrCreate(Mockito.eq(ciphertextPath), Mockito.any())).thenReturn(ciphertextFile);
+		Mockito.when(openCryptoFiles.getOrCreate(ciphertextPath)).thenReturn(ciphertextFile);
 	}
 
 	@Test

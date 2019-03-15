@@ -1,5 +1,6 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.ch;
 
+import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptolib.api.Cryptor;
 
 import javax.inject.Inject;
@@ -7,19 +8,19 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
-@PerOpenFile
+@ChannelScoped
 class ChunkLoader {
 
 	private final Cryptor cryptor;
 	private final FileChannel channel;
-	private final FileHeaderLoader headerLoader;
+	private final FileHeaderHandler headerHandler;
 	private final CryptoFileSystemStats stats;
 
 	@Inject
-	public ChunkLoader(Cryptor cryptor, FileChannel channel, FileHeaderLoader headerLoader, CryptoFileSystemStats stats) {
+	public ChunkLoader(Cryptor cryptor, FileChannel channel, FileHeaderHandler headerHandler, CryptoFileSystemStats stats) {
 		this.cryptor = cryptor;
 		this.channel = channel;
-		this.headerLoader = headerLoader;
+		this.headerHandler = headerHandler;
 		this.stats = stats;
 	}
 
@@ -35,7 +36,7 @@ class ChunkLoader {
 			return ChunkData.emptyWithSize(payloadSize);
 		} else {
 			ciphertextBuf.flip();
-			ByteBuffer cleartextBuf = cryptor.fileContentCryptor().decryptChunk(ciphertextBuf, chunkIndex, headerLoader.get(), true);
+			ByteBuffer cleartextBuf = cryptor.fileContentCryptor().decryptChunk(ciphertextBuf, chunkIndex, headerHandler.get(), true);
 			stats.addBytesDecrypted(cleartextBuf.remaining());
 			ByteBuffer cleartextBufWhichCanHoldFullChunk;
 			if (cleartextBuf.capacity() < payloadSize) {

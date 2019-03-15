@@ -1,6 +1,9 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.FileContentCryptor;
+import org.cryptomator.cryptolib.api.FileHeaderCryptor;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.theories.Theories;
@@ -31,9 +34,23 @@ public class CryptoDosFileAttributesTest {
 	private DosFileAttributes delegate = mock(DosFileAttributes.class);
 	private CryptoPath path = mock(CryptoPath.class);
 	private Cryptor cryptor = mock(Cryptor.class);
+	private FileHeaderCryptor headerCryptor = mock(FileHeaderCryptor.class);
+	private FileContentCryptor contentCryptor = mock(FileContentCryptor.class);
 	private OpenCryptoFile openCryptoFile = mock(OpenCryptoFile.class);
 
-	private CryptoDosFileAttributes inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), false);
+	private CryptoDosFileAttributes inTest;
+
+	@Before
+	public void setup() {
+		when(delegate.size()).thenReturn(0l);
+		when(cryptor.fileHeaderCryptor()).thenReturn(headerCryptor);
+		when(cryptor.fileContentCryptor()).thenReturn(contentCryptor);
+		when(headerCryptor.headerSize()).thenReturn(0);
+		when(contentCryptor.ciphertextChunkSize()).thenReturn(100);
+		when(contentCryptor.cleartextChunkSize()).thenReturn(100);
+
+		inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), false);
+	}
 
 	@Test
 	public void testIsArchiveDelegates() {

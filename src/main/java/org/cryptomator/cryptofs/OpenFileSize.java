@@ -10,5 +10,5 @@ import javax.inject.Qualifier;
 @Qualifier
 @Documented
 @Retention(RUNTIME)
-@interface OpenFileSize {
+public @interface OpenFileSize {
 }

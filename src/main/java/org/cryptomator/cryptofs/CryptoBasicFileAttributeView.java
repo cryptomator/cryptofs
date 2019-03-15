@@ -42,9 +42,6 @@ class CryptoBasicFileAttributeView extends AbstractCryptoFileAttributeView imple
 	public void setTimes(FileTime lastModifiedTime, FileTime lastAccessTime, FileTime createTime) throws IOException {
 		readonlyFlag.assertWritable();
 		getCiphertextAttributeView(BasicFileAttributeView.class).setTimes(lastModifiedTime, lastAccessTime, createTime);
-		if (lastModifiedTime != null) {
-			getOpenCryptoFile().ifPresent(file -> file.setLastModifiedTime(lastModifiedTime));
-		}
 	}
 
 }

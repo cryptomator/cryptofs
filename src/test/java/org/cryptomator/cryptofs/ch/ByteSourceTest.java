@@ -6,13 +6,14 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.ch;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 import java.nio.ByteBuffer;
 
+import org.cryptomator.cryptofs.ch.ByteSource;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 

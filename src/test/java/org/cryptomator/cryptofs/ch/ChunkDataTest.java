@@ -1,4 +1,4 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.ch;
 
 import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
 import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
@@ -9,6 +9,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.nio.ByteBuffer;
 
+import org.cryptomator.cryptofs.ch.ChunkData;
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoints;
 import org.junit.experimental.theories.Theories;

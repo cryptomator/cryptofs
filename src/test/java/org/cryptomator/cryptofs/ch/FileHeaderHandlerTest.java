@@ -1,5 +1,6 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.ch;
 
+import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
@@ -24,10 +25,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class FileHeaderLoaderTest {
+public class FileHeaderHandlerTest {
 
 	static {
-		System.setProperty("org.slf4j.simpleLogger.log.org.cryptomator.cryptofs.FileHeaderLoader", "trace");
+		System.setProperty("org.slf4j.simpleLogger.log.org.cryptomator.cryptofs.ch.FileHeaderLoader", "trace");
 		System.setProperty("org.slf4j.simpleLogger.showDateTime", "true");
 		System.setProperty("org.slf4j.simpleLogger.dateTimeFormat", "HH:mm:ss.SSS");
 	}
@@ -46,7 +47,7 @@ public class FileHeaderLoaderTest {
 	private final Path path = mock(Path.class, "openFile.txt");
 	private final AtomicReference<Path> pathRef = new AtomicReference<>(path);
 
-	private final FileHeaderLoader inTest = new FileHeaderLoader(channel, cryptor, options, pathRef);
+	private final FileHeaderHandler inTest = new FileHeaderHandler(channel, cryptor, options, pathRef);
 
 	@Before
 	public void setup() throws IOException {

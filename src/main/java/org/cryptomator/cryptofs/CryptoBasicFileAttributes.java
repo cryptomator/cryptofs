@@ -46,7 +46,7 @@ class CryptoBasicFileAttributes implements BasicFileAttributes {
 			default:
 				throw new IllegalArgumentException("Unsupported ciphertext file type: " + ciphertextFileType);
 		}
-		this.lastModifiedTime = openCryptoFile.map(OpenCryptoFile::getLastModifiedTime).orElseGet(delegate::lastModifiedTime);
+		this.lastModifiedTime =  openCryptoFile.map(OpenCryptoFile::getLastModifiedTime).orElseGet(delegate::lastModifiedTime);
 		this.lastAccessTime = openCryptoFile.map(openFile -> FileTime.from(Instant.now())).orElseGet(delegate::lastAccessTime);
 		this.creationTime = delegate.creationTime();
 		this.fileKey = delegate.fileKey();

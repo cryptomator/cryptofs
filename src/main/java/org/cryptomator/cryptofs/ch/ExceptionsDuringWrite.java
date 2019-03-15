@@ -1,15 +1,18 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.ch;
 
+import javax.inject.Inject;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.inject.Inject;
-
-@PerOpenFile
+/**
+ * Collector for exceptions that happen during chunk cache invalidation.
+ * These exceptions will be rethrown by {@link CleartextFileChannel#force(boolean)}
+ */
+@ChannelScoped
 class ExceptionsDuringWrite {
 
-	private final List<IOException> exceptions = new ArrayList<>(); // todo handle / deliver exception
+	private final List<IOException> exceptions = new ArrayList<>();
 
 	@Inject
 	public ExceptionsDuringWrite() {
