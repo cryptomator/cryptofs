@@ -1,13 +1,10 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.mocks.DirectoryStreamMock;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
 
 import java.io.IOException;
 import java.net.URI;
@@ -21,19 +18,16 @@ import java.nio.file.attribute.BasicFileAttributes;
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.same;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.when;
 
 public class MoveOperationTest {
-
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	private CopyOperation copyOperation = mock(CopyOperation.class);
 
@@ -48,7 +42,7 @@ public class MoveOperationTest {
 	private CryptoPath aPathFromFsB = mock(CryptoPath.class);
 	private CryptoPath anotherPathFromFsB = mock(CryptoPath.class);
 
-	@Before
+	@BeforeEach
 	public void setup() {
 		when(aPathFromFsA.getFileSystem()).thenReturn(fileSystemA);
 		when(anotherPathFromFsA.getFileSystem()).thenReturn(fileSystemA);
@@ -101,11 +95,11 @@ public class MoveOperationTest {
 		when(aPathFromFsA.toUri()).thenReturn(uriA);
 		when(aPathFromFsB.toUri()).thenReturn(uriB);
 
-		thrown.expect(AtomicMoveNotSupportedException.class);
-		thrown.expectMessage(uriA.toString());
-		thrown.expectMessage(uriB.toString());
-
-		inTest.move(aPathFromFsA, aPathFromFsB, ATOMIC_MOVE);
+		AtomicMoveNotSupportedException e = Assertions.assertThrows(AtomicMoveNotSupportedException.class, () -> {
+			inTest.move(aPathFromFsA, aPathFromFsB, ATOMIC_MOVE);
+		});
+		Assertions.assertEquals(uriA.toString(), e.getFile());
+		Assertions.assertEquals(uriB.toString(), e.getOtherFile());
 	}
 
 	@Test
@@ -115,10 +109,10 @@ public class MoveOperationTest {
 		when(aPathFromFsAAttributes.isDirectory()).thenReturn(true);
 		when(fileSystemA.newDirectoryStream(same(aPathFromFsA), any())).thenReturn(DirectoryStreamMock.of(mock(Path.class)));
 
-		thrown.expect(IOException.class);
-		thrown.expectMessage("Can not move non empty directory to different FileSystem");
-
-		inTest.move(aPathFromFsA, aPathFromFsB);
+		IOException e = Assertions.assertThrows(IOException.class, () -> {
+			inTest.move(aPathFromFsA, aPathFromFsB);
+		});
+		Assertions.assertEquals("Can not move non empty directory to different FileSystem", e.getMessage());
 	}
 
 	@Test
@@ -152,11 +146,9 @@ public class MoveOperationTest {
 		when(fileSystemA.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
 		doThrow(IOException.class).when(copyOperation).copy(aPathFromFsA, aPathFromFsB, COPY_ATTRIBUTES);
 
-		try {
+		Assertions.assertThrows(IOException.class, () -> {
 			inTest.move(aPathFromFsA, aPathFromFsB);
-		} catch (IOException e) {
-
-		}
+		});
 
 		InOrder inOrder = inOrder(copyOperation, fileSystemB);
 		inOrder.verify(copyOperation).copy(aPathFromFsA, aPathFromFsB, COPY_ATTRIBUTES);
@@ -172,12 +164,11 @@ public class MoveOperationTest {
 		doThrow(expectedException).when(copyOperation).copy(aPathFromFsA, aPathFromFsB, COPY_ATTRIBUTES);
 		doThrow(IOException.class).when(fileSystemA).delete(aPathFromFsB);
 
-		try {
+		IOException e = Assertions.assertThrows(IOException.class, () -> {
 			inTest.move(aPathFromFsA, aPathFromFsB);
-		} catch (IOException e) {
-			assertThat(e, is(expectedException));
-			assertThat(e.getSuppressed().length, is(0));
-		}
+		});
+		Assertions.assertEquals(expectedException, e);
+		Assertions.assertEquals(0, e.getSuppressed().length);
 
 		InOrder inOrder = inOrder(copyOperation, fileSystemB);
 		inOrder.verify(copyOperation).copy(aPathFromFsA, aPathFromFsB, COPY_ATTRIBUTES);
@@ -191,11 +182,7 @@ public class MoveOperationTest {
 		when(fileSystemA.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
 		doThrow(FileAlreadyExistsException.class).when(copyOperation).copy(aPathFromFsA, aPathFromFsB, COPY_ATTRIBUTES);
 
-		try {
-			inTest.move(aPathFromFsA, aPathFromFsB);
-		} catch (IOException e) {
-
-		}
+		inTest.move(aPathFromFsA, aPathFromFsB);
 
 		InOrder inOrder = inOrder(copyOperation, fileSystemA);
 		inOrder.verify(copyOperation).copy(aPathFromFsA, aPathFromFsB, COPY_ATTRIBUTES);
@@ -208,11 +195,7 @@ public class MoveOperationTest {
 		when(fileSystemA.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
 		doThrow(NoSuchFileException.class).when(copyOperation).copy(aPathFromFsA, aPathFromFsB, COPY_ATTRIBUTES);
 
-		try {
-			inTest.move(aPathFromFsA, aPathFromFsB);
-		} catch (IOException e) {
-
-		}
+		inTest.move(aPathFromFsA, aPathFromFsB);
 
 		InOrder inOrder = inOrder(copyOperation, fileSystemA);
 		inOrder.verify(copyOperation).copy(aPathFromFsA, aPathFromFsB, COPY_ATTRIBUTES);

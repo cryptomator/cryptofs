@@ -1,32 +1,24 @@
 package org.cryptomator.cryptofs;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import org.hamcrest.Description;
+import org.hamcrest.Matcher;
+import org.hamcrest.TypeSafeMatcher;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.mockito.verification.VerificationMode;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.concurrent.ExecutionException;
+
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.internal.verification.VerificationModeFactory.times;
 
-import java.io.IOException;
-import java.nio.file.Path;
-
-import org.hamcrest.Description;
-import org.hamcrest.Matcher;
-import org.hamcrest.TypeSafeMatcher;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
-
 public class DirectoryIdProviderTest {
-
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	private DirectoryIdLoader loader = mock(DirectoryIdLoader.class);
 
@@ -42,7 +34,7 @@ public class DirectoryIdProviderTest {
 	public void testLoadInvokesLoader() throws IOException {
 		when(loader.load(aPath)).thenReturn(aDirectoryId);
 
-		assertThat(inTest.load(aPath), is(aDirectoryId));
+		Assertions.assertSame(aDirectoryId, inTest.load(aPath));
 	}
 
 	@Test
@@ -50,10 +42,11 @@ public class DirectoryIdProviderTest {
 		IOException originalIoException = new IOException();
 		when(loader.load(aPath)).thenThrow(originalIoException);
 
-		thrown.expect(IOException.class);
-		thrown.expectCause(hasCauseThat(is(originalIoException)));
-
-		inTest.load(aPath);
+		IOException e = Assertions.assertThrows(IOException.class, () -> {
+			inTest.load(aPath);
+		});
+		Assertions.assertTrue(e.getCause() instanceof ExecutionException);
+		Assertions.assertEquals(originalIoException, e.getCause().getCause());
 	}
 
 	@Test
@@ -62,7 +55,7 @@ public class DirectoryIdProviderTest {
 
 		inTest.load(aPath);
 
-		assertThat(inTest.load(aPath), is(aDirectoryId));
+		Assertions.assertSame(aDirectoryId, inTest.load(aPath));
 		verify(loader).load(aPath);
 		verifyNoMoreInteractions(loader);
 	}
@@ -74,7 +67,7 @@ public class DirectoryIdProviderTest {
 		inTest.load(aPath);
 		inTest.delete(aPath);
 
-		assertThat(inTest.load(aPath), is(aDirectoryId));
+		Assertions.assertSame(aDirectoryId, inTest.load(aPath));
 		verify(loader, times(2)).load(aPath);
 		verifyNoMoreInteractions(loader);
 	}
@@ -86,8 +79,8 @@ public class DirectoryIdProviderTest {
 
 		inTest.move(aPath, anotherPath);
 
-		assertThat(inTest.load(aPath), is(aDirectoryId));
-		assertThat(inTest.load(anotherPath), is(anotherDirectoryId));
+		Assertions.assertSame(aDirectoryId, inTest.load(aPath));
+		Assertions.assertSame(anotherDirectoryId, inTest.load(anotherPath));
 		verify(loader).load(aPath);
 		verify(loader).load(anotherPath);
 		verifyNoMoreInteractions(loader);
@@ -100,8 +93,8 @@ public class DirectoryIdProviderTest {
 		inTest.load(aPath);
 		inTest.move(aPath, anotherPath);
 
-		assertThat(inTest.load(anotherPath), is(aDirectoryId));
-		verify(loader).load(aPath);
+		Assertions.assertSame(aDirectoryId, inTest.load(aPath));
+		verify(loader, Mockito.atLeastOnce()).load(aPath);
 		verifyNoMoreInteractions(loader);
 	}
 
@@ -112,7 +105,7 @@ public class DirectoryIdProviderTest {
 		inTest.load(aPath);
 		inTest.move(aPath, anotherPath);
 
-		assertThat(inTest.load(aPath), is(aDirectoryId));
+		Assertions.assertSame(aDirectoryId, inTest.load(aPath));
 		verify(loader, times(2)).load(aPath);
 		verifyNoMoreInteractions(loader);
 	}

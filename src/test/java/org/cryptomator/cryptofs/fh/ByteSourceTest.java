@@ -8,20 +8,17 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.fh;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
 
-import org.cryptomator.cryptofs.fh.ByteSource;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import static org.hamcrest.CoreMatchers.is;
 
-import de.bechte.junit.runners.context.HierarchicalContextRunner;
-
-@RunWith(HierarchicalContextRunner.class)
 public class ByteSourceTest {
 
+	@Nested
 	public class FromByteBuffer {
 
 		@Test
@@ -29,7 +26,7 @@ public class ByteSourceTest {
 			ByteBuffer buffer = ByteBuffer.allocate(1);
 			ByteSource inTest = ByteSource.from(buffer);
 
-			assertThat(inTest.hasRemaining(), is(true));
+			MatcherAssert.assertThat(inTest.hasRemaining(), is(true));
 		}
 
 		@Test
@@ -37,7 +34,7 @@ public class ByteSourceTest {
 			ByteBuffer buffer = ByteBuffer.allocate(0);
 			ByteSource inTest = ByteSource.from(buffer);
 
-			assertThat(inTest.hasRemaining(), is(false));
+			MatcherAssert.assertThat(inTest.hasRemaining(), is(false));
 		}
 
 		@Test
@@ -46,7 +43,7 @@ public class ByteSourceTest {
 			ByteBuffer buffer = ByteBuffer.allocate(expectedResult);
 			ByteSource inTest = ByteSource.from(buffer);
 
-			assertThat(inTest.remaining(), is((long) expectedResult));
+			MatcherAssert.assertThat(inTest.remaining(), is((long) expectedResult));
 		}
 
 		@Test
@@ -59,10 +56,10 @@ public class ByteSourceTest {
 
 			inTest.copyTo(targetBuffer);
 
-			assertThat(sourceBuffer.position(), is(10));
-			assertThat(sourceBuffer.limit(), is(10));
-			assertThat(targetBuffer.position(), is(8));
-			assertThat(targetBuffer.limit(), is(20));
+			MatcherAssert.assertThat(sourceBuffer.position(), is(10));
+			MatcherAssert.assertThat(sourceBuffer.limit(), is(10));
+			MatcherAssert.assertThat(targetBuffer.position(), is(8));
+			MatcherAssert.assertThat(targetBuffer.limit(), is(20));
 		}
 
 		@Test
@@ -75,10 +72,10 @@ public class ByteSourceTest {
 
 			inTest.copyTo(targetBuffer);
 
-			assertThat(sourceBuffer.position(), is(8));
-			assertThat(sourceBuffer.limit(), is(20));
-			assertThat(targetBuffer.position(), is(10));
-			assertThat(targetBuffer.limit(), is(10));
+			MatcherAssert.assertThat(sourceBuffer.position(), is(8));
+			MatcherAssert.assertThat(sourceBuffer.limit(), is(20));
+			MatcherAssert.assertThat(targetBuffer.position(), is(10));
+			MatcherAssert.assertThat(targetBuffer.limit(), is(10));
 		}
 
 	}

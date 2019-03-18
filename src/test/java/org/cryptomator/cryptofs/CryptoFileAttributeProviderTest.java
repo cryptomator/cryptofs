@@ -8,9 +8,17 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.FileContentCryptor;
+import org.cryptomator.cryptolib.api.FileHeaderCryptor;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+
 import java.io.IOException;
 import java.nio.file.FileSystem;
-import java.nio.file.FileSystemLoopException;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -18,17 +26,6 @@ import java.nio.file.attribute.DosFileAttributes;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.spi.FileSystemProvider;
 
-import de.bechte.junit.runners.context.HierarchicalContextRunner;
-import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.FileContentCryptor;
-import org.cryptomator.cryptolib.api.FileHeaderCryptor;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mockito;
-
-@RunWith(HierarchicalContextRunner.class)
 public class CryptoFileAttributeProviderTest {
 
 	private Cryptor cryptor;
@@ -39,7 +36,7 @@ public class CryptoFileAttributeProviderTest {
 	private Path ciphertextFilePath;
 	private Symlinks symlinks;
 
-	@Before
+	@BeforeEach
 	public void setup() throws IOException {
 		cryptor = Mockito.mock(Cryptor.class);
 		pathMapper = Mockito.mock(CryptoPathMapper.class);
@@ -77,9 +74,10 @@ public class CryptoFileAttributeProviderTest {
 		Mockito.when(dosAttr.size()).thenReturn(110l);
 	}
 
+	@Nested
 	public class Files {
 
-		@Before
+		@BeforeEach
 		public void setup() throws IOException {
 			Mockito.when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CryptoPathMapper.CiphertextFileType.FILE);
 			Mockito.when(pathMapper.getCiphertextFilePath(cleartextPath, CryptoPathMapper.CiphertextFileType.FILE)).thenReturn(ciphertextFilePath);
@@ -89,37 +87,41 @@ public class CryptoFileAttributeProviderTest {
 		public void testReadBasicAttributes() throws IOException {
 			CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor, pathMapper, openCryptoFiles, fileSystemProperties, symlinks);
 			BasicFileAttributes attr = prov.readAttributes(cleartextPath, BasicFileAttributes.class);
-			Assert.assertTrue(attr instanceof BasicFileAttributes);
-			Assert.assertTrue(attr.isRegularFile());
+			Assertions.assertTrue(attr instanceof BasicFileAttributes);
+			Assertions.assertTrue(attr.isRegularFile());
 		}
 
 		@Test
 		public void testReadPosixAttributes() throws IOException {
 			CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor, pathMapper, openCryptoFiles, fileSystemProperties, symlinks);
 			PosixFileAttributes attr = prov.readAttributes(cleartextPath, PosixFileAttributes.class);
-			Assert.assertTrue(attr instanceof PosixFileAttributes);
-			Assert.assertTrue(attr.isRegularFile());
+			Assertions.assertTrue(attr instanceof PosixFileAttributes);
+			Assertions.assertTrue(attr.isRegularFile());
 		}
 
 		@Test
 		public void testReadDosAttributes() throws IOException {
 			CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor, pathMapper, openCryptoFiles, fileSystemProperties, symlinks);
 			DosFileAttributes attr = prov.readAttributes(cleartextPath, DosFileAttributes.class);
-			Assert.assertTrue(attr instanceof DosFileAttributes);
-			Assert.assertTrue(attr.isRegularFile());
+			Assertions.assertTrue(attr instanceof DosFileAttributes);
+			Assertions.assertTrue(attr.isRegularFile());
 		}
 
-		@Test(expected = UnsupportedOperationException.class)
-		public void testReadUnsupportedAttributes() throws IOException {
+		@Test
+		public void testReadUnsupportedAttributes() {
 			CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor, pathMapper, openCryptoFiles, fileSystemProperties, symlinks);
-			prov.readAttributes(cleartextPath, UnsupportedAttributes.class);
+
+			Assertions.assertThrows(UnsupportedOperationException.class, () -> {
+				prov.readAttributes(cleartextPath, UnsupportedAttributes.class);
+			});
 		}
 
 	}
 
+	@Nested
 	public class Directories {
 
-		@Before
+		@BeforeEach
 		public void setup() throws IOException {
 			Mockito.when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CryptoPathMapper.CiphertextFileType.DIRECTORY);
 			Mockito.when(pathMapper.getCiphertextDirPath(cleartextPath)).thenReturn(ciphertextFilePath);
@@ -129,15 +131,16 @@ public class CryptoFileAttributeProviderTest {
 		public void testReadBasicAttributes() throws IOException {
 			CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor, pathMapper, openCryptoFiles, fileSystemProperties, symlinks);
 			BasicFileAttributes attr = prov.readAttributes(cleartextPath, BasicFileAttributes.class);
-			Assert.assertTrue(attr instanceof BasicFileAttributes);
-			Assert.assertTrue(attr.isDirectory());
+			Assertions.assertTrue(attr instanceof BasicFileAttributes);
+			Assertions.assertTrue(attr.isDirectory());
 		}
 
 	}
 
+	@Nested
 	public class SymbolicLinks {
 
-		@Before
+		@BeforeEach
 		public void setup() throws IOException {
 			Mockito.when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CryptoPathMapper.CiphertextFileType.SYMLINK);
 		}
@@ -148,8 +151,8 @@ public class CryptoFileAttributeProviderTest {
 
 			CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor, pathMapper, openCryptoFiles, fileSystemProperties, symlinks);
 			BasicFileAttributes attr = prov.readAttributes(cleartextPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-			Assert.assertTrue(attr instanceof BasicFileAttributes);
-			Assert.assertTrue(attr.isSymbolicLink());
+			Assertions.assertTrue(attr instanceof BasicFileAttributes);
+			Assertions.assertTrue(attr.isSymbolicLink());
 		}
 
 		@Test
@@ -161,9 +164,9 @@ public class CryptoFileAttributeProviderTest {
 
 			CryptoFileAttributeProvider prov = new CryptoFileAttributeProvider(cryptor, pathMapper, openCryptoFiles, fileSystemProperties, symlinks);
 			BasicFileAttributes attr = prov.readAttributes(cleartextPath, BasicFileAttributes.class);
-			Assert.assertTrue(attr instanceof BasicFileAttributes);
-			Assert.assertTrue(attr.isRegularFile());
-			Assert.assertSame(80l, attr.size());
+			Assertions.assertTrue(attr instanceof BasicFileAttributes);
+			Assertions.assertTrue(attr.isRegularFile());
+			Assertions.assertSame(80l, attr.size());
 		}
 
 	}

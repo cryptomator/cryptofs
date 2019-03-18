@@ -1,20 +1,15 @@
 package org.cryptomator.cryptofs;
 
-import static java.nio.file.Paths.get;
-import static java.nio.file.StandardOpenOption.APPEND;
-import static java.util.Arrays.asList;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
-import static org.cryptomator.cryptofs.CryptoFileSystemProvider.containsVault;
-import static org.cryptomator.cryptofs.CryptoFileSystemProvider.newFileSystem;
-import static org.hamcrest.Matchers.instanceOf;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Jimfs;
+import org.cryptomator.cryptofs.CryptoFileSystemProperties.FileSystemFlags;
+import org.cryptomator.cryptolib.api.InvalidPassphraseException;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
 import java.net.URI;
@@ -39,37 +34,26 @@ import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Stream;
 
-import org.cryptomator.cryptofs.CryptoFileSystemProperties.FileSystemFlags;
-import org.cryptomator.cryptolib.api.InvalidPassphraseException;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.experimental.theories.DataPoints;
-import org.junit.experimental.theories.FromDataPoints;
-import org.junit.experimental.theories.Theories;
-import org.junit.experimental.theories.Theory;
-import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
+import static java.nio.file.Paths.get;
+import static java.nio.file.StandardOpenOption.APPEND;
+import static java.util.Arrays.asList;
+import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
+import static org.cryptomator.cryptofs.CryptoFileSystemProvider.containsVault;
+import static org.cryptomator.cryptofs.CryptoFileSystemProvider.newFileSystem;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.is;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-import com.google.common.jimfs.Configuration;
-import com.google.common.jimfs.Jimfs;
-
-@RunWith(Theories.class)
 public class CryptoFileSystemProviderTest {
-
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	private final CryptoFileSystems fileSystems = mock(CryptoFileSystems.class);
 
@@ -86,46 +70,47 @@ public class CryptoFileSystemProviderTest {
 
 	private CryptoFileSystemProvider inTest;
 
-	@DataPoints("shouldFailWithProviderMismatch")
-	@SuppressWarnings("unchecked")
-	public static final List<InvocationWhichShouldFail> INVOCATIONS_FAILING_WITH_PROVIDER_MISMATCH = asList( //
-			invocation("newAsynchronousFileChannel", (inTest, path) -> inTest.newAsynchronousFileChannel(path, new HashSet<>(), mock(ExecutorService.class))), //
-			invocation("newFileChannel", (inTest, path) -> inTest.newFileChannel(path, new HashSet<>())), //
-			invocation("newByteChannel", (inTest, path) -> inTest.newByteChannel(path, new HashSet<>())), //
-			invocation("newDirectoryStream", (inTest, path) -> inTest.newDirectoryStream(path, mock(Filter.class))), //
-			invocation("createDirectory", (inTest, path) -> inTest.createDirectory(path)), //
-			invocation("delete", (inTest, path) -> inTest.delete(path)), //
-			invocation("copy", (inTest, path) -> inTest.copy(path, path)), //
-			invocation("move", (inTest, path) -> inTest.move(path, path)), //
-			invocation("isHidden", (inTest, path) -> inTest.isHidden(path)), //
-			invocation("getFileStore", (inTest, path) -> inTest.getFileStore(path)), //
-			invocation("checkAccess", (inTest, path) -> inTest.checkAccess(path)), //
-			invocation("getFileAttributeView", (inTest, path) -> inTest.getFileAttributeView(path, FileAttributeView.class)), //
-			invocation("readAttributesWithClass", (inTest, path) -> inTest.readAttributes(path, BasicFileAttributes.class)), //
-			invocation("readAttributesWithString", (inTest, path) -> inTest.readAttributes(path, "fooBar")), //
-			invocation("setAttribute", (inTest, path) -> inTest.setAttribute(path, "a", "b")) //
-	);
+	private static final Stream<InvocationWhichShouldFail> shouldFailWithProviderMismatch() {
+		return Stream.of( //
+				invocation("newAsynchronousFileChannel", (inTest, path) -> inTest.newAsynchronousFileChannel(path, new HashSet<>(), mock(ExecutorService.class))), //
+				invocation("newFileChannel", (inTest, path) -> inTest.newFileChannel(path, new HashSet<>())), //
+				invocation("newByteChannel", (inTest, path) -> inTest.newByteChannel(path, new HashSet<>())), //
+				invocation("newDirectoryStream", (inTest, path) -> inTest.newDirectoryStream(path, mock(Filter.class))), //
+				invocation("createDirectory", (inTest, path) -> inTest.createDirectory(path)), //
+				invocation("delete", (inTest, path) -> inTest.delete(path)), //
+				invocation("copy", (inTest, path) -> inTest.copy(path, path)), //
+				invocation("move", (inTest, path) -> inTest.move(path, path)), //
+				invocation("isHidden", (inTest, path) -> inTest.isHidden(path)), //
+				invocation("getFileStore", (inTest, path) -> inTest.getFileStore(path)), //
+				invocation("checkAccess", (inTest, path) -> inTest.checkAccess(path)), //
+				invocation("getFileAttributeView", (inTest, path) -> inTest.getFileAttributeView(path, FileAttributeView.class)), //
+				invocation("readAttributesWithClass", (inTest, path) -> inTest.readAttributes(path, BasicFileAttributes.class)), //
+				invocation("readAttributesWithString", (inTest, path) -> inTest.readAttributes(path, "fooBar")), //
+				invocation("setAttribute", (inTest, path) -> inTest.setAttribute(path, "a", "b")) //
+		);
+	}
 
-	@DataPoints("shouldFailWithRelativePath")
 	@SuppressWarnings("unchecked")
-	public static final List<InvocationWhichShouldFail> INVOCATIONS_FAILING_WITH_RELATIVE_PATH = asList( //
-			invocation("newAsynchronousFileChannel", (inTest, path) -> inTest.newAsynchronousFileChannel(path, new HashSet<>(), mock(ExecutorService.class))), //
-			invocation("newFileChannel", (inTest, path) -> inTest.newFileChannel(path, new HashSet<>())), //
-			invocation("newByteChannel", (inTest, path) -> inTest.newByteChannel(path, new HashSet<>())), //
-			invocation("newDirectoryStream", (inTest, path) -> inTest.newDirectoryStream(path, mock(Filter.class))), //
-			invocation("createDirectory", (inTest, path) -> inTest.createDirectory(path)), //
-			invocation("delete", (inTest, path) -> inTest.delete(path)), //
-			invocation("copy", (inTest, path) -> inTest.copy(path, path)), //
-			invocation("move", (inTest, path) -> inTest.move(path, path)), //
-			invocation("isHidden", (inTest, path) -> inTest.isHidden(path)), //
-			invocation("checkAccess", (inTest, path) -> inTest.checkAccess(path)), //
-			invocation("getFileAttributeView", (inTest, path) -> inTest.getFileAttributeView(path, FileAttributeView.class)), //
-			invocation("readAttributesWithClass", (inTest, path) -> inTest.readAttributes(path, BasicFileAttributes.class)), //
-			invocation("readAttributesWithString", (inTest, path) -> inTest.readAttributes(path, "fooBar")), //
-			invocation("setAttribute", (inTest, path) -> inTest.setAttribute(path, "a", "b")) //
-	);
+	private static final Stream<InvocationWhichShouldFail> shouldFailWithRelativePath() {
+		return Stream.of( //
+				invocation("newAsynchronousFileChannel", (inTest, path) -> inTest.newAsynchronousFileChannel(path, new HashSet<>(), mock(ExecutorService.class))), //
+				invocation("newFileChannel", (inTest, path) -> inTest.newFileChannel(path, new HashSet<>())), //
+				invocation("newByteChannel", (inTest, path) -> inTest.newByteChannel(path, new HashSet<>())), //
+				invocation("newDirectoryStream", (inTest, path) -> inTest.newDirectoryStream(path, mock(Filter.class))), //
+				invocation("createDirectory", (inTest, path) -> inTest.createDirectory(path)), //
+				invocation("delete", (inTest, path) -> inTest.delete(path)), //
+				invocation("copy", (inTest, path) -> inTest.copy(path, path)), //
+				invocation("move", (inTest, path) -> inTest.move(path, path)), //
+				invocation("isHidden", (inTest, path) -> inTest.isHidden(path)), //
+				invocation("checkAccess", (inTest, path) -> inTest.checkAccess(path)), //
+				invocation("getFileAttributeView", (inTest, path) -> inTest.getFileAttributeView(path, FileAttributeView.class)), //
+				invocation("readAttributesWithClass", (inTest, path) -> inTest.readAttributes(path, BasicFileAttributes.class)), //
+				invocation("readAttributesWithString", (inTest, path) -> inTest.readAttributes(path, "fooBar")), //
+				invocation("setAttribute", (inTest, path) -> inTest.setAttribute(path, "a", "b")) //
+		);
+	}
 
-	@Before
+	@BeforeEach
 	@SuppressWarnings("deprecation")
 	public void setup() {
 		CryptoFileSystemProviderComponent component = mock(CryptoFileSystemProviderComponent.class);
@@ -147,38 +132,42 @@ public class CryptoFileSystemProviderTest {
 		when(otherFileSystem.provider()).thenReturn(otherProvider);
 	}
 
-	@Theory
-	public void testInvocationsWithPathFromOtherProviderFailWithProviderMismatchException(@FromDataPoints("shouldFailWithProviderMismatch") InvocationWhichShouldFail shouldFailWithProviderMismatch) throws IOException {
-		thrown.expect(ProviderMismatchException.class);
-
-		shouldFailWithProviderMismatch.invoke(inTest, otherPath);
+	@ParameterizedTest
+	@MethodSource("shouldFailWithProviderMismatch")
+	public void testInvocationsWithPathFromOtherProviderFailWithProviderMismatchException(InvocationWhichShouldFail shouldFailWithProviderMismatch) {
+		Assertions.assertThrows(ProviderMismatchException.class, () -> {
+			shouldFailWithProviderMismatch.invoke(inTest, otherPath);
+		});
 	}
 
-	@Theory
-	public void testInvocationsWithRelativePathFailWithIllegalArgumentException(@FromDataPoints("shouldFailWithRelativePath") InvocationWhichShouldFail shouldFailWithRelativePath) throws IOException {
-		thrown.expect(IllegalArgumentException.class);
-		thrown.expectMessage("Path must be absolute");
-
-		shouldFailWithRelativePath.invoke(inTest, relativeCryptoPath);
+	@ParameterizedTest
+	@MethodSource("shouldFailWithRelativePath")
+	public void testInvocationsWithRelativePathFailWithIllegalArgumentException(InvocationWhichShouldFail shouldFailWithRelativePath) {
+		IllegalArgumentException e = Assertions.assertThrows(IllegalArgumentException.class, () -> {
+			shouldFailWithRelativePath.invoke(inTest, relativeCryptoPath);
+		});
+		MatcherAssert.assertThat(e.getMessage(), containsString("Path must be absolute"));
 	}
 
 	@Test
 	@SuppressWarnings("deprecation")
 	public void testFileSystemsIsMock() {
-		assertThat(inTest.getCryptoFileSystems(), is(fileSystems));
+		Assertions.assertSame(fileSystems, inTest.getCryptoFileSystems());
 	}
 
 	@Test
 	public void testGetSchemeReturnsCryptomatorScheme() {
-		assertThat(inTest.getScheme(), is("cryptomator"));
+		Assertions.assertSame("cryptomator", inTest.getScheme());
 	}
 
-	@Test(expected = NotDirectoryException.class)
-	public void testInitializeFailWithNotDirectoryException() throws IOException {
+	@Test
+	public void testInitializeFailWithNotDirectoryException() {
 		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
 		Path pathToVault = fs.getPath("/vaultDir");
 
-		CryptoFileSystemProvider.initialize(pathToVault, "irrelevant.txt", "asd");
+		Assertions.assertThrows(NotDirectoryException.class, () -> {
+			CryptoFileSystemProvider.initialize(pathToVault, "irrelevant.txt", "asd");
+		});
 	}
 
 	@Test
@@ -191,8 +180,8 @@ public class CryptoFileSystemProviderTest {
 		Files.createDirectory(pathToVault);
 		CryptoFileSystemProvider.initialize(pathToVault, "masterkey.cryptomator", "asd");
 
-		Assert.assertTrue(Files.isDirectory(dataDir));
-		Assert.assertTrue(Files.isRegularFile(masterkeyFile));
+		Assertions.assertTrue(Files.isDirectory(dataDir));
+		Assertions.assertTrue(Files.isRegularFile(masterkeyFile));
 	}
 
 	@Test
@@ -210,14 +199,13 @@ public class CryptoFileSystemProviderTest {
 				.withMasterkeyFilename("masterkey.cryptomator") //
 				.withPassphrase("asd") //
 				.build();
-		try {
-			thrown.expect(NoSuchFileException.class);
-			thrown.expectMessage("Vault not initialized");
+
+		NoSuchFileException e = Assertions.assertThrows(NoSuchFileException.class, () -> {
 			inTest.newFileSystem(uri, properties);
-		} finally {
-			Assert.assertTrue(Files.notExists(dataDir));
-			Assert.assertTrue(Files.notExists(masterkeyFile));
-		}
+		});
+		MatcherAssert.assertThat(e.getMessage(), containsString("Vault not initialized"));
+		Assertions.assertTrue(Files.notExists(dataDir));
+		Assertions.assertTrue(Files.notExists(masterkeyFile));
 	}
 
 	@Test
@@ -240,9 +228,9 @@ public class CryptoFileSystemProviderTest {
 		FileSystem result = inTest.newFileSystem(uri, properties);
 		verify(fileSystems).create(eq(inTest), eq(pathToVault), eq(properties));
 
-		Assert.assertThat(result, is(cryptoFileSystem));
-		Assert.assertTrue(Files.isDirectory(dataDir));
-		Assert.assertTrue(Files.isRegularFile(masterkeyFile));
+		Assertions.assertSame(cryptoFileSystem, result);
+		Assertions.assertTrue(Files.isDirectory(dataDir));
+		Assertions.assertTrue(Files.isRegularFile(masterkeyFile));
 	}
 
 	@Test
@@ -257,7 +245,7 @@ public class CryptoFileSystemProviderTest {
 		Files.createDirectories(dataDir);
 		Files.write(masterkeyFile, new byte[0]);
 
-		assertTrue(containsVault(pathToVault, masterkeyFilename));
+		Assertions.assertTrue(containsVault(pathToVault, masterkeyFilename));
 	}
 
 	@Test
@@ -270,7 +258,7 @@ public class CryptoFileSystemProviderTest {
 		Path dataDir = pathToVault.resolve("d");
 		Files.createDirectories(dataDir);
 
-		assertFalse(containsVault(pathToVault, masterkeyFilename));
+		Assertions.assertFalse(containsVault(pathToVault, masterkeyFilename));
 	}
 
 	@Test
@@ -284,7 +272,7 @@ public class CryptoFileSystemProviderTest {
 		Files.createDirectories(pathToVault);
 		Files.write(masterkeyFile, new byte[0]);
 
-		assertFalse(containsVault(pathToVault, masterkeyFilename));
+		Assertions.assertFalse(containsVault(pathToVault, masterkeyFilename));
 	}
 
 	@Test
@@ -329,14 +317,14 @@ public class CryptoFileSystemProviderTest {
 
 		CryptoFileSystemProvider.changePassphrase(pathToVault, masterkeyFilename, oldPassphrase, newPassphrase);
 
-		thrown.expect(InvalidPassphraseException.class);
-
-		newFileSystem( //
-				pathToVault, //
-				cryptoFileSystemProperties() //
-						.withMasterkeyFilename(masterkeyFilename) //
-						.withPassphrase(oldPassphrase) //
-						.build());
+		Assertions.assertThrows(InvalidPassphraseException.class, () -> {
+			newFileSystem( //
+					pathToVault, //
+					cryptoFileSystemProperties() //
+							.withMasterkeyFilename(masterkeyFilename) //
+							.withPassphrase(oldPassphrase) //
+							.build());
+		});
 	}
 
 	@Test
@@ -347,7 +335,7 @@ public class CryptoFileSystemProviderTest {
 
 		FileSystem result = inTest.getFileSystem(uri);
 
-		assertThat(result, is(cryptoFileSystem));
+		Assertions.assertSame(cryptoFileSystem, result);
 	}
 
 	@Test
@@ -359,17 +347,17 @@ public class CryptoFileSystemProviderTest {
 
 		Path result = inTest.getPath(uri);
 
-		assertThat(result, is(cryptoPath));
+		Assertions.assertSame(cryptoPath, result);
 	}
 
 	@Test
-	public void testNewAsyncFileChannelFailsIfOptionsContainAppend() throws IOException {
+	public void testNewAsyncFileChannelFailsIfOptionsContainAppend() {
 		Path irrelevantPath = null;
 		ExecutorService irrelevantExecutor = null;
 
-		thrown.expect(IllegalArgumentException.class);
-
-		inTest.newAsynchronousFileChannel(irrelevantPath, new HashSet<>(asList(APPEND)), irrelevantExecutor);
+		Assertions.assertThrows(IllegalArgumentException.class, () -> {
+			inTest.newAsynchronousFileChannel(irrelevantPath, new HashSet<>(asList(APPEND)), irrelevantExecutor);
+		});
 	}
 
 	@Test
@@ -383,10 +371,10 @@ public class CryptoFileSystemProviderTest {
 
 		AsynchronousFileChannel result = inTest.newAsynchronousFileChannel(cryptoPath, options, executor);
 
-		assertThat(result, is(instanceOf(AsyncDelegatingFileChannel.class)));
+		MatcherAssert.assertThat(result, is(instanceOf(AsyncDelegatingFileChannel.class)));
 		AsyncDelegatingFileChannel asyncDelegatingFileChannel = (AsyncDelegatingFileChannel) result;
-		assertThat(asyncDelegatingFileChannel.getChannel(), is(channel));
-		assertThat(asyncDelegatingFileChannel.getExecutor(), is(executor));
+		Assertions.assertSame(channel, asyncDelegatingFileChannel.getChannel());
+		Assertions.assertSame(executor, asyncDelegatingFileChannel.getExecutor());
 	}
 
 	@Test
@@ -398,7 +386,7 @@ public class CryptoFileSystemProviderTest {
 
 		FileChannel result = inTest.newFileChannel(cryptoPath, options);
 
-		assertThat(result, is(channel));
+		Assertions.assertSame(channel, result);
 	}
 
 	@Test
@@ -410,7 +398,7 @@ public class CryptoFileSystemProviderTest {
 
 		ByteChannel result = inTest.newByteChannel(cryptoPath, options);
 
-		assertThat(result, is(channel));
+		Assertions.assertSame(channel, result);
 	}
 
 	@Test
@@ -423,7 +411,7 @@ public class CryptoFileSystemProviderTest {
 
 		DirectoryStream<Path> result = inTest.newDirectoryStream(cryptoPath, filter);
 
-		assertThat(result, is(stream));
+		Assertions.assertSame(stream, result);
 	}
 
 	@Test
@@ -463,7 +451,7 @@ public class CryptoFileSystemProviderTest {
 
 	@Test
 	public void testIsSameFileReturnsFalseIfFileSystemsOfPathsDoNotMatch() throws IOException {
-		assertFalse(inTest.isSameFile(cryptoPath, otherPath));
+		Assertions.assertFalse(inTest.isSameFile(cryptoPath, otherPath));
 	}
 
 	@Test
@@ -471,7 +459,7 @@ public class CryptoFileSystemProviderTest {
 		when(cryptoPath.toRealPath()).thenReturn(cryptoPath);
 		when(secondCryptoPath.toRealPath()).thenReturn(secondCryptoPath);
 
-		assertFalse(inTest.isSameFile(cryptoPath, secondCryptoPath));
+		Assertions.assertFalse(inTest.isSameFile(cryptoPath, secondCryptoPath));
 	}
 
 	@Test
@@ -479,21 +467,21 @@ public class CryptoFileSystemProviderTest {
 		when(cryptoPath.toRealPath()).thenReturn(cryptoPath);
 		when(secondCryptoPath.toRealPath()).thenReturn(cryptoPath);
 
-		assertTrue(inTest.isSameFile(cryptoPath, secondCryptoPath));
+		Assertions.assertTrue(inTest.isSameFile(cryptoPath, secondCryptoPath));
 	}
 
 	@Test
 	public void testIsHiddenDelegatesToFileSystemIfTrue() throws IOException {
 		when(cryptoFileSystem.isHidden(cryptoPath)).thenReturn(true);
 
-		assertTrue(inTest.isHidden(cryptoPath));
+		Assertions.assertTrue(inTest.isHidden(cryptoPath));
 	}
 
 	@Test
 	public void testIsHiddenDelegatesToFileSystemIfFalse() throws IOException {
 		when(cryptoFileSystem.isHidden(cryptoPath)).thenReturn(false);
 
-		assertFalse(inTest.isHidden(cryptoPath));
+		Assertions.assertFalse(inTest.isHidden(cryptoPath));
 	}
 
 	@Test
@@ -512,7 +500,7 @@ public class CryptoFileSystemProviderTest {
 
 		FileStore result = inTest.getFileStore(cryptoPath);
 
-		assertThat(result, is(fileStore));
+		Assertions.assertSame(fileStore, result);
 	}
 
 	@Test
@@ -523,7 +511,7 @@ public class CryptoFileSystemProviderTest {
 
 		FileAttributeView result = inTest.getFileAttributeView(cryptoPath, FileAttributeView.class, option);
 
-		assertThat(result, is(view));
+		Assertions.assertSame(view, result);
 	}
 
 	@Test
@@ -534,7 +522,7 @@ public class CryptoFileSystemProviderTest {
 
 		BasicFileAttributes result = inTest.readAttributes(cryptoPath, BasicFileAttributes.class, option);
 
-		assertThat(result, is(attributes));
+		Assertions.assertSame(attributes, result);
 	}
 
 	@Test
@@ -547,7 +535,7 @@ public class CryptoFileSystemProviderTest {
 
 		Map<String, Object> result = inTest.readAttributes(cryptoPath, name, option);
 
-		assertThat(result, is(attributes));
+		Assertions.assertSame(attributes, result);
 	}
 
 	@Test

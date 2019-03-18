@@ -5,15 +5,11 @@ import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ReadonlyFlag;
 import org.cryptomator.cryptofs.ch.ChannelComponent;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
@@ -30,12 +26,6 @@ import static org.mockito.Mockito.verify;
 
 public class OpenCryptoFileTest {
 
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
 	private FileSystem fs;
 	private AtomicReference<Path> currentFilePath;
 	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
@@ -49,7 +39,7 @@ public class OpenCryptoFileTest {
 
 	private OpenCryptoFile inTest;
 
-	@Before
+	@BeforeEach
 	public void setup() throws IOException {
 		fs = Jimfs.newFileSystem("OpenCryptoFileTest");
 		currentFilePath = new AtomicReference<>(fs.getPath("currentFile"));
@@ -62,7 +52,7 @@ public class OpenCryptoFileTest {
 		inTest = new OpenCryptoFile(closeListener, chunkIO, currentFilePath, fileSize, lastModified, openCryptoFileComponent);
 	}
 
-	@After
+	@AfterEach
 	public void tearDown() throws IOException {
 		fs.close();
 	}
@@ -74,7 +64,7 @@ public class OpenCryptoFileTest {
 		Mockito.when(channelComponent.channel()).thenReturn(cleartextFileChannel);
 
 		FileChannel ch = inTest.newFileChannel(options);
-		Assert.assertEquals(cleartextFileChannel, ch);
+		Assertions.assertEquals(cleartextFileChannel, ch);
 	}
 
 	@Test

@@ -1,6 +1,5 @@
 package org.cryptomator.cryptofs.ch;
 
-import de.bechte.junit.runners.context.HierarchicalContextRunner;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.fh.ChunkCache;
 import org.cryptomator.cryptofs.fh.ChunkData;
@@ -8,16 +7,13 @@ import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -38,21 +34,13 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.function.Supplier;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(HierarchicalContextRunner.class)
 public class CleartextFileChannelTest {
-
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	private ChunkCache chunkCache = mock(ChunkCache.class);
 	private ReadWriteLock readWriteLock = mock(ReadWriteLock.class);
@@ -72,7 +60,7 @@ public class CleartextFileChannelTest {
 
 	private CleartextFileChannel inTest;
 
-	@Before
+	@BeforeEach
 	public void setUp() throws IOException {
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
 		when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
@@ -90,41 +78,43 @@ public class CleartextFileChannelTest {
 
 	@Test
 	public void testSize() throws IOException {
-		Assert.assertEquals(100, inTest.size());
+		Assertions.assertEquals(100, inTest.size());
 	}
 
+	@Nested
 	public class Position {
 
 		@Test
 		public void testInitialPositionIsZero() throws IOException {
-			assertThat(inTest.position(), is(0L));
+			MatcherAssert.assertThat(inTest.position(), is(0L));
 		}
 
 		@Test
 		public void testPositionCanBeSet() throws IOException {
 			inTest.position(3727L);
 
-			assertThat(inTest.position(), is(3727L));
+			MatcherAssert.assertThat(inTest.position(), is(3727L));
 		}
 
 		@Test
 		public void testPositionCanNotBeSetToANegativeValue() throws IOException {
-			thrown.expect(IllegalArgumentException.class);
-
-			inTest.position(-42);
+			Assertions.assertThrows(IllegalArgumentException.class, () -> {
+				inTest.position(-42);
+			});
 		}
 
 	}
 
+	@Nested
 	public class Truncate {
 
 		@Test
 		public void testTruncateFailsWithIOExceptionIfNotWritable() throws IOException {
 			when(options.writable()).thenReturn(false);
 
-			thrown.expect(NonWritableChannelException.class);
-
-			inTest.truncate(3727L);
+			Assertions.assertThrows(NonWritableChannelException.class, () -> {
+				inTest.truncate(3727L);
+			});
 		}
 
 		@Test
@@ -136,7 +126,8 @@ public class CleartextFileChannelTest {
 
 			inTest.truncate(newSize);
 
-			assertThat(inTest.position(), is(currentPosition));
+
+			MatcherAssert.assertThat(inTest.position(), is(currentPosition));
 		}
 
 		@Test
@@ -146,11 +137,12 @@ public class CleartextFileChannelTest {
 
 			inTest.truncate(50);
 
-			Assert.assertEquals(50, inTest.position());
+			Assertions.assertEquals(50, inTest.position());
 		}
 
 	}
 
+	@Nested
 	public class Force {
 
 		@Test
@@ -181,9 +173,10 @@ public class CleartextFileChannelTest {
 			when(options.writable()).thenReturn(true);
 			doThrow(new IOException("exception during write")).when(exceptionsDuringWrite).throwIfPresent();
 
-			thrown.expect(IOException.class);
-			thrown.expectMessage("exception during write");
-			inTest.force(false);
+			IOException e = Assertions.assertThrows(IOException.class, () -> {
+				inTest.force(false);
+			});
+			Assertions.assertEquals("exception during write", e.getMessage());
 
 			verify(chunkCache).invalidateAll();
 		}
@@ -201,6 +194,7 @@ public class CleartextFileChannelTest {
 
 	}
 
+	@Nested
 	public class Close {
 
 		@Test
@@ -213,9 +207,9 @@ public class CleartextFileChannelTest {
 
 	@Test
 	public void testMapThrowsUnsupportedOperationException() throws IOException {
-		thrown.expect(UnsupportedOperationException.class);
-
-		inTest.map(MapMode.PRIVATE, 3727L, 3727L);
+		Assertions.assertThrows(UnsupportedOperationException.class, () -> {
+			inTest.map(MapMode.PRIVATE, 3727L, 3727L);
+		});
 	}
 
 //	public class Lock {
@@ -272,15 +266,16 @@ public class CleartextFileChannelTest {
 //
 //	}
 
+	@Nested
 	public class Read {
 
 		@Test
 		public void testReadFailsIfNotReadable() throws IOException {
 			when(options.readable()).thenReturn(false);
 
-			thrown.expect(NonReadableChannelException.class);
-
-			inTest.read(ByteBuffer.allocate(10));
+			Assertions.assertThrows(NonReadableChannelException.class, () -> {
+				inTest.read(ByteBuffer.allocate(10));
+			});
 		}
 
 		@Test
@@ -319,7 +314,7 @@ public class CleartextFileChannelTest {
 			inTest.position(11);
 			inTest.read(buffer);
 
-			Assert.assertEquals(66, inTest.position());
+			Assertions.assertEquals(66, inTest.position());
 		}
 
 		@Test
@@ -330,11 +325,12 @@ public class CleartextFileChannelTest {
 
 			inTest.read(buffer);
 
-			Assert.assertEquals(100, inTest.position());
+			Assertions.assertEquals(100, inTest.position());
 		}
 
 	}
 
+	@Nested
 	public class Write {
 
 		@Test
@@ -365,9 +361,9 @@ public class CleartextFileChannelTest {
 		public void testWriteFailsIfNotWritable() throws IOException {
 			when(options.writable()).thenReturn(false);
 
-			thrown.expect(NonWritableChannelException.class);
-
-			inTest.write(ByteBuffer.allocate(10));
+			Assertions.assertThrows(NonWritableChannelException.class, () -> {
+				inTest.write(ByteBuffer.allocate(10));
+			});
 		}
 
 		@Test
@@ -375,12 +371,12 @@ public class CleartextFileChannelTest {
 			ByteBuffer buffer = ByteBuffer.allocate(110);
 			when(options.writable()).thenReturn(true);
 
-			Assert.assertEquals(100, inTest.size());
+			Assertions.assertEquals(100, inTest.size());
 
 			int written = inTest.write(buffer, 95); // old EOF at 100
 
-			Assert.assertEquals(110, written);
-			Assert.assertEquals(205, inTest.size());
+			Assertions.assertEquals(110, written);
+			Assertions.assertEquals(205, inTest.size());
 
 			verify(chunkCache).get(0l);
 			verify(chunkCache).set(Mockito.eq(1l), Mockito.any());
@@ -389,12 +385,11 @@ public class CleartextFileChannelTest {
 
 		@Test
 		public void testWriteWithBuffersFailsIfNotWritable() throws IOException {
-			ByteBuffer[] irrelevant = null;
 			when(options.writable()).thenReturn(false);
 
-			thrown.expect(NonWritableChannelException.class);
-
-			inTest.write(irrelevant, 0, 0);
+			Assertions.assertThrows(NonWritableChannelException.class, () -> {
+				inTest.write(null, 0, 0);
+			});
 		}
 
 		@Test
@@ -405,55 +400,67 @@ public class CleartextFileChannelTest {
 			inTest.position(70);
 
 			long written = inTest.write(buffers, 1, 2);
-			Assert.assertEquals(40, written);
+			Assertions.assertEquals(40, written);
 		}
 
 	}
 
+	@Nested
 	public class OperationsOnClosedChannelThrowClosedChannelException {
 
-		@Before
+		@BeforeEach
 		public void setUp() throws IOException {
 			inTest.close();
-			thrown.expect(ClosedChannelException.class);
 		}
 
 		@Test
-		public void testGetPosition() throws IOException {
-			inTest.position();
+		public void testGetPosition() {
+			Assertions.assertThrows(ClosedChannelException.class, () -> {
+				inTest.position();
+			});
 		}
 
 		@Test
-		public void testSetPosition() throws IOException {
-			inTest.position(3727L);
+		public void testSetPosition() {
+			Assertions.assertThrows(ClosedChannelException.class, () -> {
+				inTest.position(3727L);
+			});
 		}
 
 		@Test
-		public void testRead() throws IOException {
+		public void testRead() {
 			when(options.readable()).thenReturn(true);
 
-			inTest.read(ByteBuffer.allocate(10));
+			Assertions.assertThrows(ClosedChannelException.class, () -> {
+				inTest.read(ByteBuffer.allocate(10));
+			});
 		}
 
 		@Test
-		public void testWrite() throws IOException {
+		public void testWrite() {
 			when(options.writable()).thenReturn(true);
 
-			inTest.write(ByteBuffer.allocate(10));
+			Assertions.assertThrows(ClosedChannelException.class, () -> {
+				inTest.write(ByteBuffer.allocate(10));
+			});
 		}
 
 		@Test
-		public void testReadWithPosition() throws IOException {
+		public void testReadWithPosition() {
 			when(options.readable()).thenReturn(true);
 
-			inTest.read(ByteBuffer.allocate(10), 3727L);
+			Assertions.assertThrows(ClosedChannelException.class, () -> {
+				inTest.read(ByteBuffer.allocate(10), 3727L);
+			});
 		}
 
 		@Test
-		public void testWriteWithPosition() throws IOException {
+		public void testWriteWithPosition() {
 			when(options.writable()).thenReturn(true);
 
-			inTest.write(ByteBuffer.allocate(10), 3727L);
+			Assertions.assertThrows(ClosedChannelException.class, () -> {
+				inTest.write(ByteBuffer.allocate(10), 3727L);
+			});
 		}
 
 		@Test
@@ -462,7 +469,9 @@ public class CleartextFileChannelTest {
 			ReadableByteChannel source = mock(ReadableByteChannel.class);
 			when(source.read(any())).thenReturn(58);
 
-			inTest.transferFrom(source, 3727L, 58);
+			Assertions.assertThrows(ClosedChannelException.class, () -> {
+				inTest.transferFrom(source, 3727L, 58);
+			});
 		}
 
 		@Test
@@ -471,32 +480,44 @@ public class CleartextFileChannelTest {
 			WritableByteChannel target = mock(WritableByteChannel.class);
 			when(target.write(any())).thenReturn(58);
 
-			inTest.transferTo(3727L, 58, target);
+			Assertions.assertThrows(ClosedChannelException.class, () -> {
+				inTest.transferTo(3727L, 58, target);
+			});
 		}
 
 		@Test
-		public void testSize() throws IOException {
-			inTest.size();
+		public void testSize() {
+			Assertions.assertThrows(ClosedChannelException.class, () -> {
+				inTest.size();
+			});
 		}
 
 		@Test
-		public void testTruncate() throws IOException {
-			inTest.truncate(3727L);
+		public void testTruncate() {
+			Assertions.assertThrows(ClosedChannelException.class, () -> {
+				inTest.truncate(3727L);
+			});
 		}
 
 		@Test
-		public void testForce() throws IOException {
-			inTest.force(true);
+		public void testForce() {
+			Assertions.assertThrows(ClosedChannelException.class, () -> {
+				inTest.force(true);
+			});
 		}
 
 		@Test
-		public void testLock() throws IOException {
-			inTest.lock(3727L, 3727L, true);
+		public void testLock() {
+			Assertions.assertThrows(ClosedChannelException.class, () -> {
+				inTest.lock(3727L, 3727L, true);
+			});
 		}
 
 		@Test
-		public void testTryLock() throws IOException {
-			inTest.tryLock(3727L, 3727L, true);
+		public void testTryLock() {
+			Assertions.assertThrows(ClosedChannelException.class, () -> {
+				inTest.tryLock(3727L, 3727L, true);
+			});
 		}
 
 	}

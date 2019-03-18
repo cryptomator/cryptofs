@@ -1,5 +1,11 @@
 package org.cryptomator.cryptofs;
 
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
@@ -10,17 +16,8 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.spi.FileSystemProvider;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.mockito.Mockito;
-
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -29,9 +26,6 @@ import static org.mockito.Mockito.when;
 
 public class DirectoryIdLoaderTest {
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
 	private final FileSystemProvider provider = mock(FileSystemProvider.class);
 	private final FileSystem fileSystem = mock(FileSystem.class);
 	private final Path dirFilePath = mock(Path.class);
@@ -39,7 +33,7 @@ public class DirectoryIdLoaderTest {
 
 	private final DirectoryIdLoader inTest = new DirectoryIdLoader();
 
-	@Before
+	@BeforeEach
 	public void setup() {
 		when(dirFilePath.getFileSystem()).thenReturn(fileSystem);
 		when(otherDirFilePath.getFileSystem()).thenReturn(fileSystem);
@@ -54,7 +48,7 @@ public class DirectoryIdLoaderTest {
 		String first = inTest.load(dirFilePath);
 		String second = inTest.load(otherDirFilePath);
 
-		assertThat(first, is(not(second)));
+		Assertions.assertNotEquals(second, first);
 	}
 
 	@Test
@@ -63,8 +57,8 @@ public class DirectoryIdLoaderTest {
 
 		String result = inTest.load(dirFilePath);
 
-		assertThat(result, is(notNullValue()));
-		assertThat(result, is(not("")));
+		Assertions.assertNotNull(result);
+		Assertions.assertNotEquals("", result);
 	}
 
 	@Test
@@ -82,7 +76,7 @@ public class DirectoryIdLoaderTest {
 
 		String result = inTest.load(dirFilePath);
 
-		assertThat(result, is(expectedId));
+		Assertions.assertEquals(expectedId, result);
 	}
 
 	@Test
@@ -91,10 +85,10 @@ public class DirectoryIdLoaderTest {
 		when(provider.newFileChannel(eq(dirFilePath), any())).thenReturn(channel);
 		when(channel.size()).thenReturn(0l);
 
-		thrown.expect(IOException.class);
-		thrown.expectMessage("Invalid, empty directory file");
-
-		inTest.load(dirFilePath);
+		IOException e = Assertions.assertThrows(IOException.class, () -> {
+			inTest.load(dirFilePath);
+		});
+		MatcherAssert.assertThat(e.getMessage(), containsString("Invalid, empty directory file"));
 	}
 
 	@Test
@@ -103,10 +97,10 @@ public class DirectoryIdLoaderTest {
 		when(provider.newFileChannel(eq(dirFilePath), any())).thenReturn(channel);
 		when(channel.size()).thenReturn((long) Integer.MAX_VALUE);
 
-		thrown.expect(IOException.class);
-		thrown.expectMessage("Unexpectedly large directory file");
-
-		inTest.load(dirFilePath);
+		IOException e = Assertions.assertThrows(IOException.class, () -> {
+			inTest.load(dirFilePath);
+		});
+		MatcherAssert.assertThat(e.getMessage(), containsString("Unexpectedly large directory file"));
 	}
 
 	private FileChannel createFileChannelMock() throws ReflectiveOperationException {

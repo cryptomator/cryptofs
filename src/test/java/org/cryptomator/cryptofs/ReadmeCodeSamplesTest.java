@@ -8,7 +8,9 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.net.URI;
@@ -20,33 +22,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
 public class ReadmeCodeSamplesTest {
 
-	private Path storageLocation;
-
-	@Before
-	public void setup() throws IOException {
-		storageLocation = Files.createTempDirectory("unit-tests");
-	}
-
-	@After
-	public void teardown() throws IOException {
-		Files.walkFileTree(storageLocation, DeletingFileVisitor.INSTANCE);
-	}
-
 	@Test
-	public void testReadmeCodeSampleUsingFileSystemConstructionMethodA() throws IOException {
+	public void testReadmeCodeSampleUsingFileSystemConstructionMethodA(@TempDir Path storageLocation) throws IOException {
 		FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(storageLocation, CryptoFileSystemProperties.cryptoFileSystemProperties().withPassphrase("password").build());
 
 		runCodeSample(fileSystem);
 	}
 
 	@Test
-	public void testReadmeCodeSampleUsingFileSystemConstructionMethodB() throws IOException {
+	public void testReadmeCodeSampleUsingFileSystemConstructionMethodB(@TempDir Path storageLocation) throws IOException {
 		URI uri = CryptoFileSystemUri.create(storageLocation);
 		FileSystem fileSystem = FileSystems.newFileSystem(uri, CryptoFileSystemProperties.cryptoFileSystemProperties().withPassphrase("password").build());
 
@@ -69,9 +55,9 @@ public class ReadmeCodeSamplesTest {
 			listing.forEach(files::add);
 		}
 
-		assertEquals(1, files.size());
-		assertEquals("/foo/bar/test", files.get(0).toString());
-		assertEquals(Files.size(testFile), 4);
+		Assertions.assertEquals(1, files.size());
+		Assertions.assertEquals("/foo/bar/test", files.get(0).toString());
+		Assertions.assertEquals(Files.size(testFile), 4);
 	}
 
 }

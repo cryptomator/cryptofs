@@ -1,14 +1,12 @@
 package org.cryptomator.cryptofs;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.experimental.theories.Theories;
-import org.junit.experimental.theories.Theory;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
 
 import java.io.IOException;
 import java.nio.file.FileSystem;
@@ -17,18 +15,13 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.stream.Stream;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(Theories.class)
 public class CryptoDosFileAttributeViewTest {
-
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
 
 	private Path linkCiphertextPath = mock(Path.class);
 
@@ -48,7 +41,7 @@ public class CryptoDosFileAttributeViewTest {
 
 	private CryptoDosFileAttributeView inTest;
 
-	@Before
+	@BeforeEach
 	public void setup() throws IOException {
 		when(linkCiphertextPath.getFileSystem()).thenReturn(fileSystem);
 
@@ -69,10 +62,11 @@ public class CryptoDosFileAttributeViewTest {
 
 	@Test
 	public void testNameIsDos() {
-		assertThat(inTest.name(), is("dos"));
+		Assertions.assertEquals("dos", inTest.name());
 	}
 
-	@Theory
+	@ParameterizedTest
+	@MethodSource("booleans")
 	public void testSetReadOnly(boolean value) throws IOException {
 		inTest.setReadOnly(value);
 
@@ -80,7 +74,8 @@ public class CryptoDosFileAttributeViewTest {
 		verify(delegate).setReadOnly(value);
 	}
 
-	@Theory
+	@ParameterizedTest
+	@MethodSource("booleans")
 	public void testSetHidden(boolean value) throws IOException {
 		inTest.setHidden(value);
 
@@ -88,7 +83,8 @@ public class CryptoDosFileAttributeViewTest {
 		verify(delegate).setHidden(value);
 	}
 
-	@Theory
+	@ParameterizedTest
+	@MethodSource("booleans")
 	public void testSetSystem(boolean value) throws IOException {
 		inTest.setSystem(value);
 
@@ -96,7 +92,8 @@ public class CryptoDosFileAttributeViewTest {
 		verify(delegate).setSystem(value);
 	}
 
-	@Theory
+	@ParameterizedTest
+	@MethodSource("booleans")
 	public void testSetArchive(boolean value) throws IOException {
 		inTest.setArchive(value);
 
@@ -104,7 +101,8 @@ public class CryptoDosFileAttributeViewTest {
 		verify(delegate).setArchive(value);
 	}
 
-	@Theory
+	@ParameterizedTest
+	@MethodSource("booleans")
 	public void testSetHiddenOfSymlinkNoFollow(boolean value) throws IOException {
 		CryptoDosFileAttributeView view = new CryptoDosFileAttributeView(link, pathMapper, new LinkOption[]{LinkOption.NOFOLLOW_LINKS}, symlinks, openCryptoFiles, fileAttributeProvider, readonlyFlag);
 		view.setHidden(value);
@@ -112,12 +110,17 @@ public class CryptoDosFileAttributeViewTest {
 		verify(linkDelegate).setHidden(value);
 	}
 
-	@Theory
+	@ParameterizedTest
+	@MethodSource("booleans")
 	public void testSetHiddenOfSymlinkFollow(boolean value) throws IOException {
 		CryptoDosFileAttributeView view = new CryptoDosFileAttributeView(link, pathMapper, new LinkOption[]{}, symlinks, openCryptoFiles, fileAttributeProvider, readonlyFlag);
 		view.setHidden(value);
 
 		verify(delegate).setHidden(value);
+	}
+
+	private static final Stream<Boolean> booleans() {
+		return Stream.of(Boolean.TRUE, Boolean.FALSE);
 	}
 
 }

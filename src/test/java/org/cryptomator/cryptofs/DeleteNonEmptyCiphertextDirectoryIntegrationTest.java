@@ -8,11 +8,10 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static java.nio.file.Files.walkFileTree;
-import static java.nio.file.StandardOpenOption.CREATE_NEW;
-import static org.cryptomator.cryptofs.Constants.SHORT_NAMES_MAX_LENGTH;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
-import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,37 +24,26 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import static java.nio.file.StandardOpenOption.CREATE_NEW;
+import static org.cryptomator.cryptofs.Constants.SHORT_NAMES_MAX_LENGTH;
+import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
+import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 
 /**
  * Regression tests https://github.com/cryptomator/cryptofs/issues/17.
  */
 public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
-	private static Path tempDir;
 	private static Path pathToVault;
 	private static Path mDir;
 	private static FileSystem fileSystem;
 
-	@BeforeClass
-	public static void setupClass() throws IOException {
-		tempDir = Files.createTempDirectory("DNECDIT");
-		pathToVault = tempDir.resolve("vault");
+	@BeforeAll
+	public static void setupClass(@TempDir Path tmpDir) throws IOException {
+		pathToVault = tmpDir.resolve("vault");
 		mDir = pathToVault.resolve("m");
 		Files.createDirectory(pathToVault);
 		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
-	}
-
-	@AfterClass
-	public static void teardownClass() throws IOException {
-		walkFileTree(tempDir, DeletingFileVisitor.INSTANCE);
 	}
 
 	@Test
@@ -121,9 +109,9 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 		Files.createDirectory(cleartextDirectory);
 		createFile(cleartextDirectory, "test", new byte[] {65});
 
-		thrown.expect(DirectoryNotEmptyException.class);
-
-		Files.delete(cleartextDirectory);
+		Assertions.assertThrows(DirectoryNotEmptyException.class, () -> {
+			Files.delete(cleartextDirectory);
+		});
 	}
 
 	@Test
@@ -138,9 +126,9 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 				.collect(Collectors.joining());
 		createFolder(cleartextDirectory, name);
 
-		thrown.expect(DirectoryNotEmptyException.class);
-
-		Files.delete(cleartextDirectory);
+		Assertions.assertThrows(DirectoryNotEmptyException.class, () -> {
+			Files.delete(cleartextDirectory);
+		});
 	}
 
 	@Test

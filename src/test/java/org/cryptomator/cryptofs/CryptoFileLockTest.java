@@ -1,44 +1,32 @@
 package org.cryptomator.cryptofs;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class CryptoFileLockTest {
 
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
 	private FileChannel channel = new DummyFileChannel();
 
-	@Mock
-	private FileLock delegate;
+	private FileLock delegate = Mockito.mock(FileLock.class);
 
-	private long size = 3728L;
+	private long size = 3728l;
 
-	private long position = 323L;
+	private long position = 323l;
 
 	private boolean shared = true;
 
 	private CryptoFileLock inTest;
 
-	@Before
+	@BeforeEach
 	public void setup() {
 		inTest = CryptoFileLock.builder() //
 				.withChannel(channel) //
@@ -51,62 +39,62 @@ public class CryptoFileLockTest {
 
 	@Test
 	public void testConstructionWithoutChannelFails() {
-		thrown.expect(IllegalStateException.class);
-
-		CryptoFileLock.builder() //
-				.withDelegate(delegate) //
-				.withPosition(position) //
-				.withSize(size) //
-				.thatIsShared(shared) //
-				.build();
+		Assertions.assertThrows(IllegalStateException.class, () -> {
+			CryptoFileLock.builder() //
+					.withDelegate(delegate) //
+					.withPosition(position) //
+					.withSize(size) //
+					.thatIsShared(shared) //
+					.build();
+		});
 	}
 
 	@Test
 	public void testConstructionWithoutDelegateFails() {
-		thrown.expect(IllegalStateException.class);
-
-		CryptoFileLock.builder() //
-				.withChannel(channel) //
-				.withPosition(position) //
-				.withSize(size) //
-				.thatIsShared(shared) //
-				.build();
+		Assertions.assertThrows(IllegalStateException.class, () -> {
+			CryptoFileLock.builder() //
+					.withChannel(channel) //
+					.withPosition(position) //
+					.withSize(size) //
+					.thatIsShared(shared) //
+					.build();
+		});
 	}
 
 	@Test
 	public void testConstructionWithoutPositionFails() {
-		thrown.expect(IllegalStateException.class);
-
-		CryptoFileLock.builder() //
-				.withChannel(channel) //
-				.withDelegate(delegate) //
-				.withSize(size) //
-				.thatIsShared(shared) //
-				.build();
+		Assertions.assertThrows(IllegalStateException.class, () -> {
+			CryptoFileLock.builder() //
+					.withChannel(channel) //
+					.withDelegate(delegate) //
+					.withSize(size) //
+					.thatIsShared(shared) //
+					.build();
+		});
 	}
 
 	@Test
 	public void testConstructionWithoutSizeFails() {
-		thrown.expect(IllegalStateException.class);
-
-		CryptoFileLock.builder() //
-				.withChannel(channel) //
-				.withDelegate(delegate) //
-				.withPosition(position) //
-				.thatIsShared(shared) //
-				.build();
+		Assertions.assertThrows(IllegalStateException.class, () -> {
+			CryptoFileLock.builder() //
+					.withChannel(channel) //
+					.withDelegate(delegate) //
+					.withPosition(position) //
+					.thatIsShared(shared) //
+					.build();
+		});
 	}
 
 	@Test
 	public void testConstructionWithoutSharedFails() {
-		thrown.expect(IllegalStateException.class);
-
-		CryptoFileLock.builder() //
-				.withChannel(channel) //
-				.withDelegate(delegate) //
-				.withPosition(position) //
-				.withSize(size) //
-				.build();
+		Assertions.assertThrows(IllegalStateException.class, () -> {
+			CryptoFileLock.builder() //
+					.withChannel(channel) //
+					.withDelegate(delegate) //
+					.withPosition(position) //
+					.withSize(size) //
+					.build();
+		});
 	}
 
 	@Test
@@ -118,48 +106,48 @@ public class CryptoFileLockTest {
 
 	@Test
 	public void testDelegate() {
-		assertThat(inTest.delegate(), is(delegate));
+		Assertions.assertSame(delegate, inTest.delegate());
 	}
 
 	@Test
 	public void testIsValidWithValidDelegateAndOpenChannel() {
 		when(delegate.isValid()).thenReturn(true);
-		assertThat(inTest.isValid(), is(true));
+		Assertions.assertTrue(inTest.isValid());
 	}
 
 	@Test
 	public void testIsValidWithValidDelegateAndClosedChannel() throws IOException {
 		when(delegate.isValid()).thenReturn(true);
 		channel.close();
-		assertThat(inTest.isValid(), is(false));
+		Assertions.assertFalse(inTest.isValid());
 	}
 
 	@Test
 	public void testIsValidWithInvalidDelegateAndOpenChannel() {
 		when(delegate.isValid()).thenReturn(false);
-		assertThat(inTest.isValid(), is(false));
+		Assertions.assertFalse(inTest.isValid());
 	}
 
 	@Test
 	public void testIsValidWithInalidDelegateAndClosedChannel() throws IOException {
 		when(delegate.isValid()).thenReturn(false);
 		channel.close();
-		assertThat(inTest.isValid(), is(false));
+		Assertions.assertFalse(inTest.isValid());
 	}
 
 	@Test
 	public void testPosition() {
-		assertThat(inTest.position(), is(position));
+		Assertions.assertEquals(position, inTest.position());
 	}
 
 	@Test
 	public void testSize() {
-		assertThat(inTest.size(), is(size));
+		Assertions.assertEquals(size, inTest.size());
 	}
 
 	@Test
 	public void testChannel() {
-		assertThat(inTest.channel(), is(channel));
+		Assertions.assertSame(channel, inTest.channel());
 	}
 
 	@Test
@@ -171,7 +159,7 @@ public class CryptoFileLockTest {
 				.withSize(size) //
 				.thatIsShared(true) //
 				.build();
-		assertThat(inTest.isShared(), is(true));
+		Assertions.assertTrue(inTest.isShared());
 	}
 
 	@Test
@@ -183,7 +171,7 @@ public class CryptoFileLockTest {
 				.withSize(size) //
 				.thatIsShared(false) //
 				.build();
-		assertThat(inTest.isShared(), is(false));
+		Assertions.assertFalse(inTest.isShared());
 	}
 
 }

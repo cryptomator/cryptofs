@@ -1,38 +1,37 @@
 package org.cryptomator.cryptofs.fh;
 
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.nio.ByteBuffer;
+import java.util.stream.Stream;
+
 import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
 import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
 
-import java.nio.ByteBuffer;
-
-import org.junit.Test;
-import org.junit.experimental.theories.DataPoints;
-import org.junit.experimental.theories.Theories;
-import org.junit.experimental.theories.Theory;
-import org.junit.runner.RunWith;
-
-@RunWith(Theories.class)
 public class ChunkDataTest {
 
 	private static final int SIZE = 200;
 
-	@DataPoints
-	public static WayToCreateEmptyChunkData[] waysToCreateEmptyChunkData = { //
-			new CreateEmptyChunkData(), //
-			new WrapEmptyBuffer() //
-	};
+	public static Stream<WayToCreateEmptyChunkData> waysToCreateEmptyChunkData() {
+		return Stream.of(
+				new CreateEmptyChunkData(), //
+				new WrapEmptyBuffer() //
+		);
+	}
 
-	@DataPoints
-	public static WayToCreateChunkDataWithContent[] waysToCreateChunkDataWithContent = { //
-			new WrapBuffer(), //
-			new CreateEmptyChunkDataAndCopyFromBuffer(), //
-			new WrapEmptyBufferAndCopyFromBuffer(), //
-			new WrapPartOfBufferAndCopyRemainingFromBuffer() //
-	};
+	public static Stream<WayToCreateChunkDataWithContent> waysToCreateChunkDataWithContent() { //
+		return Stream.of(
+				new WrapBuffer(), //
+				new CreateEmptyChunkDataAndCopyFromBuffer(), //
+				new WrapEmptyBufferAndCopyFromBuffer(), //
+				new WrapPartOfBufferAndCopyRemainingFromBuffer() //
+		);
+	}
 
 	@Test
 	public void testChunkDataWrappingBufferWasNotWritten() {
@@ -40,14 +39,14 @@ public class ChunkDataTest {
 
 		ChunkData inTest = ChunkData.wrap(buffer);
 
-		assertFalse(inTest.wasWritten());
+		Assertions.assertFalse(inTest.wasWritten());
 	}
 
-	@Theory
+	@Test
 	public void testEmptyChunkDataWasNotWritten() {
 		ChunkData inTest = ChunkData.emptyWithSize(200);
 
-		assertFalse(inTest.wasWritten());
+		Assertions.assertFalse(inTest.wasWritten());
 	}
 
 	@Test
@@ -55,7 +54,7 @@ public class ChunkDataTest {
 		ChunkData inTest = ChunkData.emptyWithSize(200);
 		inTest.copyData().from(repeat(3).times(200).asByteBuffer());
 
-		assertTrue(inTest.wasWritten());
+		Assertions.assertTrue(inTest.wasWritten());
 	}
 
 	@Test
@@ -63,24 +62,27 @@ public class ChunkDataTest {
 		ChunkData inTest = ChunkData.emptyWithSize(150);
 		inTest.copyDataStartingAt(50).from(repeat(3).times(50).asByteBuffer());
 
-		assertThat(inTest.toString(), is("ChunkData(written: true, length: 100, capacity: 150)"));
+		MatcherAssert.assertThat(inTest.toString(), is("ChunkData(written: true, length: 100, capacity: 150)"));
 	}
 
-	@Theory
+	@ParameterizedTest
+	@MethodSource("waysToCreateEmptyChunkData")
 	public void testAsReadOnlyBufferReturnsEmptyBufferIfEmpty(WayToCreateEmptyChunkData wayToCreateEmptyChunkData) {
 		ChunkData inTest = wayToCreateEmptyChunkData.create();
 
-		assertThat(inTest.asReadOnlyBuffer(), contains(new byte[0]));
+		MatcherAssert.assertThat(inTest.asReadOnlyBuffer(), contains(new byte[0]));
 	}
 
-	@Theory
+	@ParameterizedTest
+	@MethodSource("waysToCreateChunkDataWithContent")
 	public void testAsReadOnlyBufferReturnsContent(WayToCreateChunkDataWithContent wayToCreateChunkDataWithContent) {
 		ChunkData inTest = wayToCreateChunkDataWithContent.create(repeat(3).times(SIZE).asByteBuffer());
 
-		assertThat(inTest.asReadOnlyBuffer(), contains(repeat(3).times(SIZE).asByteBuffer()));
+		MatcherAssert.assertThat(inTest.asReadOnlyBuffer(), contains(repeat(3).times(SIZE).asByteBuffer()));
 	}
 
-	@Theory
+	@ParameterizedTest
+	@MethodSource("waysToCreateChunkDataWithContent")
 	public void testCopyToCopiesContent(WayToCreateChunkDataWithContent wayToCreateChunkDataWithContent) {
 		ChunkData inTest = wayToCreateChunkDataWithContent.create(repeat(3).times(SIZE).asByteBuffer());
 		ByteBuffer target = ByteBuffer.allocate(200);
@@ -88,20 +90,22 @@ public class ChunkDataTest {
 		inTest.copyData().to(target);
 		target.flip();
 
-		assertThat(target, contains(repeat(3).times(SIZE).asByteBuffer()));
+		MatcherAssert.assertThat(target, contains(repeat(3).times(SIZE).asByteBuffer()));
 	}
 
-	@Theory
+	@ParameterizedTest
+	@MethodSource("waysToCreateEmptyChunkData")
 	public void testCopyToCopiesNothingIfEmpty(WayToCreateEmptyChunkData wayToCreateEmptyChunkData) {
 		ChunkData inTest = wayToCreateEmptyChunkData.create();
 		ByteBuffer target = ByteBuffer.allocate(SIZE);
 
 		inTest.copyData().to(target);
 
-		assertThat(target, contains(repeat(0).times(SIZE).asByteBuffer()));
+		MatcherAssert.assertThat(target, contains(repeat(0).times(SIZE).asByteBuffer()));
 	}
 
-	@Theory
+	@ParameterizedTest
+	@MethodSource("waysToCreateChunkDataWithContent")
 	public void testCopyToWithOffsetCopiesContentFromOffset(WayToCreateChunkDataWithContent wayToCreateChunkDataWithContent) {
 		int offset = 70;
 		ChunkData inTest = wayToCreateChunkDataWithContent.create(repeat(3).times(SIZE).asByteBuffer());
@@ -111,10 +115,10 @@ public class ChunkDataTest {
 
 		target.limit(SIZE - offset);
 		target.position(0);
-		assertThat(target, contains(repeat(3).times(SIZE - offset).asByteBuffer()));
+		MatcherAssert.assertThat(target, contains(repeat(3).times(SIZE - offset).asByteBuffer()));
 		target.limit(SIZE);
 		target.position(SIZE - offset);
-		assertThat(target, contains(repeat(0).times(offset).asByteBuffer()));
+		MatcherAssert.assertThat(target, contains(repeat(0).times(offset).asByteBuffer()));
 	}
 
 	interface WayToCreateEmptyChunkData {

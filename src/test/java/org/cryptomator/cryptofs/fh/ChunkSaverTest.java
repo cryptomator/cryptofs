@@ -6,17 +6,12 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 
 import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
 import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
@@ -33,12 +28,6 @@ public class ChunkSaverTest {
 	private static final Integer CLEARTEXT_CHUNK_SIZE = 13;
 	private static final Integer CIPHERTEXT_CHUNK_SIZE = 37;
 
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
 	private final ChunkIO chunkIO = mock(ChunkIO.class);
 	private final FileContentCryptor fileContentCryptor = mock(FileContentCryptor.class);
 	private final FileHeaderCryptor fileHeaderCryptor = mock(FileHeaderCryptor.class);
@@ -49,7 +38,7 @@ public class ChunkSaverTest {
 	private final ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
 	private final ChunkSaver inTest = new ChunkSaver(cryptor, chunkIO, headerHandler, exceptionsDuringWrite, stats);
 
-	@Before
+	@BeforeEach
 	public void setup() throws IOException {
 		when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);

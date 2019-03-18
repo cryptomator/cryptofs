@@ -1,13 +1,10 @@
 package org.cryptomator.cryptofs.ch;
 
 import com.google.common.io.ByteStreams;
-import de.bechte.junit.runners.context.HierarchicalContextRunner;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.io.ByteArrayInputStream;
@@ -23,28 +20,25 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 
-@RunWith(HierarchicalContextRunner.class)
 public class AbstractFileChannelTest {
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	private ReadWriteLock readWriteLock = Mockito.mock(ReadWriteLock.class);
 	private Lock readLock = Mockito.mock(Lock.class);
 	private Lock writeLock = Mockito.mock(Lock.class);
 	private AbstractFileChannel delegate = Mockito.mock(AbstractFileChannel.class);
 
-	@Before
+	@BeforeEach
 	public void setup() {
 		Mockito.when(readWriteLock.readLock()).thenReturn(readLock);
 		Mockito.when(readWriteLock.writeLock()).thenReturn(writeLock);
 	}
 
+	@Nested
 	public class Read {
 
 		AbstractFileChannel inTest;
 
-		@Before
+		@BeforeEach
 		public void setup() {
 			inTest = new TestChannel(readWriteLock, true, false, delegate);
 		}
@@ -53,8 +47,9 @@ public class AbstractFileChannelTest {
 		public void readWithBuffersFailsIfChannelNotReadable() throws IOException {
 			AbstractFileChannel nonReadableChannel = new TestChannel(readWriteLock, false, false, delegate);
 
-			thrown.expect(NonReadableChannelException.class);
-			nonReadableChannel.read(null, 0, 0);
+			Assertions.assertThrows(NonReadableChannelException.class, () -> {
+				nonReadableChannel.read(null, 0, 0);
+			});
 		}
 
 		@Test
@@ -63,7 +58,7 @@ public class AbstractFileChannelTest {
 
 			long read = inTest.read(buffers, 3, 0);
 
-			Assert.assertEquals(0l, read);
+			Assertions.assertEquals(0l, read);
 			Mockito.verify(delegate, Mockito.never()).readLocked(Mockito.any(), Mockito.anyLong());
 		}
 
@@ -74,7 +69,7 @@ public class AbstractFileChannelTest {
 
 			long read = inTest.read(buffers, 0, 3);
 
-			Assert.assertEquals(-1l, read);
+			Assertions.assertEquals(-1l, read);
 		}
 
 		@Test
@@ -89,7 +84,7 @@ public class AbstractFileChannelTest {
 
 			long read = inTest.read(buffers, 0, 3);
 
-			Assert.assertEquals(8l, read);
+			Assertions.assertEquals(8l, read);
 			Mockito.verify(delegate).readLocked(Mockito.same(buf1), Mockito.anyLong());
 			Mockito.verify(delegate).readLocked(Mockito.same(buf2), Mockito.anyLong());
 			Mockito.verify(delegate, Mockito.never()).readLocked(Mockito.same(buf3), Mockito.anyLong());
@@ -107,7 +102,7 @@ public class AbstractFileChannelTest {
 
 			long read = inTest.read(buffers, 0, 3);
 
-			Assert.assertEquals(28l, read);
+			Assertions.assertEquals(28l, read);
 			Mockito.verify(delegate).readLocked(Mockito.same(buf1), Mockito.anyLong());
 			Mockito.verify(delegate).readLocked(Mockito.same(buf2), Mockito.anyLong());
 			Mockito.verify(delegate).readLocked(Mockito.same(buf3), Mockito.anyLong());
@@ -115,11 +110,12 @@ public class AbstractFileChannelTest {
 
 	}
 
+	@Nested
 	public class Write {
 
 		AbstractFileChannel inTest;
 
-		@Before
+		@BeforeEach
 		public void setup() {
 			inTest = new TestChannel(readWriteLock, false, true, delegate);
 		}
@@ -128,8 +124,9 @@ public class AbstractFileChannelTest {
 		public void writeWithBuffersFailsIfChannelNotWrtiable() throws IOException {
 			AbstractFileChannel nonWritableChannel = new TestChannel(readWriteLock, false, false, delegate);
 
-			thrown.expect(NonWritableChannelException.class);
-			nonWritableChannel.write(null, 0, 0);
+			Assertions.assertThrows(NonWritableChannelException.class, () -> {
+				nonWritableChannel.write(null, 0, 0);
+			});
 		}
 
 		@Test
@@ -138,7 +135,7 @@ public class AbstractFileChannelTest {
 
 			long written = inTest.write(buffers, 3, 0);
 
-			Assert.assertEquals(0l, written);
+			Assertions.assertEquals(0l, written);
 			Mockito.verify(delegate, Mockito.never()).writeLocked(Mockito.any(), Mockito.anyLong());
 		}
 
@@ -157,7 +154,7 @@ public class AbstractFileChannelTest {
 
 			long written = inTest.write(buffers, 0, 3);
 
-			Assert.assertEquals(18l, written);
+			Assertions.assertEquals(18l, written);
 			Mockito.verify(delegate).writeLocked(buf1, 30);
 			Mockito.verify(delegate).writeLocked(buf2, 40);
 			Mockito.verify(delegate).writeLocked(buf3, 40);
@@ -165,11 +162,12 @@ public class AbstractFileChannelTest {
 
 	}
 
+	@Nested
 	public class TransferTo {
 
 		AbstractFileChannel inTest;
 
-		@Before
+		@BeforeEach
 		public void setup() {
 			inTest = new TestChannel(readWriteLock, true, false, delegate);
 		}
@@ -178,8 +176,9 @@ public class AbstractFileChannelTest {
 		public void transferToFailsIfChannelNotReadable() throws IOException {
 			AbstractFileChannel nonReadableChannel = new TestChannel(readWriteLock, false, false, delegate);
 
-			thrown.expect(NonReadableChannelException.class);
-			nonReadableChannel.transferTo(0L, 0L, null);
+			Assertions.assertThrows(NonReadableChannelException.class, () -> {
+				nonReadableChannel.transferTo(0L, 0L, null);
+			});
 		}
 
 		@Test
@@ -200,7 +199,7 @@ public class AbstractFileChannelTest {
 			OutputStream out = ByteStreams.nullOutputStream();
 			long transferred = inTest.transferTo(0, 42427, Channels.newChannel(out));
 
-			Assert.assertEquals(42427, transferred);
+			Assertions.assertEquals(42427, transferred);
 		}
 
 		@Test
@@ -221,16 +220,17 @@ public class AbstractFileChannelTest {
 			OutputStream out = ByteStreams.nullOutputStream();
 			long transferred = inTest.transferTo(30_000, 50_000, Channels.newChannel(out));
 
-			Assert.assertEquals(20_000, transferred);
+			Assertions.assertEquals(20_000, transferred);
 		}
 
 	}
 
+	@Nested
 	public class TransferFrom {
 
 		AbstractFileChannel inTest;
 
-		@Before
+		@BeforeEach
 		public void setup() {
 			inTest = new TestChannel(readWriteLock, false, true, delegate);
 		}
@@ -239,8 +239,9 @@ public class AbstractFileChannelTest {
 		public void testTransferFromFailsIfChannelNotWritable() throws IOException {
 			AbstractFileChannel nonWritableChannel = new TestChannel(readWriteLock, false, false, delegate);
 
-			thrown.expect(NonWritableChannelException.class);
-			nonWritableChannel.transferFrom(null, 0L, 0L);
+			Assertions.assertThrows(NonWritableChannelException.class, () -> {
+				nonWritableChannel.transferFrom(null, 0L, 0L);
+			});
 		}
 
 		@Test
@@ -257,8 +258,8 @@ public class AbstractFileChannelTest {
 			ByteArrayInputStream in = new ByteArrayInputStream(new byte[60_000]);
 			long transferred = inTest.transferFrom(Channels.newChannel(in), 0, 80_000);
 
-			Assert.assertEquals(60_000l, transferred);
-			Assert.assertEquals(60_000l, written.sum());
+			Assertions.assertEquals(60_000l, transferred);
+			Assertions.assertEquals(60_000l, written.sum());
 		}
 
 		@Test
@@ -275,8 +276,8 @@ public class AbstractFileChannelTest {
 			ByteArrayInputStream in = new ByteArrayInputStream(new byte[60_000]);
 			long transferred = inTest.transferFrom(Channels.newChannel(in), 0, 42_000);
 
-			Assert.assertEquals(42_000l, transferred);
-			Assert.assertEquals(42_000l, written.sum());
+			Assertions.assertEquals(42_000l, transferred);
+			Assertions.assertEquals(42_000l, written.sum());
 		}
 
 	}

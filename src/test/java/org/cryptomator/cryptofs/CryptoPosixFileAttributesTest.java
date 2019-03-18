@@ -4,9 +4,9 @@ import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.nio.file.attribute.PosixFileAttributes;
@@ -15,7 +15,12 @@ import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
 
-import static java.nio.file.attribute.PosixFilePermission.*;
+import static java.nio.file.attribute.PosixFilePermission.GROUP_EXECUTE;
+import static java.nio.file.attribute.PosixFilePermission.GROUP_READ;
+import static java.nio.file.attribute.PosixFilePermission.OTHERS_EXECUTE;
+import static java.nio.file.attribute.PosixFilePermission.OTHERS_READ;
+import static java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE;
+import static java.nio.file.attribute.PosixFilePermission.OWNER_READ;
 import static org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType.FILE;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -28,7 +33,7 @@ public class CryptoPosixFileAttributesTest {
 	private FileContentCryptor contentCryptor = mock(FileContentCryptor.class);
 	private OpenCryptoFile openCryptoFile = mock(OpenCryptoFile.class);
 
-	@Before
+	@BeforeEach
 	public void setup() {
 		when(delegate.size()).thenReturn(0l);
 		when(cryptor.fileHeaderCryptor()).thenReturn(headerCryptor);
@@ -44,7 +49,7 @@ public class CryptoPosixFileAttributesTest {
 		Mockito.when(delegate.permissions()).thenReturn(delegatePermissions);
 
 		CryptoPosixFileAttributes attrs = new CryptoPosixFileAttributes(delegate, FILE,null, cryptor, Optional.of(openCryptoFile), false);
-		Assert.assertArrayEquals(delegatePermissions.toArray(), attrs.permissions().toArray());
+		Assertions.assertArrayEquals(delegatePermissions.toArray(), attrs.permissions().toArray());
 	}
 
 	@Test
@@ -53,7 +58,7 @@ public class CryptoPosixFileAttributesTest {
 		Mockito.when(delegate.permissions()).thenReturn(delegatePermissions);
 
 		CryptoPosixFileAttributes attrs = new CryptoPosixFileAttributes(delegate, FILE,null, cryptor, Optional.of(openCryptoFile), true);
-		Assert.assertArrayEquals(EnumSet.of(OWNER_READ, GROUP_READ, OTHERS_READ, OWNER_EXECUTE, GROUP_EXECUTE, OTHERS_EXECUTE).toArray(), attrs.permissions().toArray());
+		Assertions.assertArrayEquals(EnumSet.of(OWNER_READ, GROUP_READ, OTHERS_READ, OWNER_EXECUTE, GROUP_EXECUTE, OTHERS_EXECUTE).toArray(), attrs.permissions().toArray());
 	}
 
 }

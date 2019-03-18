@@ -3,14 +3,10 @@ package org.cryptomator.cryptofs.fh;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -31,13 +27,6 @@ public class FileHeaderHandlerTest {
 		System.setProperty("org.slf4j.simpleLogger.dateTimeFormat", "HH:mm:ss.SSS");
 	}
 
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
-
 	private final FileHeaderCryptor fileHeaderCryptor = mock(FileHeaderCryptor.class);
 	private final ChunkIO chunkIO = mock(ChunkIO.class);
 	private final Cryptor cryptor = mock(Cryptor.class);
@@ -46,7 +35,7 @@ public class FileHeaderHandlerTest {
 
 	private final FileHeaderHandler inTest = new FileHeaderHandler(chunkIO, cryptor, pathRef);
 
-	@Before
+	@BeforeEach
 	public void setup() throws IOException {
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
 	}
@@ -60,9 +49,9 @@ public class FileHeaderHandlerTest {
 		FileHeader createdHeader1 = inTest.get();
 		FileHeader createdHeader2 = inTest.get();
 		FileHeader createdHeader3 = inTest.get();
-		Assert.assertSame(headerToCreate, createdHeader1);
-		Assert.assertSame(headerToCreate, createdHeader2);
-		Assert.assertSame(headerToCreate, createdHeader3);
+		Assertions.assertSame(headerToCreate, createdHeader1);
+		Assertions.assertSame(headerToCreate, createdHeader2);
+		Assertions.assertSame(headerToCreate, createdHeader3);
 
 		verify(fileHeaderCryptor, times(1)).create();
 	}
@@ -74,7 +63,7 @@ public class FileHeaderHandlerTest {
 		when(fileHeaderCryptor.headerSize()).thenReturn(100);
 		when(chunkIO.read(Mockito.any(ByteBuffer.class), Mockito.eq(0l))).thenAnswer(invocation -> {
 			ByteBuffer buf = invocation.getArgument(0);
-			Assert.assertEquals(100, buf.capacity());
+			Assertions.assertEquals(100, buf.capacity());
 			buf.put("leHeader".getBytes(StandardCharsets.US_ASCII));
 			return null;
 		});
@@ -83,9 +72,9 @@ public class FileHeaderHandlerTest {
 		FileHeader loadedHeader1 = inTest.get();
 		FileHeader loadedHeader2 = inTest.get();
 		FileHeader loadedHeader3 = inTest.get();
-		Assert.assertSame(headerToLoad, loadedHeader1);
-		Assert.assertSame(headerToLoad, loadedHeader2);
-		Assert.assertSame(headerToLoad, loadedHeader3);
+		Assertions.assertSame(headerToLoad, loadedHeader1);
+		Assertions.assertSame(headerToLoad, loadedHeader2);
+		Assertions.assertSame(headerToLoad, loadedHeader3);
 
 		verify(fileHeaderCryptor, times(1)).decryptHeader(Mockito.any());
 	}

@@ -1,12 +1,10 @@
 package org.cryptomator.cryptofs;
 
-import static org.junit.Assert.assertNotNull;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.same;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.ClosedFileSystemException;
@@ -17,22 +15,15 @@ import java.nio.file.Path;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Iterator;
 
-import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
-import org.cryptomator.cryptolib.api.Cryptor;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class DirectoryStreamFactoryTest {
-
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	private final FileSystem fileSystem = mock(FileSystem.class);
 	private final FileSystemProvider provider = mock(FileSystemProvider.class);
@@ -47,7 +38,7 @@ public class DirectoryStreamFactoryTest {
 
 	@SuppressWarnings("unchecked")
 
-	@Before
+	@BeforeEach
 	public void setup() {
 		doAnswer(invocation -> {
 			for (Object runnable : invocation.getArguments()) {
@@ -117,10 +108,10 @@ public class DirectoryStreamFactoryTest {
 		when(cryptoPathMapper.getCiphertextDir(path)).thenReturn(new CiphertextDirectory(dirId, dirPath));
 		when(provider.newDirectoryStream(same(dirPath), any())).thenReturn(mock(DirectoryStream.class));
 
-		thrown.expect(ClosedFileSystemException.class);
-
 		inTest.close();
-		inTest.newDirectoryStream(path, filter);
+		Assertions.assertThrows(ClosedFileSystemException.class, () -> {
+			inTest.newDirectoryStream(path, filter);
+		});
 	}
 
 }

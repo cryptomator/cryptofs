@@ -1,28 +1,17 @@
 package org.cryptomator.cryptofs;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.attribute.FileStoreAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class DelegatingFileStoreTest {
-
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	private FileStore delegate = mock(FileStore.class);
 
@@ -32,87 +21,87 @@ public class DelegatingFileStoreTest {
 	public void testNameReturnsDelegateNamePrependedWithClassName() {
 		when(delegate.name()).thenReturn("delegateName");
 
-		assertThat(inTest.name(), is("DelegatingFileStore_delegateName"));
+		Assertions.assertEquals("DelegatingFileStore_delegateName", inTest.name());
 	}
 
 	@Test
 	public void testTypeIsClassName() {
-		assertThat(inTest.type(), is("DelegatingFileStore"));
+		Assertions.assertEquals("DelegatingFileStore", inTest.type());
 	}
 
 	@Test
 	public void testIsReadOnlyWithTrue() {
 		when(delegate.isReadOnly()).thenReturn(true);
 
-		assertThat(inTest.isReadOnly(), is(true));
+		Assertions.assertTrue(inTest.isReadOnly());
 	}
 
 	@Test
 	public void testIsReadOnlyWithFalse() {
 		when(delegate.isReadOnly()).thenReturn(false);
 
-		assertThat(inTest.isReadOnly(), is(false));
+		Assertions.assertFalse(inTest.isReadOnly());
 	}
 
 	@Test
 	public void testGetTotalSpace() throws IOException {
 		when(delegate.getTotalSpace()).thenReturn(1337L);
 
-		assertThat(inTest.getTotalSpace(), is(1337L));
+		Assertions.assertEquals(1337l, inTest.getTotalSpace());
 	}
 
 	@Test
 	public void testGetUsableSpace() throws IOException {
 		when(delegate.getUsableSpace()).thenReturn(1337L);
 
-		assertThat(inTest.getUsableSpace(), is(1337L));
+		Assertions.assertEquals(1337l, inTest.getUsableSpace());
 	}
 
 	@Test
 	public void testGetUnallocatedSpace() throws IOException {
 		when(delegate.getUnallocatedSpace()).thenReturn(1337L);
 
-		assertThat(inTest.getUnallocatedSpace(), is(1337L));
+		Assertions.assertEquals(1337l, inTest.getUnallocatedSpace());
 	}
 
 	@Test
 	public void testSupportsFileAttributeViewWithTrue() {
 		when(delegate.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(true);
 
-		assertThat(inTest.supportsFileAttributeView(PosixFileAttributeView.class), is(true));
+		Assertions.assertTrue(inTest.supportsFileAttributeView(PosixFileAttributeView.class));
 	}
 
 	@Test
 	public void testSupportsFileAttributeViewWithFalse() {
 		when(delegate.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(false);
 
-		assertThat(inTest.supportsFileAttributeView(PosixFileAttributeView.class), is(false));
+		Assertions.assertFalse(inTest.supportsFileAttributeView(PosixFileAttributeView.class));
 	}
 
 	@Test
 	public void testSupportsFileAttributeViewByNameWithTrue() {
 		when(delegate.supportsFileAttributeView("abc")).thenReturn(true);
 
-		assertThat(inTest.supportsFileAttributeView("abc"), is(true));
+		Assertions.assertTrue(inTest.supportsFileAttributeView("abc"));
 	}
 
 	@Test
 	public void testSupportsFileAttributeViewByNameWithFalse() {
 		when(delegate.supportsFileAttributeView("abc")).thenReturn(false);
 
-		assertThat(inTest.supportsFileAttributeView("abc"), is(false));
+		Assertions.assertFalse(inTest.supportsFileAttributeView("abc"));
 	}
 
 	@Test
 	public void getFileStoreAttributeView() {
-		assertThat(inTest.getFileStoreAttributeView(FileStoreAttributeView.class), is((FileStoreAttributeView) null));
+		Assertions.assertNull(inTest.getFileStoreAttributeView(FileStoreAttributeView.class));
 	}
 
 	@Test
-	public void testGetAttribute() throws IOException {
-		thrown.expect(UnsupportedOperationException.class);
-
-		inTest.getAttribute("any");
+	public void testGetAttribute() {
+		Assertions.assertThrows(UnsupportedOperationException.class, () -> {
+			inTest.getAttribute("any");
+		});
 	}
 
 }
