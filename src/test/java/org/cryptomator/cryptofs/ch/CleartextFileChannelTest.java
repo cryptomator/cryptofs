@@ -40,13 +40,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(HierarchicalContextRunner.class)
 public class CleartextFileChannelTest {
-
-	private static final long EOF = -1;
 
 	@Rule
 	public MockitoRule mockitoRule = MockitoJUnit.rule();
@@ -76,7 +73,7 @@ public class CleartextFileChannelTest {
 	public void setUp() throws IOException {
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
 		when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
-		when(chunkCache.get(Mockito.anyLong())).then(invocation ->  ChunkData.wrap(ByteBuffer.allocate(100)));
+		when(chunkCache.get(Mockito.anyLong())).then(invocation -> ChunkData.wrap(ByteBuffer.allocate(100)));
 		when(fileHeaderCryptor.headerSize()).thenReturn(50);
 		when(fileContentCryptor.cleartextChunkSize()).thenReturn(100);
 		when(fileContentCryptor.ciphertextChunkSize()).thenReturn(110);
@@ -339,60 +336,6 @@ public class CleartextFileChannelTest {
 			Assert.assertEquals(100, inTest.position());
 		}
 
-		@Test
-		public void testReadWithBuffersFailsIfChannelNotReadable() throws IOException {
-			ByteBuffer[] irrelevant = null;
-			when(options.readable()).thenReturn(false);
-
-			thrown.expect(NonReadableChannelException.class);
-
-			inTest.read(irrelevant, 0, 0);
-		}
-
-		@Test
-		public void testReadWithBuffersDoesReadNothingWhenLengthIsZero() throws IOException {
-			ByteBuffer[] buffers = new ByteBuffer[10];
-			when(options.readable()).thenReturn(true);
-
-			long read = inTest.read(buffers, 3, 0);
-
-			assertThat(read, is(0L));
-			verifyZeroInteractions(chunkCache);
-		}
-
-		@Test
-		public void testReadWithBuffersReturnsEofIfHitOnFirstRead() throws IOException {
-			ByteBuffer[] buffers = {ByteBuffer.allocate(10), ByteBuffer.allocate(10), ByteBuffer.allocate(10)};
-			when(options.readable()).thenReturn(true);
-
-			inTest.position(100); // EOF at 100
-			long read = inTest.read(buffers, 0, 3);
-
-			assertThat(read, is(EOF));
-		}
-
-		@Test
-		public void testReadWithBuffersAbortsIfEofIsHitAfterFirstRead() throws IOException {
-			ByteBuffer[] buffers = {ByteBuffer.allocate(10), ByteBuffer.allocate(10), ByteBuffer.allocate(10)};
-			when(options.readable()).thenReturn(true);
-
-			inTest.position(90); // EOF at 100
-			long read = inTest.read(buffers, 0, 3);
-
-			Assert.assertEquals(10, read);
-		}
-
-		@Test
-		public void testReadWithBuffersReadsWithoutHittingEof() throws IOException {
-			ByteBuffer[] buffers = {ByteBuffer.allocate(10), ByteBuffer.allocate(10), ByteBuffer.allocate(10)};
-			when(options.readable()).thenReturn(true);
-
-			inTest.position(0); // EOF at 100
-			long read = inTest.read(buffers, 0, 3);
-
-			Assert.assertEquals(30, read);
-		}
-
 	}
 
 	public class Write {
@@ -469,126 +412,6 @@ public class CleartextFileChannelTest {
 		}
 
 	}
-
-//	public class TransferTo {
-//
-//		@Test
-//		public void testTransferToFailsIfChannelNotReadable() throws IOException {
-//			WritableByteChannel irrelevant = null;
-//			when(options.readable()).thenReturn(false);
-//
-//			thrown.expect(NonReadableChannelException.class);
-//
-//			inTest.transferTo(0L, 0L, irrelevant);
-//		}
-//
-//		@Test
-//		public void testTransferToTransfersCountDataStartingFromPosition() throws IOException {
-//			long startTransferFrom = 6042;
-//			long transferAmount = 23000;
-//			ReadAndWritableBytes sourceData = ReadAndWritableBytes.random((int) (startTransferFrom + transferAmount));
-//			when(options.readable()).thenReturn(true);
-//			when(openCryptoFile.read(any(ByteBuffer.class), anyLong())).thenAnswer(invocation -> {
-//				ByteBuffer target = invocation.getArgument(0);
-//				Long position = invocation.getArgument(1);
-//				return sourceData.read(target, position);
-//			});
-//			ReadAndWritableBytes targetData = ReadAndWritableBytes.empty();
-//
-//			long amount = inTest.transferTo(startTransferFrom, transferAmount, targetData);
-//
-//			assertThat(amount, is(transferAmount));
-//			assertThat(targetData.toArray(), is(sourceData.toArray((int) startTransferFrom, (int) transferAmount)));
-//		}
-//
-//		@Test
-//		public void testTransferToTransfersAllRemainingBytesIfCountIsGreater() throws IOException {
-//			long startTransferFrom = 6042;
-//			long transferAmount = 23000;
-//			long remainingAmount = 10000;
-//			ReadAndWritableBytes sourceData = ReadAndWritableBytes.random((int) (startTransferFrom + remainingAmount));
-//			when(options.readable()).thenReturn(true);
-//			when(openCryptoFile.read(any(ByteBuffer.class), anyLong())).thenAnswer(invocation -> {
-//				ByteBuffer target = invocation.getArgument(0);
-//				Long position = invocation.getArgument(1);
-//				return sourceData.read(target, position);
-//			});
-//			ReadAndWritableBytes targetData = ReadAndWritableBytes.empty();
-//
-//			long amount = inTest.transferTo(startTransferFrom, transferAmount, targetData);
-//
-//			assertThat(amount, is(remainingAmount));
-//			assertThat(targetData.toArray(), is(sourceData.toArray((int) startTransferFrom, (int) remainingAmount)));
-//		}
-//
-//	}
-//
-//	public class TransferFrom {
-//
-//		@Test
-//		public void testTransferFromFailsIfChannelNotWritable() throws IOException {
-//			ReadableByteChannel irrelevant = null;
-//			when(options.writable()).thenReturn(false);
-//
-//			thrown.expect(NonWritableChannelException.class);
-//
-//			inTest.transferFrom(irrelevant, 0L, 0L);
-//		}
-//
-//		@Test
-//		public void testTransferFromTransfersNothingIfPositionGreaterSize() throws IOException {
-//			long position = 5000;
-//			long size = position - 100;
-//			ReadAndWritableBytes sourceData = ReadAndWritableBytes.random(1000);
-//			when(options.writable()).thenReturn(true);
-//
-//			long amount = inTest.transferFrom(sourceData, position, 150);
-//
-//			assertThat(amount, is(0L));
-//		}
-//
-//		@Test
-//		public void testTransferFromTransfersCountBytesStartingAtPosition() throws IOException {
-//			long startTransferAt = 6042;
-//			long transferAmount = 23000;
-//			ReadAndWritableBytes sourceData = ReadAndWritableBytes.random((int) (transferAmount));
-//			ReadAndWritableBytes targetData = ReadAndWritableBytes.empty();
-//			when(options.writable()).thenReturn(true);
-//			when(openCryptoFile.size()).thenReturn(startTransferAt);
-//			when(openCryptoFile.write(same(options), any(ByteBuffer.class), anyLong())).thenAnswer(invocation -> {
-//				ByteBuffer source = invocation.getArgument(1);
-//				Long position = invocation.getArgument(2);
-//				return targetData.write(source, position.intValue());
-//			});
-//
-//			long amount = inTest.transferFrom(sourceData, startTransferAt, transferAmount);
-//
-//			assertThat(amount, is(transferAmount));
-//			assertThat(sourceData.toArray(), is(targetData.toArray((int) startTransferAt, (int) transferAmount)));
-//		}
-//
-//		@Test
-//		public void testTransferFromTransfersRemainingBytesIfLessThanCount() throws IOException {
-//			long startTransferAt = 6042;
-//			long transferAmount = 23000;
-//			long remainingAmount = 15000;
-//			ReadAndWritableBytes sourceData = ReadAndWritableBytes.random((int) (remainingAmount));
-//			ReadAndWritableBytes targetData = ReadAndWritableBytes.empty();
-//			when(options.writable()).thenReturn(true);
-//			when(openCryptoFile.size()).thenReturn(startTransferAt);
-//			when(openCryptoFile.write(same(options), any(ByteBuffer.class), anyLong())).thenAnswer(invocation -> {
-//				ByteBuffer source = invocation.getArgument(1);
-//				Long position = invocation.getArgument(2);
-//				return targetData.write(source, position.intValue());
-//			});
-//
-//			long amount = inTest.transferFrom(sourceData, startTransferAt, transferAmount);
-//
-//			assertThat(amount, is(remainingAmount));
-//			assertThat(sourceData.toArray(), is(targetData.toArray((int) startTransferAt, (int) remainingAmount)));
-//		}
-//
-//	}
 
 	public class OperationsOnClosedChannelThrowClosedChannelException {
 

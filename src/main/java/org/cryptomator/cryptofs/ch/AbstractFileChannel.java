@@ -166,6 +166,9 @@ public abstract class AbstractFileChannel extends FileChannel {
 		}
 	}
 
+	/**
+	 * @see #read(ByteBuffer, long)
+	 */
 	protected abstract int readLocked(ByteBuffer dst, long position) throws IOException;
 
 	@Override
@@ -214,6 +217,9 @@ public abstract class AbstractFileChannel extends FileChannel {
 		}
 	}
 
+	/**
+	 * @see #write(ByteBuffer, long)
+	 */
 	protected abstract int writeLocked(ByteBuffer src, long position) throws IOException;
 
 	@Override
@@ -239,6 +245,9 @@ public abstract class AbstractFileChannel extends FileChannel {
 		}
 	}
 
+	/**
+	 * @see #truncate(long)
+	 */
 	protected abstract void truncateLocked(long size) throws IOException;
 
 	@Override
