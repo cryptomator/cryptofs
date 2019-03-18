@@ -1,4 +1,6 @@
-package org.cryptomator.cryptofs.ch;
+package org.cryptomator.cryptofs.fh;
+
+import org.cryptomator.cryptofs.ch.CleartextFileChannel;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -9,8 +11,8 @@ import java.util.List;
  * Collector for exceptions that happen during chunk cache invalidation.
  * These exceptions will be rethrown by {@link CleartextFileChannel#force(boolean)}
  */
-@ChannelScoped
-class ExceptionsDuringWrite {
+@OpenFileScoped
+public class ExceptionsDuringWrite {
 
 	private final List<IOException> exceptions = new ArrayList<>();
 

@@ -6,8 +6,9 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.fh;
 
+import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ch.ChannelComponent;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
 
@@ -18,24 +19,26 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-@PerOpenFile
-class OpenCryptoFile implements Closeable {
+@OpenFileScoped
+public class OpenCryptoFile implements Closeable {
 
-	private final OpenCryptoFiles openCryptoFiles;
+	private final FileCloseListener listener;
 	private final AtomicReference<Instant> lastModified;
+	private final ChunkIO chunkIO;
 	private final AtomicReference<Path> currentFilePath;
 	private final AtomicLong fileSize;
 	private final OpenCryptoFileComponent component;
-	private final Set<CleartextFileChannel> openChannels = ConcurrentHashMap.newKeySet();
+	private final ConcurrentMap<CleartextFileChannel, FileChannel> openChannels = new ConcurrentHashMap<>();
 
 	@Inject
-	public OpenCryptoFile(OpenCryptoFiles openCryptoFiles, @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
-		this.openCryptoFiles = openCryptoFiles;
+	public OpenCryptoFile(FileCloseListener listener, ChunkIO chunkIO, @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
+		this.listener = listener;
+		this.chunkIO = chunkIO;
 		this.currentFilePath = currentFilePath;
 		this.fileSize = fileSize;
 		this.component = component;
@@ -62,7 +65,8 @@ class OpenCryptoFile implements Closeable {
 			}
 		}
 		assert cleartextFileChannel != null; // otherwise there would have been an exception
-		openChannels.add(cleartextFileChannel);
+		openChannels.put(cleartextFileChannel, ciphertextFileChannel);
+		chunkIO.registerChannel(ciphertextFileChannel, options.writable());
 		return cleartextFileChannel;
 	}
 
@@ -86,16 +90,23 @@ class OpenCryptoFile implements Closeable {
 		this.currentFilePath.set(currentFilePath);
 	}
 
-	private synchronized void channelClosed(CleartextFileChannel channel) {
-		openChannels.remove(channel);
-		if (openChannels.isEmpty()) {
-			close();
+	private synchronized void channelClosed(CleartextFileChannel cleartextFileChannel) throws IOException {
+		try {
+			FileChannel ciphertextFileChannel = openChannels.remove(cleartextFileChannel);
+			if (ciphertextFileChannel != null) {
+				chunkIO.unregisterChannel(ciphertextFileChannel);
+				ciphertextFileChannel.close();
+			}
+		} finally {
+			if (openChannels.isEmpty()) {
+				close();
+			}
 		}
 	}
 
 	@Override
 	public void close() {
-		openCryptoFiles.close(this);
+		listener.close(currentFilePath.get(), this);
 	}
 
 	@Override

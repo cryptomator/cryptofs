@@ -2,6 +2,9 @@ package org.cryptomator.cryptofs.ch;
 
 import de.bechte.junit.runners.context.HierarchicalContextRunner;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
+import org.cryptomator.cryptofs.fh.ChunkCache;
+import org.cryptomator.cryptofs.fh.ChunkData;
+import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
@@ -83,12 +86,6 @@ public class CleartextFileChannelTest {
 		when(readWriteLock.writeLock()).thenReturn(writeLock);
 
 		inTest = new CleartextFileChannel(ciphertextFileChannel, readWriteLock, cryptor, chunkCache, options, fileSize, lastModified, attributeViewSupplier, exceptionsDuringWrite, closeListener);
-	}
-
-	@Test
-	public void testCloseTriggersCloseListener() throws IOException {
-		inTest.close();
-		verify(closeListener).closed(inTest);
 	}
 
 	@Test

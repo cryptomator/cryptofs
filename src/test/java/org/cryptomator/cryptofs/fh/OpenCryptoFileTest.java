@@ -1,6 +1,8 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.fh;
 
 import com.google.common.jimfs.Jimfs;
+import org.cryptomator.cryptofs.EffectiveOpenOptions;
+import org.cryptomator.cryptofs.ReadonlyFlag;
 import org.cryptomator.cryptofs.ch.ChannelComponent;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
 import org.junit.After;
@@ -37,7 +39,8 @@ public class OpenCryptoFileTest {
 	private FileSystem fs;
 	private AtomicReference<Path> currentFilePath;
 	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
-	private OpenCryptoFiles openCryptoFiles = mock(OpenCryptoFiles.class);
+	private FileCloseListener closeListener = mock(FileCloseListener.class);
+	private ChunkIO chunkIO = mock(ChunkIO.class);
 	private AtomicLong fileSize = new AtomicLong();
 	private AtomicReference<Instant> lastModified = new AtomicReference(Instant.ofEpochMilli(0));
 	private OpenCryptoFileComponent openCryptoFileComponent = mock(OpenCryptoFileComponent.class);
@@ -56,7 +59,7 @@ public class OpenCryptoFileTest {
 		Mockito.when(channelComponentBuilder.onClose(Mockito.any())).thenReturn(channelComponentBuilder);
 		Mockito.when(channelComponentBuilder.build()).thenReturn(channelComponent);
 
-		inTest = new OpenCryptoFile(openCryptoFiles, currentFilePath, fileSize, lastModified, openCryptoFileComponent);
+		inTest = new OpenCryptoFile(closeListener, chunkIO, currentFilePath, fileSize, lastModified, openCryptoFileComponent);
 	}
 
 	@After
@@ -77,7 +80,7 @@ public class OpenCryptoFileTest {
 	@Test
 	public void testCloseTriggersCloseListener() {
 		inTest.close();
-		verify(openCryptoFiles).close(inTest);
+		verify(closeListener).close(currentFilePath.get(), inTest);
 	}
 
 }

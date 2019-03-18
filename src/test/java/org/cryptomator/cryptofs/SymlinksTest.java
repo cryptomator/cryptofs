@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
+import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;

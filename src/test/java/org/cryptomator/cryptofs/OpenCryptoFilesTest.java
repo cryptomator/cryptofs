@@ -1,5 +1,7 @@
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.fh.OpenCryptoFile;
+import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -39,6 +41,7 @@ public class OpenCryptoFilesTest {
 
 		Mockito.when(cryptoFileSystemComponent.newOpenCryptoFileComponent()).thenReturn(openCryptoFileComponentBuilder);
 		Mockito.when(openCryptoFileComponentBuilder.path(Mockito.any())).thenReturn(openCryptoFileComponentBuilder);
+		Mockito.when(openCryptoFileComponentBuilder.onClose(Mockito.any())).thenReturn(openCryptoFileComponentBuilder);
 		Mockito.when(openCryptoFileComponentBuilder.build()).thenReturn(subComponent);
 
 		Mockito.when(file.newFileChannel(Mockito.any())).thenReturn(ciphertextFileChannel);
@@ -151,26 +154,20 @@ public class OpenCryptoFilesTest {
 		OpenCryptoFileComponent subComponent1 = mock(OpenCryptoFileComponent.class);
 		OpenCryptoFile file1 = mock(OpenCryptoFile.class);
 		Mockito.when(openCryptoFileComponentBuilder.path(path1)).thenReturn(subComponentBuilder1);
+		Mockito.when(subComponentBuilder1.onClose(Mockito.any())).thenReturn(subComponentBuilder1);
 		Mockito.when(subComponentBuilder1.build()).thenReturn(subComponent1);
 		Mockito.when(subComponent1.openCryptoFile()).thenReturn(file1);
 		Mockito.when(file1.getCurrentFilePath()).thenReturn(path1);
-		Mockito.doAnswer(invocation -> {
-			inTest.close(file1);
-			return null;
-		}).when(file1).close();
 
 		Path path2 = Paths.get("/bar");
 		OpenCryptoFileComponent.Builder subComponentBuilder2 = mock(OpenCryptoFileComponent.Builder.class);
 		OpenCryptoFileComponent subComponent2 = mock(OpenCryptoFileComponent.class);
 		OpenCryptoFile file2 = mock(OpenCryptoFile.class);
 		Mockito.when(openCryptoFileComponentBuilder.path(path2)).thenReturn(subComponentBuilder2);
+		Mockito.when(subComponentBuilder2.onClose(Mockito.any())).thenReturn(subComponentBuilder2);
 		Mockito.when(subComponentBuilder2.build()).thenReturn(subComponent2);
 		Mockito.when(subComponent2.openCryptoFile()).thenReturn(file2);
 		Mockito.when(file2.getCurrentFilePath()).thenReturn(path2);
-		Mockito.doAnswer(invocation -> {
-			inTest.close(file2);
-			return null;
-		}).when(file2).close();
 
 		Assert.assertEquals(file1, inTest.getOrCreate(path1));
 		Assert.assertEquals(file2, inTest.getOrCreate(path2));

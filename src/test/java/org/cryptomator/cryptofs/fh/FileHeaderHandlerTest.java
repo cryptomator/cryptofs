@@ -1,6 +1,5 @@
-package org.cryptomator.cryptofs.ch;
+package org.cryptomator.cryptofs.fh;
 
-import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
@@ -15,7 +14,6 @@ import org.mockito.junit.MockitoRule;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
@@ -41,13 +39,12 @@ public class FileHeaderHandlerTest {
 
 
 	private final FileHeaderCryptor fileHeaderCryptor = mock(FileHeaderCryptor.class);
-	private final FileChannel channel = mock(FileChannel.class);
+	private final ChunkIO chunkIO = mock(ChunkIO.class);
 	private final Cryptor cryptor = mock(Cryptor.class);
-	private final EffectiveOpenOptions options = mock(EffectiveOpenOptions.class);
 	private final Path path = mock(Path.class, "openFile.txt");
 	private final AtomicReference<Path> pathRef = new AtomicReference<>(path);
 
-	private final FileHeaderHandler inTest = new FileHeaderHandler(channel, cryptor, options, pathRef);
+	private final FileHeaderHandler inTest = new FileHeaderHandler(chunkIO, cryptor, pathRef);
 
 	@Before
 	public void setup() throws IOException {
@@ -57,7 +54,7 @@ public class FileHeaderHandlerTest {
 	@Test
 	public void testCreateNew() throws IOException {
 		FileHeader headerToCreate = Mockito.mock(FileHeader.class);
-		when(options.createNew()).thenReturn(true);
+		when(chunkIO.size()).thenReturn(0l);
 		when(fileHeaderCryptor.create()).thenReturn(headerToCreate);
 
 		FileHeader createdHeader1 = inTest.get();
@@ -73,8 +70,9 @@ public class FileHeaderHandlerTest {
 	@Test
 	public void testLoadExisting() throws IOException {
 		FileHeader headerToLoad = Mockito.mock(FileHeader.class);
+		when(chunkIO.size()).thenReturn(100l);
 		when(fileHeaderCryptor.headerSize()).thenReturn(100);
-		when(channel.read(Mockito.any(ByteBuffer.class))).thenAnswer(invocation -> {
+		when(chunkIO.read(Mockito.any(ByteBuffer.class), Mockito.eq(0l))).thenAnswer(invocation -> {
 			ByteBuffer buf = invocation.getArgument(0);
 			Assert.assertEquals(100, buf.capacity());
 			buf.put("leHeader".getBytes(StandardCharsets.US_ASCII));

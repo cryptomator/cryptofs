@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import com.google.common.collect.Sets;
+import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptolib.api.Cryptor;
 
 import static java.nio.file.attribute.PosixFilePermission.GROUP_WRITE;

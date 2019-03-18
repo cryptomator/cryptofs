@@ -1,4 +1,4 @@
-package org.cryptomator.cryptofs.ch;
+package org.cryptomator.cryptofs.fh;
 
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -8,19 +8,19 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
-@ChannelScoped
+@OpenFileScoped
 class ChunkSaver {
 
 	private final Cryptor cryptor;
-	private final FileChannel channel;
+	private final ChunkIO ciphertext;
 	private final FileHeaderHandler headerHandler;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
 	private final CryptoFileSystemStats stats;
 
 	@Inject
-	public ChunkSaver(Cryptor cryptor, FileChannel channel, FileHeaderHandler headerHandler, ExceptionsDuringWrite exceptionsDuringWrite, CryptoFileSystemStats stats) {
+	public ChunkSaver(Cryptor cryptor, ChunkIO ciphertext, FileHeaderHandler headerHandler, ExceptionsDuringWrite exceptionsDuringWrite, CryptoFileSystemStats stats) {
 		this.cryptor = cryptor;
-		this.channel = channel;
+		this.ciphertext = ciphertext;
 		this.headerHandler = headerHandler;
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
 		this.stats = stats;
@@ -34,7 +34,7 @@ class ChunkSaver {
 			ByteBuffer ciphertextBuf = cryptor.fileContentCryptor().encryptChunk(cleartextBuf, chunkIndex, headerHandler.get());
 			try {
 				headerHandler.persistIfNeeded();
-				channel.write(ciphertextBuf, ciphertextPos);
+				ciphertext.write(ciphertextBuf, ciphertextPos);
 			} catch (IOException e) {
 				exceptionsDuringWrite.add(e);
 			} // unchecked exceptions will be propagated to the thread causing removal

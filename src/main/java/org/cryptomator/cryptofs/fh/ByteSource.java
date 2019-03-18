@@ -6,13 +6,13 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs.ch;
+package org.cryptomator.cryptofs.fh;
 
 import static java.lang.Math.min;
 
 import java.nio.ByteBuffer;
 
-interface ByteSource {
+public interface ByteSource {
 
 	static ByteSource from(ByteBuffer buffer) {
 		return new ByteBufferByteSource(buffer);

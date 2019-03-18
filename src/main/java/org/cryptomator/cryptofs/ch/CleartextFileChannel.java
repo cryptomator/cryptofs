@@ -2,8 +2,12 @@ package org.cryptomator.cryptofs.ch;
 
 import com.google.common.base.Preconditions;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
-import org.cryptomator.cryptofs.OpenFileModifiedDate;
-import org.cryptomator.cryptofs.OpenFileSize;
+import org.cryptomator.cryptofs.fh.ByteSource;
+import org.cryptomator.cryptofs.fh.ChunkCache;
+import org.cryptomator.cryptofs.fh.ChunkData;
+import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
+import org.cryptomator.cryptofs.fh.OpenFileModifiedDate;
+import org.cryptomator.cryptofs.fh.OpenFileSize;
 import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
@@ -11,7 +15,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
@@ -133,7 +136,6 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		}
 	}
 
-
 	private int writeLockedInternal(ByteSource src, long position) throws IOException {
 		Preconditions.checkArgument(position <= fileSize.get());
 
@@ -167,7 +169,6 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		lastModified.set(Instant.now());
 		// stats.addBytesWritten(written); // TODO
 		return written;
-
 	}
 
 	@Override

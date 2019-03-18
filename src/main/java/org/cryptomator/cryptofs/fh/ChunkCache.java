@@ -1,4 +1,4 @@
-package org.cryptomator.cryptofs.ch;
+package org.cryptomator.cryptofs.fh;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -13,8 +13,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.concurrent.ExecutionException;
 
-@ChannelScoped
-class ChunkCache {
+@OpenFileScoped
+public class ChunkCache {
 
 	public static final int MAX_CACHED_CLEARTEXT_CHUNKS = 5;
 

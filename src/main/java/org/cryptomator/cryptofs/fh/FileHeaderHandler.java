@@ -1,7 +1,5 @@
-package org.cryptomator.cryptofs.ch;
+package org.cryptomator.cryptofs.fh;
 
-import org.cryptomator.cryptofs.CurrentOpenFilePath;
-import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
@@ -12,27 +10,24 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
 
-@ChannelScoped
+@OpenFileScoped
 class FileHeaderHandler {
 
 	private static final Logger LOG = LoggerFactory.getLogger(FileHeaderHandler.class);
 
-	private final FileChannel ciphertextChannel;
+	private final ChunkIO ciphertext;
 	private final Cryptor cryptor;
-	private final EffectiveOpenOptions options;
 	private final AtomicReference<Path> path;
 	private final AtomicReference<FileHeader> header = new AtomicReference<>();
 	private boolean isNewHeader;
 
 	@Inject
-	public FileHeaderHandler(FileChannel ciphertextChannel, Cryptor cryptor, EffectiveOpenOptions options, @CurrentOpenFilePath AtomicReference<Path> path) {
-		this.ciphertextChannel = ciphertextChannel;
+	public FileHeaderHandler(ChunkIO ciphertext, Cryptor cryptor, @CurrentOpenFilePath AtomicReference<Path> path) {
+		this.ciphertext = ciphertext;
 		this.cryptor = cryptor;
-		this.options = options;
 		this.path = path;
 	}
 
@@ -46,15 +41,14 @@ class FileHeaderHandler {
 
 	private FileHeader load() throws UncheckedIOException {
 		try {
-			if (options.truncateExisting() || options.createNew() || options.create() && ciphertextChannel.size() == 0) {
+			if (ciphertext.size() == 0) { // i.e. TRUNCATE_EXISTING, CREATE OR CREATE_NEW
 				LOG.trace("Generating file header for {}", path.get());
 				isNewHeader = true;
 				return cryptor.fileHeaderCryptor().create();
 			} else {
 				LOG.trace("Reading file header from {}", path.get());
 				ByteBuffer existingHeaderBuf = ByteBuffer.allocate(cryptor.fileHeaderCryptor().headerSize());
-				ciphertextChannel.position(0);
-				ciphertextChannel.read(existingHeaderBuf);
+				ciphertext.read(existingHeaderBuf, 0);
 				existingHeaderBuf.flip();
 				try {
 					return cryptor.fileHeaderCryptor().decryptHeader(existingHeaderBuf);
@@ -71,7 +65,8 @@ class FileHeaderHandler {
 		FileHeader header = get(); // make sure to invoke get(), as this sets isNewHeader as a side effect
 		if (isNewHeader) {
 			LOG.trace("Writing file header to {}", path.get());
-			ciphertextChannel.write(cryptor.fileHeaderCryptor().encryptHeader(header), 0);
+
+			ciphertext.write(cryptor.fileHeaderCryptor().encryptHeader(header), 0);
 		}
 	}
 

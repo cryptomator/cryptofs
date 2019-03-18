@@ -6,7 +6,7 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs.ch;
+package org.cryptomator.cryptofs.fh;
 
 import java.nio.ByteBuffer;
 
@@ -14,7 +14,7 @@ import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.lang.String.format;
 
-class ChunkData {
+public class ChunkData {
 
 	private final ByteBuffer bytes;
 	private boolean written;

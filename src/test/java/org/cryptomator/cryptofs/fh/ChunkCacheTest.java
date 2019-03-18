@@ -1,4 +1,4 @@
-package org.cryptomator.cryptofs.ch;
+package org.cryptomator.cryptofs.fh;
 
 import static java.util.Arrays.asList;
 import static org.hamcrest.CoreMatchers.is;
@@ -13,10 +13,6 @@ import java.io.IOException;
 import java.util.List;
 
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
-import org.cryptomator.cryptofs.ch.ChunkCache;
-import org.cryptomator.cryptofs.ch.ChunkData;
-import org.cryptomator.cryptofs.ch.ChunkLoader;
-import org.cryptomator.cryptofs.ch.ChunkSaver;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.junit.Rule;
 import org.junit.Test;

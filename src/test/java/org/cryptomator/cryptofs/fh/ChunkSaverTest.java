@@ -1,4 +1,4 @@
-package org.cryptomator.cryptofs.ch;
+package org.cryptomator.cryptofs.fh;
 
 import com.google.common.base.Supplier;
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
@@ -17,7 +17,6 @@ import org.mockito.junit.MockitoRule;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
 import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
@@ -40,8 +39,7 @@ public class ChunkSaverTest {
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
 
-	private final FileChannel channel = mock(FileChannel.class);
-
+	private final ChunkIO chunkIO = mock(ChunkIO.class);
 	private final FileContentCryptor fileContentCryptor = mock(FileContentCryptor.class);
 	private final FileHeaderCryptor fileHeaderCryptor = mock(FileHeaderCryptor.class);
 	private final Cryptor cryptor = mock(Cryptor.class);
@@ -49,7 +47,7 @@ public class ChunkSaverTest {
 	private final FileHeader header = mock(FileHeader.class);
 	private final FileHeaderHandler headerHandler = mock(FileHeaderHandler.class);
 	private final ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
-	private final ChunkSaver inTest = new ChunkSaver(cryptor, channel, headerHandler, exceptionsDuringWrite, stats);
+	private final ChunkSaver inTest = new ChunkSaver(cryptor, chunkIO, headerHandler, exceptionsDuringWrite, stats);
 
 	@Before
 	public void setup() throws IOException {
@@ -73,7 +71,7 @@ public class ChunkSaverTest {
 
 		inTest.save(chunkIndex, chunkData);
 
-		verify(channel).write(argThat(contains(ciphertext.get())), eq(expectedPosition));
+		verify(chunkIO).write(argThat(contains(ciphertext.get())), eq(expectedPosition));
 		verify(stats).addBytesEncrypted(Mockito.anyLong());
 	}
 
@@ -89,7 +87,7 @@ public class ChunkSaverTest {
 
 		inTest.save(chunkIndex, chunkData);
 
-		verify(channel).write(argThat(contains(ciphertext.get())), eq(expectedPosition));
+		verify(chunkIO).write(argThat(contains(ciphertext.get())), eq(expectedPosition));
 		verify(stats).addBytesEncrypted(Mockito.anyLong());
 	}
 
@@ -100,7 +98,7 @@ public class ChunkSaverTest {
 
 		inTest.save(chunkIndex, chunkData);
 
-		verifyZeroInteractions(channel);
+		verifyZeroInteractions(chunkIO);
 		verifyZeroInteractions(stats);
 	}
 
@@ -114,7 +112,7 @@ public class ChunkSaverTest {
 		Supplier<ByteBuffer> ciphertext = () -> repeat(50).times(CIPHERTEXT_CHUNK_SIZE).asByteBuffer();
 		chunkData.copyData().from(cleartext.get());
 		when(fileContentCryptor.encryptChunk(argThat(contains(cleartext.get())), eq(chunkIndex), eq(header))).thenReturn(ciphertext.get());
-		when(channel.write(argThat(contains(ciphertext.get())), eq(expectedPosition))).thenThrow(ioException);
+		when(chunkIO.write(argThat(contains(ciphertext.get())), eq(expectedPosition))).thenThrow(ioException);
 
 		inTest.save(chunkIndex, chunkData);
 

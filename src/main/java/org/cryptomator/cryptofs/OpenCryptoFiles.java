@@ -8,10 +8,12 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.fh.OpenCryptoFile;
+import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
+
 import javax.inject.Inject;
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -23,7 +25,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Stream;
 
 @PerFileSystem
 class OpenCryptoFiles implements Closeable {
@@ -49,6 +50,7 @@ class OpenCryptoFiles implements Closeable {
 	private OpenCryptoFile create(Path normalizedPath) {
 		OpenCryptoFileComponent openCryptoFileComponent = component.newOpenCryptoFileComponent()
 				.path(normalizedPath)
+				.onClose(openCryptoFiles::remove)
 				.build();
 		return openCryptoFileComponent.openCryptoFile();
 	}
@@ -95,10 +97,6 @@ class OpenCryptoFiles implements Closeable {
 			iter.remove(); // remove before invoking close() to avoid concurrent modification of this iterator by #close(OpenCryptoFile)
 			entry.getValue().close();
 		}
-	}
-
-	void close(OpenCryptoFile openCryptoFile) {
-		openCryptoFiles.remove(openCryptoFile.getCurrentFilePath());
 	}
 
 	public class TwoPhaseMove implements AutoCloseable {

@@ -1,4 +1,4 @@
-package org.cryptomator.cryptofs.ch;
+package org.cryptomator.cryptofs.fh;
 
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -8,18 +8,18 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
-@ChannelScoped
+@OpenFileScoped
 class ChunkLoader {
 
 	private final Cryptor cryptor;
-	private final FileChannel channel;
+	private final ChunkIO ciphertext;
 	private final FileHeaderHandler headerHandler;
 	private final CryptoFileSystemStats stats;
 
 	@Inject
-	public ChunkLoader(Cryptor cryptor, FileChannel channel, FileHeaderHandler headerHandler, CryptoFileSystemStats stats) {
+	public ChunkLoader(Cryptor cryptor, ChunkIO ciphertext, FileHeaderHandler headerHandler, CryptoFileSystemStats stats) {
 		this.cryptor = cryptor;
-		this.channel = channel;
+		this.ciphertext = ciphertext;
 		this.headerHandler = headerHandler;
 		this.stats = stats;
 	}
@@ -30,7 +30,7 @@ class ChunkLoader {
 		int chunkSize = cryptor.fileContentCryptor().ciphertextChunkSize();
 		long ciphertextPos = chunkIndex * chunkSize + cryptor.fileHeaderCryptor().headerSize();
 		ByteBuffer ciphertextBuf = ByteBuffer.allocate(chunkSize);
-		int read = channel.read(ciphertextBuf, ciphertextPos);
+		int read = ciphertext.read(ciphertextBuf, ciphertextPos);
 		if (read == -1) {
 			// append
 			return ChunkData.emptyWithSize(payloadSize);
