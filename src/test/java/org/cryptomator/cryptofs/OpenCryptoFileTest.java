@@ -18,14 +18,10 @@ import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.BasicFileAttributeView;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -41,10 +37,7 @@ public class OpenCryptoFileTest {
 	private FileSystem fs;
 	private AtomicReference<Path> currentFilePath;
 	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
-	private BasicFileAttributeView attributeView = mock(BasicFileAttributeView.class);
 	private OpenCryptoFiles openCryptoFiles = mock(OpenCryptoFiles.class);
-	private Supplier<BasicFileAttributeView> attributeViewSupplier= mock(Supplier.class);
-	private BasicFileAttributes attributes = mock(BasicFileAttributes.class);
 	private AtomicLong fileSize = new AtomicLong();
 	private AtomicReference<Instant> lastModified = new AtomicReference(Instant.ofEpochMilli(0));
 	private OpenCryptoFileComponent openCryptoFileComponent = mock(OpenCryptoFileComponent.class);
@@ -57,17 +50,13 @@ public class OpenCryptoFileTest {
 	public void setup() throws IOException {
 		fs = Jimfs.newFileSystem("OpenCryptoFileTest");
 		currentFilePath = new AtomicReference<>(fs.getPath("currentFile"));
-		Mockito.when(attributeViewSupplier.get()).thenReturn(attributeView);
-		Mockito.when(attributeView.readAttributes()).thenReturn(attributes);
-		Mockito.when(attributes.lastModifiedTime()).thenReturn(FileTime.from(Instant.now()));
 		Mockito.when(openCryptoFileComponent.newChannelComponent()).thenReturn(channelComponentBuilder);
 		Mockito.when(channelComponentBuilder.ciphertextChannel(Mockito.any())).thenReturn(channelComponentBuilder);
 		Mockito.when(channelComponentBuilder.openOptions(Mockito.any())).thenReturn(channelComponentBuilder);
-		Mockito.when(channelComponentBuilder.lock(Mockito.any())).thenReturn(channelComponentBuilder);
 		Mockito.when(channelComponentBuilder.onClose(Mockito.any())).thenReturn(channelComponentBuilder);
 		Mockito.when(channelComponentBuilder.build()).thenReturn(channelComponent);
 
-		inTest = new OpenCryptoFile(openCryptoFiles, attributeViewSupplier, currentFilePath, fileSize, lastModified, openCryptoFileComponent);
+		inTest = new OpenCryptoFile(openCryptoFiles, currentFilePath, fileSize, lastModified, openCryptoFileComponent);
 	}
 
 	@After

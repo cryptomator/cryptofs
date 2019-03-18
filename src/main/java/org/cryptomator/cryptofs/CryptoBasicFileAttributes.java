@@ -60,8 +60,7 @@ class CryptoBasicFileAttributes implements BasicFileAttributes {
 		try {
 			return Cryptors.cleartextSize(size - cryptor.fileHeaderCryptor().headerSize(), cryptor);
 		} catch (IllegalArgumentException e) {
-			LOG.warn("Wrong cipher text file size of file {}. Returning a file size of 0.", ciphertextPath);
-			LOG.warn("Thrown exception was:", e);
+			LOG.warn("Unable to calculate cleartext file size for " + ciphertextPath + ".", e);
 			return 0l;
 		}
 	}

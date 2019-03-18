@@ -1,6 +1,9 @@
 package org.cryptomator.cryptofs.ch;
 
+import com.google.common.base.Preconditions;
+
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.ClosedChannelException;
@@ -11,6 +14,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.locks.ReadWriteLock;
 
 import static java.lang.Math.min;
 
@@ -18,11 +22,18 @@ public abstract class AbstractFileChannel extends FileChannel {
 
 	private static final int BUFFER_SIZE = 4096;
 
+	private final Set<Thread> blockingThreads = new HashSet<>();
+	private final ReadWriteLock readWriteLock;
+	protected long position;
+
+	public AbstractFileChannel(ReadWriteLock readWriteLock) {
+		this.readWriteLock = readWriteLock;
+	}
+
 	/*
 	 * Copied from Jimfs (Apache License 2.0) Copyright 2013 Google Inc.
 	 * --- BEGIN ---
 	 */
-	private final Set<Thread> blockingThreads = new HashSet<>();
 
 	/**
 	 * Begins a blocking operation, making the operation interruptible. Returns {@code true} if the
@@ -63,6 +74,20 @@ public abstract class AbstractFileChannel extends FileChannel {
 	/*
 	 * --- END ---
 	 */
+
+	@Override
+	public long position() throws IOException {
+		assertOpen();
+		return position;
+	}
+
+	@Override
+	public FileChannel position(long newPosition) throws IOException {
+		Preconditions.checkArgument(newPosition >= 0);
+		assertOpen();
+		position = newPosition;
+		return this;
+	}
 
 	protected void assertWritable() throws IOException {
 		if (!isWritable()) {
@@ -110,6 +135,40 @@ public abstract class AbstractFileChannel extends FileChannel {
 	}
 
 	@Override
+	public int read(ByteBuffer dst) throws IOException {
+		int read = read(dst, position);
+		if (read != -1) {
+			position += read;
+		}
+		return read;
+	}
+
+	@Override
+	public int read(ByteBuffer dst, long position) throws IOException {
+		assertOpen();
+		assertReadable();
+		boolean completed = false;
+		try {
+			beginBlocking();
+			readWriteLock.readLock().lockInterruptibly();
+			try {
+				int read = readLocked(dst, position);
+				completed = true;
+				return read;
+			} finally {
+				readWriteLock.readLock().unlock();
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new InterruptedIOException();
+		} finally {
+			endBlocking(completed);
+		}
+	}
+
+	protected abstract int readLocked(ByteBuffer dst, long position) throws IOException;
+
+	@Override
 	public long write(ByteBuffer[] srcs, int offset, int length) throws IOException {
 		assertOpen();
 		assertWritable();
@@ -126,56 +185,144 @@ public abstract class AbstractFileChannel extends FileChannel {
 	}
 
 	@Override
+	public int write(ByteBuffer src) throws IOException {
+		int written = write(src, position);
+		position += written;
+		return written;
+	}
+
+	@Override
+	public int write(ByteBuffer src, long position) throws IOException {
+		assertOpen();
+		assertWritable();
+		boolean completed = false;
+		try {
+			beginBlocking();
+			readWriteLock.writeLock().lockInterruptibly();
+			try {
+				int written = writeLocked(src, position);
+				completed = true;
+				return written;
+			} finally {
+				readWriteLock.writeLock().unlock();
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new InterruptedIOException();
+		} finally {
+			endBlocking(completed);
+		}
+	}
+
+	protected abstract int writeLocked(ByteBuffer src, long position) throws IOException;
+
+	@Override
+	public FileChannel truncate(long size) throws IOException {
+		assertOpen();
+		assertWritable();
+		boolean completed = false;
+		try {
+			beginBlocking();
+			readWriteLock.writeLock().lockInterruptibly();
+			try {
+				truncateLocked(size);
+				completed = true;
+				return this;
+			} finally {
+				readWriteLock.writeLock().unlock();
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new InterruptedIOException();
+		} finally {
+			endBlocking(completed);
+		}
+	}
+
+	protected abstract void truncateLocked(long size) throws IOException;
+
+	@Override
 	public long transferTo(long position, long count, WritableByteChannel target) throws IOException {
 		assertOpen();
 		assertReadable();
+		boolean completed = false;
 		try {
 			beginBlocking();
-			ByteBuffer buf = ByteBuffer.allocate((int) min(count, BUFFER_SIZE));
-			long transferred = 0;
-			while (transferred < count) {
-				buf.clear();
-				int read = read(buf, position + transferred);
-				if (read == -1) {
-					break;
-				} else {
-					buf.flip();
-					buf.limit((int) min(buf.limit(), count - transferred));
-					transferred += target.write(buf);
-				}
+			readWriteLock.readLock().lockInterruptibly();
+			try {
+				long transferred = transferToBlocked(position, count, target);
+				completed = true;
+				return transferred;
+			} finally {
+				readWriteLock.readLock().unlock();
 			}
-			return transferred;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new InterruptedIOException();
 		} finally {
-			endBlocking(true);
+			endBlocking(completed);
 		}
+	}
+
+	protected long transferToBlocked(long position, long count, WritableByteChannel target) throws IOException {
+		ByteBuffer buf = ByteBuffer.allocate((int) min(count, BUFFER_SIZE));
+		long transferred = 0;
+		while (transferred < count) {
+			buf.clear();
+			int read = read(buf, position + transferred);
+			if (read == -1) {
+				break;
+			} else {
+				buf.flip();
+				buf.limit((int) min(buf.limit(), count - transferred));
+				transferred += target.write(buf);
+			}
+		}
+		return transferred;
 	}
 
 	@Override
 	public long transferFrom(ReadableByteChannel src, long position, long count) throws IOException {
 		assertOpen();
 		assertWritable();
+		boolean completed = false;
 		try {
 			beginBlocking();
-			if (position > size()) {
-				return 0L;
+			readWriteLock.writeLock().lockInterruptibly();
+			try {
+				long transferred = transferFromBlocked(src, position, count);
+				completed = true;
+				return transferred;
+			} finally {
+				readWriteLock.writeLock().unlock();
 			}
-			ByteBuffer buf = ByteBuffer.allocate((int) min(count, BUFFER_SIZE));
-			long transferred = 0;
-			while (transferred < count) {
-				buf.clear();
-				int read = src.read(buf);
-				if (read == -1) {
-					break;
-				} else {
-					buf.flip();
-					buf.limit((int) min(buf.limit(), count - transferred));
-					transferred += this.write(buf, position + transferred);
-				}
-			}
-			return transferred;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new InterruptedIOException();
 		} finally {
-			endBlocking(true);
+			endBlocking(completed);
 		}
+	}
+
+	protected long transferFromBlocked(ReadableByteChannel src, long position, long count) throws IOException {
+		if (position > size()) {
+			return 0L;
+		}
+
+		ByteBuffer buf = ByteBuffer.allocate((int) min(count, BUFFER_SIZE));
+		long transferred = 0;
+		while (transferred < count) {
+			buf.clear();
+			int read = src.read(buf);
+			if (read == -1) {
+				break;
+			} else {
+				buf.flip();
+				buf.limit((int) min(buf.limit(), count - transferred));
+				transferred += this.write(buf, position + transferred);
+			}
+		}
+		return transferred;
 	}
 
 }

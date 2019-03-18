@@ -17,12 +17,20 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 
 import static org.cryptomator.cryptolib.Cryptors.cleartextSize;
 
 @Module
 class OpenCryptoFileModule {
+
+	@Provides
+	@PerOpenFile
+	public ReadWriteLock provideReadWriteLock() {
+		return new ReentrantReadWriteLock();
+	}
 
 	@Provides
 	@PerOpenFile

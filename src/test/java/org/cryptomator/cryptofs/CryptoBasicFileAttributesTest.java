@@ -44,6 +44,8 @@ public class CryptoBasicFileAttributesTest {
 		Mockito.when(contentCryptor.ciphertextChunkSize()).thenReturn(16 + 32 * 1024 + 32);
 		ciphertextFilePath = Mockito.mock(Path.class, "ciphertextFile");
 		delegateAttr = Mockito.mock(BasicFileAttributes.class);
+
+		Mockito.when(delegateAttr.size()).thenReturn(88l + 16 + 1337 + 32);
 	}
 
 	@Test
@@ -75,7 +77,6 @@ public class CryptoBasicFileAttributesTest {
 
 	@Test
 	public void testSizeOfFile() {
-		Mockito.when(delegateAttr.size()).thenReturn(88l + 16 + 1337 + 32);
 		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, FILE, ciphertextFilePath, cryptor, Optional.empty(), false);
 		Assert.assertEquals(1337l, attr.size());
 	}

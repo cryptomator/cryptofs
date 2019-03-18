@@ -11,10 +11,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.file.attribute.BasicFileAttributeView;
@@ -22,7 +22,7 @@ import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.function.Supplier;
 
 import static java.lang.Math.max;
@@ -34,7 +34,6 @@ public class CleartextFileChannel extends AbstractFileChannel {
 
 	private static final Logger LOG = LoggerFactory.getLogger(CleartextFileChannel.class);
 
-	private final Lock lock;
 	private final FileChannel ciphertextFileChannel;
 	private final Cryptor cryptor;
 	private final ChunkCache chunkCache;
@@ -45,11 +44,9 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
 	private final ChannelCloseListener closeListener;
 
-	private long position;
-
 	@Inject
-	public CleartextFileChannel(Lock lock, FileChannel ciphertextFileChannel, Cryptor cryptor, ChunkCache chunkCache, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, Supplier<BasicFileAttributeView> attrViewProvider, ExceptionsDuringWrite exceptionsDuringWrite, ChannelCloseListener closeListener) {
-		this.lock = lock;
+	public CleartextFileChannel(FileChannel ciphertextFileChannel, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, Supplier<BasicFileAttributeView> attrViewProvider, ExceptionsDuringWrite exceptionsDuringWrite, ChannelCloseListener closeListener) {
+		super(readWriteLock);
 		this.ciphertextFileChannel = ciphertextFileChannel;
 		this.cryptor = cryptor;
 		this.chunkCache = chunkCache;
@@ -83,6 +80,12 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	}
 
 	@Override
+	public long size() throws IOException {
+		assertOpen();
+		return fileSize.get();
+	}
+
+	@Override
 	protected boolean isWritable() {
 		return options.writable();
 	}
@@ -93,159 +96,96 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	}
 
 	@Override
-	public int read(ByteBuffer dst) throws IOException {
-		int read = read(dst, position);
-		if (read != -1) {
-			position += read;
+	protected int readLocked(ByteBuffer dst, long position) throws IOException {
+		int origLimit = dst.limit();
+		long limitConsideringEof = fileSize.get() - position;
+		if (limitConsideringEof < 1) {
+			return -1;
 		}
+		dst.limit((int) min(origLimit, limitConsideringEof));
+		int read = 0;
+		int payloadSize = cryptor.fileContentCryptor().cleartextChunkSize();
+		while (dst.hasRemaining()) {
+			long pos = position + read;
+			long chunkIndex = pos / payloadSize; // floor by int-truncation
+			int offsetInChunk = (int) (pos % payloadSize); // known to fit in int, because payloadSize is int
+			int len = min(dst.remaining(), payloadSize - offsetInChunk); // known to fit in int, because second argument is int
+			final ChunkData chunkData = chunkCache.get(chunkIndex);
+			chunkData.copyDataStartingAt(offsetInChunk).to(dst);
+			read += len;
+		}
+		dst.limit(origLimit);
+		// stats.addBytesRead(read); // TODO
 		return read;
 	}
 
 	@Override
-	public int read(ByteBuffer dst, long position) throws IOException {
-		assertOpen();
-		assertReadable();
-		boolean completed = false;
-		try {
-			beginBlocking();
-			int origLimit = dst.limit();
-			long limitConsideringEof = fileSize.get() - position;
-			if (limitConsideringEof < 1) {
-				return -1;
-			}
-			dst.limit((int) min(origLimit, limitConsideringEof));
-			int read = 0;
-			int payloadSize = cryptor.fileContentCryptor().cleartextChunkSize();
-			while (dst.hasRemaining()) {
-				long pos = position + read;
-				long chunkIndex = pos / payloadSize; // floor by int-truncation
-				int offsetInChunk = (int) (pos % payloadSize); // known to fit in int, because payloadSize is int
-				int len = min(dst.remaining(), payloadSize - offsetInChunk); // known to fit in int, because second argument is int
-				final ChunkData chunkData = chunkCache.get(chunkIndex);
-				chunkData.copyDataStartingAt(offsetInChunk).to(dst);
-				read += len;
-			}
-			dst.limit(origLimit);
-			// stats.addBytesRead(read); // TODO
-			completed = true;
-			return read;
-		} finally {
-			endBlocking(completed);
-		}
-	}
-
-	@Override
-	public int write(ByteBuffer src) throws IOException {
-		int written = write(src, position);
-		position += written;
-		return written;
-	}
-
-	@Override
-	public int write(ByteBuffer src, long position) throws IOException {
-		assertOpen();
-		assertWritable();
-
+	protected int writeLocked(ByteBuffer src, long position) throws IOException {
 		long oldFileSize = fileSize.get();
 		if (position > oldFileSize) {
 			// we need to fill the gap:
 			long gapLen = position - oldFileSize;
 			final ByteSource byteSource = ByteSource.repeatingZeroes(gapLen).followedBy(src); // prepend zeros to the original src
-			return writeInternal(byteSource, oldFileSize); // fill the gap by beginning to write from old EOF
+			return writeLockedInternal(byteSource, oldFileSize); // fill the gap by beginning to write from old EOF
 		} else {
 			final ByteSource byteSource = ByteSource.from(src);
-			return writeInternal(byteSource, position);
+			return writeLockedInternal(byteSource, position);
 		}
 	}
 
-	private int writeInternal(ByteSource src, long position) throws IOException {
+
+	private int writeLockedInternal(ByteSource src, long position) throws IOException {
 		Preconditions.checkArgument(position <= fileSize.get());
-		assertOpen();
-		assertWritable();
-		boolean completed = false;
-		try {
-			beginBlocking();
-			int cleartextChunkSize = cryptor.fileContentCryptor().cleartextChunkSize();
-			int written = 0;
-			while (src.hasRemaining()) {
-				long currentPosition = position + written;
-				long chunkIndex = currentPosition / cleartextChunkSize; // floor by int-truncation
-				assert chunkIndex >= 0;
-				int offsetInChunk = (int) (currentPosition % cleartextChunkSize); // known to fit in int, because cleartextChunkSize is int
-				int len = (int) min(src.remaining(), cleartextChunkSize - offsetInChunk); // known to fit in int, because second argument is int
-				assert len <= cleartextChunkSize;
-				if (offsetInChunk == 0 && len == cleartextChunkSize) {
-					// complete chunk, no need to load and decrypt from file
-					ChunkData chunkData = ChunkData.emptyWithSize(cleartextChunkSize);
-					chunkData.copyData().from(src);
-					chunkCache.set(chunkIndex, chunkData);
-				} else {
-					/*
-					 * TODO performance:
-					 * We don't actually need to read the current data into the cache.
-					 * It would suffice if store the written data and do reading when storing the chunk.
-					 */
-					ChunkData chunkData = chunkCache.get(chunkIndex);
-					chunkData.copyDataStartingAt(offsetInChunk).from(src);
-				}
-				written += len;
+
+		int cleartextChunkSize = cryptor.fileContentCryptor().cleartextChunkSize();
+		int written = 0;
+		while (src.hasRemaining()) {
+			long currentPosition = position + written;
+			long chunkIndex = currentPosition / cleartextChunkSize; // floor by int-truncation
+			assert chunkIndex >= 0;
+			int offsetInChunk = (int) (currentPosition % cleartextChunkSize); // known to fit in int, because cleartextChunkSize is int
+			int len = (int) min(src.remaining(), cleartextChunkSize - offsetInChunk); // known to fit in int, because second argument is int
+			assert len <= cleartextChunkSize;
+			if (offsetInChunk == 0 && len == cleartextChunkSize) {
+				// complete chunk, no need to load and decrypt from file
+				ChunkData chunkData = ChunkData.emptyWithSize(cleartextChunkSize);
+				chunkData.copyData().from(src);
+				chunkCache.set(chunkIndex, chunkData);
+			} else {
+				/*
+				 * TODO performance:
+				 * We don't actually need to read the current data into the cache.
+				 * It would suffice if store the written data and do reading when storing the chunk.
+				 */
+				ChunkData chunkData = chunkCache.get(chunkIndex);
+				chunkData.copyDataStartingAt(offsetInChunk).from(src);
 			}
-			long minSize = position + written;
-			fileSize.updateAndGet(size -> max(minSize, size));
-			lastModified.set(Instant.now());
-			completed = true;
-			return written;
-		} finally {
-			endBlocking(completed);
+			written += len;
 		}
+		long minSize = position + written;
+		fileSize.updateAndGet(size -> max(minSize, size));
+		lastModified.set(Instant.now());
+		// stats.addBytesWritten(written); // TODO
+		return written;
+
 	}
 
 	@Override
-	public long position() throws IOException {
-		assertOpen();
-		return position;
-	}
-
-	@Override
-	public FileChannel position(long newPosition) throws IOException {
-		Preconditions.checkArgument(newPosition >= 0);
-		assertOpen();
-		position = newPosition;
-		return this;
-	}
-
-	@Override
-	public long size() throws IOException {
-		assertOpen();
-		return fileSize.get();
-	}
-
-	@Override
-	public FileChannel truncate(long newSize) throws IOException {
+	protected void truncateLocked(long newSize) throws IOException {
 		Preconditions.checkArgument(newSize >= 0);
-		assertOpen();
-		assertWritable();
-		boolean completed = false;
-		try {
-			beginBlocking();
-			if (newSize < fileSize.get()) {
-				int cleartextChunkSize = cryptor.fileContentCryptor().cleartextChunkSize();
-				long indexOfLastChunk = (newSize + cleartextChunkSize - 1) / cleartextChunkSize - 1;
-				int sizeOfIncompleteChunk = (int) (newSize % cleartextChunkSize); // known to fit in int, because cleartextChunkSize is int
-				if (sizeOfIncompleteChunk > 0) {
-					chunkCache.get(indexOfLastChunk).truncate(sizeOfIncompleteChunk);
-				}
-				long ciphertextFileSize = cryptor.fileHeaderCryptor().headerSize() + ciphertextSize(newSize, cryptor);
-				chunkCache.invalidateAll(); // make sure no chunks _after_ newSize exist that would otherwise be written during the next cache eviction
-				ciphertextFileChannel.truncate(ciphertextFileSize);
-				position = min(newSize, position);
-				fileSize.set(newSize);
-				lastModified.set(Instant.now());
+		if (newSize < fileSize.get()) {
+			int cleartextChunkSize = cryptor.fileContentCryptor().cleartextChunkSize();
+			long indexOfLastChunk = (newSize + cleartextChunkSize - 1) / cleartextChunkSize - 1;
+			int sizeOfIncompleteChunk = (int) (newSize % cleartextChunkSize); // known to fit in int, because cleartextChunkSize is int
+			if (sizeOfIncompleteChunk > 0) {
+				chunkCache.get(indexOfLastChunk).truncate(sizeOfIncompleteChunk);
 			}
-			completed = true;
-			return this;
-		} finally {
-			endBlocking(completed);
+			long ciphertextFileSize = cryptor.fileHeaderCryptor().headerSize() + ciphertextSize(newSize, cryptor);
+			chunkCache.invalidateAll(); // make sure no chunks _after_ newSize exist that would otherwise be written during the next cache eviction
+			ciphertextFileChannel.truncate(ciphertextFileSize);
+			position = min(newSize, position);
+			fileSize.set(newSize);
+			lastModified.set(Instant.now());
 		}
 	}
 
@@ -287,7 +227,6 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			forceInternal(true);
 		} finally {
 			super.implCloseChannel();
-			lock.unlock();
 			closeListener.closed(this);
 		}
 	}
