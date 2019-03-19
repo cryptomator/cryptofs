@@ -8,16 +8,14 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import com.google.common.collect.Sets;
 import com.google.common.jimfs.Jimfs;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -25,8 +23,6 @@ import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Set;
-import java.util.stream.Stream;
 
 import static java.lang.Math.min;
 import static java.lang.String.format;
@@ -41,32 +37,6 @@ import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
 public class CryptoFileChannelWriteReadIntegrationTest {
 
 	private static final int EOF = -1;
-
-	private static Set<Integer> dataSizes() {
-		return Sets.newHashSet(0, // nothing
-				372, // nothing < x < full chunk
-				32768, // x = full chunk
-				40287, // full chunk < x < two chunks
-				65536, // x = two chunks
-				72389 // two chunks < x < three chunks
-		);
-	}
-
-	private static Set<Integer> writeOffsets() {
-		return Sets.newHashSet(0, // nothing
-			372, // nothing < x < full chunk
-			32768, // x = full chunk
-			40287, // full chunk < x < two chunks
-			65536, // x = two chunks
-			72389 // two chunks < x < three chunks
-		);
-	}
-
-	private static Stream<Arguments> sizesAndOffsets() {
-		return Sets.cartesianProduct(dataSizes(), writeOffsets()).stream().map(list -> {
-			return Arguments.of(list.get(0), list.get(1));
-		});
-	}
 
 	private static FileSystem inMemoryFs;
 	private static Path pathToVault;
@@ -121,8 +91,8 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		}
 	}
 
-	@ParameterizedTest
-	@MethodSource("sizesAndOffsets")
+	@ParameterizedTest(name = "write {0} bytes and truncate to {1}")
+	@CsvSource({"0, 0", "0, 5000", "0, 32768", "0, 40000", "70000, 0", "70000, 30000", "70000, 40000", "70000, 65536", "70000, 80000"})
 	public void testWriteDataAndTruncateToOffset(int cleartextSize, int truncateToSize) throws IOException {
 		long fileId = nextFileId();
 
@@ -154,11 +124,9 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		}
 	}
 
-	@ParameterizedTest
-	@MethodSource("sizesAndOffsets")
+	@ParameterizedTest(name = "write {0} bytes beginning at {1}")
+	@CsvSource({"0, 5000", "0, 32768", "0, 40000", "70000, 0", "70000, 40000", "70000, 65536", "70000, 80000"})
 	public void testWithWritingOffset(int dataSize, int writeOffset) throws IOException {
-		Assumptions.assumeTrue(dataSize != 0 || writeOffset != 0);
-
 		long fileId = nextFileId();
 
 		int cleartextSize = dataSize + writeOffset;
@@ -187,11 +155,9 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		}
 	}
 
-	@ParameterizedTest
-	@MethodSource("sizesAndOffsets")
+	@ParameterizedTest(name = "write {0} bytes beginning at {1}")
+	@CsvSource({"0, 5000", "0, 32768", "0, 40000", "70000, 0", "70000, 40000", "70000, 65536", "70000, 80000"})
 	public void testWithWritingInReverseOrderUsingPositions(int dataSize, int writeOffset) throws IOException {
-		Assumptions.assumeTrue(dataSize != 0 || writeOffset != 0);
-
 		long fileId = nextFileId();
 
 		int cleartextSize = dataSize + writeOffset;
@@ -220,11 +186,9 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		}
 	}
 
-	@ParameterizedTest
-	@MethodSource("sizesAndOffsets")
+	@ParameterizedTest(name = "write {0} bytes beginngin at {1}")
+	@CsvSource({"10000, 32767", "10000, 32768", "10000, 32769", "70000, 65535", "70000, 65536", "70000, 65537"})
 	public void testWithSkippingOffset(int dataSize, int writeOffset) throws IOException {
-		Assumptions.assumeTrue(dataSize != 0 && writeOffset != 0);
-
 		long fileId = nextFileId();
 
 		int cleartextSize = dataSize + writeOffset;
@@ -251,11 +215,9 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		}
 	}
 
-	@ParameterizedTest
-	@MethodSource("sizesAndOffsets")
+	@ParameterizedTest(name = "append {0} bytes")
+	@ValueSource(ints = {372, 32768, 72389})
 	public void testAppend(int dataSize) throws IOException {
-		Assumptions.assumeTrue(dataSize != 0);
-
 		long fileId = nextFileId();
 
 		try (FileChannel channel = writableChannelInAppendMode(fileId)) {
