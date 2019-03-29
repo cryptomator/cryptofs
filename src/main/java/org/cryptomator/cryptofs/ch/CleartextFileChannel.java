@@ -125,22 +125,25 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	@Override
 	protected int writeLocked(ByteBuffer src, long position) throws IOException {
 		long oldFileSize = fileSize.get();
+		long written;
 		if (position > oldFileSize) {
 			// we need to fill the gap:
 			long gapLen = position - oldFileSize;
-			final ByteSource byteSource = ByteSource.repeatingZeroes(gapLen).followedBy(src); // prepend zeros to the original src
-			return writeLockedInternal(byteSource, oldFileSize); // fill the gap by beginning to write from old EOF
+			final ByteSource byteSource = ByteSource.undefinedNoise(gapLen).followedBy(src); // prepend zeros to the original src
+			written = writeLockedInternal(byteSource, oldFileSize) - gapLen; // fill the gap by beginning to write from old EOF
 		} else {
 			final ByteSource byteSource = ByteSource.from(src);
-			return writeLockedInternal(byteSource, position);
+			written = writeLockedInternal(byteSource, position);
 		}
+		assert written <= src.capacity();
+		return (int) written;
 	}
 
-	private int writeLockedInternal(ByteSource src, long position) throws IOException {
+	private long writeLockedInternal(ByteSource src, long position) throws IOException {
 		Preconditions.checkArgument(position <= fileSize.get());
 
 		int cleartextChunkSize = cryptor.fileContentCryptor().cleartextChunkSize();
-		int written = 0;
+		long written = 0;
 		while (src.hasRemaining()) {
 			long currentPosition = position + written;
 			long chunkIndex = currentPosition / cleartextChunkSize; // floor by int-truncation

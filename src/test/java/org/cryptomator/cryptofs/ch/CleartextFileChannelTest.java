@@ -9,7 +9,9 @@ import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -334,6 +336,7 @@ public class CleartextFileChannelTest {
 	public class Write {
 
 		@Test
+		@DisplayName("multiple writes to different chunks within the same file")
 		public void testWriteToMultipleChunks() throws IOException {
 			when(options.writable()).thenReturn(true);
 			when(fileHeaderCryptor.encryptHeader(any())).thenReturn(ByteBuffer.allocate(10));
@@ -358,7 +361,8 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
-		public void testWriteFailsIfNotWritable() throws IOException {
+		@DisplayName("write to non-writable channel")
+		public void testWriteFailsIfNotWritable() {
 			when(options.writable()).thenReturn(false);
 
 			Assertions.assertThrows(NonWritableChannelException.class, () -> {
@@ -367,6 +371,7 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
+		@DisplayName("test position increments")
 		public void testWriteIncrementsPositionByAmountWritten() throws IOException {
 			ByteBuffer buffer = ByteBuffer.allocate(110);
 			when(options.writable()).thenReturn(true);
@@ -384,7 +389,8 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
-		public void testWriteWithBuffersFailsIfNotWritable() throws IOException {
+		@DisplayName("write buffers to non-writable channel")
+		public void testWriteWithBuffersFailsIfNotWritable() {
 			when(options.writable()).thenReturn(false);
 
 			Assertions.assertThrows(NonWritableChannelException.class, () -> {
@@ -393,7 +399,8 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
-		public void testWriteWithBuffersStartsWritingFromOffsetAndWritesLengthBuffers() throws IOException {
+		@DisplayName("write subset of given buffers")
+		public void testWriteWithBuffers() throws IOException {
 			ByteBuffer[] buffers = {ByteBuffer.allocate(10), ByteBuffer.allocate(21), ByteBuffer.allocate(19), ByteBuffer.allocate(14)};
 			when(options.writable()).thenReturn(true);
 
@@ -401,6 +408,19 @@ public class CleartextFileChannelTest {
 
 			long written = inTest.write(buffers, 1, 2);
 			Assertions.assertEquals(40, written);
+		}
+
+		@Test
+		@DisplayName("write at position greater than the file's size")
+		public void writeAfterEof() throws IOException {
+			Assumptions.assumeTrue(inTest.size() < 200);
+			when(options.writable()).thenReturn(true);
+			ByteBuffer buffer = ByteBuffer.allocate(10);
+
+			long written = inTest.write(buffer, 200);
+
+			Assertions.assertEquals(10l, written);
+			Assertions.assertEquals(210l, inTest.size());
 		}
 
 	}
