@@ -426,6 +426,7 @@ public class CleartextFileChannelTest {
 	}
 
 	@Nested
+	@DisplayName("on closed channel:")
 	public class OperationsOnClosedChannelThrowClosedChannelException {
 
 		@BeforeEach
@@ -434,6 +435,7 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
+		@DisplayName("position()")
 		public void testGetPosition() {
 			Assertions.assertThrows(ClosedChannelException.class, () -> {
 				inTest.position();
@@ -441,6 +443,7 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
+		@DisplayName("position(pos)")
 		public void testSetPosition() {
 			Assertions.assertThrows(ClosedChannelException.class, () -> {
 				inTest.position(3727L);
@@ -448,6 +451,7 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
+		@DisplayName("read(buf)")
 		public void testRead() {
 			when(options.readable()).thenReturn(true);
 
@@ -457,6 +461,7 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
+		@DisplayName("write(buf)")
 		public void testWrite() {
 			when(options.writable()).thenReturn(true);
 
@@ -466,6 +471,7 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
+		@DisplayName("read(buf, pos)")
 		public void testReadWithPosition() {
 			when(options.readable()).thenReturn(true);
 
@@ -475,6 +481,7 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
+		@DisplayName("write(buf, pos)")
 		public void testWriteWithPosition() {
 			when(options.writable()).thenReturn(true);
 
@@ -484,6 +491,7 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
+		@DisplayName("transferFrom(ch, offset, length)")
 		public void testTransferFrom() throws IOException {
 			when(options.readable()).thenReturn(true);
 			ReadableByteChannel source = mock(ReadableByteChannel.class);
@@ -495,6 +503,7 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
+		@DisplayName("transferTo(offset, length, ch)")
 		public void testTransferTo() throws IOException {
 			when(options.readable()).thenReturn(true);
 			WritableByteChannel target = mock(WritableByteChannel.class);
@@ -506,6 +515,7 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
+		@DisplayName("size()")
 		public void testSize() {
 			Assertions.assertThrows(ClosedChannelException.class, () -> {
 				inTest.size();
@@ -513,6 +523,7 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
+		@DisplayName("truncate(size)")
 		public void testTruncate() {
 			Assertions.assertThrows(ClosedChannelException.class, () -> {
 				inTest.truncate(3727L);
@@ -520,6 +531,7 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
+		@DisplayName("force(force)")
 		public void testForce() {
 			Assertions.assertThrows(ClosedChannelException.class, () -> {
 				inTest.force(true);
@@ -527,6 +539,7 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
+		@DisplayName("lock(position, size, shared)")
 		public void testLock() {
 			Assertions.assertThrows(ClosedChannelException.class, () -> {
 				inTest.lock(3727L, 3727L, true);
@@ -534,6 +547,7 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
+		@DisplayName("tryLock(position, size, shared)")
 		public void testTryLock() {
 			Assertions.assertThrows(ClosedChannelException.class, () -> {
 				inTest.tryLock(3727L, 3727L, true);

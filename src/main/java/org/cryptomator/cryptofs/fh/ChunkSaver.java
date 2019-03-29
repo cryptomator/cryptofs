@@ -6,7 +6,6 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 
 @OpenFileScoped
 class ChunkSaver {
@@ -27,7 +26,7 @@ class ChunkSaver {
 	}
 
 	public void save(long chunkIndex, ChunkData chunkData) throws IOException {
-		if (chunkData.wasWritten()) {
+		if (chunkData.isDirty()) {
 			long ciphertextPos = chunkIndex * cryptor.fileContentCryptor().ciphertextChunkSize() + cryptor.fileHeaderCryptor().headerSize();
 			ByteBuffer cleartextBuf = chunkData.asReadOnlyBuffer();
 			stats.addBytesEncrypted(cleartextBuf.remaining());

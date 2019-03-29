@@ -34,27 +34,27 @@ public class ChunkDataTest {
 	}
 
 	@Test
-	public void testChunkDataWrappingBufferWasNotWritten() {
+	public void testChunkDataWrappingBufferIsNotDirty() {
 		ByteBuffer buffer = repeat(3).times(200).asByteBuffer();
 
 		ChunkData inTest = ChunkData.wrap(buffer);
 
-		Assertions.assertFalse(inTest.wasWritten());
+		Assertions.assertFalse(inTest.isDirty());
 	}
 
 	@Test
-	public void testEmptyChunkDataWasNotWritten() {
+	public void testEmptyChunkDataIsNotDirty() {
 		ChunkData inTest = ChunkData.emptyWithSize(200);
 
-		Assertions.assertFalse(inTest.wasWritten());
+		Assertions.assertFalse(inTest.isDirty());
 	}
 
 	@Test
-	public void testWrittenChunkDataWasWritten() {
+	public void testWrittenChunkDataIsDirty() {
 		ChunkData inTest = ChunkData.emptyWithSize(200);
 		inTest.copyData().from(repeat(3).times(200).asByteBuffer());
 
-		Assertions.assertTrue(inTest.wasWritten());
+		Assertions.assertTrue(inTest.isDirty());
 	}
 
 	@Test
@@ -62,7 +62,7 @@ public class ChunkDataTest {
 		ChunkData inTest = ChunkData.emptyWithSize(150);
 		inTest.copyDataStartingAt(50).from(repeat(3).times(50).asByteBuffer());
 
-		MatcherAssert.assertThat(inTest.toString(), is("ChunkData(written: true, length: 100, capacity: 150)"));
+		MatcherAssert.assertThat(inTest.toString(), is("ChunkData(dirty: true, length: 100, capacity: 150)"));
 	}
 
 	@ParameterizedTest

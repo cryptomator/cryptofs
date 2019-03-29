@@ -30,15 +30,17 @@ public class OpenCryptoFile implements Closeable {
 	private final FileCloseListener listener;
 	private final AtomicReference<Instant> lastModified;
 	private final ChunkIO chunkIO;
+	private final FileHeaderHandler headerHandler;
 	private final AtomicReference<Path> currentFilePath;
 	private final AtomicLong fileSize;
 	private final OpenCryptoFileComponent component;
 	private final ConcurrentMap<CleartextFileChannel, FileChannel> openChannels = new ConcurrentHashMap<>();
 
 	@Inject
-	public OpenCryptoFile(FileCloseListener listener, ChunkIO chunkIO, @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
+	public OpenCryptoFile(FileCloseListener listener, ChunkIO chunkIO, FileHeaderHandler headerHandler, @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
 		this.listener = listener;
 		this.chunkIO = chunkIO;
+		this.headerHandler = headerHandler;
 		this.currentFilePath = currentFilePath;
 		this.fileSize = fileSize;
 		this.component = component;
@@ -94,6 +96,7 @@ public class OpenCryptoFile implements Closeable {
 		try {
 			FileChannel ciphertextFileChannel = openChannels.remove(cleartextFileChannel);
 			if (ciphertextFileChannel != null) {
+				headerHandler.persistIfNeeded();
 				chunkIO.unregisterChannel(ciphertextFileChannel);
 				ciphertextFileChannel.close();
 			}

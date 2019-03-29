@@ -22,7 +22,7 @@ class FileHeaderHandler {
 	private final Cryptor cryptor;
 	private final AtomicReference<Path> path;
 	private final AtomicReference<FileHeader> header = new AtomicReference<>();
-	private boolean isNewHeader;
+	private boolean dirty;
 
 	@Inject
 	public FileHeaderHandler(ChunkIO ciphertext, Cryptor cryptor, @CurrentOpenFilePath AtomicReference<Path> path) {
@@ -43,7 +43,7 @@ class FileHeaderHandler {
 		try {
 			if (ciphertext.size() == 0) { // i.e. TRUNCATE_EXISTING, CREATE OR CREATE_NEW
 				LOG.trace("Generating file header for {}", path.get());
-				isNewHeader = true;
+				dirty = true;
 				return cryptor.fileHeaderCryptor().create();
 			} else {
 				LOG.trace("Reading file header from {}", path.get());
@@ -62,11 +62,11 @@ class FileHeaderHandler {
 	}
 
 	public void persistIfNeeded() throws IOException {
-		FileHeader header = get(); // make sure to invoke get(), as this sets isNewHeader as a side effect
-		if (isNewHeader) {
+		FileHeader header = get(); // make sure to invoke get(), as this sets dirty as a side effect
+		if (dirty) {
 			LOG.trace("Writing file header to {}", path.get());
-
 			ciphertext.write(cryptor.fileHeaderCryptor().encryptHeader(header), 0);
+			dirty = false;
 		}
 	}
 
