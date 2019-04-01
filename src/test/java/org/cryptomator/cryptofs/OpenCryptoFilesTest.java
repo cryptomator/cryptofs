@@ -24,7 +24,7 @@ public class OpenCryptoFilesTest {
 
 	private final CryptoFileSystemComponent cryptoFileSystemComponent = mock(CryptoFileSystemComponent.class);
 	private final OpenCryptoFileComponent.Builder openCryptoFileComponentBuilder = mock(OpenCryptoFileComponent.Builder.class);
-	private final OpenCryptoFile file = mock(OpenCryptoFile.class);
+	private final OpenCryptoFile file = mock(OpenCryptoFile.class, "file");
 	private final FileChannel ciphertextFileChannel = Mockito.mock(FileChannel.class);
 
 	private OpenCryptoFiles inTest;
@@ -145,20 +145,24 @@ public class OpenCryptoFilesTest {
 
 	@Test
 	public void testCloseClosesRemainingOpenFiles() {
-		Path path1 = Paths.get("/foo");
+		Path path1 = Mockito.mock(Path.class, "/file1");
+		Mockito.when(path1.toAbsolutePath()).thenReturn(path1);
+		Mockito.when(path1.normalize()).thenReturn(path1);
 		OpenCryptoFileComponent.Builder subComponentBuilder1 = mock(OpenCryptoFileComponent.Builder.class);
 		OpenCryptoFileComponent subComponent1 = mock(OpenCryptoFileComponent.class);
-		OpenCryptoFile file1 = mock(OpenCryptoFile.class);
+		OpenCryptoFile file1 = mock(OpenCryptoFile.class, "file1");
 		Mockito.when(openCryptoFileComponentBuilder.path(path1)).thenReturn(subComponentBuilder1);
 		Mockito.when(subComponentBuilder1.onClose(Mockito.any())).thenReturn(subComponentBuilder1);
 		Mockito.when(subComponentBuilder1.build()).thenReturn(subComponent1);
 		Mockito.when(subComponent1.openCryptoFile()).thenReturn(file1);
 		Mockito.when(file1.getCurrentFilePath()).thenReturn(path1);
 
-		Path path2 = Paths.get("/bar");
+		Path path2 = Mockito.mock(Path.class, "/file2");
+		Mockito.when(path2.toAbsolutePath()).thenReturn(path2);
+		Mockito.when(path2.normalize()).thenReturn(path2);
 		OpenCryptoFileComponent.Builder subComponentBuilder2 = mock(OpenCryptoFileComponent.Builder.class);
 		OpenCryptoFileComponent subComponent2 = mock(OpenCryptoFileComponent.class);
-		OpenCryptoFile file2 = mock(OpenCryptoFile.class);
+		OpenCryptoFile file2 = mock(OpenCryptoFile.class, "file2");
 		Mockito.when(openCryptoFileComponentBuilder.path(path2)).thenReturn(subComponentBuilder2);
 		Mockito.when(subComponentBuilder2.onClose(Mockito.any())).thenReturn(subComponentBuilder2);
 		Mockito.when(subComponentBuilder2.build()).thenReturn(subComponent2);
