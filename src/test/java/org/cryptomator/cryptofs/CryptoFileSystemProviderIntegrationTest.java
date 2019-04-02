@@ -16,9 +16,12 @@ import org.cryptomator.cryptolib.api.InvalidPassphraseException;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Nested;
@@ -46,6 +49,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.DosFileAttributeView;
+import java.sql.SQLOutput;
 import java.util.EnumSet;
 
 import static java.nio.file.Files.readAllBytes;
@@ -420,7 +425,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 		@Test
 		@Order(3)
-		@DisplayName("read and write dos attributes")
+		@DisplayName("set dos attributes")
 		public void testDosFileAttributes() throws IOException {
 			Path file = fs1.getPath("/msDosAttributes.txt");
 			Assumptions.assumeTrue(Files.notExists(file));
@@ -437,10 +442,6 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Assertions.assertEquals(true, Files.getAttribute(file, "dos:archive"));
 			Assertions.assertEquals(true, Files.getAttribute(file, "dos:readOnly"));
 
-			Assertions.assertThrows(AccessDeniedException.class, () -> {
-				FileChannel.open(file, StandardOpenOption.WRITE);
-			});
-
 			Files.setAttribute(file, "dos:hidden", false);
 			Files.setAttribute(file, "dos:system", false);
 			Files.setAttribute(file, "dos:archive", false);
@@ -450,6 +451,53 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Assertions.assertEquals(false, Files.getAttribute(file, "dos:system"));
 			Assertions.assertEquals(false, Files.getAttribute(file, "dos:archive"));
 			Assertions.assertEquals(false, Files.getAttribute(file, "dos:readOnly"));
+		}
+
+		@Nested
+		@DisplayName("read-only file")
+		class OnReadOnlyFile {
+
+			private Path file = fs1.getPath("/readonly.txt");
+			private DosFileAttributeView attrView;
+
+			@BeforeEach
+			public void setup() throws IOException {
+				Files.write(file, new byte[1]);
+
+				attrView = Files.getFileAttributeView(file, DosFileAttributeView.class);
+				attrView.setReadOnly(true);
+			}
+
+			@AfterEach
+			public void tearDown() throws IOException {
+				attrView.setReadOnly(false);
+			}
+
+			@Test
+			@DisplayName("is not writable")
+			public void testNotWritable() {
+				Assertions.assertThrows(AccessDeniedException.class, () -> {
+					FileChannel.open(file, StandardOpenOption.WRITE);
+				});
+			}
+
+			@Test
+			@DisplayName("is readable")
+			public void testReadable() throws IOException {
+				try (FileChannel ch = FileChannel.open(file, StandardOpenOption.READ)) {
+					Assertions.assertEquals(1, ch.size());
+				}
+			}
+
+			@Test
+			@DisplayName("can be made read-write accessible")
+			public void testFoo() throws IOException {
+				attrView.setReadOnly(false);
+				try (FileChannel ch = FileChannel.open(file, StandardOpenOption.WRITE)) {
+					Assertions.assertEquals(1, ch.size());
+				}
+			}
+
 		}
 
 
