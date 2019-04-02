@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 
@@ -66,7 +67,7 @@ public class CryptoDosFileAttributeViewTest {
 	}
 
 	@ParameterizedTest
-	@MethodSource("booleans")
+	@CsvSource({"true", "false"})
 	public void testSetReadOnly(boolean value) throws IOException {
 		inTest.setReadOnly(value);
 
@@ -75,7 +76,7 @@ public class CryptoDosFileAttributeViewTest {
 	}
 
 	@ParameterizedTest
-	@MethodSource("booleans")
+	@CsvSource({"true", "false"})
 	public void testSetHidden(boolean value) throws IOException {
 		inTest.setHidden(value);
 
@@ -84,7 +85,7 @@ public class CryptoDosFileAttributeViewTest {
 	}
 
 	@ParameterizedTest
-	@MethodSource("booleans")
+	@CsvSource({"true", "false"})
 	public void testSetSystem(boolean value) throws IOException {
 		inTest.setSystem(value);
 
@@ -93,7 +94,7 @@ public class CryptoDosFileAttributeViewTest {
 	}
 
 	@ParameterizedTest
-	@MethodSource("booleans")
+	@CsvSource({"true", "false"})
 	public void testSetArchive(boolean value) throws IOException {
 		inTest.setArchive(value);
 
@@ -102,7 +103,7 @@ public class CryptoDosFileAttributeViewTest {
 	}
 
 	@ParameterizedTest
-	@MethodSource("booleans")
+	@CsvSource({"true", "false"})
 	public void testSetHiddenOfSymlinkNoFollow(boolean value) throws IOException {
 		CryptoDosFileAttributeView view = new CryptoDosFileAttributeView(link, pathMapper, new LinkOption[]{LinkOption.NOFOLLOW_LINKS}, symlinks, openCryptoFiles, fileAttributeProvider, readonlyFlag);
 		view.setHidden(value);
@@ -111,16 +112,12 @@ public class CryptoDosFileAttributeViewTest {
 	}
 
 	@ParameterizedTest
-	@MethodSource("booleans")
+	@CsvSource({"true", "false"})
 	public void testSetHiddenOfSymlinkFollow(boolean value) throws IOException {
 		CryptoDosFileAttributeView view = new CryptoDosFileAttributeView(link, pathMapper, new LinkOption[]{}, symlinks, openCryptoFiles, fileAttributeProvider, readonlyFlag);
 		view.setHidden(value);
 
 		verify(delegate).setHidden(value);
-	}
-
-	private static final Stream<Boolean> booleans() {
-		return Stream.of(Boolean.TRUE, Boolean.FALSE);
 	}
 
 }

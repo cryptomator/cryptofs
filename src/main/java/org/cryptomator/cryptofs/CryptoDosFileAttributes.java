@@ -18,29 +18,31 @@ import org.cryptomator.cryptolib.api.Cryptor;
 class CryptoDosFileAttributes extends CryptoBasicFileAttributes implements DosFileAttributes {
 
 	private final boolean readonly;
+	private final DosFileAttributes delegate;
 
 	public CryptoDosFileAttributes(DosFileAttributes delegate, CryptoPathMapper.CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonly) {
 		super(delegate, ciphertextFileType, ciphertextPath, cryptor, openCryptoFile, readonly);
-		this.readonly = readonly || delegate.isReadOnly();
+		this.readonly = readonly;
+		this.delegate = delegate;
 	}
 
 	@Override
 	public boolean isReadOnly() {
-		return readonly;
+		return readonly || delegate.isReadOnly();
 	}
 
 	@Override
 	public boolean isHidden() {
-		return false;
+		return delegate.isHidden();
 	}
 
 	@Override
 	public boolean isArchive() {
-		return false;
+		return delegate.isArchive();
 	}
 
 	@Override
 	public boolean isSystem() {
-		return false;
+		return delegate.isSystem();
 	}
 }

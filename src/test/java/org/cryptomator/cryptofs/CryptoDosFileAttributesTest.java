@@ -5,9 +5,14 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.attribute.DosFileAttributes;
@@ -18,6 +23,7 @@ import static org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType.FILE;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CryptoDosFileAttributesTest {
 
 	private DosFileAttributes delegate = mock(DosFileAttributes.class);
@@ -27,9 +33,7 @@ public class CryptoDosFileAttributesTest {
 	private FileContentCryptor contentCryptor = mock(FileContentCryptor.class);
 	private OpenCryptoFile openCryptoFile = mock(OpenCryptoFile.class);
 
-	private CryptoDosFileAttributes inTest;
-
-	@BeforeEach
+	@BeforeAll
 	public void setup() {
 		when(delegate.size()).thenReturn(0l);
 		when(cryptor.fileHeaderCryptor()).thenReturn(headerCryptor);
@@ -37,45 +41,78 @@ public class CryptoDosFileAttributesTest {
 		when(headerCryptor.headerSize()).thenReturn(0);
 		when(contentCryptor.ciphertextChunkSize()).thenReturn(100);
 		when(contentCryptor.cleartextChunkSize()).thenReturn(100);
-
-		inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), false);
 	}
 
-	@Test
-	public void testIsArchiveDelegates() {
-		Assertions.assertFalse(inTest.isArchive());
+	@Nested
+	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+	@DisplayName("on read-write filesystem")
+	class ReadWriteFileSystem {
+
+		private CryptoDosFileAttributes inTest;
+
+		@BeforeAll
+		public void setup() {
+			inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), false);
+		}
+
+		@DisplayName("isArchive()")
+		@ParameterizedTest(name = "is {0} if delegate.isArchive() is {0}")
+		@CsvSource({"true", "false"})
+		public void testIsArchiveDelegates(boolean value) {
+			when(delegate.isArchive()).thenReturn(value);
+
+			Assertions.assertSame(value, inTest.isArchive());
+		}
+
+		@DisplayName("isHidden()")
+		@ParameterizedTest(name = "is {0} if delegate.isHidden() is {0}")
+		@CsvSource({"true", "false"})
+		public void testIsHiddenDelegates(boolean value) {
+			when(delegate.isHidden()).thenReturn(value);
+
+			Assertions.assertSame(value, inTest.isHidden());
+		}
+
+		@DisplayName("isReadOnly()")
+		@ParameterizedTest(name = "is {0} if delegate.readOnly() is {0}")
+		@CsvSource({"true", "false"})
+		public void testIsReadOnlyDelegates(boolean value) {
+			when(delegate.isReadOnly()).thenReturn(value);
+
+			Assertions.assertSame(value, inTest.isReadOnly());
+		}
+
+		@DisplayName("isSystem()")
+		@ParameterizedTest(name = "is {0} if delegate.isSystem() is {0}")
+		@CsvSource({"true", "false"})
+		public void testIsSystemDelegates(boolean value) {
+			when(delegate.isSystem()).thenReturn(value);
+
+			Assertions.assertSame(value, inTest.isSystem());
+		}
+
 	}
 
-	@Test
-	public void testIsHiddenIsFAlse() {
-		Assertions.assertFalse(inTest.isHidden());
+	@Nested
+	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+	@DisplayName("on read-only filesystem")
+	class ReadOnlyFileSystem {
+
+		private CryptoDosFileAttributes inTest;
+
+		@BeforeAll
+		public void setup() {
+			inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), true);
+		}
+
+		@DisplayName("isReadOnly()")
+		@ParameterizedTest(name = "is true if delegate.readOnly() is {0}")
+		@CsvSource({"true", "false"})
+		public void testIsReadOnlyForReadonlyFileSystem(boolean value) {
+			when(delegate.isReadOnly()).thenReturn(value);
+
+			Assertions.assertTrue(inTest.isReadOnly());
+		}
+
 	}
-
-	@ParameterizedTest
-	@MethodSource("booleans")
-	public void testIsReadOnlyDelegates(boolean value) {
-		when(delegate.isReadOnly()).thenReturn(value);
-
-		CryptoDosFileAttributes attrs = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), false);
-		Assertions.assertSame(value, attrs.isReadOnly());
-	}
-
-	@ParameterizedTest
-	@MethodSource("booleans")
-	public void testIsReadOnlyForReadonlyFileSystem(boolean value) {
-		when(delegate.isReadOnly()).thenReturn(value);
-
-		CryptoDosFileAttributes attrs = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), true);
-		Assertions.assertTrue(attrs.isReadOnly());
-	}
-
-	@Test
-	public void testIsSystemDelegates() {
-		Assertions.assertFalse(inTest.isSystem());
-	}
-
-	private static final Stream<Boolean> booleans() {
-		return Stream.of(Boolean.TRUE, Boolean.FALSE);
-	}
-
 }

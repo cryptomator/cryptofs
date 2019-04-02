@@ -37,6 +37,7 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -431,20 +432,24 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Files.setAttribute(file, "dos:archive", true);
 			Files.setAttribute(file, "dos:readOnly", true);
 
-			MatcherAssert.assertThat(Files.getAttribute(file, "dos:hidden"), is(false));
-			MatcherAssert.assertThat(Files.getAttribute(file, "dos:system"), is(false));
-			MatcherAssert.assertThat(Files.getAttribute(file, "dos:archive"), is(false));
-			MatcherAssert.assertThat(Files.getAttribute(file, "dos:readOnly"), is(true));
+			Assertions.assertEquals(true, Files.getAttribute(file, "dos:hidden"));
+			Assertions.assertEquals(true, Files.getAttribute(file, "dos:system"));
+			Assertions.assertEquals(true, Files.getAttribute(file, "dos:archive"));
+			Assertions.assertEquals(true, Files.getAttribute(file, "dos:readOnly"));
+
+			Assertions.assertThrows(AccessDeniedException.class, () -> {
+				FileChannel.open(file, StandardOpenOption.WRITE);
+			});
 
 			Files.setAttribute(file, "dos:hidden", false);
 			Files.setAttribute(file, "dos:system", false);
 			Files.setAttribute(file, "dos:archive", false);
 			Files.setAttribute(file, "dos:readOnly", false);
 
-			MatcherAssert.assertThat(Files.getAttribute(file, "dos:hidden"), is(false));
-			MatcherAssert.assertThat(Files.getAttribute(file, "dos:system"), is(false));
-			MatcherAssert.assertThat(Files.getAttribute(file, "dos:archive"), is(false));
-			MatcherAssert.assertThat(Files.getAttribute(file, "dos:readOnly"), is(false));
+			Assertions.assertEquals(false, Files.getAttribute(file, "dos:hidden"));
+			Assertions.assertEquals(false, Files.getAttribute(file, "dos:system"));
+			Assertions.assertEquals(false, Files.getAttribute(file, "dos:archive"));
+			Assertions.assertEquals(false, Files.getAttribute(file, "dos:readOnly"));
 		}
 
 
