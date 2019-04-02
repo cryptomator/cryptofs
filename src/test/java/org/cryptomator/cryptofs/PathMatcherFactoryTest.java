@@ -1,27 +1,15 @@
 package org.cryptomator.cryptofs;
 
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+
 import java.nio.file.PathMatcher;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
-
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class PathMatcherFactoryTest {
-
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	private GlobToRegexConverter globToRegexConverter = mock(GlobToRegexConverter.class);
 
@@ -29,9 +17,9 @@ public class PathMatcherFactoryTest {
 
 	@Test
 	public void testSyntaxAndPatternNotStartingWithGlobOrRegexThrowsUnsupportedOperationException() {
-		thrown.expect(UnsupportedOperationException.class);
-
-		inTest.pathMatcherFrom("fail");
+		Assertions.assertThrows(UnsupportedOperationException.class, () -> {
+			inTest.pathMatcherFrom("fail");
+		});
 	}
 
 	@Test
@@ -39,8 +27,8 @@ public class PathMatcherFactoryTest {
 	public void testSyntaxAndPatternStartingWithRegexCreatesPatternPathMatcherWithCorrectPattern() {
 		PathMatcher pathMatcher = inTest.pathMatcherFrom("regex:test[02]");
 
-		assertThat(pathMatcher, is(instanceOf(PatternPathMatcher.class)));
-		assertThat(((PatternPathMatcher) pathMatcher).getPattern().pattern(), is("test[02]"));
+		Assertions.assertTrue(pathMatcher instanceof PatternPathMatcher);
+		Assertions.assertEquals("test[02]", ((PatternPathMatcher) pathMatcher).getPattern().pattern());
 	}
 
 	@Test
@@ -51,8 +39,8 @@ public class PathMatcherFactoryTest {
 
 		PathMatcher pathMatcher = inTest.pathMatcherFrom("glob:abcd");
 
-		assertThat(pathMatcher, is(instanceOf(PatternPathMatcher.class)));
-		assertThat(((PatternPathMatcher) pathMatcher).getPattern().pattern(), is(regexp));
+		Assertions.assertTrue(pathMatcher instanceof PatternPathMatcher);
+		Assertions.assertEquals(regexp, ((PatternPathMatcher) pathMatcher).getPattern().pattern());
 	}
 
 	@Test

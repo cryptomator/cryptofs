@@ -8,6 +8,8 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.fh.OpenCryptoFile;
+
 import java.io.IOException;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;

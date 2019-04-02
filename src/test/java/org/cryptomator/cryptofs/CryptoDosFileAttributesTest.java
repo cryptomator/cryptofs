@@ -1,69 +1,81 @@
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptolib.api.Cryptor;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.experimental.theories.Theories;
-import org.junit.experimental.theories.Theory;
-import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
+import org.cryptomator.cryptolib.api.FileContentCryptor;
+import org.cryptomator.cryptolib.api.FileHeaderCryptor;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.attribute.DosFileAttributes;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType.FILE;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@RunWith(Theories.class)
 public class CryptoDosFileAttributesTest {
-
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	private DosFileAttributes delegate = mock(DosFileAttributes.class);
 	private CryptoPath path = mock(CryptoPath.class);
 	private Cryptor cryptor = mock(Cryptor.class);
+	private FileHeaderCryptor headerCryptor = mock(FileHeaderCryptor.class);
+	private FileContentCryptor contentCryptor = mock(FileContentCryptor.class);
 	private OpenCryptoFile openCryptoFile = mock(OpenCryptoFile.class);
 
-	private CryptoDosFileAttributes inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), false);
+	private CryptoDosFileAttributes inTest;
+
+	@BeforeEach
+	public void setup() {
+		when(delegate.size()).thenReturn(0l);
+		when(cryptor.fileHeaderCryptor()).thenReturn(headerCryptor);
+		when(cryptor.fileContentCryptor()).thenReturn(contentCryptor);
+		when(headerCryptor.headerSize()).thenReturn(0);
+		when(contentCryptor.ciphertextChunkSize()).thenReturn(100);
+		when(contentCryptor.cleartextChunkSize()).thenReturn(100);
+
+		inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), false);
+	}
 
 	@Test
 	public void testIsArchiveDelegates() {
-		assertThat(inTest.isArchive(), is(false));
+		Assertions.assertFalse(inTest.isArchive());
 	}
 
 	@Test
 	public void testIsHiddenIsFAlse() {
-		assertThat(inTest.isHidden(), is(false));
+		Assertions.assertFalse(inTest.isHidden());
 	}
 
-	@Theory
+	@ParameterizedTest
+	@MethodSource("booleans")
 	public void testIsReadOnlyDelegates(boolean value) {
 		when(delegate.isReadOnly()).thenReturn(value);
 
 		CryptoDosFileAttributes attrs = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), false);
-		assertThat(attrs.isReadOnly(), is(value));
+		Assertions.assertSame(value, attrs.isReadOnly());
 	}
 
-	@Theory
+	@ParameterizedTest
+	@MethodSource("booleans")
 	public void testIsReadOnlyForReadonlyFileSystem(boolean value) {
 		when(delegate.isReadOnly()).thenReturn(value);
 
 		CryptoDosFileAttributes attrs = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), true);
-		assertThat(attrs.isReadOnly(), is(true));
+		Assertions.assertTrue(attrs.isReadOnly());
 	}
 
 	@Test
 	public void testIsSystemDelegates() {
-		assertThat(inTest.isSystem(), is(false));
+		Assertions.assertFalse(inTest.isSystem());
+	}
+
+	private static final Stream<Boolean> booleans() {
+		return Stream.of(Boolean.TRUE, Boolean.FALSE);
 	}
 
 }

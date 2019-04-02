@@ -1,13 +1,11 @@
 package org.cryptomator.cryptofs;
 
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
-
-import org.junit.Test;
 
 public class EncryptedNamePatternTest {
 
@@ -22,37 +20,37 @@ public class EncryptedNamePatternTest {
 	public void testExtractEncryptedNameReturnsEmptyOptionalIfNoEncryptedNameIsPresent() {
 		Optional<String> result = inTest.extractEncryptedName(PATH_WITHOUT_ENCRYPTED_NAME);
 
-		assertThat(result.isPresent(), is(false));
+		Assertions.assertFalse(result.isPresent());
 	}
 
 	@Test
 	public void testExtractEncryptedNameReturnsEncryptedNameIfItIsIsPresent() {
 		Optional<String> result = inTest.extractEncryptedName(PATH_WITH_ENCRYPTED_NAME_AND_PREFIX_AND_SUFFIX);
 
-		assertThat(result.isPresent(), is(true));
-		assertThat(result.get(), is(ENCRYPTED_NAME));
+		Assertions.assertTrue(result.isPresent());
+		Assertions.assertEquals(ENCRYPTED_NAME, result.get());
 	}
 
 	@Test
 	public void testExtractEncryptedNameFromStartReturnsEmptyOptionalIfNoEncryptedNameIsPresent() {
 		Optional<String> result = inTest.extractEncryptedNameFromStart(PATH_WITHOUT_ENCRYPTED_NAME);
 
-		assertThat(result.isPresent(), is(false));
+		Assertions.assertFalse(result.isPresent());
 	}
 
 	@Test
 	public void testExtractEncryptedNameFromStartReturnsEncryptedNameIfItIsPresent() {
 		Optional<String> result = inTest.extractEncryptedName(PATH_WITH_ENCRYPTED_NAME_AND_SUFFIX);
 
-		assertThat(result.isPresent(), is(true));
-		assertThat(result.get(), is(ENCRYPTED_NAME));
+		Assertions.assertTrue(result.isPresent());
+		Assertions.assertEquals(ENCRYPTED_NAME, result.get());
 	}
 
 	@Test
 	public void testExtractEncryptedNameFromStartReturnsEmptyOptionalIfEncryptedNameIsPresentAfterStart() {
 		Optional<String> result = inTest.extractEncryptedNameFromStart(PATH_WITH_ENCRYPTED_NAME_AND_PREFIX_AND_SUFFIX);
 
-		assertThat(result.isPresent(), is(false));
+		Assertions.assertFalse(result.isPresent());
 	}
 
 }

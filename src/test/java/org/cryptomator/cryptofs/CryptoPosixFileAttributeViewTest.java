@@ -1,19 +1,15 @@
 package org.cryptomator.cryptofs;
 
-import static java.nio.file.attribute.PosixFilePermission.OTHERS_WRITE;
-import static java.util.Arrays.asList;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
-import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFileAttributeView;
@@ -24,17 +20,13 @@ import java.nio.file.spi.FileSystemProvider;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
+import static java.nio.file.attribute.PosixFilePermission.OTHERS_WRITE;
+import static java.util.Arrays.asList;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class CryptoPosixFileAttributeViewTest {
-
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
 
 	private Path linkCiphertextPath = mock(Path.class);
 	private Path ciphertextPath = mock(Path.class);
@@ -53,7 +45,7 @@ public class CryptoPosixFileAttributeViewTest {
 
 	private CryptoPosixFileAttributeView inTest;
 
-	@Before
+	@BeforeEach
 	public void setUp() throws IOException {
 		when(linkCiphertextPath.getFileSystem()).thenReturn(fileSystem);
 		when(ciphertextPath.getFileSystem()).thenReturn(fileSystem);
@@ -73,7 +65,7 @@ public class CryptoPosixFileAttributeViewTest {
 
 	@Test
 	public void testNameReturnsPosix() {
-		assertThat(inTest.name(), is("posix"));
+		Assertions.assertEquals("posix", inTest.name());
 	}
 
 	@Test
@@ -83,7 +75,7 @@ public class CryptoPosixFileAttributeViewTest {
 
 		UserPrincipal result = inTest.getOwner();
 
-		assertThat(result, is(expectedPrincipal));
+		Assertions.assertSame(expectedPrincipal, result);
 	}
 
 	@Test
@@ -123,7 +115,7 @@ public class CryptoPosixFileAttributeViewTest {
 
 		PosixFileAttributes result = inTest.readAttributes();
 
-		assertThat(result, is(expectedAttributes));
+		Assertions.assertSame(expectedAttributes, result);
 	}
 
 	@Test

@@ -1,4 +1,4 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.fh;
 
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 

@@ -6,18 +6,18 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.fh;
+
+import java.nio.ByteBuffer;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.lang.String.format;
 
-import java.nio.ByteBuffer;
-
-class ChunkData {
+public class ChunkData {
 
 	private final ByteBuffer bytes;
-	private boolean written;
+	private boolean dirty;
 	private int length;
 
 	public static ChunkData wrap(ByteBuffer bytes) {
@@ -30,18 +30,18 @@ class ChunkData {
 
 	private ChunkData(ByteBuffer bytes, int length) {
 		this.bytes = bytes;
-		this.written = false;
+		this.dirty = false;
 		this.length = length;
 	}
 
-	public boolean wasWritten() {
-		return written;
+	public boolean isDirty() {
+		return dirty;
 	}
 
 	public void truncate(int length) {
 		if (this.length > length) {
 			this.length = length;
-			this.written = true;
+			this.dirty = true;
 		}
 	}
 
@@ -65,7 +65,7 @@ class ChunkData {
 
 			@Override
 			public void from(ByteSource source) {
-				written = true;
+				dirty = true;
 				bytes.limit(bytes.capacity());
 				bytes.position(offset);
 				source.copyTo(bytes);
@@ -93,7 +93,7 @@ class ChunkData {
 
 	@Override
 	public String toString() {
-		return format("ChunkData(written: %s, length: %d, capacity: %d)", written, length, bytes.capacity());
+		return format("ChunkData(dirty: %s, length: %d, capacity: %d)", dirty, length, bytes.capacity());
 	}
 
 }

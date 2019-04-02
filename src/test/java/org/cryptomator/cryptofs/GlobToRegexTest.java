@@ -8,149 +8,146 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static org.hamcrest.CoreMatchers.not;
-import static org.junit.Assert.assertThat;
+import org.hamcrest.Description;
+import org.hamcrest.Matcher;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.TypeSafeMatcher;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import org.hamcrest.Description;
-import org.hamcrest.Matcher;
-import org.hamcrest.TypeSafeMatcher;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import static org.hamcrest.CoreMatchers.not;
 
 public class GlobToRegexTest {
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-	
 	@Test
 	public void testAsteriskMatchesZeroOrMoreCharactersOfANameComponentWithoutCrossingDirectoryBoundaries() {
-		assertThat("*", matches("test123#.txt"));
-		assertThat("{*}", matches("test123#.txt"));
-		assertThat("*/*", matches("test/123.txt"));
-		assertThat("*/123.txt", matches("test/123.txt"));
-		assertThat("*", doesNotMatch("test/123.txt"));
-		
-		assertThat("\\*", matches("*"));
-		assertThat("{\\*}", matches("*"));
-		assertThat("\\*", doesNotMatch("test123#.txt"));
+		MatcherAssert.assertThat("*", matches("test123#.txt"));
+		MatcherAssert.assertThat("{*}", matches("test123#.txt"));
+		MatcherAssert.assertThat("*/*", matches("test/123.txt"));
+		MatcherAssert.assertThat("*/123.txt", matches("test/123.txt"));
+		MatcherAssert.assertThat("*", doesNotMatch("test/123.txt"));
+
+		MatcherAssert.assertThat("\\*", matches("*"));
+		MatcherAssert.assertThat("{\\*}", matches("*"));
+		MatcherAssert.assertThat("\\*", doesNotMatch("test123#.txt"));
 	}
 
 	@Test
 	public void testDoubleAsteriskMatchesZeroOrMoreCharactersOfANameComponentWithCrossingDirectoryBoundaries() {
-		assertThat("**", matches("test123#.txt"));
-		assertThat("{**}", matches("test123#.txt"));
-		assertThat("**", matches("test/123.txt"));
-		assertThat("{**}", matches("test/123.txt"));
-		
-		assertThat("\\**", matches("*asdfoo"));
-		assertThat("\\**", doesNotMatch("test/test123#.txt"));
+		MatcherAssert.assertThat("**", matches("test123#.txt"));
+		MatcherAssert.assertThat("{**}", matches("test123#.txt"));
+		MatcherAssert.assertThat("**", matches("test/123.txt"));
+		MatcherAssert.assertThat("{**}", matches("test/123.txt"));
+
+		MatcherAssert.assertThat("\\**", matches("*asdfoo"));
+		MatcherAssert.assertThat("\\**", doesNotMatch("test/test123#.txt"));
 	}
 
 	@Test
 	public void testQuestionMarkMatchesExactlyOneCharacterOfANameComponent() {
-		assertThat("foo/ba?.txt", matches("foo/bar.txt"));
-		assertThat("foo/ba{?}.txt", matches("foo/bar.txt"));
-		assertThat("foo/???????", matches("foo/bar.txt"));
-		assertThat("foo/???.txt", matches("foo/bar.txt"));
-		assertThat("foo?bar.txt", doesNotMatch("foo/bar.txt"));
-		assertThat("foo/?", doesNotMatch("foo/ba"));
+		MatcherAssert.assertThat("foo/ba?.txt", matches("foo/bar.txt"));
+		MatcherAssert.assertThat("foo/ba{?}.txt", matches("foo/bar.txt"));
+		MatcherAssert.assertThat("foo/???????", matches("foo/bar.txt"));
+		MatcherAssert.assertThat("foo/???.txt", matches("foo/bar.txt"));
+		MatcherAssert.assertThat("foo?bar.txt", doesNotMatch("foo/bar.txt"));
+		MatcherAssert.assertThat("foo/?", doesNotMatch("foo/ba"));
 	}
 
 	@Test
 	public void testSquareBracketsMatchSingleCharacterOutOfTheSet() {
-		assertThat("[a-c]", matches("a"));
-		assertThat("{[a-c]}", matches("a"));
-		assertThat("[ac]", doesNotMatch("b"));
-		assertThat("[ac-e]", matches("a"));
-		assertThat("[ac-e]", matches("d"));
-		assertThat("[a-c]", matches("c"));
-		assertThat("[a-c]", doesNotMatch("d"));
+		MatcherAssert.assertThat("[a-c]", matches("a"));
+		MatcherAssert.assertThat("{[a-c]}", matches("a"));
+		MatcherAssert.assertThat("[ac]", doesNotMatch("b"));
+		MatcherAssert.assertThat("[ac-e]", matches("a"));
+		MatcherAssert.assertThat("[ac-e]", matches("d"));
+		MatcherAssert.assertThat("[a-c]", matches("c"));
+		MatcherAssert.assertThat("[a-c]", doesNotMatch("d"));
 	}
 
 	@Test
 	public void testNegatedSquareBracketsMatchSingleCharacterNotInTheSet() {
-		assertThat("[!a-c]", doesNotMatch("a"));
-		assertThat("{[!a-c]}", doesNotMatch("a"));
-		assertThat("[!ac]", matches("b"));
-		assertThat("[!ac-e]", doesNotMatch("a"));
-		assertThat("[!ac-e]", doesNotMatch("d"));
-		assertThat("[!a-c]", doesNotMatch("c"));
-		assertThat("[!a-c]", matches("d"));
+		MatcherAssert.assertThat("[!a-c]", doesNotMatch("a"));
+		MatcherAssert.assertThat("{[!a-c]}", doesNotMatch("a"));
+		MatcherAssert.assertThat("[!ac]", matches("b"));
+		MatcherAssert.assertThat("[!ac-e]", doesNotMatch("a"));
+		MatcherAssert.assertThat("[!ac-e]", doesNotMatch("d"));
+		MatcherAssert.assertThat("[!a-c]", doesNotMatch("c"));
+		MatcherAssert.assertThat("[!a-c]", matches("d"));
 	}
 
 	@Test
 	public void testAsteriskQuestionMarkAndBackslashMatchThemselvesInSquareBrackets() {
-		assertThat("[*]", matches("*"));
-		assertThat("[?]", matches("?"));
-		assertThat("[\\]", matches("\\"));
-		assertThat("[-]", matches("-"));
-		assertThat("[!-]", matches("a"));
-		assertThat("[!-]", doesNotMatch("-"));
+		MatcherAssert.assertThat("[*]", matches("*"));
+		MatcherAssert.assertThat("[?]", matches("?"));
+		MatcherAssert.assertThat("[\\]", matches("\\"));
+		MatcherAssert.assertThat("[-]", matches("-"));
+		MatcherAssert.assertThat("[!-]", matches("a"));
+		MatcherAssert.assertThat("[!-]", doesNotMatch("-"));
 	}
 
 	@Test
 	public void testCurlyBracketsAreAlternatives() {
-		assertThat("{abc,def,cde}", matches("abc"));
-		assertThat("\\{abc,def,cde}", matches("{abc,def,cde}"));
-		assertThat("{abc,def,cde}", matches("def"));
-		assertThat("{abc,def,cd/e}", matches("cd/e"));
-		assertThat("{abc,def,cd/e}", doesNotMatch("efg"));
+		MatcherAssert.assertThat("{abc,def,cde}", matches("abc"));
+		MatcherAssert.assertThat("\\{abc,def,cde}", matches("{abc,def,cde}"));
+		MatcherAssert.assertThat("{abc,def,cde}", matches("def"));
+		MatcherAssert.assertThat("{abc,def,cd/e}", matches("cd/e"));
+		MatcherAssert.assertThat("{abc,def,cd/e}", doesNotMatch("efg"));
 	}
 
 	@Test
 	public void testEscapeAtEndOfPatternThrowsPatternSyntaxException() {
-		thrown.expect(PatternSyntaxException.class);
-		
-		GlobToRegex.toRegex("asd\\", '/');
+		Assertions.assertThrows(PatternSyntaxException.class, () -> {
+			GlobToRegex.toRegex("asd\\", '/');
+		});
 	}
 
 	@Test
 	public void testEmptySquareBracketsThrowPatternSyntaxException() {
-		thrown.expect(PatternSyntaxException.class);
-		
-		GlobToRegex.toRegex("[]", '/');
+		Assertions.assertThrows(PatternSyntaxException.class, () -> {
+			GlobToRegex.toRegex("[]", '/');
+		});
 	}
 
 	@Test
 	public void testUnclosedEmptySquareBracketsThrowPatternSyntaxException() {
-		thrown.expect(PatternSyntaxException.class);
-		
-		GlobToRegex.toRegex("[", '/');
+		Assertions.assertThrows(PatternSyntaxException.class, () -> {
+			GlobToRegex.toRegex("[", '/');
+		});
 	}
 
 	@Test
 	public void testUnclosedSquareBracketsThrowPatternSyntaxException() {
-		thrown.expect(PatternSyntaxException.class);
-		
-		GlobToRegex.toRegex("[a", '/');
+		Assertions.assertThrows(PatternSyntaxException.class, () -> {
+			GlobToRegex.toRegex("[a", '/');
+		});
 	}
 
 	@Test
 	public void testNestedCurlyBracketsThrowPatternSyntaxException() {
-		thrown.expect(PatternSyntaxException.class);
-		
-		GlobToRegex.toRegex("{a,{b},c}", '/');
+		Assertions.assertThrows(PatternSyntaxException.class, () -> {
+			GlobToRegex.toRegex("{a,{b},c}", '/');
+		});
 	}
-	
+
 	private Matcher<String> matches(String string) {
 		return new TypeSafeMatcher<String>() {
 			@Override
 			public void describeTo(Description description) {
 				description.appendText("matches ").appendText(string);
 			}
+
 			@Override
 			protected boolean matchesSafely(String glob) {
 				return Pattern.compile(GlobToRegex.toRegex(glob, '/')).matcher(string).matches();
 			}
 		};
 	}
-	
+
 	private Matcher<String> doesNotMatch(String string) {
 		return not(matches(string));
 	}
-	
+
 }

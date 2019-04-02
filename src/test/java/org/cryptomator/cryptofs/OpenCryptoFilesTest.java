@@ -1,10 +1,10 @@
 package org.cryptomator.cryptofs;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.cryptomator.cryptofs.fh.OpenCryptoFile;
+import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
@@ -22,25 +22,21 @@ import static org.mockito.Mockito.mock;
 
 public class OpenCryptoFilesTest {
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
 	private final CryptoFileSystemComponent cryptoFileSystemComponent = mock(CryptoFileSystemComponent.class);
 	private final OpenCryptoFileComponent.Builder openCryptoFileComponentBuilder = mock(OpenCryptoFileComponent.Builder.class);
-	private final FinallyUtil finallyUtil = mock(FinallyUtil.class);
-	private final OpenCryptoFile file = mock(OpenCryptoFile.class);
+	private final OpenCryptoFile file = mock(OpenCryptoFile.class, "file");
 	private final FileChannel ciphertextFileChannel = Mockito.mock(FileChannel.class);
 
 	private OpenCryptoFiles inTest;
 
-	@Before
+	@BeforeEach
 	public void setup() throws IOException, ReflectiveOperationException {
 		OpenCryptoFileComponent subComponent = mock(OpenCryptoFileComponent.class);
 		Mockito.when(subComponent.openCryptoFile()).thenReturn(file);
 
 		Mockito.when(cryptoFileSystemComponent.newOpenCryptoFileComponent()).thenReturn(openCryptoFileComponentBuilder);
-		Mockito.when(openCryptoFileComponentBuilder.openOptions(Mockito.any())).thenReturn(openCryptoFileComponentBuilder);
 		Mockito.when(openCryptoFileComponentBuilder.path(Mockito.any())).thenReturn(openCryptoFileComponentBuilder);
+		Mockito.when(openCryptoFileComponentBuilder.onClose(Mockito.any())).thenReturn(openCryptoFileComponentBuilder);
 		Mockito.when(openCryptoFileComponentBuilder.build()).thenReturn(subComponent);
 
 		Mockito.when(file.newFileChannel(Mockito.any())).thenReturn(ciphertextFileChannel);
@@ -48,11 +44,11 @@ public class OpenCryptoFilesTest {
 		closeLockField.setAccessible(true);
 		closeLockField.set(ciphertextFileChannel, new Object());
 
-		inTest = new OpenCryptoFiles(cryptoFileSystemComponent, finallyUtil);
+		inTest = new OpenCryptoFiles(cryptoFileSystemComponent);
 	}
 
 	@Test
-	public void testGetOrCreate() throws IOException {
+	public void testGetOrCreate() {
 		OpenCryptoFileComponent subComponent1 = mock(OpenCryptoFileComponent.class);
 		OpenCryptoFile file1 = mock(OpenCryptoFile.class);
 		Mockito.when(subComponent1.openCryptoFile()).thenReturn(file1);
@@ -64,14 +60,13 @@ public class OpenCryptoFilesTest {
 		Mockito.when(cryptoFileSystemComponent.newOpenCryptoFileComponent()).thenReturn(openCryptoFileComponentBuilder);
 		Mockito.when(openCryptoFileComponentBuilder.build()).thenReturn(subComponent1, subComponent2);
 
-		EffectiveOpenOptions openOptions = mock(EffectiveOpenOptions.class);
 		Path p1 = Paths.get("/foo");
 		Path p2 = Paths.get("/bar");
 
-		Assert.assertSame(file1, inTest.getOrCreate(p1, openOptions));
-		Assert.assertSame(file1, inTest.getOrCreate(p1, openOptions));
-		Assert.assertSame(file2, inTest.getOrCreate(p2, openOptions));
-		Assert.assertNotSame(file1, file2);
+		Assertions.assertSame(file1, inTest.getOrCreate(p1));
+		Assertions.assertSame(file1, inTest.getOrCreate(p1));
+		Assertions.assertSame(file2, inTest.getOrCreate(p2));
+		Assertions.assertNotSame(file1, file2);
 	}
 
 	@Test
@@ -84,7 +79,7 @@ public class OpenCryptoFilesTest {
 
 		ArgumentCaptor<ByteBuffer> bytesWritten = ArgumentCaptor.forClass(ByteBuffer.class);
 		Mockito.verify(ciphertextFileChannel).write(bytesWritten.capture());
-		Assert.assertEquals(contents, bytesWritten.getValue());
+		Assertions.assertEquals(contents, bytesWritten.getValue());
 	}
 
 	@Test
@@ -101,54 +96,89 @@ public class OpenCryptoFilesTest {
 
 		ByteBuffer bytesRead = inTest.readCiphertextFile(path, openOptions, 1337);
 
-		Assert.assertEquals("hello world", StandardCharsets.UTF_8.decode(bytesRead).toString());
+		Assertions.assertEquals("hello world", StandardCharsets.UTF_8.decode(bytesRead).toString());
 	}
-
 
 	@Test
 	public void testTwoPhaseMoveFailsWhenTargetIsOpened() throws IOException {
-		EffectiveOpenOptions openOptions = mock(EffectiveOpenOptions.class);
 		Path src = Paths.get("/src").toAbsolutePath();
 		Path dst = Paths.get("/dst").toAbsolutePath();
-		inTest.getOrCreate(dst, openOptions);
+		inTest.getOrCreate(dst);
 
-		thrown.expect(FileAlreadyExistsException.class);
-		inTest.prepareMove(src, dst);
+		Assertions.assertThrows(FileAlreadyExistsException.class, () -> {
+			inTest.prepareMove(src, dst);
+		});
 	}
 
 	@Test
 	public void testTwoPhaseMoveDoesntChangeAnythingWhenRolledBack() throws IOException {
-		EffectiveOpenOptions openOptions = mock(EffectiveOpenOptions.class);
 		Path src = Paths.get("/src");
 		Path dst = Paths.get("/dst");
-		inTest.getOrCreate(src, openOptions);
+		inTest.getOrCreate(src);
 
-		Assert.assertTrue(inTest.get(src).isPresent());
-		Assert.assertFalse(inTest.get(dst).isPresent());
+		Assertions.assertTrue(inTest.get(src).isPresent());
+		Assertions.assertFalse(inTest.get(dst).isPresent());
 		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst)) {
 			twoPhaseMove.rollback();
 		}
-		Assert.assertTrue(inTest.get(src).isPresent());
-		Assert.assertFalse(inTest.get(dst).isPresent());
+		Assertions.assertTrue(inTest.get(src).isPresent());
+		Assertions.assertFalse(inTest.get(dst).isPresent());
 	}
 
 	@Test
 	public void testTwoPhaseMoveChangesReferencesWhenCommitted() throws IOException {
-		EffectiveOpenOptions openOptions = mock(EffectiveOpenOptions.class);
 		Path src = Paths.get("/src").toAbsolutePath();
 		Path dst = Paths.get("/dst").toAbsolutePath();
-		inTest.getOrCreate(src, openOptions);
+		inTest.getOrCreate(src);
 
-		Assert.assertTrue(inTest.get(src).isPresent());
-		Assert.assertFalse(inTest.get(dst).isPresent());
+		Assertions.assertTrue(inTest.get(src).isPresent());
+		Assertions.assertFalse(inTest.get(dst).isPresent());
 		OpenCryptoFile srcFile = inTest.get(src).get();
 		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst)) {
 			twoPhaseMove.commit();
 		}
-		Assert.assertFalse(inTest.get(src).isPresent());
-		Assert.assertTrue(inTest.get(dst).isPresent());
+		Assertions.assertFalse(inTest.get(src).isPresent());
+		Assertions.assertTrue(inTest.get(dst).isPresent());
 		OpenCryptoFile dstFile = inTest.get(dst).get();
-		Assert.assertSame(srcFile, dstFile);
+		Assertions.assertSame(srcFile, dstFile);
+	}
+
+	@Test
+	public void testCloseClosesRemainingOpenFiles() {
+		Path path1 = Mockito.mock(Path.class, "/file1");
+		Mockito.when(path1.toAbsolutePath()).thenReturn(path1);
+		Mockito.when(path1.normalize()).thenReturn(path1);
+		OpenCryptoFileComponent.Builder subComponentBuilder1 = mock(OpenCryptoFileComponent.Builder.class);
+		OpenCryptoFileComponent subComponent1 = mock(OpenCryptoFileComponent.class);
+		OpenCryptoFile file1 = mock(OpenCryptoFile.class, "file1");
+		Mockito.when(openCryptoFileComponentBuilder.path(path1)).thenReturn(subComponentBuilder1);
+		Mockito.when(subComponentBuilder1.onClose(Mockito.any())).thenReturn(subComponentBuilder1);
+		Mockito.when(subComponentBuilder1.build()).thenReturn(subComponent1);
+		Mockito.when(subComponent1.openCryptoFile()).thenReturn(file1);
+		Mockito.when(file1.getCurrentFilePath()).thenReturn(path1);
+
+		Path path2 = Mockito.mock(Path.class, "/file2");
+		Mockito.when(path2.toAbsolutePath()).thenReturn(path2);
+		Mockito.when(path2.normalize()).thenReturn(path2);
+		OpenCryptoFileComponent.Builder subComponentBuilder2 = mock(OpenCryptoFileComponent.Builder.class);
+		OpenCryptoFileComponent subComponent2 = mock(OpenCryptoFileComponent.class);
+		OpenCryptoFile file2 = mock(OpenCryptoFile.class, "file2");
+		Mockito.when(openCryptoFileComponentBuilder.path(path2)).thenReturn(subComponentBuilder2);
+		Mockito.when(subComponentBuilder2.onClose(Mockito.any())).thenReturn(subComponentBuilder2);
+		Mockito.when(subComponentBuilder2.build()).thenReturn(subComponent2);
+		Mockito.when(subComponent2.openCryptoFile()).thenReturn(file2);
+		Mockito.when(file2.getCurrentFilePath()).thenReturn(path2);
+
+		Assertions.assertEquals(file1, inTest.getOrCreate(path1));
+		Assertions.assertEquals(file2, inTest.getOrCreate(path2));
+		Assertions.assertEquals(file1, inTest.get(path1).get());
+		Assertions.assertEquals(file2, inTest.get(path2).get());
+		inTest.close();
+
+		Mockito.verify(file1).close();
+		Mockito.verify(file2).close();
+		Assertions.assertFalse(inTest.get(path1).isPresent());
+		Assertions.assertFalse(inTest.get(path2).isPresent());
 	}
 
 }

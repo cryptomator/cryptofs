@@ -8,31 +8,33 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.fh.OpenCryptoFile;
+import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
+
 import javax.inject.Inject;
+import java.io.Closeable;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Stream;
 
 @PerFileSystem
-class OpenCryptoFiles {
+class OpenCryptoFiles implements Closeable {
 
 	private final CryptoFileSystemComponent component;
-	private final FinallyUtil finallyUtil;
 	private final ConcurrentMap<Path, OpenCryptoFile> openCryptoFiles = new ConcurrentHashMap<>();
 
 	@Inject
-	public OpenCryptoFiles(CryptoFileSystemComponent component, FinallyUtil finallyUtil) {
+	public OpenCryptoFiles(CryptoFileSystemComponent component) {
 		this.component = component;
-		this.finallyUtil = finallyUtil;
 	}
 
 	public Optional<OpenCryptoFile> get(Path ciphertextPath) {
@@ -40,24 +42,27 @@ class OpenCryptoFiles {
 		return Optional.ofNullable(openCryptoFiles.get(normalizedPath));
 	}
 
-	public OpenCryptoFile getOrCreate(Path ciphertextPath, EffectiveOpenOptions options) throws IOException {
+	public OpenCryptoFile getOrCreate(Path ciphertextPath) {
 		Path normalizedPath = ciphertextPath.toAbsolutePath().normalize();
-		try {
-			// ConcurrentHashMap.computeIfAbsent is atomic, "create" is called at most once:
-			return openCryptoFiles.computeIfAbsent(normalizedPath, ignored -> create(normalizedPath, options));
-		} catch (UncheckedIOException e) {
-			throw new IOException("Error opening file: " + normalizedPath, e);
-		}
+		return openCryptoFiles.computeIfAbsent(normalizedPath, this::create); // computeIfAbsent is atomic, "create" is called at most once
+	}
+
+	private OpenCryptoFile create(Path normalizedPath) {
+		OpenCryptoFileComponent openCryptoFileComponent = component.newOpenCryptoFileComponent()
+				.path(normalizedPath)
+				.onClose(openCryptoFiles::remove)
+				.build();
+		return openCryptoFileComponent.openCryptoFile();
 	}
 
 	public void writeCiphertextFile(Path ciphertextPath, EffectiveOpenOptions openOptions, ByteBuffer contents) throws IOException {
-		try (OpenCryptoFile f = getOrCreate(ciphertextPath, openOptions); FileChannel ch = f.newFileChannel(openOptions)) {
+		try (OpenCryptoFile f = getOrCreate(ciphertextPath); FileChannel ch = f.newFileChannel(openOptions)) {
 			ch.write(contents);
 		}
 	}
 
 	public ByteBuffer readCiphertextFile(Path ciphertextPath, EffectiveOpenOptions openOptions, int maxBufferSize) throws BufferUnderflowException, IOException {
-		try (OpenCryptoFile f = getOrCreate(ciphertextPath, openOptions); FileChannel ch = f.newFileChannel(openOptions)) {
+		try (OpenCryptoFile f = getOrCreate(ciphertextPath); FileChannel ch = f.newFileChannel(openOptions)) {
 			if (ch.size() > maxBufferSize) {
 				throw new BufferUnderflowException();
 			}
@@ -81,21 +86,17 @@ class OpenCryptoFiles {
 		return new TwoPhaseMove(src, dst);
 	}
 
-	public void close() throws IOException {
-		Stream<RunnableThrowingException<IOException>> closers = openCryptoFiles.values().stream().map(openCryptoFile -> openCryptoFile::close);
-		finallyUtil.guaranteeInvocationOf(closers.iterator());
-	}
-
-	private OpenCryptoFile create(Path normalizedPath, EffectiveOpenOptions options) {
-		OpenCryptoFileComponent openCryptoFileComponent = component.newOpenCryptoFileComponent()
-				.path(normalizedPath)
-				.openOptions(options)
-				.build();
-		return openCryptoFileComponent.openCryptoFile();
-	}
-
-	void close(OpenCryptoFile openCryptoFile) {
-		openCryptoFiles.remove(openCryptoFile.getCurrentFilePath());
+	/**
+	 * Close all currently opened files by invoking {@link OpenCryptoFile#close()}.
+	 */
+	@Override
+	public void close() {
+		Iterator<Map.Entry<Path, OpenCryptoFile>> iter = openCryptoFiles.entrySet().iterator();
+		while (iter.hasNext()) {
+			Map.Entry<Path, OpenCryptoFile> entry = iter.next();
+			iter.remove(); // remove before invoking close() to avoid concurrent modification of this iterator by #close(OpenCryptoFile)
+			entry.getValue().close();
+		}
 	}
 
 	public class TwoPhaseMove implements AutoCloseable {

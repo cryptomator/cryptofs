@@ -8,12 +8,12 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static org.cryptomator.cryptofs.Constants.SHORT_NAMES_MAX_LENGTH;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.nullValue;
-import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import com.google.common.jimfs.Jimfs;
+import org.cryptomator.cryptofs.CryptoDirectoryStream.ProcessedPaths;
+import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.FileSystem;
@@ -22,20 +22,13 @@ import java.nio.file.Path;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.cryptomator.cryptofs.CryptoDirectoryStream.ProcessedPaths;
-import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
-
-import com.google.common.jimfs.Jimfs;
+import static org.cryptomator.cryptofs.Constants.SHORT_NAMES_MAX_LENGTH;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class CryptoDirectoryStreamIntegrationTest {
-
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
 
 	private FileSystem fileSystem;
 
@@ -43,7 +36,7 @@ public class CryptoDirectoryStreamIntegrationTest {
 
 	private CryptoDirectoryStream inTest;
 
-	@Before
+	@BeforeEach
 	public void setup() throws IOException {
 		fileSystem = Jimfs.newFileSystem();
 
@@ -63,10 +56,10 @@ public class CryptoDirectoryStreamIntegrationTest {
 
 		ProcessedPaths result = inTest.inflateIfNeeded(paths);
 
-		assertThat(result.getCiphertextPath(), is(ciphertextPath));
-		assertThat(result.getInflatedPath(), is(ciphertextPath));
-		assertThat(result.getCleartextPath(), is(nullValue()));
-		assertThat(Files.exists(ciphertextPath), is(true));
+		MatcherAssert.assertThat(result.getCiphertextPath(), is(ciphertextPath));
+		MatcherAssert.assertThat(result.getInflatedPath(), is(ciphertextPath));
+		MatcherAssert.assertThat(result.getCleartextPath(), is(nullValue()));
+		MatcherAssert.assertThat(Files.exists(ciphertextPath), is(true));
 	}
 
 	@Test
@@ -83,11 +76,11 @@ public class CryptoDirectoryStreamIntegrationTest {
 
 		ProcessedPaths result = inTest.inflateIfNeeded(paths);
 
-		assertThat(result.getCiphertextPath(), is(ciphertextPath));
-		assertThat(result.getInflatedPath(), is(inflatedPath));
-		assertThat(result.getCleartextPath(), is(nullValue()));
-		assertThat(Files.exists(ciphertextPath), is(true));
-		assertThat(Files.exists(inflatedPath), is(false));
+		MatcherAssert.assertThat(result.getCiphertextPath(), is(ciphertextPath));
+		MatcherAssert.assertThat(result.getInflatedPath(), is(inflatedPath));
+		MatcherAssert.assertThat(result.getCleartextPath(), is(nullValue()));
+		MatcherAssert.assertThat(Files.exists(ciphertextPath), is(true));
+		MatcherAssert.assertThat(Files.exists(inflatedPath), is(false));
 	}
 
 	@Test
@@ -104,11 +97,11 @@ public class CryptoDirectoryStreamIntegrationTest {
 
 		ProcessedPaths result = inTest.inflateIfNeeded(paths);
 
-		assertThat(result.getCiphertextPath(), is(inflatedPath));
-		assertThat(result.getInflatedPath(), is(inflatedPath));
-		assertThat(result.getCleartextPath(), is(nullValue()));
-		assertThat(Files.exists(ciphertextPath), is(false));
-		assertThat(Files.exists(inflatedPath), is(true));
+		MatcherAssert.assertThat(result.getCiphertextPath(), is(inflatedPath));
+		MatcherAssert.assertThat(result.getInflatedPath(), is(inflatedPath));
+		MatcherAssert.assertThat(result.getCleartextPath(), is(nullValue()));
+		MatcherAssert.assertThat(Files.exists(ciphertextPath), is(false));
+		MatcherAssert.assertThat(Files.exists(inflatedPath), is(true));
 	}
 
 }

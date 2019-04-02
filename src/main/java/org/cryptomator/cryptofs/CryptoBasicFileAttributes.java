@@ -9,6 +9,7 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
+import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
@@ -46,7 +47,7 @@ class CryptoBasicFileAttributes implements BasicFileAttributes {
 			default:
 				throw new IllegalArgumentException("Unsupported ciphertext file type: " + ciphertextFileType);
 		}
-		this.lastModifiedTime = openCryptoFile.map(OpenCryptoFile::getLastModifiedTime).orElseGet(delegate::lastModifiedTime);
+		this.lastModifiedTime =  openCryptoFile.map(OpenCryptoFile::getLastModifiedTime).orElseGet(delegate::lastModifiedTime);
 		this.lastAccessTime = openCryptoFile.map(openFile -> FileTime.from(Instant.now())).orElseGet(delegate::lastAccessTime);
 		this.creationTime = delegate.creationTime();
 		this.fileKey = delegate.fileKey();
@@ -60,8 +61,7 @@ class CryptoBasicFileAttributes implements BasicFileAttributes {
 		try {
 			return Cryptors.cleartextSize(size - cryptor.fileHeaderCryptor().headerSize(), cryptor);
 		} catch (IllegalArgumentException e) {
-			LOG.warn("Wrong cipher text file size of file {}. Returning a file size of 0.", ciphertextPath);
-			LOG.warn("Thrown exception was:", e);
+			LOG.warn("Unable to calculate cleartext file size for " + ciphertextPath + ".", e);
 			return 0l;
 		}
 	}

@@ -1,13 +1,8 @@
 package org.cryptomator.cryptofs;
 
-import static org.cryptomator.cryptofs.matchers.EntryMatcher.entry;
-import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.LinkOption;
@@ -17,19 +12,15 @@ import java.nio.file.attribute.DosFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.util.Map;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
+import static org.cryptomator.cryptofs.matchers.EntryMatcher.entry;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.is;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class CryptoFileAttributeByNameProviderTest {
-
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	private CryptoFileAttributeProvider fileAttributeProvider = mock(CryptoFileAttributeProvider.class);
 	private CryptoFileAttributeViewProvider fileAttributeViewProvider = mock(CryptoFileAttributeViewProvider.class);
@@ -62,18 +53,18 @@ public class CryptoFileAttributeByNameProviderTest {
 
 	@Test
 	public void testSetAttributeWithInvalidAttributeFails() throws IOException {
-		thrown.expect(IllegalArgumentException.class);
-		thrown.expectMessage("Unrecognized attribute name: invalidAbc");
-
-		inTest.setAttribute(path, "invalidAbc", null);
+		IllegalArgumentException e = Assertions.assertThrows(IllegalArgumentException.class, () -> {
+			inTest.setAttribute(path, "invalidAbc", null);
+		});
+		Assertions.assertEquals("Unrecognized attribute name: invalidAbc", e.getMessage());
 	}
 
 	@Test
 	public void testReadAttributesWithNoAttrbiutesGivenFails() throws IOException {
-		thrown.expect(IllegalArgumentException.class);
-		thrown.expectMessage("No attributes specified");
-
-		inTest.readAttributes(path, "");
+		IllegalArgumentException e = Assertions.assertThrows(IllegalArgumentException.class, () -> {
+			inTest.readAttributes(path, "");
+		});
+		Assertions.assertEquals("No attributes specified", e.getMessage());
 	}
 
 	@Test
@@ -99,7 +90,7 @@ public class CryptoFileAttributeByNameProviderTest {
 
 		System.out.println(values);
 
-		assertThat(values.entrySet(), contains(entry(is("creationTime"), is(creationTime))));
+		MatcherAssert.assertThat(values.entrySet(), contains(entry(is("creationTime"), is(creationTime))));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -130,7 +121,7 @@ public class CryptoFileAttributeByNameProviderTest {
 
 		System.out.println(values);
 
-		assertThat(values.entrySet(),
+		MatcherAssert.assertThat(values.entrySet(),
 				containsInAnyOrder( //
 						entry(is("creationTime"), is(creationTime)), //
 						entry(is("lastModifiedTime"), is(lastModifiedTime)), //
@@ -171,7 +162,7 @@ public class CryptoFileAttributeByNameProviderTest {
 
 		System.out.println(values);
 
-		assertThat(values.entrySet(),
+		MatcherAssert.assertThat(values.entrySet(),
 				containsInAnyOrder( //
 						entry(is("creationTime"), is(creationTime)), //
 						entry(is("lastModifiedTime"), is(lastModifiedTime)), //
@@ -202,7 +193,7 @@ public class CryptoFileAttributeByNameProviderTest {
 
 		System.out.println(values);
 
-		assertThat(values.entrySet(),
+		MatcherAssert.assertThat(values.entrySet(),
 				containsInAnyOrder( //
 						entry(is("readOnly"), is(readOnly)), //
 						entry(is("hidden"), is(hidden))));

@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.DosFileAttributes;
 import java.util.Optional;
 
+import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptolib.api.Cryptor;
 
 class CryptoDosFileAttributes extends CryptoBasicFileAttributes implements DosFileAttributes {

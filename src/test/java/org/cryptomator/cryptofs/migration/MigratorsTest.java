@@ -5,6 +5,15 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.migration;
 
+import org.cryptomator.cryptofs.migration.api.Migrator;
+import org.cryptomator.cryptofs.migration.api.NoApplicableMigratorException;
+import org.cryptomator.cryptolib.api.InvalidPassphraseException;
+import org.cryptomator.cryptolib.api.UnsupportedVaultFormatException;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
@@ -15,21 +24,12 @@ import java.nio.file.spi.FileSystemProvider;
 import java.util.Collections;
 import java.util.HashMap;
 
-import org.cryptomator.cryptofs.migration.api.Migrator;
-import org.cryptomator.cryptofs.migration.api.NoApplicableMigratorException;
-import org.cryptomator.cryptolib.api.InvalidPassphraseException;
-import org.cryptomator.cryptolib.api.UnsupportedVaultFormatException;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mockito;
-
 public class MigratorsTest {
 
 	private ByteBuffer keyFile;
 	private Path pathToVault;
 
-	@Before
+	@BeforeEach
 	public void setup() throws IOException {
 		keyFile = StandardCharsets.UTF_8.encode("{\"version\": 0000}");
 		pathToVault = Mockito.mock(Path.class);
@@ -59,7 +59,7 @@ public class MigratorsTest {
 		Migrators migrators = new Migrators(Collections.emptyMap());
 		boolean result = migrators.needsMigration(pathToVault, "masterkey.cryptomator");
 
-		Assert.assertTrue(result);
+		Assertions.assertTrue(result);
 	}
 
 	@Test
@@ -69,13 +69,15 @@ public class MigratorsTest {
 		Migrators migrators = new Migrators(Collections.emptyMap());
 		boolean result = migrators.needsMigration(pathToVault, "masterkey.cryptomator");
 
-		Assert.assertFalse(result);
+		Assertions.assertFalse(result);
 	}
 
-	@Test(expected = NoApplicableMigratorException.class)
+	@Test
 	public void testMigrateWithoutMigrators() throws IOException {
 		Migrators migrators = new Migrators(Collections.emptyMap());
-		migrators.migrate(pathToVault, "masterkey.cryptomator", "secret");
+		Assertions.assertThrows(NoApplicableMigratorException.class, () -> {
+			migrators.migrate(pathToVault, "masterkey.cryptomator", "secret");
+		});
 	}
 
 	@Test
@@ -91,7 +93,7 @@ public class MigratorsTest {
 		Mockito.verify(migrator).migrate(pathToVault, "masterkey.cryptomator", "secret");
 	}
 
-	@Test(expected = IllegalStateException.class)
+	@Test
 	@SuppressWarnings("deprecation")
 	public void testMigrateUnsupportedVaultFormat() throws NoApplicableMigratorException, InvalidPassphraseException, IOException {
 		Migrator migrator = Mockito.mock(Migrator.class);
@@ -101,7 +103,9 @@ public class MigratorsTest {
 			}
 		});
 		Mockito.doThrow(new UnsupportedVaultFormatException(Integer.MAX_VALUE, 1)).when(migrator).migrate(pathToVault, "masterkey.cryptomator", "secret");
-		migrators.migrate(pathToVault, "masterkey.cryptomator", "secret");
+		Assertions.assertThrows(IllegalStateException.class, () -> {
+			migrators.migrate(pathToVault, "masterkey.cryptomator", "secret");
+		});
 	}
 
 }

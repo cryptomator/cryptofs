@@ -8,6 +8,16 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
+import org.cryptomator.cryptofs.mocks.NullSecureRandom;
+import org.cryptomator.cryptolib.Cryptors;
+import org.cryptomator.cryptolib.api.CryptorProvider;
+import org.cryptomator.cryptolib.api.FileNameCryptor;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.DirectoryStream.Filter;
@@ -23,24 +33,15 @@ import java.util.NoSuchElementException;
 import java.util.Spliterators;
 import java.util.function.Consumer;
 
-import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
-import org.cryptomator.cryptofs.mocks.NullSecureRandom;
-import org.cryptomator.cryptolib.Cryptors;
-import org.cryptomator.cryptolib.api.CryptorProvider;
-import org.cryptomator.cryptolib.api.FileNameCryptor;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mockito;
-
 import static org.mockito.AdditionalAnswers.returnsFirstArg;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 
 public class CryptoDirectoryStreamTest {
-	
-	private static final Consumer<CryptoDirectoryStream> DO_NOTHING_ON_CLOSE = ignored -> {};
+
+	private static final Consumer<CryptoDirectoryStream> DO_NOTHING_ON_CLOSE = ignored -> {
+	};
 	private static final Filter<? super Path> ACCEPT_ALL = ignored -> true;
 	private static CryptorProvider CRYPTOR_PROVIDER = Cryptors.version1(NullSecureRandom.INSTANCE);
 
@@ -53,7 +54,7 @@ public class CryptoDirectoryStreamTest {
 	private FinallyUtil finallyUtil;
 	private EncryptedNamePattern encryptedNamePattern = new EncryptedNamePattern();
 
-	@Before
+	@BeforeEach
 	@SuppressWarnings("unchecked")
 	public void setup() throws IOException {
 		filenameCryptor = CRYPTOR_PROVIDER.createNew().fileNameCryptor();
@@ -119,21 +120,21 @@ public class CryptoDirectoryStreamTest {
 		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new CiphertextDirectory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, cryptoPathMapper, longFileNameProvider, conflictResolver, ACCEPT_ALL,
 				DO_NOTHING_ON_CLOSE, finallyUtil, encryptedNamePattern)) {
 			Iterator<Path> iter = stream.iterator();
-			Assert.assertTrue(iter.hasNext());
-			Assert.assertEquals(cleartextPath.resolve("one"), iter.next());
-			Assert.assertTrue(iter.hasNext());
-			Assert.assertEquals(cleartextPath.resolve("two"), iter.next());
-			Assert.assertTrue(iter.hasNext());
-			Assert.assertEquals(cleartextPath.resolve("three"), iter.next());
-			Assert.assertTrue(iter.hasNext());
-			Assert.assertEquals(cleartextPath.resolve("four"), iter.next());
-			Assert.assertFalse(iter.hasNext());
+			Assertions.assertTrue(iter.hasNext());
+			Assertions.assertEquals(cleartextPath.resolve("one"), iter.next());
+			Assertions.assertTrue(iter.hasNext());
+			Assertions.assertEquals(cleartextPath.resolve("two"), iter.next());
+			Assertions.assertTrue(iter.hasNext());
+			Assertions.assertEquals(cleartextPath.resolve("three"), iter.next());
+			Assertions.assertTrue(iter.hasNext());
+			Assertions.assertEquals(cleartextPath.resolve("four"), iter.next());
+			Assertions.assertFalse(iter.hasNext());
 			Mockito.verify(dirStream, Mockito.never()).close();
 		}
 		Mockito.verify(dirStream).close();
 	}
 
-	@Test(expected = NoSuchElementException.class)
+	@Test
 	public void testDirListingForEmptyDir() throws IOException {
 		Path cleartextPath = Paths.get("/foo/bar");
 
@@ -142,8 +143,10 @@ public class CryptoDirectoryStreamTest {
 		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new CiphertextDirectory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, cryptoPathMapper, longFileNameProvider, conflictResolver, ACCEPT_ALL,
 				DO_NOTHING_ON_CLOSE, finallyUtil, encryptedNamePattern)) {
 			Iterator<Path> iter = stream.iterator();
-			Assert.assertFalse(iter.hasNext());
-			iter.next();
+			Assertions.assertFalse(iter.hasNext());
+			Assertions.assertThrows(NoSuchElementException.class, () -> {
+				iter.next();
+			});
 		}
 	}
 

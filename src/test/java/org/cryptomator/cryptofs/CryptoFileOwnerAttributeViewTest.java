@@ -1,12 +1,9 @@
 package org.cryptomator.cryptofs;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
 
 import java.io.IOException;
 import java.nio.file.FileSystem;
@@ -16,19 +13,11 @@ import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.spi.FileSystemProvider;
 
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class CryptoFileOwnerAttributeViewTest {
-
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	private Path linkCiphertextPath = mock(Path.class);
 	private Path ciphertextPath = mock(Path.class);
@@ -46,7 +35,7 @@ public class CryptoFileOwnerAttributeViewTest {
 
 	private CryptoFileOwnerAttributeView inTest;
 
-	@Before
+	@BeforeEach
 	public void setup() throws IOException {
 		when(linkCiphertextPath.getFileSystem()).thenReturn(fileSystem);
 		when(ciphertextPath.getFileSystem()).thenReturn(fileSystem);
@@ -65,7 +54,7 @@ public class CryptoFileOwnerAttributeViewTest {
 
 	@Test
 	public void testNameReturnsOwner() {
-		assertThat(inTest.name(), is("owner"));
+		Assertions.assertEquals("owner", inTest.name());
 	}
 
 	@Test
@@ -73,7 +62,7 @@ public class CryptoFileOwnerAttributeViewTest {
 		UserPrincipal principal = mock(UserPrincipal.class);
 		when(delegate.getOwner()).thenReturn(principal);
 
-		assertThat(inTest.getOwner(), is(principal));
+		Assertions.assertSame(principal, inTest.getOwner());
 	}
 
 	@Test

@@ -1,5 +1,15 @@
 package org.cryptomator.cryptofs;
 
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+import java.nio.file.OpenOption;
+import java.nio.file.ReadOnlyFileSystemException;
+import java.util.HashSet;
+
 import static java.nio.file.LinkOption.NOFOLLOW_LINKS;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
@@ -12,26 +22,9 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Arrays.asList;
 import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-
-import java.io.IOException;
-import java.nio.file.LinkOption;
-import java.nio.file.OpenOption;
-import java.nio.file.ReadOnlyFileSystemException;
-import java.util.HashSet;
-
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
 
 public class EffectiveOpenOptionsTest {
 
@@ -39,13 +32,7 @@ public class EffectiveOpenOptionsTest {
 	private ReadonlyFlag trueReadonlyFlag = mock(ReadonlyFlag.class);
 	private ReadOnlyFileSystemException readonlyException = new ReadOnlyFileSystemException();
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-	@Before
+	@BeforeEach
 	public void setup() throws IOException {
 		when(falseReadonlyFlag.isSet()).thenReturn(false);
 		when(trueReadonlyFlag.isSet()).thenReturn(true);
@@ -53,445 +40,451 @@ public class EffectiveOpenOptionsTest {
 	}
 
 	@Test
-	public void testFailIfAppendIsUsedWithRead() throws IOException {
-		thrown.expect(IllegalArgumentException.class);
-
-		EffectiveOpenOptions.from(new HashSet<>(asList(APPEND, READ)), falseReadonlyFlag);
+	public void testFailIfAppendIsUsedWithRead() {
+		Assertions.assertThrows(IllegalArgumentException.class, () -> {
+			EffectiveOpenOptions.from(new HashSet<>(asList(APPEND, READ)), falseReadonlyFlag);
+		});
 	}
 
 	@Test
-	public void testFailIfAppendIsUsedWithTruncateExisting() throws IOException {
-		thrown.expect(IllegalArgumentException.class);
-
-		EffectiveOpenOptions.from(new HashSet<>(asList(APPEND, TRUNCATE_EXISTING)), falseReadonlyFlag);
+	public void testFailIfAppendIsUsedWithTruncateExisting() {
+		Assertions.assertThrows(IllegalArgumentException.class, () -> {
+			EffectiveOpenOptions.from(new HashSet<>(asList(APPEND, TRUNCATE_EXISTING)), falseReadonlyFlag);
+		});
 	}
 
 	@Test
-	public void testUnsupportedOption() throws IOException {
-		thrown.expect(IllegalArgumentException.class);
-
-		EffectiveOpenOptions.from(new HashSet<>(asList(new OpenOption() {
-		})), falseReadonlyFlag);
+	public void testUnsupportedOption() {
+		Assertions.assertThrows(IllegalArgumentException.class, () -> {
+			EffectiveOpenOptions.from(new HashSet<>(asList(new OpenOption() {
+			})), falseReadonlyFlag);
+		});
 	}
 
 	@Test
 	public void testEmpty() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList()), falseReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertFalse(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertTrue(inTest.readable());
-		assertFalse(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertFalse(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertTrue(inTest.readable());
+		Assertions.assertFalse(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
 	}
 
 	@Test
 	public void testNoFollowLinks() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(NOFOLLOW_LINKS)), falseReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertFalse(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertTrue(inTest.noFollowLinks());
-		assertTrue(inTest.readable());
-		assertFalse(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertFalse(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertTrue(inTest.noFollowLinks());
+		Assertions.assertTrue(inTest.readable());
+		Assertions.assertFalse(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
 	}
 
 	@Test
 	public void testAppend() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(APPEND)), falseReadonlyFlag);
 
-		assertTrue(inTest.append());
-		assertFalse(inTest.create());
-		assertFalse(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertFalse(inTest.readable());
-		assertFalse(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertTrue(inTest.writable());
+		Assertions.assertTrue(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertFalse(inTest.readable());
+		Assertions.assertFalse(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertTrue(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
 	}
 
 	@Test
 	public void testCreate() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE)), falseReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertFalse(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertTrue(inTest.readable());
-		assertFalse(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertFalse(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertTrue(inTest.readable());
+		Assertions.assertFalse(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
 	}
 
 	@Test
 	public void testCreateWithWrite() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE, WRITE)), falseReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertTrue(inTest.create());
-		assertFalse(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertFalse(inTest.readable());
-		assertFalse(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertTrue(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertTrue(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertFalse(inTest.readable());
+		Assertions.assertFalse(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertTrue(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(CREATE, READ, WRITE));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(CREATE, READ, WRITE));
 	}
 
 	@Test
 	public void testCreateNew() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE_NEW)), falseReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertFalse(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertTrue(inTest.readable());
-		assertFalse(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertFalse(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertTrue(inTest.readable());
+		Assertions.assertFalse(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
 	}
 
 	@Test
 	public void testCreateNewWithWrite() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE_NEW, WRITE)), falseReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertTrue(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertFalse(inTest.readable());
-		assertFalse(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertTrue(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertTrue(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertFalse(inTest.readable());
+		Assertions.assertFalse(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertTrue(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(CREATE_NEW, READ, WRITE));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(CREATE_NEW, READ, WRITE));
 	}
 
 	@Test
 	public void testCreateNewWithWriteAndCreate() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE, CREATE_NEW, WRITE)), falseReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertTrue(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertFalse(inTest.readable());
-		assertFalse(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertTrue(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertTrue(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertFalse(inTest.readable());
+		Assertions.assertFalse(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertTrue(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(CREATE_NEW, READ, WRITE));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(CREATE_NEW, READ, WRITE));
 	}
 
 	@Test
 	public void testDeleteOnClose() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(DELETE_ON_CLOSE)), falseReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertFalse(inTest.createNew());
-		assertTrue(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertTrue(inTest.readable());
-		assertFalse(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertFalse(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertTrue(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertTrue(inTest.readable());
+		Assertions.assertFalse(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE, DELETE_ON_CLOSE));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, DELETE_ON_CLOSE));
 	}
 
 	@Test
 	public void testRead() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(READ)), falseReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertFalse(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertTrue(inTest.readable());
-		assertFalse(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertFalse(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertTrue(inTest.readable());
+		Assertions.assertFalse(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
 	}
 
 	@Test
 	public void testSync() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(SYNC)), falseReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertFalse(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertTrue(inTest.readable());
-		assertTrue(inTest.syncData());
-		assertTrue(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertFalse(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertTrue(inTest.readable());
+		Assertions.assertTrue(inTest.syncData());
+		Assertions.assertTrue(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE, SYNC));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, SYNC));
 	}
 
 	@Test
 	public void testDSync() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(DSYNC)), falseReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertFalse(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertTrue(inTest.readable());
-		assertTrue(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertFalse(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertTrue(inTest.readable());
+		Assertions.assertTrue(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE, DSYNC));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, DSYNC));
 	}
 
 	@Test
 	public void testTruncateExisting() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(TRUNCATE_EXISTING)), falseReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertFalse(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertTrue(inTest.readable());
-		assertFalse(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertFalse(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertTrue(inTest.readable());
+		Assertions.assertFalse(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
 	}
 
 	@Test
 	public void testWrite() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(WRITE)), falseReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertFalse(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertFalse(inTest.readable());
-		assertFalse(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertTrue(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertFalse(inTest.readable());
+		Assertions.assertFalse(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertTrue(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
 	}
 
 	@Test
 	public void testEmptyWithTrueReadonlyFlag() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList()), trueReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertFalse(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertTrue(inTest.readable());
-		assertFalse(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertFalse(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertTrue(inTest.readable());
+		Assertions.assertFalse(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
 	}
 
 	@Test
-	public void testAppendTrueReadonlyFlag() throws IOException {
-		thrown.expect(is(readonlyException));
-
-		EffectiveOpenOptions.from(new HashSet<>(asList(APPEND)), trueReadonlyFlag);
+	public void testAppendTrueReadonlyFlag() {
+		ReadOnlyFileSystemException e = Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
+			EffectiveOpenOptions.from(new HashSet<>(asList(APPEND)), trueReadonlyFlag);
+		});
+		Assertions.assertSame(readonlyException, e);
 	}
 
 	@Test
 	public void testCreateTrueReadonlyFlag() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE)), trueReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertFalse(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertTrue(inTest.readable());
-		assertFalse(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertFalse(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertTrue(inTest.readable());
+		Assertions.assertFalse(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
 	}
 
 	@Test
-	public void testCreateWithWriteTrueReadonlyFlag() throws IOException {
-		thrown.expect(is(readonlyException));
-
-		EffectiveOpenOptions.from(new HashSet<>(asList(CREATE, WRITE)), trueReadonlyFlag);
+	public void testCreateWithWriteTrueReadonlyFlag() {
+		ReadOnlyFileSystemException e = Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
+			EffectiveOpenOptions.from(new HashSet<>(asList(CREATE, WRITE)), trueReadonlyFlag);
+		});
+		Assertions.assertSame(readonlyException, e);
 	}
 
 	@Test
 	public void testCreateNewTrueReadonlyFlag() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE_NEW)), trueReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertFalse(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertTrue(inTest.readable());
-		assertFalse(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertFalse(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertTrue(inTest.readable());
+		Assertions.assertFalse(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
 	}
 
 	@Test
 	public void testCreateNewWithWriteTrueReadonlyFlag() throws IOException {
-		thrown.expect(is(readonlyException));
-
-		EffectiveOpenOptions.from(new HashSet<>(asList(CREATE_NEW, WRITE)), trueReadonlyFlag);
+		ReadOnlyFileSystemException e = Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
+			EffectiveOpenOptions.from(new HashSet<>(asList(CREATE_NEW, WRITE)), trueReadonlyFlag);
+		});
+		Assertions.assertSame(readonlyException, e);
 	}
 
 	@Test
 	public void testCreateNewWithWriteAndCreateTrueReadonlyFlag() throws IOException {
-		thrown.expect(is(readonlyException));
-
-		EffectiveOpenOptions.from(new HashSet<>(asList(CREATE, CREATE_NEW, WRITE)), trueReadonlyFlag);
+		ReadOnlyFileSystemException e = Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
+			EffectiveOpenOptions.from(new HashSet<>(asList(CREATE, CREATE_NEW, WRITE)), trueReadonlyFlag);
+		});
+		Assertions.assertSame(readonlyException, e);
 	}
 
 	@Test
 	public void testDeleteOnCloseTrueReadonlyFlag() throws IOException {
-		thrown.expect(is(readonlyException));
-
-		EffectiveOpenOptions.from(new HashSet<>(asList(DELETE_ON_CLOSE)), trueReadonlyFlag);
+		ReadOnlyFileSystemException e = Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
+			EffectiveOpenOptions.from(new HashSet<>(asList(DELETE_ON_CLOSE)), trueReadonlyFlag);
+		});
+		Assertions.assertSame(readonlyException, e);
 	}
 
 	@Test
 	public void testReadTrueReadonlyFlag() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(READ)), trueReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertFalse(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertTrue(inTest.readable());
-		assertFalse(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertFalse(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertTrue(inTest.readable());
+		Assertions.assertFalse(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
 	}
 
 	@Test
 	public void testSyncTrueReadonlyFlag() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(SYNC)), trueReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertFalse(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertTrue(inTest.readable());
-		assertTrue(inTest.syncData());
-		assertTrue(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertFalse(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertTrue(inTest.readable());
+		Assertions.assertTrue(inTest.syncData());
+		Assertions.assertTrue(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, SYNC));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, SYNC));
 	}
 
 	@Test
 	public void testDSyncTrueReadonlyFlag() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(DSYNC)), trueReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertFalse(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertTrue(inTest.readable());
-		assertTrue(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertFalse(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertTrue(inTest.readable());
+		Assertions.assertTrue(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, DSYNC));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, DSYNC));
 	}
 
 	@Test
 	public void testTruncateExistingTrueReadonlyFlag() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(TRUNCATE_EXISTING)), trueReadonlyFlag);
 
-		assertFalse(inTest.append());
-		assertFalse(inTest.create());
-		assertFalse(inTest.createNew());
-		assertFalse(inTest.deleteOnClose());
-		assertFalse(inTest.noFollowLinks());
-		assertTrue(inTest.readable());
-		assertFalse(inTest.syncData());
-		assertFalse(inTest.syncDataAndMetadata());
-		assertFalse(inTest.truncateExisting());
-		assertFalse(inTest.writable());
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertTrue(inTest.readable());
+		Assertions.assertFalse(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertFalse(inTest.truncateExisting());
+		Assertions.assertFalse(inTest.writable());
 
-		assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ));
 	}
 
 	@Test
-	public void testWriteTrueReadonlyFlag() throws IOException {
-		thrown.expect(is(readonlyException));
-
-		EffectiveOpenOptions.from(new HashSet<>(asList(WRITE)), trueReadonlyFlag);
+	public void testWriteTrueReadonlyFlag() {
+		ReadOnlyFileSystemException e = Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
+			EffectiveOpenOptions.from(new HashSet<>(asList(WRITE)), trueReadonlyFlag);
+		});
+		Assertions.assertSame(readonlyException, e);
 	}
 
 }

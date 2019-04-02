@@ -1,15 +1,18 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.fh;
 
 import dagger.BindsInstance;
 import dagger.Subcomponent;
+import org.cryptomator.cryptofs.ch.ChannelComponent;
 
 import java.nio.file.Path;
 
 @Subcomponent(modules = {OpenCryptoFileModule.class})
-@PerOpenFile
-interface OpenCryptoFileComponent {
+@OpenFileScoped
+public interface OpenCryptoFileComponent {
 
 	OpenCryptoFile openCryptoFile();
+
+	ChannelComponent.Builder newChannelComponent();
 
 	@Subcomponent.Builder
 	interface Builder {
@@ -18,7 +21,7 @@ interface OpenCryptoFileComponent {
 		Builder path(@OriginalOpenFilePath Path path);
 
 		@BindsInstance
-		Builder openOptions(EffectiveOpenOptions options);
+		Builder onClose(FileCloseListener listener);
 
 		OpenCryptoFileComponent build();
 	}

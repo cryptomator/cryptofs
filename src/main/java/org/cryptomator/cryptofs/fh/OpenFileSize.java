@@ -1,4 +1,4 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.fh;
 
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
@@ -10,5 +10,5 @@ import javax.inject.Qualifier;
 @Qualifier
 @Documented
 @Retention(RUNTIME)
-@interface OpenFileSize {
+public @interface OpenFileSize {
 }

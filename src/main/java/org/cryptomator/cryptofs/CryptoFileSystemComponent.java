@@ -2,6 +2,7 @@ package org.cryptomator.cryptofs;
 
 import dagger.BindsInstance;
 import dagger.Subcomponent;
+import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
 
 import java.nio.file.Path;
 

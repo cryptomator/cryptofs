@@ -10,21 +10,23 @@ package org.cryptomator.cryptofs;
 
 import com.google.common.jimfs.Jimfs;
 import org.hamcrest.BaseMatcher;
-import org.hamcrest.CoreMatchers;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.*;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
@@ -41,19 +43,14 @@ import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.lessThan;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assume.assumeThat;
 
 public class CryptoFileSystemFileAttributeIntegrationTest {
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	private static FileSystem inMemoryFs;
 	private static Path pathToVault;
 	private static FileSystem fileSystem;
 
-	@BeforeClass
+	@BeforeAll
 	public static void setupClass() throws IOException {
 		inMemoryFs = Jimfs.newFileSystem();
 		pathToVault = inMemoryFs.getRootDirectories().iterator().next().resolve("vault");
@@ -61,7 +58,7 @@ public class CryptoFileSystemFileAttributeIntegrationTest {
 		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
 	}
 
-	@AfterClass
+	@AfterAll
 	public static void teardownClass() throws IOException {
 		inMemoryFs.close();
 	}
@@ -70,9 +67,9 @@ public class CryptoFileSystemFileAttributeIntegrationTest {
 	public void testReadAttributesOfNonExistingFile() throws IOException {
 		Path file = fileSystem.getPath("/nonExisting");
 
-		thrown.expect(NoSuchFileException.class);
-
-		readAttributes(file, "size,lastModifiedTime,isDirectory");
+		Assertions.assertThrows(NoSuchFileException.class, () -> {
+			readAttributes(file, "size,lastModifiedTime,isDirectory");
+		});
 	}
 
 	@Test
@@ -82,10 +79,10 @@ public class CryptoFileSystemFileAttributeIntegrationTest {
 
 		Map<String, Object> result = Files.readAttributes(file, "size,lastModifiedTime,isDirectory");
 
-		assertThat((FileTime) result.get("lastModifiedTime"), is(greaterThan(FileTime.fromMillis(currentTimeMillis() - 10000))));
-		assertThat((FileTime) result.get("lastModifiedTime"), is(lessThan(FileTime.fromMillis(currentTimeMillis() + 10000))));
-		assertThat((Long) result.get("size"), is(1L));
-		assertThat((Boolean) result.get("isDirectory"), is(FALSE));
+		MatcherAssert.assertThat((FileTime) result.get("lastModifiedTime"), is(greaterThan(FileTime.fromMillis(currentTimeMillis() - 10000))));
+		MatcherAssert.assertThat((FileTime) result.get("lastModifiedTime"), is(lessThan(FileTime.fromMillis(currentTimeMillis() + 10000))));
+		MatcherAssert.assertThat((Long) result.get("size"), is(1L));
+		MatcherAssert.assertThat((Boolean) result.get("isDirectory"), is(FALSE));
 	}
 
 	@Test
@@ -95,14 +92,14 @@ public class CryptoFileSystemFileAttributeIntegrationTest {
 
 		Map<String, Object> result = Files.readAttributes(file, "lastModifiedTime,isDirectory");
 
-		assertThat((FileTime) result.get("lastModifiedTime"), is(greaterThan(FileTime.fromMillis(currentTimeMillis() - 10000))));
-		assertThat((FileTime) result.get("lastModifiedTime"), is(lessThan(FileTime.fromMillis(currentTimeMillis() + 10000))));
-		assertThat((Boolean) result.get("isDirectory"), is(TRUE));
+		MatcherAssert.assertThat((FileTime) result.get("lastModifiedTime"), is(greaterThan(FileTime.fromMillis(currentTimeMillis() - 10000))));
+		MatcherAssert.assertThat((FileTime) result.get("lastModifiedTime"), is(lessThan(FileTime.fromMillis(currentTimeMillis() + 10000))));
+		MatcherAssert.assertThat((Boolean) result.get("isDirectory"), is(TRUE));
 	}
 
 	@Test
 	public void testReadOwnerUsingFilesGetOwner() throws IOException {
-		assumeThat(inMemoryFs.supportedFileAttributeViews().contains("owner"), is(true));
+		Assumptions.assumeTrue(inMemoryFs.supportedFileAttributeViews().contains("owner"));
 
 		Path file = fileSystem.getPath("/a");
 		Files.write(file, new byte[1]);
@@ -123,22 +120,22 @@ public class CryptoFileSystemFileAttributeIntegrationTest {
 
 			ch.force(true); // nothing written yet, no changes expected
 			t1 = Files.getLastModifiedTime(file);
-			Assert.assertEquals(t0, t1);
+			Assertions.assertEquals(t0, t1);
 			Thread.sleep(10);
 
 			ch.write(ByteBuffer.wrap(new byte[1])); // write should update the last modified time
 			t2 = Files.getLastModifiedTime(file);
-			Assert.assertNotEquals(t2, t1);
-			Assert.assertThat(t2, isAfter(t1));
+			Assertions.assertNotEquals(t2, t1);
+			MatcherAssert.assertThat(t2, isAfter(t1));
 			Thread.sleep(10);
 
 			ch.force(true); // force must not change the last modified time
 			t3 = Files.getLastModifiedTime(file);
-			Assert.assertEquals(t3, t2);
+			Assertions.assertEquals(t3, t2);
 			Thread.sleep(10);
 		} // close must not change the last modified time
 		t4 = Files.getLastModifiedTime(file); // close after force should not change lastModifiedDate
-		Assert.assertEquals(t3.toMillis(), t4.toMillis()); // round to millis, since in-memory times of opened files may have sub-milli resolution
+		Assertions.assertEquals(t3.toMillis(), t4.toMillis()); // round to millis, since in-memory times of opened files may have sub-milli resolution
 	}
 
 	@Test
@@ -147,26 +144,26 @@ public class CryptoFileSystemFileAttributeIntegrationTest {
 
 		try (FileChannel ch = FileChannel.open(file, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW)) {
 			BasicFileAttributes attr1 = Files.readAttributes(file, BasicFileAttributes.class);
-			Assert.assertEquals(0, ch.size());
-			Assert.assertEquals(0, attr1.size());
-			Assert.assertEquals(0, Files.size(file));
+			Assertions.assertEquals(0, ch.size());
+			Assertions.assertEquals(0, attr1.size());
+			Assertions.assertEquals(0, Files.size(file));
 
 			ch.write(ByteBuffer.wrap(new byte[2]));
 			BasicFileAttributes attr2 = Files.readAttributes(file, BasicFileAttributes.class);
-			Assert.assertEquals(2, ch.size());
-			Assert.assertEquals(0, attr1.size());
-			Assert.assertEquals(2, attr2.size());
-			Assert.assertEquals(2, Files.size(file));
+			Assertions.assertEquals(2, ch.size());
+			Assertions.assertEquals(0, attr1.size());
+			Assertions.assertEquals(2, attr2.size());
+			Assertions.assertEquals(2, Files.size(file));
 
 			ch.write(ByteBuffer.wrap(new byte[2]));
 			BasicFileAttributes attr3 = Files.readAttributes(file, BasicFileAttributes.class);
-			Assert.assertEquals(0, attr1.size());
-			Assert.assertEquals(2, attr2.size());
-			Assert.assertEquals(4, attr3.size());
-			Assert.assertEquals(4, ch.size());
-			Assert.assertEquals(4, Files.size(file));
+			Assertions.assertEquals(0, attr1.size());
+			Assertions.assertEquals(2, attr2.size());
+			Assertions.assertEquals(4, attr3.size());
+			Assertions.assertEquals(4, ch.size());
+			Assertions.assertEquals(4, Files.size(file));
 		}
-		Assert.assertEquals(4, Files.size(file));
+		Assertions.assertEquals(4, Files.size(file));
 	}
 
 	@Test
@@ -180,10 +177,11 @@ public class CryptoFileSystemFileAttributeIntegrationTest {
 			Files.move(oldpath, newpath);
 			channel.force(true);
 			BasicFileAttributeView attrView2 = Files.getFileAttributeView(newpath, BasicFileAttributeView.class);
-			Assert.assertEquals(now, attrView2.readAttributes().lastModifiedTime());
+			Assertions.assertEquals(now, attrView2.readAttributes().lastModifiedTime());
 
-			thrown.expect(NoSuchFileException.class);
-			attrView.readAttributes();
+			Assertions.assertThrows(NoSuchFileException.class, () -> {
+				attrView.readAttributes();
+			});
 		}
 	}
 

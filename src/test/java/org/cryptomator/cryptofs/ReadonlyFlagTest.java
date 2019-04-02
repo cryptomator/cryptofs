@@ -1,9 +1,8 @@
 package org.cryptomator.cryptofs;
 
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.FileStore;
@@ -12,10 +11,8 @@ import java.nio.file.Path;
 import java.nio.file.ReadOnlyFileSystemException;
 import java.nio.file.spi.FileSystemProvider;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class ReadonlyFlagTest {
 
@@ -28,10 +25,7 @@ public class ReadonlyFlagTest {
 
 	private ReadonlyFlag inTest;
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
-	@Before
+	@BeforeEach
 	public void setup() throws IOException {
 		when(path.getFileSystem()).thenReturn(fileSystem);
 		when(fileSystem.provider()).thenReturn(provider);
@@ -44,7 +38,7 @@ public class ReadonlyFlagTest {
 
 		inTest = new ReadonlyFlag(properties, path);
 
-		assertThat(inTest.isSet(), is(true));
+		Assertions.assertTrue(inTest.isSet());
 	}
 
 	@Test
@@ -54,7 +48,7 @@ public class ReadonlyFlagTest {
 
 		inTest = new ReadonlyFlag(properties, path);
 
-		assertThat(inTest.isSet(), is(true));
+		Assertions.assertTrue(inTest.isSet());
 	}
 
 	@Test
@@ -64,7 +58,7 @@ public class ReadonlyFlagTest {
 
 		inTest = new ReadonlyFlag(properties, path);
 
-		assertThat(inTest.isSet(), is(false));
+		Assertions.assertFalse(inTest.isSet());
 	}
 
 	@Test
@@ -73,9 +67,9 @@ public class ReadonlyFlagTest {
 
 		inTest = new ReadonlyFlag(properties, path);
 
-		thrown.expect(ReadOnlyFileSystemException.class);
-
-		inTest.assertWritable();
+		Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
+			inTest.assertWritable();
+		});
 	}
 
 	@Test
@@ -85,9 +79,9 @@ public class ReadonlyFlagTest {
 
 		inTest = new ReadonlyFlag(properties, path);
 
-		thrown.expect(ReadOnlyFileSystemException.class);
-
-		inTest.assertWritable();
+		Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
+			inTest.assertWritable();
+		});
 	}
 
 	@Test

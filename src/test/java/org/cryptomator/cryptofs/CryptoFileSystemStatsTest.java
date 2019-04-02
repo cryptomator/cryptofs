@@ -1,9 +1,7 @@
 package org.cryptomator.cryptofs;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
-
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class CryptoFileSystemStatsTest {
 
@@ -11,85 +9,73 @@ public class CryptoFileSystemStatsTest {
 
 	@Test
 	public void testPollBytesRead() {
-		assertThat(inTest.pollBytesRead(), is(0L));
+		Assertions.assertEquals(0l, inTest.pollBytesRead());
 
 		inTest.addBytesRead(17L);
-
-		assertThat(inTest.pollBytesRead(), is(17L));
+		Assertions.assertEquals(17l, inTest.pollBytesRead());
 
 		inTest.addBytesRead(17L);
 		inTest.addBytesRead(25L);
-
-		assertThat(inTest.pollBytesRead(), is(42L));
+		Assertions.assertEquals(42l, inTest.pollBytesRead());
 	}
 
 	@Test
 	public void testPollBytesWritten() {
-		assertThat(inTest.pollBytesWritten(), is(0L));
+		Assertions.assertEquals(0l, inTest.pollBytesWritten());
 
 		inTest.addBytesWritten(17L);
-
-		assertThat(inTest.pollBytesWritten(), is(17L));
+		Assertions.assertEquals(17l, inTest.pollBytesWritten());
 
 		inTest.addBytesWritten(17L);
 		inTest.addBytesWritten(25L);
-
-		assertThat(inTest.pollBytesWritten(), is(42L));
+		Assertions.assertEquals(42l, inTest.pollBytesWritten());
 	}
 
 	@Test
 	public void testPollBytesDecrypted() {
-		assertThat(inTest.pollBytesDecrypted(), is(0L));
+		Assertions.assertEquals(0l, inTest.pollBytesDecrypted());
 
 		inTest.addBytesDecrypted(17L);
-
-		assertThat(inTest.pollBytesDecrypted(), is(17L));
+		Assertions.assertEquals(17l, inTest.pollBytesDecrypted());
 
 		inTest.addBytesDecrypted(17L);
 		inTest.addBytesDecrypted(25L);
-
-		assertThat(inTest.pollBytesDecrypted(), is(42L));
+		Assertions.assertEquals(42l, inTest.pollBytesDecrypted());
 	}
 
 	@Test
 	public void testPollBytesEncrypted() {
-		assertThat(inTest.pollBytesEncrypted(), is(0L));
+		Assertions.assertEquals(0l, inTest.pollBytesEncrypted());
 
 		inTest.addBytesEncrypted(17L);
-
-		assertThat(inTest.pollBytesEncrypted(), is(17L));
+		Assertions.assertEquals(17l, inTest.pollBytesEncrypted());
 
 		inTest.addBytesEncrypted(17L);
 		inTest.addBytesEncrypted(25L);
-
-		assertThat(inTest.pollBytesEncrypted(), is(42L));
+		Assertions.assertEquals(42l, inTest.pollBytesEncrypted());
 	}
 
 	@Test
 	public void testPollChunkCacheAccesses() {
-		assertThat(inTest.pollChunkCacheAccesses(), is(0L));
+		Assertions.assertEquals(0l, inTest.pollChunkCacheAccesses());
 
 		inTest.addChunkCacheAccess();
-
-		assertThat(inTest.pollChunkCacheAccesses(), is(1L));
+		Assertions.assertEquals(1l, inTest.pollChunkCacheAccesses());
 
 		inTest.addChunkCacheAccess();
 		inTest.addChunkCacheAccess();
-
-		assertThat(inTest.pollChunkCacheAccesses(), is(2L));
+		Assertions.assertEquals(2l, inTest.pollChunkCacheAccesses());
 	}
 
 	@Test
 	public void testPollChunkCacheHits() {
-		assertThat(inTest.pollChunkCacheHits(), is(0L));
+		Assertions.assertEquals(0l, inTest.pollChunkCacheHits());
 
 		inTest.addChunkCacheMiss();
-
-		assertThat(inTest.pollChunkCacheHits(), is(0L));
+		Assertions.assertEquals(0l, inTest.pollChunkCacheHits());
 
 		inTest.addChunkCacheAccess();
-
-		assertThat(inTest.pollChunkCacheHits(), is(1L));
+		Assertions.assertEquals(1l, inTest.pollChunkCacheHits());
 
 		inTest.addChunkCacheAccess();
 		inTest.addChunkCacheMiss();
@@ -97,22 +83,18 @@ public class CryptoFileSystemStatsTest {
 		inTest.addChunkCacheAccess();
 		inTest.addChunkCacheAccess();
 		inTest.addChunkCacheMiss();
-
-		assertThat(inTest.pollChunkCacheHits(), is(2L));
+		Assertions.assertEquals(2l, inTest.pollChunkCacheHits());
 	}
 
 	@Test
 	public void testPollChunkCacheMisses() {
-		assertThat(inTest.pollChunkCacheMisses(), is(0L));
-
+		Assertions.assertEquals(0l, inTest.pollChunkCacheMisses());
 		inTest.addChunkCacheMiss();
-
-		assertThat(inTest.pollChunkCacheMisses(), is(1L));
+		Assertions.assertEquals(1l, inTest.pollChunkCacheMisses());
 
 		inTest.addChunkCacheMiss();
 		inTest.addChunkCacheMiss();
-
-		assertThat(inTest.pollChunkCacheMisses(), is(2L));
+		Assertions.assertEquals(2l, inTest.pollChunkCacheMisses());
 	}
 
 }

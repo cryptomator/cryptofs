@@ -1,32 +1,24 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.fh;
+
+import org.cryptomator.cryptofs.CryptoFileSystemStats;
+import org.cryptomator.cryptolib.api.AuthenticationFailedException;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+
+import java.io.IOException;
+import java.util.List;
 
 import static java.util.Arrays.asList;
-import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import java.io.IOException;
-import java.util.List;
-
-import org.cryptomator.cryptolib.api.AuthenticationFailedException;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
-
 public class ChunkCacheTest {
 
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	private final ChunkLoader chunkLoader = mock(ChunkLoader.class);
 	private final ChunkSaver chunkSaver = mock(ChunkSaver.class);
@@ -39,7 +31,7 @@ public class ChunkCacheTest {
 		ChunkData data = mock(ChunkData.class);
 		when(chunkLoader.load(index)).thenReturn(data);
 
-		assertThat(inTest.get(index), is(data));
+		Assertions.assertSame(data, inTest.get(index));
 		verify(stats).addChunkCacheAccess();
 	}
 
@@ -50,7 +42,7 @@ public class ChunkCacheTest {
 		when(chunkLoader.load(index)).thenReturn(data);
 		inTest.get(index);
 
-		assertThat(inTest.get(index), is(data));
+		Assertions.assertSame(data, inTest.get(index));
 		verify(stats, Mockito.times(2)).addChunkCacheAccess();
 		verify(chunkLoader).load(index);
 	}
@@ -61,7 +53,7 @@ public class ChunkCacheTest {
 		ChunkData data = mock(ChunkData.class);
 		inTest.set(index, data);
 
-		assertThat(inTest.get(index), is(data));
+		Assertions.assertSame(data, inTest.get(index));
 		verify(stats).addChunkCacheAccess();
 	}
 
@@ -121,10 +113,10 @@ public class ChunkCacheTest {
 		AuthenticationFailedException authenticationFailedException = new AuthenticationFailedException("Foo");
 		when(chunkLoader.load(index)).thenThrow(authenticationFailedException);
 
-		thrown.expect(IOException.class);
-		thrown.expectCause(is(authenticationFailedException));
-
-		inTest.get(index);
+		IOException e = Assertions.assertThrows(IOException.class, () -> {
+			inTest.get(index);
+		});
+		Assertions.assertSame(authenticationFailedException, e.getCause());
 	}
 
 	@Test
@@ -133,9 +125,10 @@ public class ChunkCacheTest {
 		RuntimeException uncheckedException = new RuntimeException();
 		when(chunkLoader.load(index)).thenThrow(uncheckedException);
 
-		thrown.expectCause(is(uncheckedException));
-
-		inTest.get(index);
+		RuntimeException e = Assertions.assertThrows(RuntimeException.class, () -> {
+			inTest.get(index);
+		});
+		Assertions.assertSame(uncheckedException, e.getCause());
 	}
 
 	@Test
@@ -160,7 +153,7 @@ public class ChunkCacheTest {
 		List<Class<?>> exceptionsThrownByLoader = asList(ChunkLoader.class.getMethod("load", Long.class).getExceptionTypes());
 
 		// INFO: when adding exception types here add a corresponding test like testGetRethrowsIOExceptionFromLoader
-		assertThat(exceptionsThrownByLoader, containsInAnyOrder(IOException.class));
+		MatcherAssert.assertThat(exceptionsThrownByLoader, containsInAnyOrder(IOException.class));
 	}
 
 	@Test
@@ -169,9 +162,10 @@ public class ChunkCacheTest {
 		IOException ioException = new IOException();
 		when(chunkLoader.load(index)).thenThrow(ioException);
 
-		thrown.expect(is(ioException));
-
-		inTest.get(index);
+		IOException e = Assertions.assertThrows(IOException.class, () -> {
+			inTest.get(index);
+		});
+		Assertions.assertSame(ioException, e);
 	}
 
 }

@@ -6,20 +6,20 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.fh;
 
 import static java.lang.Math.min;
 
 import java.nio.ByteBuffer;
 
-interface ByteSource {
+public interface ByteSource {
 
 	static ByteSource from(ByteBuffer buffer) {
 		return new ByteBufferByteSource(buffer);
 	}
 
-	static ZeroPrefixedByteSourceWithoutBuffer repeatingZeroes(long amountOfZeroes) {
-		return buffer -> new ZeroPrefixedByteSource(amountOfZeroes, buffer);
+	static UndefinedNoisePrefixedByteSourceWithoutBuffer undefinedNoise(long numBytes) {
+		return buffer -> new UndefinedNoisePrefixedByteSource(numBytes, buffer);
 	}
 
 	boolean hasRemaining();
@@ -36,7 +36,7 @@ interface ByteSource {
 	 */
 	void copyTo(ByteBuffer buffer);
 
-	interface ZeroPrefixedByteSourceWithoutBuffer {
+	interface UndefinedNoisePrefixedByteSourceWithoutBuffer {
 
 		ByteSource followedBy(ByteBuffer delegate);
 
@@ -74,42 +74,40 @@ interface ByteSource {
 
 	}
 
-	class ZeroPrefixedByteSource implements ByteSource {
+	class UndefinedNoisePrefixedByteSource implements ByteSource {
 
-		private long amountOfZeroes;
+		private long prefixLen;
 		private final ByteBuffer source;
 
-		private ZeroPrefixedByteSource(long amountOfZeroes, ByteBuffer source) {
-			this.amountOfZeroes = amountOfZeroes;
+		private UndefinedNoisePrefixedByteSource(long prefixLen, ByteBuffer source) {
+			this.prefixLen = prefixLen;
 			this.source = source;
 		}
 
 		@Override
 		public boolean hasRemaining() {
-			return amountOfZeroes > 0 || source.hasRemaining();
+			return prefixLen > 0 || source.hasRemaining();
 		}
 
 		@Override
 		public long remaining() {
-			return amountOfZeroes + source.remaining();
+			return prefixLen + source.remaining();
 		}
 
 		@Override
 		public void copyTo(ByteBuffer target) {
-			if (amountOfZeroes > 0) {
-				copyZeroesTo(target);
+			if (prefixLen > 0) {
+				skip(target);
 			}
 			if (target.hasRemaining()) {
 				copySourceTo(target);
 			}
 		}
 
-		private void copyZeroesTo(ByteBuffer target) {
-			int amountOfZeroesAsInt = (int) min(amountOfZeroes, Integer.MAX_VALUE);
-			int amountOfZeroesToCopy = min(amountOfZeroesAsInt, target.remaining());
-			ByteBuffer zeroes = ByteBuffer.allocate(amountOfZeroesToCopy);
-			target.put(zeroes);
-			amountOfZeroes -= amountOfZeroesToCopy;
+		private void skip(ByteBuffer target) {
+			int n = (int) min(prefixLen, target.remaining()); // known to fit into int due to 2nd param
+			target.position(target.position() + n);
+			prefixLen -= n;
 		}
 
 		private void copySourceTo(ByteBuffer target) {
