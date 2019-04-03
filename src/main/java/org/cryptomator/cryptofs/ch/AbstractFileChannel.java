@@ -259,7 +259,7 @@ public abstract class AbstractFileChannel extends FileChannel {
 			beginBlocking();
 			readWriteLock.readLock().lockInterruptibly();
 			try {
-				long transferred = transferToBlocked(position, count, target);
+				long transferred = transferToLocked(position, count, target);
 				completed = true;
 				return transferred;
 			} finally {
@@ -273,7 +273,7 @@ public abstract class AbstractFileChannel extends FileChannel {
 		}
 	}
 
-	protected long transferToBlocked(long position, long count, WritableByteChannel target) throws IOException {
+	protected long transferToLocked(long position, long count, WritableByteChannel target) throws IOException {
 		ByteBuffer buf = ByteBuffer.allocate((int) min(count, BUFFER_SIZE));
 		long transferred = 0;
 		while (transferred < count) {
@@ -299,7 +299,7 @@ public abstract class AbstractFileChannel extends FileChannel {
 			beginBlocking();
 			readWriteLock.writeLock().lockInterruptibly();
 			try {
-				long transferred = transferFromBlocked(src, position, count);
+				long transferred = transferFromLocked(src, position, count);
 				completed = true;
 				return transferred;
 			} finally {
@@ -313,7 +313,7 @@ public abstract class AbstractFileChannel extends FileChannel {
 		}
 	}
 
-	protected long transferFromBlocked(ReadableByteChannel src, long position, long count) throws IOException {
+	protected long transferFromLocked(ReadableByteChannel src, long position, long count) throws IOException {
 		if (position > size()) {
 			return 0L;
 		}

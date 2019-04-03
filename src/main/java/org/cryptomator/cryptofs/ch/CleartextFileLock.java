@@ -17,8 +17,8 @@ class CleartextFileLock extends FileLock {
 
 	private final FileLock ciphertextLock;
 
-	public CleartextFileLock(CleartextFileChannel channel, FileLock ciphertextLock, long position, long size, boolean shared) {
-		super(Objects.requireNonNull(channel), position, size, shared);
+	public CleartextFileLock(FileChannel channel, FileLock ciphertextLock, long position, long size) {
+		super(Objects.requireNonNull(channel), position, size, ciphertextLock.isShared());
 		this.ciphertextLock = Objects.requireNonNull(ciphertextLock);
 	}
 

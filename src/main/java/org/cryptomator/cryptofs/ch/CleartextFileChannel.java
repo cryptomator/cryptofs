@@ -20,6 +20,8 @@ import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.nio.channels.NonReadableChannelException;
+import java.nio.channels.NonWritableChannelException;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
@@ -216,17 +218,27 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	@Override
 	public FileLock lock(long position, long size, boolean shared) throws IOException {
 		assertOpen();
+		if (shared && !options.readable()) {
+			throw new NonReadableChannelException(); // shared lock only available on readable channel
+		} else if (!shared && !options.writable()) {
+			throw new NonWritableChannelException(); // exclusive lock only available on writable channel
+		}
 		long firstChunk = position / cryptor.fileContentCryptor().cleartextChunkSize();
 		long lastChunk = firstChunk + size / cryptor.fileContentCryptor().cleartextChunkSize();
 		long ciphertextPosition = cryptor.fileHeaderCryptor().headerSize() + firstChunk * cryptor.fileContentCryptor().ciphertextChunkSize();
 		long ciphertextSize = (lastChunk - firstChunk + 1) * cryptor.fileContentCryptor().ciphertextChunkSize();
 		FileLock ciphertextLock = ciphertextFileChannel.lock(ciphertextPosition, ciphertextSize, shared);
-		return new CleartextFileLock(this, ciphertextLock, position, size, shared);
+		return new CleartextFileLock(this, ciphertextLock, position, size);
 	}
 
 	@Override
 	public FileLock tryLock(long position, long size, boolean shared) throws IOException {
 		assertOpen();
+		if (shared && !options.readable()) {
+			throw new NonReadableChannelException(); // shared lock only available on readable channel
+		} else if (!shared && !options.writable()) {
+			throw new NonWritableChannelException(); // exclusive lock only available on writable channel
+		}
 		long firstChunk = position / cryptor.fileContentCryptor().cleartextChunkSize();
 		long lastChunk = firstChunk + size / cryptor.fileContentCryptor().cleartextChunkSize();
 		long ciphertextPosition = cryptor.fileHeaderCryptor().headerSize() + firstChunk * cryptor.fileContentCryptor().ciphertextChunkSize();
@@ -235,7 +247,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		if (ciphertextLock == null) {
 			return null;
 		} else {
-			return new CleartextFileLock(this, ciphertextLock, position, size, shared);
+			return new CleartextFileLock(this, ciphertextLock, position, size);
 		}
 	}
 

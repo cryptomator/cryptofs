@@ -31,11 +31,18 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.channels.NonReadableChannelException;
+import java.nio.channels.NonWritableChannelException;
+import java.nio.channels.OverlappingFileLockException;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.charset.StandardCharsets;
@@ -382,50 +389,114 @@ public class CryptoFileSystemProviderIntegrationTest {
 	}
 
 	@Nested
-	@EnabledOnOs(OS.WINDOWS)
+	@EnabledOnOs({OS.MAC, OS.LINUX})
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-	@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-	class Windows {
+	@DisplayName("On POSIX Systems")
+	class PosixTests {
 
-		private Path pathToVault1;
-		private Path masterkeyFile1;
-		private FileSystem fs1;
+		private FileSystem fs;
 
 		@BeforeAll
 		public void setup(@TempDir Path tmpDir) throws IOException {
-			pathToVault1 = tmpDir.resolve("vaultDir1");
-			Files.createDirectories(pathToVault1);
-			masterkeyFile1 = pathToVault1.resolve("masterkey.cryptomator");
+			Path pathToVault = tmpDir.resolve("vaultDir1");
+			Files.createDirectories(pathToVault);
+			CryptoFileSystemProvider.initialize(pathToVault, "masterkey.cryptomator", "asd");
+			fs = CryptoFileSystemProvider.newFileSystem(pathToVault, cryptoFileSystemProperties().withPassphrase("asd").build());
+		}
+
+		@Nested
+		@DisplayName("File Locks")
+		class FileLockTests {
+
+			private Path file = fs.getPath("/lock.txt");
+
+			@BeforeEach
+			public void setup() throws IOException {
+				Files.write(file, new byte[100000]); // > 3 * 32k
+			}
+
+			@Test
+			@DisplayName("get shared lock on non-readable channel fails")
+			public void testGetSharedLockOnNonReadableChannel() throws IOException {
+				try (FileChannel ch = FileChannel.open(file, StandardOpenOption.WRITE)) {
+					Assertions.assertThrows(NonReadableChannelException.class, () -> {
+						ch.lock(0, 50000, true);
+					});
+				}
+			}
+
+			@Test
+			@DisplayName("locking a closed channel fails")
+			public void testLockClosedChannel() throws IOException {
+				FileChannel ch = FileChannel.open(file, StandardOpenOption.WRITE);
+				ch.close();
+				Assertions.assertThrows(ClosedChannelException.class, () -> {
+					ch.lock();
+				});
+			}
+
+			@Test
+			@DisplayName("get exclusive lock on non-writable channel fails")
+			public void testGetSharedLockOnNonWritableChannel() throws IOException {
+				try (FileChannel ch = FileChannel.open(file, StandardOpenOption.READ)) {
+					Assertions.assertThrows(NonWritableChannelException.class, () -> {
+						ch.lock(0, 50000, false);
+					});
+				}
+			}
+
+			@ParameterizedTest(name = "shared = {0}")
+			@CsvSource({"true", "false"})
+			@DisplayName("create non-overlapping locks")
+			public void testNonOverlappingLocks(boolean shared) throws IOException {
+				try (FileChannel ch = FileChannel.open(file, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
+					try (FileLock lock1 = ch.lock(0, 10000, shared)) {
+						try (FileLock lock2 = ch.lock(90000, 10000, shared)) {
+							Assertions.assertNotSame(lock1, lock2);
+						}
+					}
+				}
+			}
+
+			@ParameterizedTest(name = "shared = {0}")
+			@CsvSource({"true", "false"})
+			@DisplayName("create overlapping locks")
+			public void testOverlappingLocks(boolean shared) throws IOException {
+				try (FileChannel ch = FileChannel.open(file, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
+					try (FileLock lock1 = ch.lock(0, 10000, shared)) {
+						// while bock locks cover different cleartext byte ranges, it is necessary to lock the same ciphertext block
+						Assertions.assertThrows(OverlappingFileLockException.class, () -> {
+							ch.lock(10000, 10000, shared);
+						});
+					}
+				}
+			}
+
+		}
+
+
+	}
+
+	@Nested
+	@EnabledOnOs(OS.WINDOWS)
+	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+	@DisplayName("On Windows Systems")
+	class WindowsTests {
+
+		private FileSystem fs;
+
+		@BeforeAll
+		public void setup(@TempDir Path tmpDir) throws IOException {
+			Path pathToVault = tmpDir.resolve("vaultDir1");
+			Files.createDirectories(pathToVault);
+			CryptoFileSystemProvider.initialize(pathToVault, "masterkey.cryptomator", "asd");
+			fs =  CryptoFileSystemProvider.newFileSystem(pathToVault, cryptoFileSystemProperties().withPassphrase("asd").build());
 		}
 
 		@Test
-		@Order(1)
-		@DisplayName("initialize vault")
-		public void initializeVaults() throws IOException {
-			CryptoFileSystemProvider.initialize(pathToVault1, "masterkey.cryptomator", "asd");
-			Assertions.assertTrue(Files.isDirectory(pathToVault1.resolve("d")));
-			Assertions.assertTrue(Files.isRegularFile(masterkeyFile1));
-		}
-
-		@Test
-		@Order(2)
-		@DisplayName("get filesystem with correct credentials")
-		public void testGetFsViaNioApi() throws IOException {
-			Assumptions.assumeTrue(Files.exists(masterkeyFile1));
-
-			URI fsUri = CryptoFileSystemUri.create(pathToVault1);
-			fs1 = FileSystems.newFileSystem(fsUri, cryptoFileSystemProperties().withPassphrase("asd").build());
-			Assertions.assertTrue(fs1 instanceof CryptoFileSystemImpl);
-
-			FileSystem sameFs = FileSystems.getFileSystem(fsUri);
-			Assertions.assertSame(fs1, sameFs);
-		}
-
-		@Test
-		@Order(3)
 		@DisplayName("set dos attributes")
 		public void testDosFileAttributes() throws IOException {
-			Path file = fs1.getPath("/msDosAttributes.txt");
+			Path file = fs.getPath("/msDosAttributes.txt");
 			Assumptions.assumeTrue(Files.notExists(file));
 
 			Files.write(file, new byte[1]);
@@ -455,7 +526,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@DisplayName("read-only file")
 		class OnReadOnlyFile {
 
-			private Path file = fs1.getPath("/readonly.txt");
+			private Path file = fs.getPath("/readonly.txt");
 			private DosFileAttributeView attrView;
 
 			@BeforeEach

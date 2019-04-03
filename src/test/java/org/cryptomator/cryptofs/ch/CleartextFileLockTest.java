@@ -2,95 +2,222 @@ package org.cryptomator.cryptofs.ch;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
-
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 public class CleartextFileLockTest {
 
-	private CleartextFileChannel channel = Mockito.mock(CleartextFileChannel.class);
-	private FileLock delegate = Mockito.mock(FileLock.class);
+	private FileChannel channel;
 	private long size = 3728l;
 	private long position = 323l;
-	private boolean shared = true;
+	private FileLock delegate;
 	private CleartextFileLock inTest;
 
 	@BeforeEach
 	public void setup() {
-		inTest = new CleartextFileLock(channel, delegate, position, size, shared);
+		channel = Mockito.spy(new DummyFileChannel());
 	}
 
-	@Test
-	public void testRelease() throws IOException {
-		inTest.release();
+	@Nested
+	@DisplayName("Shared Locks")
+	class ValidSharedLockTests {
 
-		verify(delegate).release();
+		@BeforeEach
+		public void setup() {
+			delegate = Mockito.spy(new FileLockMock(channel, position, size, true));
+			inTest = new CleartextFileLock(channel, delegate, position, size);
+		}
+
+		@Test
+		@DisplayName("delegate() is delegate")
+		public void testDelegate() {
+			Assertions.assertSame(delegate, inTest.delegate());
+		}
+
+		@Test
+		@DisplayName("position() is 323")
+		public void testPosition() {
+			Assertions.assertEquals(position, inTest.position());
+		}
+
+		@Test
+		@DisplayName("size() is 3728")
+		public void testSize() {
+			Assertions.assertEquals(size, inTest.size());
+		}
+
+		@Test
+		@DisplayName("channel() is channel")
+		public void testChannel() {
+			Assertions.assertSame(channel, inTest.channel());
+		}
+
+		@Test
+		@DisplayName("isShared() is true")
+		public void testShared() {
+			Assertions.assertTrue(inTest.isShared());
+		}
+
+		@Test
+		@DisplayName("isValid() is true")
+		public void testIsValid() {
+			Assertions.assertTrue(inTest.isValid());
+		}
+
+		@Nested
+		@DisplayName("After releasing the lock")
+		class ReleasedLock {
+
+			@BeforeEach
+			public void setup() throws IOException {
+				inTest.release();
+			}
+
+			@Test
+			@DisplayName("isValid() is false")
+			public void testIsValid() {
+				Assertions.assertFalse(inTest.isValid());
+			}
+
+			@Test
+			@DisplayName("release() is called on the delegate")
+			public void testReleaseDelegate() throws IOException {
+				Mockito.verify(delegate).release();
+			}
+
+		}
+
+		@Nested
+		@DisplayName("After closing the channel")
+		class ClosedChannel {
+
+			@BeforeEach
+			public void setup() throws IOException {
+				channel.close();
+			}
+
+			@Test
+			@DisplayName("isValid() is false")
+			public void testIsValid() {
+				Assertions.assertFalse(inTest.isValid());
+			}
+
+		}
+
 	}
 
-	@Test
-	public void testDelegate() {
-		Assertions.assertSame(delegate, inTest.delegate());
+	@Nested
+	@DisplayName("Exclusive Locks")
+	class InvalidSharedLockTests {
+
+		@BeforeEach
+		public void setup() {
+			delegate = Mockito.spy(new FileLockMock(channel, position, size, false));
+			inTest = new CleartextFileLock(channel, delegate, position, size);
+		}
+
+		@Test
+		@DisplayName("delegate() is delegate")
+		public void testDelegate() {
+			Assertions.assertSame(delegate, inTest.delegate());
+		}
+
+		@Test
+		@DisplayName("position() is 323")
+		public void testPosition() {
+			Assertions.assertEquals(position, inTest.position());
+		}
+
+		@Test
+		@DisplayName("size() is 3728")
+		public void testSize() {
+			Assertions.assertEquals(size, inTest.size());
+		}
+
+		@Test
+		@DisplayName("channel() is channel")
+		public void testChannel() {
+			Assertions.assertSame(channel, inTest.channel());
+		}
+
+		@Test
+		@DisplayName("isShared() is false")
+		public void testShared() {
+			Assertions.assertFalse(inTest.isShared());
+		}
+
+		@Test
+		@DisplayName("isValid() is true")
+		public void testIsValid() {
+			Assertions.assertTrue(inTest.isValid());
+		}
+
+		@Nested
+		@DisplayName("After releasing the lock")
+		class ReleasedLock {
+
+			@BeforeEach
+			public void setup() throws IOException {
+				inTest.release();
+			}
+
+			@Test
+			@DisplayName("isValid() is false")
+			public void testIsValid() {
+				Assertions.assertFalse(inTest.isValid());
+			}
+
+			@Test
+			@DisplayName("release() is called on the delegate")
+			public void testReleaseDelegate() throws IOException {
+				Mockito.verify(delegate).release();
+			}
+
+		}
+
+		@Nested
+		@DisplayName("After closing the channel")
+		class ClosedChannel {
+
+			@BeforeEach
+			public void setup() throws IOException {
+				channel.close();
+			}
+
+			@Test
+			@DisplayName("isValid() is false")
+			public void testIsValid() {
+				Assertions.assertFalse(inTest.isValid());
+			}
+
+		}
+
 	}
 
-	@Test
-	public void testIsValidWithValidDelegateAndOpenChannel() {
-		when(delegate.isValid()).thenReturn(true);
-		Assertions.assertTrue(inTest.isValid());
-	}
+	private static class FileLockMock extends FileLock {
 
-	@Disabled // TODO: invalidate locks when closing channel
-	@Test
-	public void testIsValidWithValidDelegateAndClosedChannel() throws IOException {
-		when(delegate.isValid()).thenReturn(true);
-		channel.close();
-		Assertions.assertFalse(inTest.isValid());
-	}
+		private boolean valid;
 
-	@Test
-	public void testIsValidWithInvalidDelegateAndOpenChannel() {
-		when(delegate.isValid()).thenReturn(false);
-		Assertions.assertFalse(inTest.isValid());
-	}
+		protected FileLockMock(FileChannel channel, long position, long size, boolean shared) {
+			super(channel, position, size, shared);
+			this.valid = true;
+		}
 
-	@Disabled // TODO: invalidate locks when closing channel
-	@Test
-	public void testIsValidWithInalidDelegateAndClosedChannel() throws IOException {
-		when(delegate.isValid()).thenReturn(false);
-		channel.close();
-		Assertions.assertFalse(inTest.isValid());
-	}
+		@Override
+		public boolean isValid() {
+			return valid;
+		}
 
-	@Test
-	public void testPosition() {
-		Assertions.assertEquals(position, inTest.position());
-	}
-
-	@Test
-	public void testSize() {
-		Assertions.assertEquals(size, inTest.size());
-	}
-
-	@Test
-	public void testChannel() {
-		Assertions.assertSame(channel, inTest.channel());
-	}
-
-	@Test
-	public void testSharedTrue() {
-		CleartextFileLock inTest = new CleartextFileLock(channel, delegate, position, size, true);
-		Assertions.assertTrue(inTest.isShared());
-	}
-
-	@Test
-	public void testSharedFalse() {
-		CleartextFileLock inTest = new CleartextFileLock(channel, delegate, position, size, false);
-		Assertions.assertFalse(inTest.isShared());
+		@Override
+		public void release() {
+			valid = false;
+		}
 	}
 
 }
