@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
+import java.nio.channels.FileLock;
 import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.ReadableByteChannel;
@@ -214,59 +215,63 @@ public class CleartextFileChannelTest {
 		});
 	}
 
-//	public class Lock {
-//
-//		@Test
-//		public void testTryLockReturnsNullIfDelegateReturnsNull() throws IOException {
-//			boolean shared = true;
-//			long position = 372L;
-//			long size = 3828L;
-//			when(openCryptoFile.tryLock(position, size, shared)).thenReturn(null);
-//
-//			FileLock result = inTest.tryLock(position, size, shared);
-//
-//			assertThat(result, is(nullValue()));
-//		}
-//
-//		@Test
-//		public void testTryLockReturnsCryptoFileLockWrappingDelegate() throws IOException {
-//			boolean shared = true;
-//			long position = 372L;
-//			long size = 3828L;
-//			FileLock delegate = mock(FileLock.class);
-//			when(openCryptoFile.tryLock(position, size, shared)).thenReturn(delegate);
-//
-//			FileLock result = inTest.tryLock(position, size, shared);
-//
-//			assertThat(result, is(instanceOf(CryptoFileLock.class)));
-//			CryptoFileLock cryptoFileLock = (CryptoFileLock) result;
-//			assertThat(cryptoFileLock.acquiredBy(), is(inTest));
-//			assertThat(cryptoFileLock.delegate(), is(delegate));
-//			assertThat(cryptoFileLock.isShared(), is(shared));
-//			assertThat(cryptoFileLock.position(), is(position));
-//			assertThat(cryptoFileLock.size(), is(size));
-//		}
-//
-//		@Test
-//		public void tesLockReturnsCryptoFileLockWrappingDelegate() throws IOException {
-//			boolean shared = true;
-//			long position = 372L;
-//			long size = 3828L;
-//			FileLock delegate = mock(FileLock.class);
-//			when(openCryptoFile.lock(position, size, shared)).thenReturn(delegate);
-//
-//			FileLock result = inTest.lock(position, size, shared);
-//
-//			assertThat(result, is(instanceOf(CryptoFileLock.class)));
-//			CryptoFileLock cryptoFileLock = (CryptoFileLock) result;
-//			assertThat(cryptoFileLock.acquiredBy(), is(inTest));
-//			assertThat(cryptoFileLock.delegate(), is(delegate));
-//			assertThat(cryptoFileLock.isShared(), is(shared));
-//			assertThat(cryptoFileLock.position(), is(position));
-//			assertThat(cryptoFileLock.size(), is(size));
-//		}
-//
-//	}
+	@Nested
+	class Locking {
+
+		private FileLock delegate = Mockito.mock(FileLock.class);
+
+		@BeforeEach
+		public void setup() {
+			Assumptions.assumeTrue(fileHeaderCryptor.headerSize() == 50);
+			Assumptions.assumeTrue(fileContentCryptor.cleartextChunkSize() == 100);
+			Assumptions.assumeTrue(fileContentCryptor.ciphertextChunkSize() == 110);
+		}
+
+		@Test
+		@DisplayName("unsuccessful tryLock()")
+		public void testTryLockReturnsNullIfDelegateReturnsNull() throws IOException {
+			when(ciphertextFileChannel.tryLock(Mockito.anyLong(), Mockito.anyLong(), Mockito.anyBoolean())).thenReturn(null);
+
+			FileLock result = inTest.tryLock(380l, 4290l, true);
+
+			Assertions.assertNull(result);
+		}
+
+		@Test
+		@DisplayName("successful tryLock()")
+		public void testTryLockReturnsCryptoFileLockWrappingDelegate() throws IOException {
+			when(ciphertextFileChannel.tryLock(380l, 4290l, true)).thenReturn(delegate);
+
+			FileLock result = inTest.tryLock(372l, 3828l, true);
+
+			Assertions.assertNotNull(result);
+			Assertions.assertTrue(result instanceof CleartextFileLock);
+			CleartextFileLock cleartextFileLock = (CleartextFileLock) result;
+			Assertions.assertEquals(inTest, cleartextFileLock.acquiredBy());
+			Assertions.assertEquals(delegate, cleartextFileLock.delegate());
+			Assertions.assertEquals(372l, cleartextFileLock.position());
+			Assertions.assertEquals(3828l, cleartextFileLock.size());
+			Assertions.assertTrue(cleartextFileLock.isShared());
+		}
+
+		@Test
+		@DisplayName("successful lock()")
+		public void testLockReturnsCryptoFileLockWrappingDelegate() throws IOException {
+			when(ciphertextFileChannel.lock(380l, 4290l, true)).thenReturn(delegate);
+
+			FileLock result = inTest.lock(372l, 3828l, true);
+
+			Assertions.assertNotNull(result);
+			Assertions.assertTrue(result instanceof CleartextFileLock);
+			CleartextFileLock cleartextFileLock = (CleartextFileLock) result;
+			Assertions.assertEquals(inTest, cleartextFileLock.acquiredBy());
+			Assertions.assertEquals(delegate, cleartextFileLock.delegate());
+			Assertions.assertEquals(372l, cleartextFileLock.position());
+			Assertions.assertEquals(3828l, cleartextFileLock.size());
+			Assertions.assertTrue(cleartextFileLock.isShared());
+		}
+
+	}
 
 	@Nested
 	public class Read {

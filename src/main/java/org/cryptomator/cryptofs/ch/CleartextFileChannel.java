@@ -216,13 +216,27 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	@Override
 	public FileLock lock(long position, long size, boolean shared) throws IOException {
 		assertOpen();
-		return null; // TODO
+		long firstChunk = position / cryptor.fileContentCryptor().cleartextChunkSize();
+		long lastChunk = firstChunk + size / cryptor.fileContentCryptor().cleartextChunkSize();
+		long ciphertextPosition = cryptor.fileHeaderCryptor().headerSize() + firstChunk * cryptor.fileContentCryptor().ciphertextChunkSize();
+		long ciphertextSize = (lastChunk - firstChunk + 1) * cryptor.fileContentCryptor().ciphertextChunkSize();
+		FileLock ciphertextLock = ciphertextFileChannel.lock(ciphertextPosition, ciphertextSize, shared);
+		return new CleartextFileLock(this, ciphertextLock, position, size, shared);
 	}
 
 	@Override
 	public FileLock tryLock(long position, long size, boolean shared) throws IOException {
 		assertOpen();
-		return null; // TODO
+		long firstChunk = position / cryptor.fileContentCryptor().cleartextChunkSize();
+		long lastChunk = firstChunk + size / cryptor.fileContentCryptor().cleartextChunkSize();
+		long ciphertextPosition = cryptor.fileHeaderCryptor().headerSize() + firstChunk * cryptor.fileContentCryptor().ciphertextChunkSize();
+		long ciphertextSize = (lastChunk - firstChunk + 1) * cryptor.fileContentCryptor().ciphertextChunkSize();
+		FileLock ciphertextLock = ciphertextFileChannel.tryLock(ciphertextPosition, ciphertextSize, shared);
+		if (ciphertextLock == null) {
+			return null;
+		} else {
+			return new CleartextFileLock(this, ciphertextLock, position, size, shared);
+		}
 	}
 
 	@Override
