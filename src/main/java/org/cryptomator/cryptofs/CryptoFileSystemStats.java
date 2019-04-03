@@ -11,7 +11,7 @@ import javax.inject.Inject;
  * <p>
  * The available metrics are constantly updated in a thread-safe manner and can be polled at any time.
  */
-@PerFileSystem
+@CryptoFileSystemScoped
 public class CryptoFileSystemStats {
 
 	private final LongAdder bytesRead = new LongAdder();

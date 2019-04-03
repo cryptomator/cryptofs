@@ -2,7 +2,11 @@ package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
-import org.cryptomator.cryptofs.OpenCryptoFiles.TwoPhaseMove;
+import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
+import org.cryptomator.cryptofs.fh.OpenCryptoFiles.TwoPhaseMove;
+import org.cryptomator.cryptofs.attr.AttributeByNameProvider;
+import org.cryptomator.cryptofs.attr.AttributeProvider;
+import org.cryptomator.cryptofs.attr.AttributeViewProvider;
 import org.cryptomator.cryptofs.mocks.FileChannelMock;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.hamcrest.MatcherAssert;
@@ -78,9 +82,9 @@ public class CryptoFileSystemImplTest {
 	private final Symlinks symlinks = mock(Symlinks.class);
 	private final CryptoPathMapper cryptoPathMapper = mock(CryptoPathMapper.class);
 	private final DirectoryIdProvider dirIdProvider = mock(DirectoryIdProvider.class);
-	private final CryptoFileAttributeProvider fileAttributeProvider = mock(CryptoFileAttributeProvider.class);
-	private final CryptoFileAttributeByNameProvider fileAttributeByNameProvider = mock(CryptoFileAttributeByNameProvider.class);
-	private final CryptoFileAttributeViewProvider fileAttributeViewProvider = mock(CryptoFileAttributeViewProvider.class);
+	private final AttributeProvider fileAttributeProvider = mock(AttributeProvider.class);
+	private final AttributeByNameProvider fileAttributeByNameProvider = mock(AttributeByNameProvider.class);
+	private final AttributeViewProvider fileAttributeViewProvider = mock(AttributeViewProvider.class);
 	private final PathMatcherFactory pathMatcherFactory = mock(PathMatcherFactory.class);
 	private final CryptoPathFactory cryptoPathFactory = mock(CryptoPathFactory.class);
 	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);

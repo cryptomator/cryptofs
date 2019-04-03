@@ -13,7 +13,7 @@ import javax.inject.Inject;
 
 import com.google.common.cache.CacheLoader;
 
-@PerFileSystem
+@CryptoFileSystemScoped
 class DirectoryIdLoader extends CacheLoader<Path, String> {
 
 	private static final int MAX_DIR_ID_LENGTH = 1000;

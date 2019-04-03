@@ -1,7 +1,10 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.fh;
 
+import org.cryptomator.cryptofs.CryptoFileSystemComponent;
+import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
+import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

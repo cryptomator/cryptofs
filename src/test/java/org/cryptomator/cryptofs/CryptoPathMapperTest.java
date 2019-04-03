@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -37,9 +38,23 @@ public class CryptoPathMapperTest {
 
 	@BeforeEach
 	public void setup() {
+		CryptoPathFactory cryptoPathFactory = new CryptoPathFactory(symlinks);
+		CryptoPath root = cryptoPathFactory.rootFor(fileSystem);
+		CryptoPath empty = cryptoPathFactory.emptyFor(fileSystem);
 		Mockito.when(cryptor.fileNameCryptor()).thenReturn(fileNameCryptor);
 		Mockito.when(pathToVault.resolve("d")).thenReturn(dataRoot);
-		TestHelper.prepareMockForPathCreation(fileSystem, symlinks, pathToVault);
+		Mockito.when(fileSystem.getPath(ArgumentMatchers.anyString(), ArgumentMatchers.any())).thenAnswer(invocation -> {
+			String first = invocation.getArgument(0);
+			if (invocation.getArguments().length == 1) {
+				return cryptoPathFactory.getPath(fileSystem, first);
+			} else {
+				String[] more = invocation.getArgument(1);
+				return cryptoPathFactory.getPath(fileSystem, first, more);
+			}
+		});
+		Mockito.when(fileSystem.getPathToVault()).thenReturn(pathToVault);
+		Mockito.when(fileSystem.getRootPath()).thenReturn(root);
+		Mockito.when(fileSystem.getEmptyPath()).thenReturn(empty);
 	}
 
 	@Test

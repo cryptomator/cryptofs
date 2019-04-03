@@ -1,12 +1,15 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.attr;
 
+import org.cryptomator.cryptofs.CryptoPath;
+import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
+import org.cryptomator.cryptofs.ReadonlyFlag;
+import org.cryptomator.cryptofs.Symlinks;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -16,7 +19,6 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
-import java.util.stream.Stream;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -37,7 +39,7 @@ public class CryptoDosFileAttributeViewTest {
 	private CryptoPathMapper pathMapper = mock(CryptoPathMapper.class);
 	private Symlinks symlinks = mock(Symlinks.class);
 	private OpenCryptoFiles openCryptoFiles = mock(OpenCryptoFiles.class);
-	private CryptoFileAttributeProvider fileAttributeProvider = mock(CryptoFileAttributeProvider.class);
+	private AttributeProvider fileAttributeProvider = mock(AttributeProvider.class);
 	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 
 	private CryptoDosFileAttributeView inTest;

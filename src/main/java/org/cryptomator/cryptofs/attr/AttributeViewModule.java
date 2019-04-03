@@ -1,4 +1,4 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.attr;
 
 import dagger.Binds;
 import dagger.Module;
@@ -16,34 +16,34 @@ import java.util.Map;
 import java.util.Optional;
 
 @Module
-abstract class CryptoFileAttributeViewModule {
+abstract class AttributeViewModule {
 
 	@Binds
 	@IntoMap
 	@ClassKey(BasicFileAttributeView.class)
-	@PerAttributeView
+	@AttributeViewScoped
 	public abstract FileAttributeView provideBasicFileAttributeView(CryptoBasicFileAttributeView view);
 
 	@Binds
 	@IntoMap
 	@ClassKey(PosixFileAttributeView.class)
-	@PerAttributeView
+	@AttributeViewScoped
 	public abstract FileAttributeView providePosixFileAttributeView(CryptoPosixFileAttributeView view);
 
 	@Binds
 	@IntoMap
 	@ClassKey(DosFileAttributeView.class)
-	@PerAttributeView
+	@AttributeViewScoped
 	public abstract FileAttributeView provideDosFileAttributeView(CryptoDosFileAttributeView view);
 
 	@Binds
 	@IntoMap
 	@ClassKey(FileOwnerAttributeView.class)
-	@PerAttributeView
+	@AttributeViewScoped
 	public abstract FileAttributeView provideFileOwnerAttributeView(CryptoFileOwnerAttributeView view);
 
 	@Provides
-	@PerAttributeView
+	@AttributeViewScoped
 	public static Optional<FileAttributeView> provideAttributeView(Map<Class<?>, Provider<FileAttributeView>> providers, Class<? extends FileAttributeView> requestedType) {
 		Provider<FileAttributeView> provider = providers.get(requestedType);
 		if (provider == null) {

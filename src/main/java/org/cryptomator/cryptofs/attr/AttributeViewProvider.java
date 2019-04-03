@@ -6,8 +6,11 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.attr;
 
+import org.cryptomator.cryptofs.CryptoFileSystemComponent;
+import org.cryptomator.cryptofs.CryptoPath;
+import org.cryptomator.cryptofs.CryptoFileSystemScoped;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,15 +20,15 @@ import java.nio.file.LinkOption;
 import java.nio.file.attribute.FileAttributeView;
 import java.util.Optional;
 
-@PerFileSystem
-class CryptoFileAttributeViewProvider {
+@CryptoFileSystemScoped
+public class AttributeViewProvider {
 
-	private static final Logger LOG = LoggerFactory.getLogger(CryptoFileAttributeViewProvider.class);
+	private static final Logger LOG = LoggerFactory.getLogger(AttributeViewProvider.class);
 
 	private final CryptoFileSystemComponent component;
 
 	@Inject
-	public CryptoFileAttributeViewProvider(CryptoFileSystemComponent component) {
+	AttributeViewProvider(CryptoFileSystemComponent component) {
 		this.component = component;
 	}
 

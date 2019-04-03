@@ -6,12 +6,13 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.attr;
 
 import java.nio.file.Path;
 import java.nio.file.attribute.DosFileAttributes;
 import java.util.Optional;
 
+import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptolib.api.Cryptor;
 

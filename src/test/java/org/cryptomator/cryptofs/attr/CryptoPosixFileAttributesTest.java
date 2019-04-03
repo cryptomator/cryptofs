@@ -1,5 +1,6 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.attr;
 
+import org.cryptomator.cryptofs.attr.CryptoPosixFileAttributes;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;

@@ -1,5 +1,6 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.attr;
 
+import org.cryptomator.cryptofs.CryptoPath;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -20,14 +21,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class CryptoFileAttributeByNameProviderTest {
+public class AttributeByNameProviderTest {
 
-	private CryptoFileAttributeProvider fileAttributeProvider = mock(CryptoFileAttributeProvider.class);
-	private CryptoFileAttributeViewProvider fileAttributeViewProvider = mock(CryptoFileAttributeViewProvider.class);
+	private AttributeProvider fileAttributeProvider = mock(AttributeProvider.class);
+	private AttributeViewProvider fileAttributeViewProvider = mock(AttributeViewProvider.class);
 
 	private CryptoPath path = mock(CryptoPath.class, "cleartextPath");
 
-	private CryptoFileAttributeByNameProvider inTest = new CryptoFileAttributeByNameProvider(fileAttributeProvider, fileAttributeViewProvider);
+	private AttributeByNameProvider inTest = new AttributeByNameProvider(fileAttributeProvider, fileAttributeViewProvider);
 
 	@Test
 	public void testSetAttributeWithAttributeSucceeds() throws IOException {

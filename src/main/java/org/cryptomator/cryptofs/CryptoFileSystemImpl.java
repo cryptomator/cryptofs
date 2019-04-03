@@ -10,6 +10,10 @@ package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
+import org.cryptomator.cryptofs.attr.AttributeByNameProvider;
+import org.cryptomator.cryptofs.attr.AttributeProvider;
+import org.cryptomator.cryptofs.attr.AttributeViewProvider;
+import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +62,7 @@ import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.cryptomator.cryptofs.Constants.SEPARATOR;
 
-@PerFileSystem
+@CryptoFileSystemScoped
 class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	private static final Logger LOG = LoggerFactory.getLogger(CryptoFileSystemImpl.class);
@@ -74,9 +78,9 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	private final PathMatcherFactory pathMatcherFactory;
 	private final DirectoryStreamFactory directoryStreamFactory;
 	private final DirectoryIdProvider dirIdProvider;
-	private final CryptoFileAttributeProvider fileAttributeProvider;
-	private final CryptoFileAttributeByNameProvider fileAttributeByNameProvider;
-	private final CryptoFileAttributeViewProvider fileAttributeViewProvider;
+	private final AttributeProvider fileAttributeProvider;
+	private final AttributeByNameProvider fileAttributeByNameProvider;
+	private final AttributeViewProvider fileAttributeViewProvider;
 	private final OpenCryptoFiles openCryptoFiles;
 	private final Symlinks symlinks;
 	private final FinallyUtil finallyUtil;
@@ -92,7 +96,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	public CryptoFileSystemImpl(CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, @PathToVault Path pathToVault, Cryptor cryptor,
 								CryptoFileStore fileStore, CryptoFileSystemStats stats, CryptoPathMapper cryptoPathMapper, CryptoPathFactory cryptoPathFactory,
 								PathMatcherFactory pathMatcherFactory, DirectoryStreamFactory directoryStreamFactory, DirectoryIdProvider dirIdProvider,
-								CryptoFileAttributeProvider fileAttributeProvider, CryptoFileAttributeByNameProvider fileAttributeByNameProvider, CryptoFileAttributeViewProvider fileAttributeViewProvider,
+								AttributeProvider fileAttributeProvider, AttributeByNameProvider fileAttributeByNameProvider, AttributeViewProvider fileAttributeViewProvider,
 								OpenCryptoFiles openCryptoFiles, Symlinks symlinks, FinallyUtil finallyUtil, CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag, RootDirectoryInitializer rootDirectoryInitializer) {
 		this.provider = provider;
 		this.cryptoFileSystems = cryptoFileSystems;
@@ -231,7 +235,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	 * @param type          the Class object corresponding to the file attribute view
 	 * @param options       future use
 	 * @return a file attribute view of the specified type, or <code>null</code> if the attribute view type is not available
-	 * @see CryptoFileAttributeViewProvider#getAttributeView(CryptoPath, Class, LinkOption...)
+	 * @see AttributeViewProvider#getAttributeView(CryptoPath, Class, LinkOption...)
 	 */
 	<V extends FileAttributeView> V getFileAttributeView(CryptoPath cleartextPath, Class<V> type, LinkOption... options) {
 		return fileAttributeViewProvider.getAttributeView(cleartextPath, type, options);

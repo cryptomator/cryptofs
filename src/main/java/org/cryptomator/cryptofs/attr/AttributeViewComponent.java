@@ -1,15 +1,16 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.attr;
 
 import dagger.BindsInstance;
 import dagger.Subcomponent;
+import org.cryptomator.cryptofs.CryptoPath;
 
 import java.nio.file.LinkOption;
 import java.nio.file.attribute.FileAttributeView;
 import java.util.Optional;
 
-@PerAttributeView
-@Subcomponent(modules = {CryptoFileAttributeViewModule.class})
-interface CryptoFileAttributeViewComponent {
+@AttributeViewScoped
+@Subcomponent(modules = {AttributeViewModule.class})
+public interface AttributeViewComponent {
 
 	Optional<FileAttributeView> attributeView();
 
@@ -25,7 +26,7 @@ interface CryptoFileAttributeViewComponent {
 		@BindsInstance
 		Builder linkOptions(LinkOption[] linkOptions);
 
-		CryptoFileAttributeViewComponent build();
+		AttributeViewComponent build();
 	}
 
 }

@@ -6,9 +6,10 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.attr;
 
 import com.google.common.jimfs.Jimfs;
+import org.cryptomator.cryptofs.CryptoFileSystemProvider;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -44,7 +45,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.lessThan;
 
-public class CryptoFileSystemFileAttributeIntegrationTest {
+public class FileAttributeIntegrationTest {
 
 	private static FileSystem inMemoryFs;
 	private static Path pathToVault;

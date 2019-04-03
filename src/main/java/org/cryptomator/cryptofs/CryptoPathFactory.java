@@ -17,7 +17,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.StreamSupport.stream;
 import static org.cryptomator.cryptofs.Constants.SEPARATOR;
 
-@PerFileSystem
+@CryptoFileSystemScoped
 class CryptoPathFactory {
 
 	private final Symlinks symlinks;

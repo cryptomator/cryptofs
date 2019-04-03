@@ -6,7 +6,13 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.attr;
+
+import org.cryptomator.cryptofs.CryptoPath;
+import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
+import org.cryptomator.cryptofs.ReadonlyFlag;
+import org.cryptomator.cryptofs.Symlinks;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -14,7 +20,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.UserPrincipal;
 
-@PerAttributeView
+@AttributeViewScoped
 class CryptoFileOwnerAttributeView extends AbstractCryptoFileAttributeView implements FileOwnerAttributeView {
 
 	private final ReadonlyFlag readonlyFlag;

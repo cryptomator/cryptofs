@@ -6,7 +6,13 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.attr;
+
+import org.cryptomator.cryptofs.CryptoPath;
+import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
+import org.cryptomator.cryptofs.ReadonlyFlag;
+import org.cryptomator.cryptofs.Symlinks;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -18,11 +24,11 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.util.Set;
 
-@PerAttributeView
+@AttributeViewScoped
 class CryptoPosixFileAttributeView extends CryptoBasicFileAttributeView implements PosixFileAttributeView {
 
 	@Inject
-	public CryptoPosixFileAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, LinkOption[] linkOptions, Symlinks symlinks, OpenCryptoFiles openCryptoFiles, CryptoFileAttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag) {
+	public CryptoPosixFileAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, LinkOption[] linkOptions, Symlinks symlinks, OpenCryptoFiles openCryptoFiles, AttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag) {
 		super(cleartextPath, pathMapper, linkOptions, symlinks, openCryptoFiles, fileAttributeProvider, readonlyFlag);
 	}
 

@@ -1,5 +1,10 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.attr;
 
+import org.cryptomator.cryptofs.CryptoPath;
+import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
+import org.cryptomator.cryptofs.ReadonlyFlag;
+import org.cryptomator.cryptofs.Symlinks;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,7 +45,7 @@ public class CryptoPosixFileAttributeViewTest {
 	private CryptoPathMapper pathMapper = mock(CryptoPathMapper.class);
 	private Symlinks symlinks = mock(Symlinks.class);
 	private OpenCryptoFiles openCryptoFiles = mock(OpenCryptoFiles.class);
-	private CryptoFileAttributeProvider fileAttributeProvider = mock(CryptoFileAttributeProvider.class);
+	private AttributeProvider fileAttributeProvider = mock(AttributeProvider.class);
 	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 
 	private CryptoPosixFileAttributeView inTest;

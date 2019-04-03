@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
+import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -18,15 +19,15 @@ import java.util.Set;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-@PerFileSystem
-class Symlinks {
+@CryptoFileSystemScoped
+public class Symlinks {
 
 	private final CryptoPathMapper cryptoPathMapper;
 	private final OpenCryptoFiles openCryptoFiles;
 	private final ReadonlyFlag readonlyFlag;
 
 	@Inject
-	public Symlinks(CryptoPathMapper cryptoPathMapper, OpenCryptoFiles openCryptoFiles, ReadonlyFlag readonlyFlag) {
+	Symlinks(CryptoPathMapper cryptoPathMapper, OpenCryptoFiles openCryptoFiles, ReadonlyFlag readonlyFlag) {
 		this.cryptoPathMapper = cryptoPathMapper;
 		this.openCryptoFiles = openCryptoFiles;
 		this.readonlyFlag = readonlyFlag;

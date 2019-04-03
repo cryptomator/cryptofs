@@ -6,8 +6,11 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.fh;
 
+import org.cryptomator.cryptofs.CryptoFileSystemComponent;
+import org.cryptomator.cryptofs.CryptoFileSystemScoped;
+import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
 
@@ -26,14 +29,14 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-@PerFileSystem
-class OpenCryptoFiles implements Closeable {
+@CryptoFileSystemScoped
+public class OpenCryptoFiles implements Closeable {
 
 	private final CryptoFileSystemComponent component;
 	private final ConcurrentMap<Path, OpenCryptoFile> openCryptoFiles = new ConcurrentHashMap<>();
 
 	@Inject
-	public OpenCryptoFiles(CryptoFileSystemComponent component) {
+	OpenCryptoFiles(CryptoFileSystemComponent component) {
 		this.component = component;
 	}
 

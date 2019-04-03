@@ -26,8 +26,8 @@ import java.util.Objects;
 import static org.cryptomator.cryptofs.Constants.DATA_DIR_NAME;
 import static org.cryptomator.cryptofs.Constants.DIR_PREFIX;
 
-@PerFileSystem
-class CryptoPathMapper {
+@CryptoFileSystemScoped
+public class CryptoPathMapper {
 
 	private static final int MAX_CACHED_CIPHERTEXT_NAMES = 1000;
 	private static final int MAX_CACHED_DIR_PATHS = 1000;
@@ -40,7 +40,7 @@ class CryptoPathMapper {
 	private final LoadingCache<String, Path> directoryPathCache;
 
 	@Inject
-	public CryptoPathMapper(@PathToVault Path pathToVault, Cryptor cryptor, DirectoryIdProvider dirIdProvider, LongFileNameProvider longFileNameProvider) {
+	CryptoPathMapper(@PathToVault Path pathToVault, Cryptor cryptor, DirectoryIdProvider dirIdProvider, LongFileNameProvider longFileNameProvider) {
 		this.dataRoot = pathToVault.resolve(DATA_DIR_NAME);
 		this.cryptor = cryptor;
 		this.dirIdProvider = dirIdProvider;

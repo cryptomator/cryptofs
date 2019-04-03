@@ -6,8 +6,15 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.attr;
 
+import org.cryptomator.cryptofs.ArrayUtils;
+import org.cryptomator.cryptofs.CryptoFileSystemProperties;
+import org.cryptomator.cryptofs.CryptoPath;
+import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
+import org.cryptomator.cryptofs.CryptoFileSystemScoped;
+import org.cryptomator.cryptofs.Symlinks;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptolib.api.Cryptor;
 
@@ -23,10 +30,18 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-@PerFileSystem
-class CryptoFileAttributeProvider {
+@CryptoFileSystemScoped
+public class AttributeProvider {
 
-	private final Map<Class<? extends BasicFileAttributes>, AttributeProvider<? extends BasicFileAttributes>> attributeProviders = new HashMap<>();
+	private static final Map<Class<? extends BasicFileAttributes>, AttributesConstructor<? extends BasicFileAttributes>> ATTR_CONSTRUCTORS;
+
+	static {
+		ATTR_CONSTRUCTORS = new HashMap<>();
+		ATTR_CONSTRUCTORS.put(BasicFileAttributes.class, (AttributesConstructor<BasicFileAttributes>) CryptoBasicFileAttributes::new);
+		ATTR_CONSTRUCTORS.put(PosixFileAttributes.class, (AttributesConstructor<PosixFileAttributes>) CryptoPosixFileAttributes::new);
+		ATTR_CONSTRUCTORS.put(DosFileAttributes.class, (AttributesConstructor<DosFileAttributes>) CryptoDosFileAttributes::new);
+	}
+
 	private final Cryptor cryptor;
 	private final CryptoPathMapper pathMapper;
 	private final OpenCryptoFiles openCryptoFiles;
@@ -34,19 +49,16 @@ class CryptoFileAttributeProvider {
 	private final Symlinks symlinks;
 
 	@Inject
-	public CryptoFileAttributeProvider(Cryptor cryptor, CryptoPathMapper pathMapper, OpenCryptoFiles openCryptoFiles, CryptoFileSystemProperties fileSystemProperties, Symlinks symlinks) {
+	AttributeProvider(Cryptor cryptor, CryptoPathMapper pathMapper, OpenCryptoFiles openCryptoFiles, CryptoFileSystemProperties fileSystemProperties, Symlinks symlinks) {
 		this.cryptor = cryptor;
 		this.pathMapper = pathMapper;
 		this.openCryptoFiles = openCryptoFiles;
 		this.fileSystemProperties = fileSystemProperties;
 		this.symlinks = symlinks;
-		attributeProviders.put(BasicFileAttributes.class, (AttributeProvider<BasicFileAttributes>) CryptoBasicFileAttributes::new);
-		attributeProviders.put(PosixFileAttributes.class, (AttributeProvider<PosixFileAttributes>) CryptoPosixFileAttributes::new);
-		attributeProviders.put(DosFileAttributes.class, (AttributeProvider<DosFileAttributes>) CryptoDosFileAttributes::new);
 	}
 
 	public <A extends BasicFileAttributes> A readAttributes(CryptoPath cleartextPath, Class<A> type, LinkOption... options) throws IOException {
-		if (!attributeProviders.containsKey(type)) {
+		if (!ATTR_CONSTRUCTORS.containsKey(type)) {
 			throw new UnsupportedOperationException("Unsupported file attribute type: " + type);
 		}
 		CryptoPathMapper.CiphertextFileType ciphertextFileType = pathMapper.getCiphertextFileType(cleartextPath);
@@ -74,15 +86,15 @@ class CryptoFileAttributeProvider {
 	}
 
 	private <A extends BasicFileAttributes> A readAttributes(CryptoPathMapper.CiphertextFileType ciphertextFileType, Path ciphertextPath, Class<A> type) throws IOException {
-		assert attributeProviders.containsKey(type);
+		assert ATTR_CONSTRUCTORS.containsKey(type);
 		A ciphertextAttrs = Files.readAttributes(ciphertextPath, type);
-		AttributeProvider<A> provider = (AttributeProvider<A>) attributeProviders.get(type);
-		return provider.provide(ciphertextAttrs, ciphertextFileType, ciphertextPath, cryptor, openCryptoFiles.get(ciphertextPath), fileSystemProperties.readonly());
+		AttributesConstructor<A> constructor = (AttributesConstructor<A>) ATTR_CONSTRUCTORS.get(type);
+		return constructor.construct(ciphertextAttrs, ciphertextFileType, ciphertextPath, cryptor, openCryptoFiles.get(ciphertextPath), fileSystemProperties.readonly());
 	}
 
 	@FunctionalInterface
-	private interface AttributeProvider<A extends BasicFileAttributes> {
-		A provide(A delegate, CryptoPathMapper.CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonly);
+	private interface AttributesConstructor<A extends BasicFileAttributes> {
+		A construct(A delegate, CryptoPathMapper.CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonly);
 	}
 
 }

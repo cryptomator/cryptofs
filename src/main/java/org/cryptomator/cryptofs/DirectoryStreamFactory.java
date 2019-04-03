@@ -12,7 +12,7 @@ import javax.inject.Inject;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptolib.api.Cryptor;
 
-@PerFileSystem
+@CryptoFileSystemScoped
 class DirectoryStreamFactory {
 
 	private final Cryptor cryptor;

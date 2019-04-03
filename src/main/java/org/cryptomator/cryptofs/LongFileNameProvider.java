@@ -30,7 +30,7 @@ import java.util.concurrent.ExecutionException;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.cryptomator.cryptofs.Constants.METADATA_DIR_NAME;
 
-@PerFileSystem
+@CryptoFileSystemScoped
 class LongFileNameProvider {
 
 	private static final BaseEncoding BASE32 = BaseEncoding.base32();

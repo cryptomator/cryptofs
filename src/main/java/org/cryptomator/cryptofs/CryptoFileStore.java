@@ -25,7 +25,7 @@ import java.util.Collection;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@PerFileSystem
+@CryptoFileSystemScoped
 class CryptoFileStore extends DelegatingFileStore {
 
 	private static final String VIEW_NAME_BASIC = "basic";

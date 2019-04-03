@@ -10,5 +10,5 @@ import javax.inject.Scope;
 @Scope
 @Documented
 @Retention(RUNTIME)
-public @interface PerFileSystem {
+public @interface CryptoFileSystemScoped {
 }

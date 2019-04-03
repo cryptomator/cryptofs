@@ -17,7 +17,7 @@ import javax.inject.Inject;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.LoadingCache;
 
-@PerFileSystem
+@CryptoFileSystemScoped
 class DirectoryIdProvider {
 
 	private static final int MAX_CACHE_SIZE = 5000;
