@@ -377,6 +377,7 @@ public class CryptoFileSystemImplTest {
 			verify(readonlyFlag).assertWritable();
 			verify(physicalFsProv).deleteIfExists(ciphertextDirFilePath);
 			verify(dirIdProvider).delete(ciphertextDirFilePath);
+			verify(cryptoPathMapper).invalidatePathMapping(cleartextPath);
 		}
 
 		@Test
@@ -519,6 +520,7 @@ public class CryptoFileSystemImplTest {
 				verify(readonlyFlag).assertWritable();
 				verify(physicalFsProv).move(ciphertextSourceDirFile, ciphertextDestinationDirFile, option1, option2);
 				verify(dirIdProvider).move(ciphertextSourceDirFile, ciphertextDestinationDirFile);
+				verify(cryptoPathMapper).invalidatePathMapping(cleartextSource);
 			}
 
 			@Test
@@ -538,6 +540,7 @@ public class CryptoFileSystemImplTest {
 				verify(physicalFsProv).delete(ciphertextDestinationDir);
 				verify(physicalFsProv).move(ciphertextSourceDirFile, ciphertextDestinationDirFile, StandardCopyOption.REPLACE_EXISTING);
 				verify(dirIdProvider).move(ciphertextSourceDirFile, ciphertextDestinationDirFile);
+				verify(cryptoPathMapper).invalidatePathMapping(cleartextSource);
 			}
 
 			@Test
@@ -677,6 +680,7 @@ public class CryptoFileSystemImplTest {
 				verify(ciphertextTargetDirFileChannel).write(any(ByteBuffer.class));
 				verify(physicalFsProv).createDirectory(ciphertextDestinationDir);
 				verify(dirIdProvider, Mockito.never()).delete(Mockito.any());
+				verify(cryptoPathMapper, Mockito.never()).invalidatePathMapping(Mockito.any());
 			}
 
 			@Test
@@ -696,6 +700,7 @@ public class CryptoFileSystemImplTest {
 				verify(ciphertextTargetDirFileChannel, Mockito.never()).write(any(ByteBuffer.class));
 				verify(physicalFsProv, Mockito.never()).createDirectory(Mockito.any());
 				verify(dirIdProvider, Mockito.never()).delete(Mockito.any());
+				verify(cryptoPathMapper, Mockito.never()).invalidatePathMapping(Mockito.any());
 			}
 
 			@Test
@@ -805,6 +810,7 @@ public class CryptoFileSystemImplTest {
 				verify(ciphertextTargetDirFileChannel, Mockito.never()).write(any(ByteBuffer.class));
 				verify(physicalFsProv, Mockito.never()).createDirectory(Mockito.any());
 				verify(dirIdProvider, Mockito.never()).delete(Mockito.any());
+				verify(cryptoPathMapper, Mockito.never()).invalidatePathMapping(Mockito.any());
 			}
 
 			@Test
@@ -931,6 +937,7 @@ public class CryptoFileSystemImplTest {
 			verify(readonlyFlag).assertWritable();
 			verify(provider).delete(ciphertextDirFile);
 			verify(dirIdProvider).delete(ciphertextDirFile);
+			verify(cryptoPathMapper).invalidatePathMapping(path);
 		}
 
 	}

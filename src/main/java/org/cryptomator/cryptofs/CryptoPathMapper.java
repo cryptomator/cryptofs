@@ -8,6 +8,8 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import com.google.common.base.Throwables;
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -21,7 +23,9 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Duration;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 
 import static org.cryptomator.cryptofs.Constants.DATA_DIR_NAME;
 import static org.cryptomator.cryptofs.Constants.DIR_PREFIX;
@@ -29,15 +33,17 @@ import static org.cryptomator.cryptofs.Constants.DIR_PREFIX;
 @CryptoFileSystemScoped
 public class CryptoPathMapper {
 
-	private static final int MAX_CACHED_CIPHERTEXT_NAMES = 1000;
-	private static final int MAX_CACHED_DIR_PATHS = 1000;
+	private static final int MAX_CACHED_CIPHERTEXT_NAMES = 5000;
+	private static final int MAX_CACHED_DIR_PATHS = 5000;
+	private static final Duration MAX_CACHE_AGE = Duration.ofSeconds(20);
 
 	private final Cryptor cryptor;
 	private final Path dataRoot;
 	private final DirectoryIdProvider dirIdProvider;
 	private final LongFileNameProvider longFileNameProvider;
 	private final LoadingCache<DirIdAndName, String> ciphertextNames;
-	private final LoadingCache<String, CiphertextDirectory> ciphertextDirectories;
+	private final Cache<CryptoPath, CiphertextDirectory> ciphertextDirectories;
+
 	private final CiphertextDirectory rootDirectory;
 
 	@Inject
@@ -47,8 +53,8 @@ public class CryptoPathMapper {
 		this.dirIdProvider = dirIdProvider;
 		this.longFileNameProvider = longFileNameProvider;
 		this.ciphertextNames = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_CIPHERTEXT_NAMES).build(CacheLoader.from(this::getCiphertextFileName));
-		this.ciphertextDirectories = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_DIR_PATHS).build(CacheLoader.from(this::resolveDirectory));
-		this.rootDirectory = new CiphertextDirectory(Constants.ROOT_DIR_ID, resolveDirectoryPath(Constants.ROOT_DIR_ID));
+		this.ciphertextDirectories = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_DIR_PATHS).expireAfterWrite(MAX_CACHE_AGE).build();
+		this.rootDirectory = resolveDirectory(Constants.ROOT_DIR_ID);
 	}
 
 	public enum CiphertextFileType {
@@ -81,6 +87,12 @@ public class CryptoPathMapper {
 		}
 	}
 
+	/**
+	 * @param cleartextPath A path
+	 * @return The file type for the given path (if it exists)
+	 * @throws NoSuchFileException If no node exists at the given path for any known type
+	 * @throws IOException
+	 */
 	public CiphertextFileType getCiphertextFileType(CryptoPath cleartextPath) throws NoSuchFileException, IOException {
 		CryptoPath parentPath = cleartextPath.getParent();
 		if (parentPath == null) {
@@ -129,30 +141,37 @@ public class CryptoPathMapper {
 		return cryptor.fileNameCryptor().encryptFilename(dirIdAndName.name, dirIdAndName.dirId.getBytes(StandardCharsets.UTF_8));
 	}
 
+	public void invalidatePathMapping(CryptoPath cleartextPath) {
+		ciphertextDirectories.invalidate(cleartextPath);
+	}
+
 	public CiphertextDirectory getCiphertextDir(CryptoPath cleartextPath) throws IOException {
 		assert cleartextPath.isAbsolute();
 		CryptoPath parentPath = cleartextPath.getParent();
 		if (parentPath == null) {
 			return rootDirectory;
 		} else {
-			Path dirIdFile = getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY);
-			return resolveDirectory(dirIdFile);
+			try {
+				return ciphertextDirectories.get(cleartextPath, () -> {
+					Path dirIdFile = getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY);
+					return resolveDirectory(dirIdFile);
+				});
+			} catch (ExecutionException e) {
+				Throwables.throwIfInstanceOf(e.getCause(), IOException.class);
+				throw new IOException("Unexpected exception", e);
+			}
 		}
 	}
 
 	public CiphertextDirectory resolveDirectory(Path directoryFile) throws IOException {
 		String dirId = dirIdProvider.load(directoryFile);
-		return ciphertextDirectories.getUnchecked(dirId); // cached call to resolveDirectory(String dirId)
+		return resolveDirectory(dirId);
 	}
 
 	private CiphertextDirectory resolveDirectory(String dirId) {
-		Path dirPath = resolveDirectoryPath(dirId);
-		return new CiphertextDirectory(dirId, dirPath);
-	}
-
-	private Path resolveDirectoryPath(String dirId) {
 		String dirHash = cryptor.fileNameCryptor().hashDirectoryId(dirId);
-		return dataRoot.resolve(dirHash.substring(0, 2)).resolve(dirHash.substring(2));
+		Path dirPath = dataRoot.resolve(dirHash.substring(0, 2)).resolve(dirHash.substring(2));
+		return new CiphertextDirectory(dirId, dirPath);
 	}
 
 	public static class CiphertextDirectory {

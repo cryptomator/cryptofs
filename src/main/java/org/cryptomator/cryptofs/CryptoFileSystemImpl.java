@@ -304,6 +304,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		} catch (IOException e) {
 			// make sure there is no orphan dir file:
 			Files.delete(ciphertextDirFile);
+			cryptoPathMapper.invalidatePathMapping(cleartextDir);
 			dirIdProvider.delete(ciphertextDirFile);
 			throw e;
 		}
@@ -376,6 +377,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 				// should not happen. Nevertheless this is a valid state, so no big deal...
 				LOG.warn("Successfully deleted dir {}, but didn't find corresponding dir file {}", ciphertextDir, ciphertextDirFile);
 			}
+			cryptoPathMapper.invalidatePathMapping(cleartextPath);
 			dirIdProvider.delete(ciphertextDirFile);
 		} catch (NoSuchFileException e) {
 			// translate ciphertext path to cleartext path
@@ -556,6 +558,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			Files.move(ciphertextSourceDirFile, ciphertextTargetDirFile, options);
 		}
 		dirIdProvider.move(ciphertextSourceDirFile, ciphertextTargetDirFile);
+		cryptoPathMapper.invalidatePathMapping(cleartextSource);
 	}
 
 	CryptoFileStore getFileStore() {
