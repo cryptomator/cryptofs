@@ -205,9 +205,9 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		if (isWritable()) {
 			chunkCache.invalidateAll(); // TODO performance: write chunks but keep them cached
 			exceptionsDuringWrite.throwIfPresent();
+			attrViewProvider.get().setTimes(FileTime.from(lastModified.get()), null, null);
 		}
 		ciphertextFileChannel.force(metaData);
-		attrViewProvider.get().setTimes(FileTime.from(lastModified.get()), null, null);
 	}
 
 	@Override
