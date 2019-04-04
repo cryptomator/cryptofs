@@ -24,7 +24,7 @@ class RootDirectoryInitializer {
 			return;
 		}
 		try {
-			Path ciphertextRoot = cryptoPathMapper.getCiphertextDirPath(cleartextRoot);
+			Path ciphertextRoot = cryptoPathMapper.getCiphertextDir(cleartextRoot).path;
 			files.createDirectories(ciphertextRoot);
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);

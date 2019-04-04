@@ -58,7 +58,7 @@ abstract class AbstractCryptoFileAttributeView implements FileAttributeView {
 					return getCiphertextPath(resolved);
 				}
 			case DIRECTORY:
-				return pathMapper.getCiphertextDirPath(path);
+				return pathMapper.getCiphertextDir(path).path;
 			default:
 				return pathMapper.getCiphertextFilePath(path, type);
 		}

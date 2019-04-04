@@ -73,7 +73,7 @@ public class AttributeProvider {
 				}
 			}
 			case DIRECTORY: {
-				Path ciphertextPath = pathMapper.getCiphertextDirPath(cleartextPath);
+				Path ciphertextPath = pathMapper.getCiphertextDir(cleartextPath).path;
 				return readAttributes(ciphertextFileType, ciphertextPath, type);
 			}
 			case FILE: {

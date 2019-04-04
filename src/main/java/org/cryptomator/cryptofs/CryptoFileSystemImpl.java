@@ -287,7 +287,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		if (cleartextParentDir == null) {
 			return;
 		}
-		Path ciphertextParentDir = cryptoPathMapper.getCiphertextDirPath(cleartextParentDir);
+		Path ciphertextParentDir = cryptoPathMapper.getCiphertextDir(cleartextParentDir).path;
 		if (!Files.exists(ciphertextParentDir)) {
 			throw new NoSuchFileException(cleartextParentDir.toString());
 		}
@@ -368,12 +368,12 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	private void deleteDirectory(CryptoPath cleartextPath) throws IOException {
-		Path ciphertextDir = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
+		Path ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextPath).path;
 		Path ciphertextDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY);
 		try {
 			ciphertextDirDeleter.deleteCiphertextDirIncludingNonCiphertextFiles(ciphertextDir, cleartextPath);
 			if (!Files.deleteIfExists(ciphertextDirFile)) {
-				// should not happen. Nevertheless this is a valid state, so who no big deal...
+				// should not happen. Nevertheless this is a valid state, so no big deal...
 				LOG.warn("Successfully deleted dir {}, but didn't find corresponding dir file {}", ciphertextDir, ciphertextDirFile);
 			}
 			dirIdProvider.delete(ciphertextDirFile);
@@ -438,7 +438,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			createDirectory(cleartextTarget);
 		} else if (ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
 			// keep existing (if empty):
-			Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDirPath(cleartextTarget);
+			Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDir(cleartextTarget).path;
 			try (DirectoryStream<Path> ds = Files.newDirectoryStream(ciphertextTargetDir)) {
 				if (ds.iterator().hasNext()) {
 					throw new DirectoryNotEmptyException(cleartextTarget.toString());
@@ -448,8 +448,8 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			throw new FileAlreadyExistsException(cleartextTarget.toString(), null, "Ciphertext file already exists: " + ciphertextTargetDirFile);
 		}
 		if (ArrayUtils.contains(options, StandardCopyOption.COPY_ATTRIBUTES)) {
-			Path ciphertextSourceDir = cryptoPathMapper.getCiphertextDirPath(cleartextSource);
-			Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDirPath(cleartextTarget);
+			Path ciphertextSourceDir = cryptoPathMapper.getCiphertextDir(cleartextSource).path;
+			Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDir(cleartextTarget).path;
 			copyAttributes(ciphertextSourceDir, ciphertextTargetDir);
 		}
 	}
@@ -545,7 +545,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			assert ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING);
 			assert !ArrayUtils.contains(options, StandardCopyOption.ATOMIC_MOVE);
 			if (Files.exists(ciphertextTargetDirFile)) {
-				Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDirPath(cleartextTarget);
+				Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDir(cleartextTarget).path;
 				try (DirectoryStream<Path> ds = Files.newDirectoryStream(ciphertextTargetDir)) {
 					if (ds.iterator().hasNext()) {
 						throw new DirectoryNotEmptyException(cleartextTarget.toString());

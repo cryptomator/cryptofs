@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -24,7 +25,7 @@ public class RootDirectoryInitializerTest {
 
 	@BeforeEach
 	public void setup() throws IOException {
-		when(cryptoPathMapper.getCiphertextDirPath(cleartextRoot)).thenReturn(ciphertextRoot);
+		when(cryptoPathMapper.getCiphertextDir(cleartextRoot)).thenReturn(new CiphertextDirectory("", ciphertextRoot));
 	}
 
 	@Test

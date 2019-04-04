@@ -11,6 +11,7 @@ package org.cryptomator.cryptofs.attr;
 import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptofs.Symlinks;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -129,7 +130,7 @@ public class AttributeProviderTest {
 		@BeforeEach
 		public void setup() throws IOException {
 			Mockito.when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CryptoPathMapper.CiphertextFileType.DIRECTORY);
-			Mockito.when(pathMapper.getCiphertextDirPath(cleartextPath)).thenReturn(ciphertextFilePath);
+			Mockito.when(pathMapper.getCiphertextDir(cleartextPath)).thenReturn(new CiphertextDirectory("foo", ciphertextFilePath));
 		}
 
 		@Test

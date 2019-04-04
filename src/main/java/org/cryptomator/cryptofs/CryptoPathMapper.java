@@ -37,7 +37,8 @@ public class CryptoPathMapper {
 	private final DirectoryIdProvider dirIdProvider;
 	private final LongFileNameProvider longFileNameProvider;
 	private final LoadingCache<DirIdAndName, String> ciphertextNames;
-	private final LoadingCache<String, Path> directoryPathCache;
+	private final LoadingCache<String, CiphertextDirectory> ciphertextDirectories;
+	private final CiphertextDirectory rootDirectory;
 
 	@Inject
 	CryptoPathMapper(@PathToVault Path pathToVault, Cryptor cryptor, DirectoryIdProvider dirIdProvider, LongFileNameProvider longFileNameProvider) {
@@ -46,7 +47,8 @@ public class CryptoPathMapper {
 		this.dirIdProvider = dirIdProvider;
 		this.longFileNameProvider = longFileNameProvider;
 		this.ciphertextNames = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_CIPHERTEXT_NAMES).build(CacheLoader.from(this::getCiphertextFileName));
-		this.directoryPathCache = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_DIR_PATHS).build(CacheLoader.from(this::resolveDirectoryPath));
+		this.ciphertextDirectories = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_DIR_PATHS).build(CacheLoader.from(this::resolveDirectory));
+		this.rootDirectory = new CiphertextDirectory(Constants.ROOT_DIR_ID, resolveDirectoryPath(Constants.ROOT_DIR_ID));
 	}
 
 	public enum CiphertextFileType {
@@ -106,7 +108,7 @@ public class CryptoPathMapper {
 	public Path getCiphertextFilePath(CryptoPath cleartextPath, CiphertextFileType type) throws IOException {
 		CryptoPath parentPath = cleartextPath.getParent();
 		if (parentPath == null) {
-			throw new IllegalArgumentException("Invalid file path (must have a parent)" + cleartextPath);
+			throw new IllegalArgumentException("Invalid file path (must have a parent): " + cleartextPath);
 		}
 		CiphertextDirectory parent = getCiphertextDir(parentPath);
 		String cleartextName = cleartextPath.getFileName().toString();
@@ -127,15 +129,11 @@ public class CryptoPathMapper {
 		return cryptor.fileNameCryptor().encryptFilename(dirIdAndName.name, dirIdAndName.dirId.getBytes(StandardCharsets.UTF_8));
 	}
 
-	public Path getCiphertextDirPath(CryptoPath cleartextPath) throws IOException {
-		return getCiphertextDir(cleartextPath).path;
-	}
-
 	public CiphertextDirectory getCiphertextDir(CryptoPath cleartextPath) throws IOException {
 		assert cleartextPath.isAbsolute();
 		CryptoPath parentPath = cleartextPath.getParent();
 		if (parentPath == null) {
-			return new CiphertextDirectory(Constants.ROOT_DIR_ID, directoryPathCache.getUnchecked(Constants.ROOT_DIR_ID));
+			return rootDirectory;
 		} else {
 			Path dirIdFile = getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY);
 			return resolveDirectory(dirIdFile);
@@ -144,7 +142,11 @@ public class CryptoPathMapper {
 
 	public CiphertextDirectory resolveDirectory(Path directoryFile) throws IOException {
 		String dirId = dirIdProvider.load(directoryFile);
-		Path dirPath = directoryPathCache.getUnchecked(dirId);
+		return ciphertextDirectories.getUnchecked(dirId); // cached call to resolveDirectory(String dirId)
+	}
+
+	private CiphertextDirectory resolveDirectory(String dirId) {
+		Path dirPath = resolveDirectoryPath(dirId);
 		return new CiphertextDirectory(dirId, dirPath);
 	}
 
@@ -158,8 +160,25 @@ public class CryptoPathMapper {
 		public final Path path;
 
 		public CiphertextDirectory(String dirId, Path path) {
-			this.dirId = dirId;
-			this.path = path;
+			this.dirId = Objects.requireNonNull(dirId);
+			this.path = Objects.requireNonNull(path);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(dirId, path);
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (obj == this) {
+				return true;
+			} else if (obj instanceof CiphertextDirectory) {
+				CiphertextDirectory other = (CiphertextDirectory) obj;
+				return this.dirId.equals(other.dirId) && this.path.equals(other.path);
+			} else {
+				return false;
+			}
 		}
 	}
 
