@@ -222,6 +222,8 @@ public class CleartextFileChannelTest {
 
 		@BeforeEach
 		public void setup() {
+			Mockito.when(options.readable()).thenReturn(true);
+
 			Assumptions.assumeTrue(fileHeaderCryptor.headerSize() == 50);
 			Assumptions.assumeTrue(fileContentCryptor.cleartextChunkSize() == 100);
 			Assumptions.assumeTrue(fileContentCryptor.ciphertextChunkSize() == 110);
@@ -251,7 +253,6 @@ public class CleartextFileChannelTest {
 			Assertions.assertEquals(delegate, cleartextFileLock.delegate());
 			Assertions.assertEquals(372l, cleartextFileLock.position());
 			Assertions.assertEquals(3828l, cleartextFileLock.size());
-			Assertions.assertTrue(cleartextFileLock.isShared());
 		}
 
 		@Test
@@ -268,7 +269,6 @@ public class CleartextFileChannelTest {
 			Assertions.assertEquals(delegate, cleartextFileLock.delegate());
 			Assertions.assertEquals(372l, cleartextFileLock.position());
 			Assertions.assertEquals(3828l, cleartextFileLock.size());
-			Assertions.assertTrue(cleartextFileLock.isShared());
 		}
 
 	}
