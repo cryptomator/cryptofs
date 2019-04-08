@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.ch;
 
+import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.fh.ChunkCache;
 import org.cryptomator.cryptofs.fh.ChunkData;
@@ -60,6 +61,7 @@ public class CleartextFileChannelTest {
 	private BasicFileAttributeView attributeView = mock(BasicFileAttributeView.class);
 	private ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
 	private ChannelCloseListener closeListener = mock(ChannelCloseListener.class);
+	private CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
 
 	private CleartextFileChannel inTest;
 
@@ -76,7 +78,7 @@ public class CleartextFileChannelTest {
 		when(readWriteLock.readLock()).thenReturn(readLock);
 		when(readWriteLock.writeLock()).thenReturn(writeLock);
 
-		inTest = new CleartextFileChannel(ciphertextFileChannel, readWriteLock, cryptor, chunkCache, options, fileSize, lastModified, attributeViewSupplier, exceptionsDuringWrite, closeListener);
+		inTest = new CleartextFileChannel(ciphertextFileChannel, readWriteLock, cryptor, chunkCache, options, fileSize, lastModified, attributeViewSupplier, exceptionsDuringWrite, closeListener, stats);
 	}
 
 	@Test
@@ -290,7 +292,7 @@ public class CleartextFileChannelTest {
 			when(ciphertextFileChannel.size()).thenReturn(5_500_000_160l); // initial cleartext size will be 5_000_000_100l
 			when(options.readable()).thenReturn(true);
 
-			inTest = new CleartextFileChannel(ciphertextFileChannel, readWriteLock, cryptor, chunkCache, options, fileSize, lastModified, attributeViewSupplier, exceptionsDuringWrite, closeListener);
+			inTest = new CleartextFileChannel(ciphertextFileChannel, readWriteLock, cryptor, chunkCache, options, fileSize, lastModified, attributeViewSupplier, exceptionsDuringWrite, closeListener, stats);
 			ByteBuffer buf = ByteBuffer.allocate(10);
 
 			// A read from frist chunk:

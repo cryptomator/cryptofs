@@ -36,6 +36,7 @@ public class ChunkCache {
 
 	private ChunkData loadChunk(Long chunkIndex) {
 		try {
+			stats.addChunkCacheMiss();
 			return chunkLoader.load(chunkIndex);
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);

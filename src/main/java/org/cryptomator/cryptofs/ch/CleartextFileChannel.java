@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs.ch;
 
 import com.google.common.base.Preconditions;
+import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.fh.ByteSource;
 import org.cryptomator.cryptofs.fh.ChunkCache;
@@ -48,9 +49,10 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private final Supplier<BasicFileAttributeView> attrViewProvider;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
 	private final ChannelCloseListener closeListener;
+	private final CryptoFileSystemStats stats;
 
 	@Inject
-	public CleartextFileChannel(FileChannel ciphertextFileChannel, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, Supplier<BasicFileAttributeView> attrViewProvider, ExceptionsDuringWrite exceptionsDuringWrite, ChannelCloseListener closeListener) {
+	public CleartextFileChannel(FileChannel ciphertextFileChannel, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, Supplier<BasicFileAttributeView> attrViewProvider, ExceptionsDuringWrite exceptionsDuringWrite, ChannelCloseListener closeListener, CryptoFileSystemStats stats) {
 		super(readWriteLock);
 		this.ciphertextFileChannel = ciphertextFileChannel;
 		this.cryptor = cryptor;
@@ -61,6 +63,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		this.attrViewProvider = attrViewProvider;
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
 		this.closeListener = closeListener;
+		this.stats = stats;
 		updateFileSize();
 		if (options.append()) {
 			position = fileSize.get();
@@ -120,7 +123,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			read += len;
 		}
 		dst.limit(origLimit);
-		// stats.addBytesRead(read); // TODO
+		stats.addBytesRead(read);
 		return read;
 	}
 
@@ -172,7 +175,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		long minSize = position + written;
 		fileSize.updateAndGet(size -> max(minSize, size));
 		lastModified.set(Instant.now());
-		// stats.addBytesWritten(written); // TODO
+		stats.addBytesWritten(written);
 		return written;
 	}
 
