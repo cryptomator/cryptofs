@@ -1,18 +1,18 @@
 package org.cryptomator.cryptofs;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
-
-import javax.inject.Inject;
 
 /**
  * Mockable wrapper around {@link Files} operations.
  * 
  * @author Markus Kreusch
  */
-@PerProvider
+@Singleton
 class FilesWrapper {
 
 	@Inject

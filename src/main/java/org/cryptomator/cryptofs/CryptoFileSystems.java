@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.FileSystemAlreadyExistsException;
@@ -11,7 +12,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import static java.lang.String.format;
 
-@PerProvider
+@Singleton
 class CryptoFileSystems {
 
 	private final CryptoFileSystemProviderComponent cryptoFileSystemProviderComponent;

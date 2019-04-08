@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.CopyOption;
@@ -16,7 +17,7 @@ import java.util.Optional;
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
 
-@PerProvider
+@Singleton
 class MoveOperation {
 
 	private final CopyOperation copyOperation;

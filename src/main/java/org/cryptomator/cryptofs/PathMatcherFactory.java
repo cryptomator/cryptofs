@@ -1,11 +1,11 @@
 package org.cryptomator.cryptofs;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.nio.file.PathMatcher;
 import java.util.regex.Pattern;
 
-import javax.inject.Inject;
-
-@PerProvider
+@Singleton
 class PathMatcherFactory {
 
 	private final GlobToRegexConverter globToRegexConverter;
