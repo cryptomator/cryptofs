@@ -13,7 +13,8 @@ public enum AttributeViewType {
 	BASIC(BasicFileAttributeView.class, "basic"),
 	OWNER(FileOwnerAttributeView.class, "owner"),
 	POSIX(PosixFileAttributeView.class, "posix"),
-	DOS(DosFileAttributeView.class, "dos");
+	DOS(DosFileAttributeView.class, "dos"),
+	USER(UserDefinedFileAttributeView.class, "user");
 
 	private final Class<? extends FileAttributeView> type;
 	private final String viewName;
