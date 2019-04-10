@@ -32,7 +32,7 @@ class CryptoBasicFileAttributes implements BasicFileAttributes {
 	private final FileTime creationTime;
 	private final Object fileKey;
 
-	public CryptoBasicFileAttributes(BasicFileAttributes delegate, CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonly) {
+	public CryptoBasicFileAttributes(BasicFileAttributes delegate, CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, @SuppressWarnings("unused") boolean readonlyFileSystem) {
 		this.ciphertextFileType = ciphertextFileType;
 		switch (ciphertextFileType) {
 			case SYMLINK:
