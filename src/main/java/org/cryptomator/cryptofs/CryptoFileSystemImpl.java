@@ -13,6 +13,7 @@ import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
 import org.cryptomator.cryptofs.attr.AttributeByNameProvider;
 import org.cryptomator.cryptofs.attr.AttributeProvider;
 import org.cryptomator.cryptofs.attr.AttributeViewProvider;
+import org.cryptomator.cryptofs.attr.AttributeViewType;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
@@ -57,6 +58,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -188,7 +190,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	@Override
 	public Set<String> supportedFileAttributeViews() {
 		assertOpen();
-		return fileStore.supportedFileAttributeViewNames();
+		return fileStore.supportedFileAttributeViewTypes().stream().map(AttributeViewType::getViewName).collect(Collectors.toSet());
 	}
 
 	@Override
@@ -457,24 +459,24 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	private void copyAttributes(Path src, Path dst) throws IOException {
-		Set<Class<? extends FileAttributeView>> supportedAttributeViewTypes = fileStore.supportedFileAttributeViewTypes();
-		if (supportedAttributeViewTypes.contains(BasicFileAttributeView.class)) {
+		Set<AttributeViewType> supportedAttributeViewTypes = fileStore.supportedFileAttributeViewTypes();
+		if (supportedAttributeViewTypes.contains(AttributeViewType.BASIC)) {
 			BasicFileAttributes srcAttrs = Files.readAttributes(src, BasicFileAttributes.class);
 			BasicFileAttributeView dstAttrView = Files.getFileAttributeView(dst, BasicFileAttributeView.class);
 			dstAttrView.setTimes(srcAttrs.lastModifiedTime(), srcAttrs.lastAccessTime(), srcAttrs.creationTime());
 		}
-		if (supportedAttributeViewTypes.contains(FileOwnerAttributeView.class)) {
+		if (supportedAttributeViewTypes.contains(AttributeViewType.OWNER)) {
 			FileOwnerAttributeView srcAttrView = Files.getFileAttributeView(src, FileOwnerAttributeView.class);
 			FileOwnerAttributeView dstAttrView = Files.getFileAttributeView(dst, FileOwnerAttributeView.class);
 			dstAttrView.setOwner(srcAttrView.getOwner());
 		}
-		if (supportedAttributeViewTypes.contains(PosixFileAttributeView.class)) {
+		if (supportedAttributeViewTypes.contains(AttributeViewType.POSIX)) {
 			PosixFileAttributes srcAttrs = Files.readAttributes(src, PosixFileAttributes.class);
 			PosixFileAttributeView dstAttrView = Files.getFileAttributeView(dst, PosixFileAttributeView.class);
 			dstAttrView.setGroup(srcAttrs.group());
 			dstAttrView.setPermissions(srcAttrs.permissions());
 		}
-		if (supportedAttributeViewTypes.contains(DosFileAttributeView.class)) {
+		if (supportedAttributeViewTypes.contains(AttributeViewType.DOS)) {
 			DosFileAttributes srcAttrs = Files.readAttributes(src, DosFileAttributes.class);
 			DosFileAttributeView dstAttrView = Files.getFileAttributeView(dst, DosFileAttributeView.class);
 			dstAttrView.setArchive(srcAttrs.isArchive());
@@ -482,6 +484,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			dstAttrView.setReadOnly(srcAttrs.isReadOnly());
 			dstAttrView.setSystem(srcAttrs.isSystem());
 		}
+		// TODO: copy user attributes
 	}
 
 	void move(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption... options) throws IOException {

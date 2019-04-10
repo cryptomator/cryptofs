@@ -2,13 +2,15 @@ package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
-import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
-import org.cryptomator.cryptofs.fh.OpenCryptoFiles.TwoPhaseMove;
 import org.cryptomator.cryptofs.attr.AttributeByNameProvider;
 import org.cryptomator.cryptofs.attr.AttributeProvider;
 import org.cryptomator.cryptofs.attr.AttributeViewProvider;
+import org.cryptomator.cryptofs.attr.AttributeViewType;
+import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
+import org.cryptomator.cryptofs.fh.OpenCryptoFiles.TwoPhaseMove;
 import org.cryptomator.cryptofs.mocks.FileChannelMock;
 import org.cryptomator.cryptolib.api.Cryptor;
+import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,10 +50,8 @@ import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.spi.FileSystemProvider;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -295,11 +295,10 @@ public class CryptoFileSystemImplTest {
 
 	@Test // TODO markuskreusch: is this behaviour correct?
 	public void testSupportedFileAttributeViewsDelegatesToFileSystemOfVaultLocation() {
-		@SuppressWarnings("unchecked")
-		Set<String> expected = mock(Set.class);
-		when(fileStore.supportedFileAttributeViewNames()).thenReturn(expected);
+		when(fileStore.supportedFileAttributeViewTypes()).thenReturn(EnumSet.of(AttributeViewType.BASIC));
 
-		Assertions.assertSame(expected, inTest.supportedFileAttributeViews());
+		Set<String> result = inTest.supportedFileAttributeViews();
+		MatcherAssert.assertThat(result, CoreMatchers.hasItem("basic"));
 	}
 
 	@Test
@@ -708,7 +707,7 @@ public class CryptoFileSystemImplTest {
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.DIRECTORY);
 				when(cryptoPathMapper.getCiphertextFileType(cleartextDestination)).thenThrow(NoSuchFileException.class);
 				Mockito.doThrow(new NoSuchFileException("ciphertextDestinationDirFile")).when(physicalFsProv).checkAccess(ciphertextDestinationDirFile);
-				when(fileStore.supportedFileAttributeViewTypes()).thenReturn(new HashSet<>(Arrays.asList(BasicFileAttributeView.class)));
+				when(fileStore.supportedFileAttributeViewTypes()).thenReturn(EnumSet.of(AttributeViewType.BASIC));
 				FileTime lastModifiedTime = FileTime.from(1, TimeUnit.HOURS);
 				FileTime lastAccessTime = FileTime.from(2, TimeUnit.HOURS);
 				FileTime createTime = FileTime.from(3, TimeUnit.HOURS);
@@ -731,7 +730,7 @@ public class CryptoFileSystemImplTest {
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.DIRECTORY);
 				when(cryptoPathMapper.getCiphertextFileType(cleartextDestination)).thenThrow(NoSuchFileException.class);
 				Mockito.doThrow(new NoSuchFileException("ciphertextDestinationDirFile")).when(physicalFsProv).checkAccess(ciphertextDestinationDirFile);
-				when(fileStore.supportedFileAttributeViewTypes()).thenReturn(new HashSet<>(Arrays.asList(FileOwnerAttributeView.class)));
+				when(fileStore.supportedFileAttributeViewTypes()).thenReturn(EnumSet.of(AttributeViewType.OWNER));
 				UserPrincipal owner = mock(UserPrincipal.class);
 				FileOwnerAttributeView srcAttrsView = mock(FileOwnerAttributeView.class);
 				FileOwnerAttributeView dstAttrView = mock(FileOwnerAttributeView.class);
@@ -751,7 +750,7 @@ public class CryptoFileSystemImplTest {
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.DIRECTORY);
 				when(cryptoPathMapper.getCiphertextFileType(cleartextDestination)).thenThrow(NoSuchFileException.class);
 				Mockito.doThrow(new NoSuchFileException("ciphertextDestinationDirFile")).when(physicalFsProv).checkAccess(ciphertextDestinationDirFile);
-				when(fileStore.supportedFileAttributeViewTypes()).thenReturn(new HashSet<>(Arrays.asList(PosixFileAttributeView.class)));
+				when(fileStore.supportedFileAttributeViewTypes()).thenReturn(EnumSet.of(AttributeViewType.POSIX));
 				GroupPrincipal group = mock(GroupPrincipal.class);
 				Set<PosixFilePermission> permissions = mock(Set.class);
 				PosixFileAttributes srcAttrs = mock(PosixFileAttributes.class);
@@ -773,7 +772,7 @@ public class CryptoFileSystemImplTest {
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.DIRECTORY);
 				when(cryptoPathMapper.getCiphertextFileType(cleartextDestination)).thenThrow(NoSuchFileException.class);
 				Mockito.doThrow(new NoSuchFileException("ciphertextDestinationDirFile")).when(physicalFsProv).checkAccess(ciphertextDestinationDirFile);
-				when(fileStore.supportedFileAttributeViewTypes()).thenReturn(new HashSet<>(Arrays.asList(DosFileAttributeView.class)));
+				when(fileStore.supportedFileAttributeViewTypes()).thenReturn(EnumSet.of(AttributeViewType.DOS));
 				DosFileAttributes srcAttrs = mock(DosFileAttributes.class);
 				DosFileAttributeView dstAttrView = mock(DosFileAttributeView.class);
 				when(srcAttrs.isArchive()).thenReturn(true);

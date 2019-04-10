@@ -8,6 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.attr.AttributeViewType;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,7 +20,6 @@ import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.DosFileAttributeView;
-import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
@@ -70,27 +70,11 @@ public class CryptoFileStoreTest {
 
 		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag);
 
-		Set<Class<? extends FileAttributeView>> result = inTest.supportedFileAttributeViewTypes();
-		Assertions.assertTrue(result.contains(PosixFileAttributeView.class));
-		Assertions.assertTrue(result.contains(FileOwnerAttributeView.class));
-		Assertions.assertTrue(result.contains(BasicFileAttributeView.class));
-		Assertions.assertFalse(result.contains(DosFileAttributeView.class));
-	}
-
-	@Test
-	public void testSupportedFileAttributeViewNames() {
-		when(delegate.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(true);
-		when(delegate.supportsFileAttributeView(FileOwnerAttributeView.class)).thenReturn(true);
-		when(delegate.supportsFileAttributeView(BasicFileAttributeView.class)).thenReturn(true);
-		when(delegate.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(false);
-
-		CryptoFileStore inTest = new CryptoFileStore(path, readonlyFlag);
-
-		Set<String> result = inTest.supportedFileAttributeViewNames();
-		Assertions.assertTrue(result.contains("posix"));
-		Assertions.assertTrue(result.contains("owner"));
-		Assertions.assertTrue(result.contains("basic"));
-		Assertions.assertFalse(result.contains("dos"));
+		Set<AttributeViewType> result = inTest.supportedFileAttributeViewTypes();
+		Assertions.assertTrue(result.contains(AttributeViewType.POSIX));
+		Assertions.assertTrue(result.contains(AttributeViewType.OWNER));
+		Assertions.assertTrue(result.contains(AttributeViewType.BASIC));
+		Assertions.assertFalse(result.contains(AttributeViewType.DOS));
 	}
 
 	@Test
