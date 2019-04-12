@@ -1,15 +1,13 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.cryptomator.cryptofs.fh.OpenCryptoFile;
+import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -19,12 +17,6 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 
 public class SymlinksTest {
-
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	private final CryptoPathMapper cryptoPathMapper = Mockito.mock(CryptoPathMapper.class);
 	private final OpenCryptoFiles openCryptoFiles = Mockito.mock(OpenCryptoFiles.class);
@@ -37,12 +29,12 @@ public class SymlinksTest {
 
 	private Symlinks inTest;
 
-	@Before
+	@BeforeEach
 	public void setup() throws IOException {
 		inTest = new Symlinks(cryptoPathMapper, openCryptoFiles, readonlyFlag);
 
 		Mockito.when(cleartextPath.getFileSystem()).thenReturn(fs);
-		Mockito.when(openCryptoFiles.getOrCreate(Mockito.eq(ciphertextPath), Mockito.any())).thenReturn(ciphertextFile);
+		Mockito.when(openCryptoFiles.getOrCreate(ciphertextPath)).thenReturn(ciphertextFile);
 	}
 
 	@Test
@@ -56,7 +48,7 @@ public class SymlinksTest {
 
 		ArgumentCaptor<ByteBuffer> bytesWritten = ArgumentCaptor.forClass(ByteBuffer.class);
 		Mockito.verify(openCryptoFiles).writeCiphertextFile(Mockito.eq(ciphertextPath), Mockito.any(), bytesWritten.capture());
-		Assert.assertEquals("/symlink/target/path", StandardCharsets.UTF_8.decode(bytesWritten.getValue()).toString());
+		Assertions.assertEquals("/symlink/target/path", StandardCharsets.UTF_8.decode(bytesWritten.getValue()).toString());
 	}
 
 	@Test
@@ -70,7 +62,7 @@ public class SymlinksTest {
 
 		CryptoPath read = inTest.readSymbolicLink(cleartextPath);
 
-		Assert.assertSame(resolvedTargetPath, read);
+		Assertions.assertSame(resolvedTargetPath, read);
 	}
 
 	@Test
@@ -80,7 +72,7 @@ public class SymlinksTest {
 
 		CryptoPath resolved = inTest.resolveRecursively(cleartextPath1);
 
-		Assert.assertSame(cleartextPath1, resolved);
+		Assertions.assertSame(cleartextPath1, resolved);
 	}
 
 	@Test
@@ -105,7 +97,7 @@ public class SymlinksTest {
 
 		CryptoPath resolved = inTest.resolveRecursively(cleartextPath1);
 
-		Assert.assertSame(cleartextPath3, resolved);
+		Assertions.assertSame(cleartextPath3, resolved);
 	}
 
 	@Test
@@ -123,7 +115,7 @@ public class SymlinksTest {
 
 		CryptoPath resolved = inTest.resolveRecursively(cleartextPath1);
 
-		Assert.assertSame(cleartextPath2, resolved);
+		Assertions.assertSame(cleartextPath2, resolved);
 	}
 
 	@Test
@@ -150,8 +142,9 @@ public class SymlinksTest {
 		Mockito.when(fs.getPath("file3")).thenReturn(cleartextPath3);
 		Mockito.when(fs.getPath("file1")).thenReturn(cleartextPath1);
 
-		thrown.expect(FileSystemLoopException.class);
-		inTest.resolveRecursively(cleartextPath1);
+		Assertions.assertThrows(FileSystemLoopException.class, () -> {
+			inTest.resolveRecursively(cleartextPath1);
+		});
 	}
 
 }

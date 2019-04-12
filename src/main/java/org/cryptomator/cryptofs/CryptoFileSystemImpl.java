@@ -10,6 +10,11 @@ package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
+import org.cryptomator.cryptofs.attr.AttributeByNameProvider;
+import org.cryptomator.cryptofs.attr.AttributeProvider;
+import org.cryptomator.cryptofs.attr.AttributeViewProvider;
+import org.cryptomator.cryptofs.attr.AttributeViewType;
+import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,12 +58,13 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.cryptomator.cryptofs.Constants.SEPARATOR;
 
-@PerFileSystem
+@CryptoFileSystemScoped
 class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	private static final Logger LOG = LoggerFactory.getLogger(CryptoFileSystemImpl.class);
@@ -74,9 +80,9 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	private final PathMatcherFactory pathMatcherFactory;
 	private final DirectoryStreamFactory directoryStreamFactory;
 	private final DirectoryIdProvider dirIdProvider;
-	private final CryptoFileAttributeProvider fileAttributeProvider;
-	private final CryptoFileAttributeByNameProvider fileAttributeByNameProvider;
-	private final CryptoFileAttributeViewProvider fileAttributeViewProvider;
+	private final AttributeProvider fileAttributeProvider;
+	private final AttributeByNameProvider fileAttributeByNameProvider;
+	private final AttributeViewProvider fileAttributeViewProvider;
 	private final OpenCryptoFiles openCryptoFiles;
 	private final Symlinks symlinks;
 	private final FinallyUtil finallyUtil;
@@ -92,7 +98,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	public CryptoFileSystemImpl(CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, @PathToVault Path pathToVault, Cryptor cryptor,
 								CryptoFileStore fileStore, CryptoFileSystemStats stats, CryptoPathMapper cryptoPathMapper, CryptoPathFactory cryptoPathFactory,
 								PathMatcherFactory pathMatcherFactory, DirectoryStreamFactory directoryStreamFactory, DirectoryIdProvider dirIdProvider,
-								CryptoFileAttributeProvider fileAttributeProvider, CryptoFileAttributeByNameProvider fileAttributeByNameProvider, CryptoFileAttributeViewProvider fileAttributeViewProvider,
+								AttributeProvider fileAttributeProvider, AttributeByNameProvider fileAttributeByNameProvider, AttributeViewProvider fileAttributeViewProvider,
 								OpenCryptoFiles openCryptoFiles, Symlinks symlinks, FinallyUtil finallyUtil, CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag, RootDirectoryInitializer rootDirectoryInitializer) {
 		this.provider = provider;
 		this.cryptoFileSystems = cryptoFileSystems;
@@ -184,7 +190,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	@Override
 	public Set<String> supportedFileAttributeViews() {
 		assertOpen();
-		return fileStore.supportedFileAttributeViewNames();
+		return fileStore.supportedFileAttributeViewTypes().stream().map(AttributeViewType::getViewName).collect(Collectors.toSet());
 	}
 
 	@Override
@@ -231,7 +237,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	 * @param type          the Class object corresponding to the file attribute view
 	 * @param options       future use
 	 * @return a file attribute view of the specified type, or <code>null</code> if the attribute view type is not available
-	 * @see CryptoFileAttributeViewProvider#getAttributeView(CryptoPath, Class, LinkOption...)
+	 * @see AttributeViewProvider#getAttributeView(CryptoPath, Class, LinkOption...)
 	 */
 	<V extends FileAttributeView> V getFileAttributeView(CryptoPath cleartextPath, Class<V> type, LinkOption... options) {
 		return fileAttributeViewProvider.getAttributeView(cleartextPath, type, options);
@@ -283,7 +289,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		if (cleartextParentDir == null) {
 			return;
 		}
-		Path ciphertextParentDir = cryptoPathMapper.getCiphertextDirPath(cleartextParentDir);
+		Path ciphertextParentDir = cryptoPathMapper.getCiphertextDir(cleartextParentDir).path;
 		if (!Files.exists(ciphertextParentDir)) {
 			throw new NoSuchFileException(cleartextParentDir.toString());
 		}
@@ -300,6 +306,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		} catch (IOException e) {
 			// make sure there is no orphan dir file:
 			Files.delete(ciphertextDirFile);
+			cryptoPathMapper.invalidatePathMapping(cleartextDir);
 			dirIdProvider.delete(ciphertextDirFile);
 			throw e;
 		}
@@ -345,7 +352,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			throw new FileAlreadyExistsException(cleartextFilePath.toString());
 		} else {
 			// might also throw FileAlreadyExists:
-			return openCryptoFiles.getOrCreate(ciphertextPath, options).newFileChannel(options);
+			return openCryptoFiles.getOrCreate(ciphertextPath).newFileChannel(options);
 		}
 	}
 
@@ -364,14 +371,15 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	private void deleteDirectory(CryptoPath cleartextPath) throws IOException {
-		Path ciphertextDir = cryptoPathMapper.getCiphertextDirPath(cleartextPath);
+		Path ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextPath).path;
 		Path ciphertextDirFile = cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY);
 		try {
 			ciphertextDirDeleter.deleteCiphertextDirIncludingNonCiphertextFiles(ciphertextDir, cleartextPath);
 			if (!Files.deleteIfExists(ciphertextDirFile)) {
-				// should not happen. Nevertheless this is a valid state, so who no big deal...
+				// should not happen. Nevertheless this is a valid state, so no big deal...
 				LOG.warn("Successfully deleted dir {}, but didn't find corresponding dir file {}", ciphertextDir, ciphertextDirFile);
 			}
+			cryptoPathMapper.invalidatePathMapping(cleartextPath);
 			dirIdProvider.delete(ciphertextDirFile);
 		} catch (NoSuchFileException e) {
 			// translate ciphertext path to cleartext path
@@ -434,7 +442,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			createDirectory(cleartextTarget);
 		} else if (ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
 			// keep existing (if empty):
-			Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDirPath(cleartextTarget);
+			Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDir(cleartextTarget).path;
 			try (DirectoryStream<Path> ds = Files.newDirectoryStream(ciphertextTargetDir)) {
 				if (ds.iterator().hasNext()) {
 					throw new DirectoryNotEmptyException(cleartextTarget.toString());
@@ -444,31 +452,31 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			throw new FileAlreadyExistsException(cleartextTarget.toString(), null, "Ciphertext file already exists: " + ciphertextTargetDirFile);
 		}
 		if (ArrayUtils.contains(options, StandardCopyOption.COPY_ATTRIBUTES)) {
-			Path ciphertextSourceDir = cryptoPathMapper.getCiphertextDirPath(cleartextSource);
-			Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDirPath(cleartextTarget);
+			Path ciphertextSourceDir = cryptoPathMapper.getCiphertextDir(cleartextSource).path;
+			Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDir(cleartextTarget).path;
 			copyAttributes(ciphertextSourceDir, ciphertextTargetDir);
 		}
 	}
 
 	private void copyAttributes(Path src, Path dst) throws IOException {
-		Set<Class<? extends FileAttributeView>> supportedAttributeViewTypes = fileStore.supportedFileAttributeViewTypes();
-		if (supportedAttributeViewTypes.contains(BasicFileAttributeView.class)) {
+		Set<AttributeViewType> supportedAttributeViewTypes = fileStore.supportedFileAttributeViewTypes();
+		if (supportedAttributeViewTypes.contains(AttributeViewType.BASIC)) {
 			BasicFileAttributes srcAttrs = Files.readAttributes(src, BasicFileAttributes.class);
 			BasicFileAttributeView dstAttrView = Files.getFileAttributeView(dst, BasicFileAttributeView.class);
 			dstAttrView.setTimes(srcAttrs.lastModifiedTime(), srcAttrs.lastAccessTime(), srcAttrs.creationTime());
 		}
-		if (supportedAttributeViewTypes.contains(FileOwnerAttributeView.class)) {
+		if (supportedAttributeViewTypes.contains(AttributeViewType.OWNER)) {
 			FileOwnerAttributeView srcAttrView = Files.getFileAttributeView(src, FileOwnerAttributeView.class);
 			FileOwnerAttributeView dstAttrView = Files.getFileAttributeView(dst, FileOwnerAttributeView.class);
 			dstAttrView.setOwner(srcAttrView.getOwner());
 		}
-		if (supportedAttributeViewTypes.contains(PosixFileAttributeView.class)) {
+		if (supportedAttributeViewTypes.contains(AttributeViewType.POSIX)) {
 			PosixFileAttributes srcAttrs = Files.readAttributes(src, PosixFileAttributes.class);
 			PosixFileAttributeView dstAttrView = Files.getFileAttributeView(dst, PosixFileAttributeView.class);
 			dstAttrView.setGroup(srcAttrs.group());
 			dstAttrView.setPermissions(srcAttrs.permissions());
 		}
-		if (supportedAttributeViewTypes.contains(DosFileAttributeView.class)) {
+		if (supportedAttributeViewTypes.contains(AttributeViewType.DOS)) {
 			DosFileAttributes srcAttrs = Files.readAttributes(src, DosFileAttributes.class);
 			DosFileAttributeView dstAttrView = Files.getFileAttributeView(dst, DosFileAttributeView.class);
 			dstAttrView.setArchive(srcAttrs.isArchive());
@@ -476,6 +484,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			dstAttrView.setReadOnly(srcAttrs.isReadOnly());
 			dstAttrView.setSystem(srcAttrs.isSystem());
 		}
+		// TODO: copy user attributes
 	}
 
 	void move(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption... options) throws IOException {
@@ -541,7 +550,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			assert ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING);
 			assert !ArrayUtils.contains(options, StandardCopyOption.ATOMIC_MOVE);
 			if (Files.exists(ciphertextTargetDirFile)) {
-				Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDirPath(cleartextTarget);
+				Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDir(cleartextTarget).path;
 				try (DirectoryStream<Path> ds = Files.newDirectoryStream(ciphertextTargetDir)) {
 					if (ds.iterator().hasNext()) {
 						throw new DirectoryNotEmptyException(cleartextTarget.toString());
@@ -552,6 +561,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			Files.move(ciphertextSourceDirFile, ciphertextTargetDirFile, options);
 		}
 		dirIdProvider.move(ciphertextSourceDirFile, ciphertextTargetDirFile);
+		cryptoPathMapper.invalidatePathMapping(cleartextSource);
 	}
 
 	CryptoFileStore getFileStore() {

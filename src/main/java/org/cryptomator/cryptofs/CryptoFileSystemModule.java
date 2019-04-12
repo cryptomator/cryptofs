@@ -22,7 +22,7 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 class CryptoFileSystemModule {
 
 	@Provides
-	@PerFileSystem
+	@CryptoFileSystemScoped
 	public Cryptor provideCryptor(CryptorProvider cryptorProvider, @PathToVault Path pathToVault, CryptoFileSystemProperties properties, ReadonlyFlag readonlyFlag) {
 		try {
 			Path masterKeyPath = pathToVault.resolve(properties.masterkeyFilename());

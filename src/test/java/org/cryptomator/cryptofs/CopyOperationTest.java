@@ -1,12 +1,10 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.mocks.FileChannelMock;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
@@ -25,7 +23,6 @@ import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
 import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
-import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
@@ -33,11 +30,6 @@ import static org.mockito.Mockito.when;
 
 public class CopyOperationTest {
 
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
 
 	private CopyOperation inTest = new CopyOperation();
 
@@ -50,7 +42,7 @@ public class CopyOperationTest {
 	private CryptoPath aPathFromFsB = mock(CryptoPath.class);
 	private CryptoPath anotherPathFromFsB = mock(CryptoPath.class);
 
-	@Before
+	@BeforeEach
 	public void setup() {
 		when(aPathFromFsA.getFileSystem()).thenReturn(fileSystemA);
 		when(anotherPathFromFsA.getFileSystem()).thenReturn(fileSystemA);
@@ -84,7 +76,7 @@ public class CopyOperationTest {
 
 		inTest.copy(aPathFromFsA, aPathFromFsB);
 
-		assertThat(targetFile.data(), contains(repeat(42).times(20).asByteBuffer()));
+		MatcherAssert.assertThat(targetFile.data(), contains(repeat(42).times(20).asByteBuffer()));
 	}
 
 	@Test
@@ -104,10 +96,10 @@ public class CopyOperationTest {
 		when(fileSystemA.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenThrow(new NoSuchFileException("aPathFromFsA"));
 		when(fileSystemB.readAttributes(aPathFromFsB, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(new NoSuchFileException("aPathFromFsB"));
 
-		thrown.expect(NoSuchFileException.class);
-		thrown.expectMessage(aPathFromFsA.toString());
-
-		inTest.copy(aPathFromFsA, aPathFromFsB);
+		NoSuchFileException e = Assertions.assertThrows(NoSuchFileException.class, () -> {
+			inTest.copy(aPathFromFsA, aPathFromFsB);
+		});
+		Assertions.assertEquals(aPathFromFsA.toString(), e.getFile());
 	}
 
 	@Test
@@ -124,7 +116,7 @@ public class CopyOperationTest {
 		inTest.copy(aPathFromFsA, aPathFromFsB, REPLACE_EXISTING);
 
 		verify(fileSystemB).delete(aPathFromFsB);
-		assertThat(targetFile.data(), contains(repeat(42).times(20).asByteBuffer()));
+		MatcherAssert.assertThat(targetFile.data(), contains(repeat(42).times(20).asByteBuffer()));
 	}
 
 	@Test
@@ -134,10 +126,10 @@ public class CopyOperationTest {
 		when(fileSystemA.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
 		when(fileSystemB.readAttributes(aPathFromFsB, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(aPathFromFsBAttributes);
 
-		thrown.expect(FileAlreadyExistsException.class);
-		thrown.expectMessage(aPathFromFsB.toString());
-
-		inTest.copy(aPathFromFsA, aPathFromFsB);
+		FileAlreadyExistsException e = Assertions.assertThrows(FileAlreadyExistsException.class, () -> {
+			inTest.copy(aPathFromFsA, aPathFromFsB);
+		});
+		Assertions.assertEquals(aPathFromFsB.toString(), e.getFile());
 	}
 
 	@Test
@@ -160,7 +152,7 @@ public class CopyOperationTest {
 
 		inTest.copy(aPathFromFsA, aPathFromFsB, COPY_ATTRIBUTES);
 
-		assertThat(targetFile.data(), contains(repeat(42).times(20).asByteBuffer()));
+		MatcherAssert.assertThat(targetFile.data(), contains(repeat(42).times(20).asByteBuffer()));
 		verify(aPathFromFsBAttributeView).setTimes(lastModifiedTime, lastAccessTime, creationTime);
 	}
 
@@ -177,7 +169,7 @@ public class CopyOperationTest {
 
 		inTest.copy(aPathFromFsA, aPathFromFsB, COPY_ATTRIBUTES);
 
-		assertThat(targetFile.data(), contains(repeat(42).times(20).asByteBuffer()));
+		MatcherAssert.assertThat(targetFile.data(), contains(repeat(42).times(20).asByteBuffer()));
 	}
 
 	@Test

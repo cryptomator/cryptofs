@@ -1,21 +1,15 @@
 package org.cryptomator.cryptofs;
 
+import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
+
 import static java.util.Arrays.asList;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.mockito.InOrder;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
-
 @SuppressWarnings("unchecked")
 public class FinallyUtilTest {
-
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
 
 	private FinallyUtil inTest = new FinallyUtil();
 

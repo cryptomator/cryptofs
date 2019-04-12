@@ -4,7 +4,9 @@ import dagger.BindsInstance;
 import dagger.Component;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 
-@PerProvider
+import javax.inject.Singleton;
+
+@Singleton
 @Component
 interface CryptoFileSystemProviderComponent {
 

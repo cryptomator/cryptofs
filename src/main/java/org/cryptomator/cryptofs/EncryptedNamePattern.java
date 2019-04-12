@@ -1,13 +1,13 @@
 package org.cryptomator.cryptofs;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.inject.Inject;
-
-@PerProvider
+@Singleton
 class EncryptedNamePattern {
 
 	private static final Pattern BASE32_PATTERN = Pattern.compile("(0|1[A-Z0-9])?(([A-Z2-7]{8})*[A-Z2-7=]{8})");

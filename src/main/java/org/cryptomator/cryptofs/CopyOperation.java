@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs;
 
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.CopyOption;
@@ -19,7 +20,7 @@ import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 
-@PerProvider
+@Singleton
 class CopyOperation {
 
 	@Inject

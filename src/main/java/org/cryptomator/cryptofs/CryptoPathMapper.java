@@ -8,6 +8,8 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import com.google.common.base.Throwables;
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -21,32 +23,38 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Duration;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 
 import static org.cryptomator.cryptofs.Constants.DATA_DIR_NAME;
 import static org.cryptomator.cryptofs.Constants.DIR_PREFIX;
 
-@PerFileSystem
-class CryptoPathMapper {
+@CryptoFileSystemScoped
+public class CryptoPathMapper {
 
-	private static final int MAX_CACHED_CIPHERTEXT_NAMES = 1000;
-	private static final int MAX_CACHED_DIR_PATHS = 1000;
+	private static final int MAX_CACHED_CIPHERTEXT_NAMES = 5000;
+	private static final int MAX_CACHED_DIR_PATHS = 5000;
+	private static final Duration MAX_CACHE_AGE = Duration.ofSeconds(20);
 
 	private final Cryptor cryptor;
 	private final Path dataRoot;
 	private final DirectoryIdProvider dirIdProvider;
 	private final LongFileNameProvider longFileNameProvider;
 	private final LoadingCache<DirIdAndName, String> ciphertextNames;
-	private final LoadingCache<String, Path> directoryPathCache;
+	private final Cache<CryptoPath, CiphertextDirectory> ciphertextDirectories;
+
+	private final CiphertextDirectory rootDirectory;
 
 	@Inject
-	public CryptoPathMapper(@PathToVault Path pathToVault, Cryptor cryptor, DirectoryIdProvider dirIdProvider, LongFileNameProvider longFileNameProvider) {
+	CryptoPathMapper(@PathToVault Path pathToVault, Cryptor cryptor, DirectoryIdProvider dirIdProvider, LongFileNameProvider longFileNameProvider) {
 		this.dataRoot = pathToVault.resolve(DATA_DIR_NAME);
 		this.cryptor = cryptor;
 		this.dirIdProvider = dirIdProvider;
 		this.longFileNameProvider = longFileNameProvider;
 		this.ciphertextNames = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_CIPHERTEXT_NAMES).build(CacheLoader.from(this::getCiphertextFileName));
-		this.directoryPathCache = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_DIR_PATHS).build(CacheLoader.from(this::resolveDirectoryPath));
+		this.ciphertextDirectories = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_DIR_PATHS).expireAfterWrite(MAX_CACHE_AGE).build();
+		this.rootDirectory = resolveDirectory(Constants.ROOT_DIR_ID);
 	}
 
 	public enum CiphertextFileType {
@@ -79,6 +87,12 @@ class CryptoPathMapper {
 		}
 	}
 
+	/**
+	 * @param cleartextPath A path
+	 * @return The file type for the given path (if it exists)
+	 * @throws NoSuchFileException If no node exists at the given path for any known type
+	 * @throws IOException
+	 */
 	public CiphertextFileType getCiphertextFileType(CryptoPath cleartextPath) throws NoSuchFileException, IOException {
 		CryptoPath parentPath = cleartextPath.getParent();
 		if (parentPath == null) {
@@ -106,7 +120,7 @@ class CryptoPathMapper {
 	public Path getCiphertextFilePath(CryptoPath cleartextPath, CiphertextFileType type) throws IOException {
 		CryptoPath parentPath = cleartextPath.getParent();
 		if (parentPath == null) {
-			throw new IllegalArgumentException("Invalid file path (must have a parent)" + cleartextPath);
+			throw new IllegalArgumentException("Invalid file path (must have a parent): " + cleartextPath);
 		}
 		CiphertextDirectory parent = getCiphertextDir(parentPath);
 		String cleartextName = cleartextPath.getFileName().toString();
@@ -127,30 +141,37 @@ class CryptoPathMapper {
 		return cryptor.fileNameCryptor().encryptFilename(dirIdAndName.name, dirIdAndName.dirId.getBytes(StandardCharsets.UTF_8));
 	}
 
-	public Path getCiphertextDirPath(CryptoPath cleartextPath) throws IOException {
-		return getCiphertextDir(cleartextPath).path;
+	public void invalidatePathMapping(CryptoPath cleartextPath) {
+		ciphertextDirectories.invalidate(cleartextPath);
 	}
 
 	public CiphertextDirectory getCiphertextDir(CryptoPath cleartextPath) throws IOException {
 		assert cleartextPath.isAbsolute();
 		CryptoPath parentPath = cleartextPath.getParent();
 		if (parentPath == null) {
-			return new CiphertextDirectory(Constants.ROOT_DIR_ID, directoryPathCache.getUnchecked(Constants.ROOT_DIR_ID));
+			return rootDirectory;
 		} else {
-			Path dirIdFile = getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY);
-			return resolveDirectory(dirIdFile);
+			try {
+				return ciphertextDirectories.get(cleartextPath, () -> {
+					Path dirIdFile = getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY);
+					return resolveDirectory(dirIdFile);
+				});
+			} catch (ExecutionException e) {
+				Throwables.throwIfInstanceOf(e.getCause(), IOException.class);
+				throw new IOException("Unexpected exception", e);
+			}
 		}
 	}
 
 	public CiphertextDirectory resolveDirectory(Path directoryFile) throws IOException {
 		String dirId = dirIdProvider.load(directoryFile);
-		Path dirPath = directoryPathCache.getUnchecked(dirId);
-		return new CiphertextDirectory(dirId, dirPath);
+		return resolveDirectory(dirId);
 	}
 
-	private Path resolveDirectoryPath(String dirId) {
+	private CiphertextDirectory resolveDirectory(String dirId) {
 		String dirHash = cryptor.fileNameCryptor().hashDirectoryId(dirId);
-		return dataRoot.resolve(dirHash.substring(0, 2)).resolve(dirHash.substring(2));
+		Path dirPath = dataRoot.resolve(dirHash.substring(0, 2)).resolve(dirHash.substring(2));
+		return new CiphertextDirectory(dirId, dirPath);
 	}
 
 	public static class CiphertextDirectory {
@@ -158,8 +179,25 @@ class CryptoPathMapper {
 		public final Path path;
 
 		public CiphertextDirectory(String dirId, Path path) {
-			this.dirId = dirId;
-			this.path = path;
+			this.dirId = Objects.requireNonNull(dirId);
+			this.path = Objects.requireNonNull(path);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(dirId, path);
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (obj == this) {
+				return true;
+			} else if (obj instanceof CiphertextDirectory) {
+				CiphertextDirectory other = (CiphertextDirectory) obj;
+				return this.dirId.equals(other.dirId) && this.path.equals(other.path);
+			} else {
+				return false;
+			}
 		}
 	}
 

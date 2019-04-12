@@ -8,6 +8,22 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import com.google.common.jimfs.Jimfs;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.FileSystem;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import static java.lang.Math.min;
 import static java.lang.String.format;
 import static java.nio.file.StandardOpenOption.APPEND;
@@ -17,56 +33,16 @@ import static java.nio.file.StandardOpenOption.WRITE;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assume.assumeTrue;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.file.FileSystem;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.experimental.theories.DataPoints;
-import org.junit.experimental.theories.FromDataPoints;
-import org.junit.experimental.theories.Theories;
-import org.junit.experimental.theories.Theory;
-import org.junit.runner.RunWith;
-
-import com.google.common.jimfs.Jimfs;
-
-@RunWith(Theories.class)
 public class CryptoFileChannelWriteReadIntegrationTest {
 
 	private static final int EOF = -1;
-
-	@DataPoints("dataSizes")
-	public static int[] DATA_SIZES = {0, // nothing
-			372, // nothing < x < full chunk
-			32768, // x = full chunk
-			40287, // full chunk < x < two chunks
-			65536, // x = two chunks
-			72389 // two chunks < x < three chunks
-	};
-
-	@DataPoints("writeOffsets")
-	public static int[] WRITE_OFFSETS = {0, // nothing
-			372, // nothing < x < full chunk
-			32768, // x = full chunk
-			40287, // full chunk < x < two chunks
-			65536, // x = two chunks
-			72389 // two chunks < x < three chunks
-	};
 
 	private static FileSystem inMemoryFs;
 	private static Path pathToVault;
 	private static FileSystem fileSystem;
 
-	@BeforeClass
+	@BeforeAll
 	public static void setupClass() throws IOException {
 		inMemoryFs = Jimfs.newFileSystem();
 		pathToVault = inMemoryFs.getRootDirectories().iterator().next().resolve("vault");
@@ -74,7 +50,7 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
 	}
 
-	@AfterClass
+	@AfterAll
 	public static void teardownClass() throws IOException {
 		inMemoryFs.close();
 	}
@@ -85,8 +61,8 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		long fileId = nextFileId();
 
 		try (FileChannel channel = writableChannel(fileId)) {
-			assertEquals(0, channel.size());
-			assertEquals(0, Files.size(filePath(fileId)));
+			Assertions.assertEquals(0, channel.size());
+			Assertions.assertEquals(0, Files.size(filePath(fileId)));
 		}
 	}
 
@@ -97,8 +73,8 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 
 		try (FileChannel channel = writableChannel(fileId)) {
 			channel.write(ByteBuffer.wrap(new byte[10]));
-			assertEquals(10, channel.size());
-			assertEquals(10, Files.size(filePath(fileId)));
+			Assertions.assertEquals(10, channel.size());
+			Assertions.assertEquals(10, Files.size(filePath(fileId)));
 		}
 	}
 
@@ -111,164 +87,157 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		}
 
 		try (FileChannel channel = readableChannel(fileId)) {
-			assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
+			Assertions.assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
 		}
 	}
 
-	@Theory
-	public void testWriteDataAndTruncateToOffset(@FromDataPoints("dataSizes") int cleartextSize, @FromDataPoints("writeOffsets") int truncateToSize) throws IOException {
+	@ParameterizedTest(name = "write {0} bytes and truncate to {1}")
+	@CsvSource({"0, 0", "0, 5000", "0, 32768", "0, 40000", "70000, 0", "70000, 30000", "70000, 40000", "70000, 65536", "70000, 80000"})
+	public void testWriteDataAndTruncateToOffset(int cleartextSize, int truncateToSize) throws IOException {
 		long fileId = nextFileId();
 
 		int targetSize = min(truncateToSize, cleartextSize);
 
 		try (FileChannel channel = writableChannel(fileId)) {
-			assertEquals(0, channel.size());
+			Assertions.assertEquals(0, channel.size());
 			channel.write(repeat(1).times(cleartextSize).asByteBuffer());
-			assertEquals(cleartextSize, channel.size());
+			Assertions.assertEquals(cleartextSize, channel.size());
 		}
 
 		try (FileChannel channel = writableChannel(fileId)) {
-			assertEquals(cleartextSize, channel.size());
+			Assertions.assertEquals(cleartextSize, channel.size());
 			channel.truncate(truncateToSize);
-			assertEquals(targetSize, channel.size());
+			Assertions.assertEquals(targetSize, channel.size());
 		}
 
 		try (FileChannel channel = readableChannel(fileId)) {
 			if (targetSize > 0) {
 				ByteBuffer buffer = ByteBuffer.allocate(targetSize);
 				int result = channel.read(buffer);
-				assertEquals(targetSize, result);
+				Assertions.assertEquals(targetSize, result);
 				buffer.flip();
 				for (int i = 0; i < targetSize; i++) {
-					assertEquals(format("byte(%d) = 1", i), 1, buffer.get(i));
+					Assertions.assertEquals(1, buffer.get(i), format("byte(%d) = 1", i));
 				}
 			}
-			assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
+			Assertions.assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
 		}
 	}
 
-	@Theory
-	public void testWithWritingOffset(@FromDataPoints("dataSizes") int dataSize, @FromDataPoints("writeOffsets") int writeOffset) throws IOException {
-		assumeTrue(dataSize != 0 || writeOffset != 0);
-
+	@ParameterizedTest(name = "write {0} bytes beginning at {1}")
+	@CsvSource({"0, 5000", "0, 32768", "0, 40000", "70000, 0", "70000, 40000", "70000, 65536", "70000, 80000"})
+	public void testWithWritingOffset(int dataSize, int writeOffset) throws IOException {
 		long fileId = nextFileId();
 
 		int cleartextSize = dataSize + writeOffset;
 
 		try (FileChannel channel = writableChannel(fileId)) {
-			assertEquals(0, channel.size());
+			Assertions.assertEquals(0, channel.size());
 			channel.write(repeat(1).times(writeOffset).asByteBuffer());
-			assertEquals(writeOffset, channel.size());
+			Assertions.assertEquals(writeOffset, channel.size());
 			channel.write(repeat(2).times(dataSize).asByteBuffer());
-			assertEquals(cleartextSize, channel.size());
+			Assertions.assertEquals(cleartextSize, channel.size());
 		}
 
 		try (FileChannel channel = readableChannel(fileId)) {
 			ByteBuffer buffer = ByteBuffer.allocate(cleartextSize);
 			int result = channel.read(buffer);
-			assertEquals(cleartextSize, result);
-			assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
+			Assertions.assertEquals(cleartextSize, result);
+			Assertions.assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
 			buffer.flip();
 			for (int i = 0; i < cleartextSize; i++) {
 				if (i < writeOffset) {
-					assertEquals(format("byte(%d) = 1", i), 1, buffer.get(i));
+					Assertions.assertEquals(1, buffer.get(i), format("byte(%d) = 1", i));
 				} else {
-					assertEquals(format("byte(%d) = 2", i), 2, buffer.get(i));
+					Assertions.assertEquals(2, buffer.get(i), format("byte(%d) = 2", i));
 				}
 			}
 		}
 	}
 
-	@Theory
-	public void testWithWritingInReverseOrderUsingPositions(@FromDataPoints("dataSizes") int dataSize, @FromDataPoints("writeOffsets") int writeOffset) throws IOException {
-		assumeTrue(dataSize != 0 || writeOffset != 0);
-
+	@ParameterizedTest(name = "write {0} bytes beginning at {1}")
+	@CsvSource({"0, 5000", "0, 32768", "0, 40000", "70000, 0", "70000, 40000", "70000, 65536", "70000, 80000"})
+	public void testWithWritingInReverseOrderUsingPositions(int dataSize, int writeOffset) throws IOException {
 		long fileId = nextFileId();
 
 		int cleartextSize = dataSize + writeOffset;
 
 		try (FileChannel channel = writableChannel(fileId)) {
-			assertEquals(0, channel.size());
+			Assertions.assertEquals(0, channel.size());
 			channel.write(repeat(2).times(dataSize).asByteBuffer(), writeOffset);
-			assertEquals(cleartextSize, channel.size());
+			Assertions.assertEquals(cleartextSize, channel.size());
 			channel.write(repeat(1).times(writeOffset).asByteBuffer(), 0);
-			assertEquals(cleartextSize, channel.size());
+			Assertions.assertEquals(cleartextSize, channel.size());
 		}
 
 		try (FileChannel channel = readableChannel(fileId)) {
 			ByteBuffer buffer = ByteBuffer.allocate(cleartextSize);
 			int result = channel.read(buffer);
-			assertEquals(cleartextSize, result);
-			assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
+			Assertions.assertEquals(cleartextSize, result);
+			Assertions.assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
 			buffer.flip();
 			for (int i = 0; i < cleartextSize; i++) {
 				if (i < writeOffset) {
-					assertEquals(format("byte(%d) = 1", i), 1, buffer.get(i));
+					Assertions.assertEquals(1, buffer.get(i), format("byte(%d) = 1", i));
 				} else {
-					assertEquals(format("byte(%d) = 2", i), 2, buffer.get(i));
+					Assertions.assertEquals(2, buffer.get(i), format("byte(%d) = 2", i));
 				}
 			}
 		}
 	}
 
-	@Theory
-	public void testWithSkippingOffset(@FromDataPoints("dataSizes") int dataSize, @FromDataPoints("writeOffsets") int writeOffset) throws IOException {
-		assumeTrue(dataSize != 0 && writeOffset != 0);
-
+	@ParameterizedTest(name = "write {0} bytes beginngin at {1}")
+	@CsvSource({"10000, 32767", "10000, 32768", "10000, 32769", "70000, 65535", "70000, 65536", "70000, 65537"})
+	public void testWithSkippingOffset(int dataSize, int writeOffset) throws IOException {
 		long fileId = nextFileId();
 
 		int cleartextSize = dataSize + writeOffset;
 
 		try (FileChannel channel = writableChannel(fileId)) {
-			assertEquals(0, channel.size());
+			Assertions.assertEquals(0, channel.size());
 			channel.position(writeOffset);
 			channel.write(repeat(2).times(dataSize).asByteBuffer());
-			assertEquals(cleartextSize, channel.size());
+			Assertions.assertEquals(cleartextSize, channel.size());
 		}
 
+		Assertions.assertEquals(cleartextSize, Files.size(filePath(fileId)));
+
 		try (FileChannel channel = readableChannel(fileId)) {
+			Assertions.assertEquals(cleartextSize, channel.size());
 			ByteBuffer buffer = ByteBuffer.allocate(cleartextSize);
 			int result = channel.read(buffer);
-			assertEquals(cleartextSize, result);
-			assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
+			Assertions.assertEquals(cleartextSize, result);
+			Assertions.assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
 			buffer.flip();
 			for (int i = writeOffset; i < cleartextSize; i++) {
-				assertEquals(format("byte(%d) = 2", i), 2, buffer.get(i));
+				Assertions.assertEquals(2, buffer.get(i), format("byte(%d) = 2", i));
 			}
 		}
 	}
 
-	@Theory
-	public void testAppend(@FromDataPoints("dataSizes") int dataSize, @FromDataPoints("writeOffsets") int writeOffset) throws IOException {
-		assumeTrue(dataSize != 0 || writeOffset != 0);
-
+	@ParameterizedTest(name = "append {0} bytes")
+	@ValueSource(ints = {372, 32768, 72389})
+	public void testAppend(int dataSize) throws IOException {
 		long fileId = nextFileId();
 
-		int cleartextSize = dataSize + writeOffset;
+		try (FileChannel channel = writableChannelInAppendMode(fileId)) {
+			Assertions.assertEquals(0, channel.size());
+			channel.write(repeat(1).times(dataSize).asByteBuffer());
+			Assertions.assertEquals(dataSize, channel.size());
+		}
 
 		try (FileChannel channel = writableChannelInAppendMode(fileId)) {
-			assertEquals(0, channel.size());
-			if (writeOffset > 0) {
-				channel.write(repeat(1).times(1).asByteBuffer(), writeOffset - 1);
-				assertEquals(writeOffset, channel.size());
-			}
-			channel.write(repeat(2).times(dataSize).asByteBuffer());
-			assertEquals(cleartextSize, channel.size());
+			Assertions.assertEquals(dataSize, channel.size());
+			channel.write(repeat(1).times(dataSize).asByteBuffer());
+			channel.write(repeat(1).times(dataSize).asByteBuffer());
+			Assertions.assertEquals(3*dataSize, channel.size());
 		}
 
 		try (FileChannel channel = readableChannel(fileId)) {
-			ByteBuffer buffer = ByteBuffer.allocate(cleartextSize);
+			ByteBuffer buffer = ByteBuffer.allocate(3*dataSize);
 			int result = channel.read(buffer);
-			assertEquals(cleartextSize, result);
-			assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
-			buffer.flip();
-			for (int i = 0; i < cleartextSize; i++) {
-				if (i >= writeOffset) {
-					assertEquals(format("byte(%d) = 2", i), 2, buffer.get(i));
-				} else if (i == writeOffset - 1) {
-					assertEquals(format("byte(%d) = 1", i), 1, buffer.get(i));
-				}
-			}
+			Assertions.assertEquals(3*dataSize, result);
+			Assertions.assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
 		}
 	}
 

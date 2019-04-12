@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 
-@PerFileSystem
+@CryptoFileSystemScoped
 class RootDirectoryInitializer {
 
 	private final CryptoPathMapper cryptoPathMapper;
@@ -24,7 +24,7 @@ class RootDirectoryInitializer {
 			return;
 		}
 		try {
-			Path ciphertextRoot = cryptoPathMapper.getCiphertextDirPath(cleartextRoot);
+			Path ciphertextRoot = cryptoPathMapper.getCiphertextDir(cleartextRoot).path;
 			files.createDirectories(ciphertextRoot);
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);

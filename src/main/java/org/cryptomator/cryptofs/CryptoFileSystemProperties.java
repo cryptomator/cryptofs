@@ -117,11 +117,11 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	}
 
 	@SuppressWarnings("unchecked")
-	Set<FileSystemFlags> flags() {
+	public Set<FileSystemFlags> flags() {
 		return (Set<FileSystemFlags>) get(PROPERTY_FILESYSTEM_FLAGS);
 	}
 
-	boolean readonly() {
+	public boolean readonly() {
 		return flags().contains(FileSystemFlags.READONLY);
 	}
 

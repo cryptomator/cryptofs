@@ -12,7 +12,7 @@ import static java.util.stream.Collectors.toSet;
 import static org.cryptomator.cryptofs.CiphertextDirectoryDeleter.DeleteResult.NO_FILES_DELETED;
 import static org.cryptomator.cryptofs.CiphertextDirectoryDeleter.DeleteResult.SOME_FILES_DELETED;
 
-@PerFileSystem
+@CryptoFileSystemScoped
 class CiphertextDirectoryDeleter {
 
 	private final DirectoryStreamFactory directoryStreamFactory;

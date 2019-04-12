@@ -10,8 +10,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.ReadOnlyFileSystemException;
 
-@PerFileSystem
-class ReadonlyFlag {
+@CryptoFileSystemScoped
+public class ReadonlyFlag {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ReadonlyFlag.class);
 

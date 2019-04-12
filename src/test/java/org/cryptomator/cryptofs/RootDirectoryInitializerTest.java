@@ -1,10 +1,8 @@
 package org.cryptomator.cryptofs;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
+import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -16,9 +14,6 @@ import static org.mockito.Mockito.when;
 
 public class RootDirectoryInitializerTest {
 
-	@Rule
-	public MockitoRule mockitoRule = MockitoJUnit.rule();
-
 	private final CryptoPathMapper cryptoPathMapper = mock(CryptoPathMapper.class);
 	private final ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 	private final FilesWrapper filesWrapper = mock(FilesWrapper.class);
@@ -28,9 +23,9 @@ public class RootDirectoryInitializerTest {
 
 	private RootDirectoryInitializer inTest = new RootDirectoryInitializer(cryptoPathMapper, readonlyFlag, filesWrapper);
 
-	@Before
+	@BeforeEach
 	public void setup() throws IOException {
-		when(cryptoPathMapper.getCiphertextDirPath(cleartextRoot)).thenReturn(ciphertextRoot);
+		when(cryptoPathMapper.getCiphertextDir(cleartextRoot)).thenReturn(new CiphertextDirectory("", ciphertextRoot));
 	}
 
 	@Test

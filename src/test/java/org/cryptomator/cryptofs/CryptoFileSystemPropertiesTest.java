@@ -1,5 +1,19 @@
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.CryptoFileSystemProperties.FileSystemFlags;
+import org.hamcrest.Description;
+import org.hamcrest.Matcher;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.TypeSafeDiagnosingMatcher;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+
+import java.nio.charset.StandardCharsets;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.DEFAULT_MASTERKEY_FILENAME;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.DEFAULT_PEPPER;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_FILESYSTEM_FLAGS;
@@ -11,32 +25,14 @@ import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSyst
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
-
-import java.nio.charset.StandardCharsets;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
-
-import org.cryptomator.cryptofs.CryptoFileSystemProperties.FileSystemFlags;
-import org.hamcrest.Description;
-import org.hamcrest.Matcher;
-import org.hamcrest.TypeSafeDiagnosingMatcher;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 public class CryptoFileSystemPropertiesTest {
 
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
 	@Test
 	public void testSetNoPassphrase() {
-		thrown.expect(IllegalStateException.class);
-
-		cryptoFileSystemProperties().build();
+		Assertions.assertThrows(IllegalStateException.class, () -> {
+			cryptoFileSystemProperties().build();
+		});
 	}
 
 	@Test
@@ -47,12 +43,12 @@ public class CryptoFileSystemPropertiesTest {
 				.withPassphrase(passphrase) //
 				.build();
 
-		assertThat(inTest.passphrase(), is(passphrase));
-		assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
-		assertThat(inTest.readonly(), is(false));
-		assertThat(inTest.initializeImplicitly(), is(true));
-		assertThat(inTest.migrateImplicitly(), is(true));
-		assertThat(inTest.entrySet(),
+		MatcherAssert.assertThat(inTest.passphrase(), is(passphrase));
+		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
+		MatcherAssert.assertThat(inTest.readonly(), is(false));
+		MatcherAssert.assertThat(inTest.initializeImplicitly(), is(true));
+		MatcherAssert.assertThat(inTest.migrateImplicitly(), is(true));
+		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
@@ -69,12 +65,12 @@ public class CryptoFileSystemPropertiesTest {
 				.withReadonlyFlag() //
 				.build();
 
-		assertThat(inTest.passphrase(), is(passphrase));
-		assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
-		assertThat(inTest.readonly(), is(true));
-		assertThat(inTest.initializeImplicitly(), is(false));
-		assertThat(inTest.migrateImplicitly(), is(false));
-		assertThat(inTest.entrySet(),
+		MatcherAssert.assertThat(inTest.passphrase(), is(passphrase));
+		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
+		MatcherAssert.assertThat(inTest.readonly(), is(true));
+		MatcherAssert.assertThat(inTest.initializeImplicitly(), is(false));
+		MatcherAssert.assertThat(inTest.migrateImplicitly(), is(false));
+		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
@@ -93,12 +89,12 @@ public class CryptoFileSystemPropertiesTest {
 				.withReadonlyFlag() //
 				.build();
 
-		assertThat(inTest.passphrase(), is(passphrase));
-		assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
-		assertThat(inTest.readonly(), is(true));
-		assertThat(inTest.initializeImplicitly(), is(false));
-		assertThat(inTest.migrateImplicitly(), is(false));
-		assertThat(inTest.entrySet(),
+		MatcherAssert.assertThat(inTest.passphrase(), is(passphrase));
+		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
+		MatcherAssert.assertThat(inTest.readonly(), is(true));
+		MatcherAssert.assertThat(inTest.initializeImplicitly(), is(false));
+		MatcherAssert.assertThat(inTest.migrateImplicitly(), is(false));
+		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
@@ -119,11 +115,11 @@ public class CryptoFileSystemPropertiesTest {
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY));
 		CryptoFileSystemProperties inTest = cryptoFileSystemPropertiesFrom(map).build();
 
-		assertThat(inTest.passphrase(), is(passphrase));
-		assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
-		assertThat(inTest.readonly(), is(true));
-		assertThat(inTest.initializeImplicitly(), is(false));
-		assertThat(inTest.entrySet(),
+		MatcherAssert.assertThat(inTest.passphrase(), is(passphrase));
+		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
+		MatcherAssert.assertThat(inTest.readonly(), is(true));
+		MatcherAssert.assertThat(inTest.initializeImplicitly(), is(false));
+		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, pepper), //
@@ -144,11 +140,11 @@ public class CryptoFileSystemPropertiesTest {
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY));
 		CryptoFileSystemProperties inTest = CryptoFileSystemProperties.wrap(map);
 
-		assertThat(inTest.passphrase(), is(passphrase));
-		assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
-		assertThat(inTest.readonly(), is(true));
-		assertThat(inTest.initializeImplicitly(), is(false));
-		assertThat(inTest.entrySet(),
+		MatcherAssert.assertThat(inTest.passphrase(), is(passphrase));
+		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
+		MatcherAssert.assertThat(inTest.readonly(), is(true));
+		MatcherAssert.assertThat(inTest.initializeImplicitly(), is(false));
+		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, pepper), //
@@ -169,11 +165,11 @@ public class CryptoFileSystemPropertiesTest {
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class));
 		CryptoFileSystemProperties inTest = CryptoFileSystemProperties.wrap(map);
 
-		assertThat(inTest.passphrase(), is(passphrase));
-		assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
-		assertThat(inTest.readonly(), is(false));
-		assertThat(inTest.initializeImplicitly(), is(false));
-		assertThat(inTest.entrySet(),
+		MatcherAssert.assertThat(inTest.passphrase(), is(passphrase));
+		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
+		MatcherAssert.assertThat(inTest.readonly(), is(false));
+		MatcherAssert.assertThat(inTest.initializeImplicitly(), is(false));
+		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, pepper), //
@@ -183,35 +179,38 @@ public class CryptoFileSystemPropertiesTest {
 
 	@Test
 	public void testWrapMapWithInvalidFilesystemFlags() {
-		thrown.expect(IllegalArgumentException.class);
-
 		Map<String, Object> map = new HashMap<>();
 		map.put(PROPERTY_PASSPHRASE, "any");
 		map.put(PROPERTY_MASTERKEY_FILENAME, "any");
 		map.put(PROPERTY_FILESYSTEM_FLAGS, "invalidType");
-		CryptoFileSystemProperties.wrap(map);
+
+		Assertions.assertThrows(IllegalArgumentException.class, () -> {
+			CryptoFileSystemProperties.wrap(map);
+		});
 	}
 
 	@Test
 	public void testWrapMapWithInvalidMasterkeyFilename() {
-		thrown.expect(IllegalArgumentException.class);
-
 		Map<String, Object> map = new HashMap<>();
 		map.put(PROPERTY_PASSPHRASE, "any");
 		map.put(PROPERTY_MASTERKEY_FILENAME, "");
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class));
-		CryptoFileSystemProperties.wrap(map);
+
+		Assertions.assertThrows(IllegalArgumentException.class, () -> {
+			CryptoFileSystemProperties.wrap(map);
+		});
 	}
 
 	@Test
 	public void testWrapMapWithInvalidPassphrase() {
-		thrown.expect(IllegalArgumentException.class);
-
 		Map<String, Object> map = new HashMap<>();
 		map.put(PROPERTY_PASSPHRASE, new Object());
 		map.put(PROPERTY_MASTERKEY_FILENAME, "any");
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class));
-		CryptoFileSystemProperties.wrap(map);
+
+		Assertions.assertThrows(IllegalArgumentException.class, () -> {
+			CryptoFileSystemProperties.wrap(map);
+		});
 	}
 
 	@Test
@@ -224,12 +223,12 @@ public class CryptoFileSystemPropertiesTest {
 		map.put(PROPERTY_PEPPER, pepper);
 		CryptoFileSystemProperties inTest = CryptoFileSystemProperties.wrap(map);
 
-		assertThat(inTest.passphrase(), is(passphrase));
-		assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
-		assertThat(inTest.readonly(), is(false));
-		assertThat(inTest.initializeImplicitly(), is(true));
-		assertThat(inTest.migrateImplicitly(), is(true));
-		assertThat(inTest.entrySet(),
+		MatcherAssert.assertThat(inTest.passphrase(), is(passphrase));
+		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
+		MatcherAssert.assertThat(inTest.readonly(), is(false));
+		MatcherAssert.assertThat(inTest.initializeImplicitly(), is(true));
+		MatcherAssert.assertThat(inTest.migrateImplicitly(), is(true));
+		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, pepper), //
@@ -239,9 +238,9 @@ public class CryptoFileSystemPropertiesTest {
 
 	@Test
 	public void testWrapMapWithoutPassphrase() {
-		thrown.expect(IllegalArgumentException.class);
-
-		CryptoFileSystemProperties.wrap(new HashMap<>());
+		Assertions.assertThrows(IllegalArgumentException.class, () -> {
+			CryptoFileSystemProperties.wrap(new HashMap<>());
+		});
 	}
 
 	@Test
@@ -250,40 +249,40 @@ public class CryptoFileSystemPropertiesTest {
 				.withPassphrase("any") //
 				.build();
 
-		assertThat(CryptoFileSystemProperties.wrap(inTest), is(sameInstance(inTest)));
+		MatcherAssert.assertThat(CryptoFileSystemProperties.wrap(inTest), is(sameInstance(inTest)));
 	}
 
 	@Test
 	public void testMapIsImmutable() {
-		thrown.expect(UnsupportedOperationException.class);
-
-		cryptoFileSystemProperties() //
-				.withPassphrase("irrelevant") //
-				.build() //
-				.put("test", "test");
+		Assertions.assertThrows(UnsupportedOperationException.class, () -> {
+			cryptoFileSystemProperties() //
+					.withPassphrase("irrelevant") //
+					.build() //
+					.put("test", "test");
+		});
 	}
 
 	@Test
 	public void testEntrySetIsImmutable() {
-		thrown.expect(UnsupportedOperationException.class);
-
-		cryptoFileSystemProperties() //
-				.withPassphrase("irrelevant") //
-				.build() //
-				.entrySet() //
-				.add(null);
+		Assertions.assertThrows(UnsupportedOperationException.class, () -> {
+			cryptoFileSystemProperties() //
+					.withPassphrase("irrelevant") //
+					.build() //
+					.entrySet() //
+					.add(null);
+		});
 	}
 
 	@Test
 	public void testEntryIsImmutable() {
-		thrown.expect(UnsupportedOperationException.class);
-
-		cryptoFileSystemProperties() //
-				.withPassphrase("irrelevant") //
-				.build() //
-				.entrySet() //
-				.iterator().next() //
-				.setValue(null);
+		Assertions.assertThrows(UnsupportedOperationException.class, () -> {
+			cryptoFileSystemProperties() //
+					.withPassphrase("irrelevant") //
+					.build() //
+					.entrySet() //
+					.iterator().next() //
+					.setValue(null);
+		});
 	}
 
 	private <K, V> Matcher<Map.Entry<K, V>> anEntry(K key, V value) {

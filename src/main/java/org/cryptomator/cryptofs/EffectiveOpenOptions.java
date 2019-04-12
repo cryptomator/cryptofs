@@ -26,7 +26,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.HashSet;
 import java.util.Set;
 
-class EffectiveOpenOptions {
+public class EffectiveOpenOptions {
 
 	private final ReadonlyFlag readonlyFlag;
 	private final Set<OpenOption> options;
@@ -180,9 +180,6 @@ class EffectiveOpenOptions {
 	public Set<OpenOption> createOpenOptionsForEncryptedFile() {
 		Set<OpenOption> result = new HashSet<>(options);
 		result.add(READ); // also needed during write
-		if (!readonlyFlag.isSet()) {
-			result.add(WRITE); // maybe needed when opening writable channel afterwards
-		}
 		result.remove(LinkOption.NOFOLLOW_LINKS);
 		result.remove(APPEND);
 		return result;

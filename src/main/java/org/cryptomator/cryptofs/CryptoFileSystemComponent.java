@@ -2,18 +2,20 @@ package org.cryptomator.cryptofs;
 
 import dagger.BindsInstance;
 import dagger.Subcomponent;
+import org.cryptomator.cryptofs.attr.AttributeViewComponent;
+import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
 
 import java.nio.file.Path;
 
-@PerFileSystem
+@CryptoFileSystemScoped
 @Subcomponent(modules = {CryptoFileSystemModule.class})
-interface CryptoFileSystemComponent {
+public interface CryptoFileSystemComponent {
 
 	CryptoFileSystemImpl cryptoFileSystem();
 
 	OpenCryptoFileComponent.Builder newOpenCryptoFileComponent();
 
-	CryptoFileAttributeViewComponent.Builder newFileAttributeViewComponent();
+	AttributeViewComponent.Builder newFileAttributeViewComponent();
 
 	@Subcomponent.Builder
 	interface Builder {

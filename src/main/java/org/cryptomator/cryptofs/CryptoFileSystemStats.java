@@ -11,7 +11,7 @@ import javax.inject.Inject;
  * <p>
  * The available metrics are constantly updated in a thread-safe manner and can be polled at any time.
  */
-@PerFileSystem
+@CryptoFileSystemScoped
 public class CryptoFileSystemStats {
 
 	private final LongAdder bytesRead = new LongAdder();
@@ -30,7 +30,7 @@ public class CryptoFileSystemStats {
 		return bytesRead.sumThenReset();
 	}
 
-	void addBytesRead(long numBytes) {
+	public void addBytesRead(long numBytes) {
 		bytesRead.add(numBytes);
 	}
 
@@ -38,7 +38,7 @@ public class CryptoFileSystemStats {
 		return bytesWritten.sumThenReset();
 	}
 
-	void addBytesWritten(long numBytes) {
+	public void addBytesWritten(long numBytes) {
 		bytesWritten.add(numBytes);
 	}
 
@@ -46,7 +46,7 @@ public class CryptoFileSystemStats {
 		return bytesDecrypted.sumThenReset();
 	}
 
-	void addBytesDecrypted(long numBytes) {
+	public void addBytesDecrypted(long numBytes) {
 		bytesDecrypted.add(numBytes);
 	}
 
@@ -54,7 +54,7 @@ public class CryptoFileSystemStats {
 		return bytesEncrypted.sumThenReset();
 	}
 
-	void addBytesEncrypted(long numBytes) {
+	public void addBytesEncrypted(long numBytes) {
 		bytesEncrypted.add(numBytes);
 	}
 
@@ -62,7 +62,7 @@ public class CryptoFileSystemStats {
 		return chunkCacheAccesses.sumThenReset();
 	}
 
-	void addChunkCacheAccess() {
+	public void addChunkCacheAccess() {
 		chunkCacheAccesses.increment();
 		chunkCacheHits.increment();
 	}
@@ -75,7 +75,7 @@ public class CryptoFileSystemStats {
 		return chunkCacheMisses.sumThenReset();
 	}
 
-	void addChunkCacheMiss() {
+	public void addChunkCacheMiss() {
 		chunkCacheMisses.increment();
 		chunkCacheHits.decrement();
 	}

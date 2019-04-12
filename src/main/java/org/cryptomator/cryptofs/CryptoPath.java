@@ -26,7 +26,7 @@ import java.util.Objects;
 
 import static org.cryptomator.cryptofs.Constants.SEPARATOR;
 
-class CryptoPath implements Path {
+public class CryptoPath implements Path {
 
 	private static final String CURRENT_DIR = ".";
 	private static final String PARENT_DIR = "..";
@@ -36,7 +36,7 @@ class CryptoPath implements Path {
 	private final List<String> elements;
 	private final boolean absolute;
 
-	public CryptoPath(CryptoFileSystemImpl fileSystem, Symlinks symlinks, List<String> elements, boolean absolute) {
+	CryptoPath(CryptoFileSystemImpl fileSystem, Symlinks symlinks, List<String> elements, boolean absolute) {
 		fileSystem.assertOpen();
 		this.fileSystem = Objects.requireNonNull(fileSystem);
 		this.symlinks = Objects.requireNonNull(symlinks);
@@ -44,7 +44,7 @@ class CryptoPath implements Path {
 		this.absolute = Objects.requireNonNull(absolute);
 	}
 
-	public static CryptoPath castAndAssertAbsolute(Path path) {
+	static CryptoPath castAndAssertAbsolute(Path path) {
 		CryptoPath result = cast(path);
 		if (!result.isAbsolute()) {
 			throw new IllegalArgumentException("Path must be absolute but was " + path);
@@ -52,7 +52,7 @@ class CryptoPath implements Path {
 		return result;
 	}
 
-	public static CryptoPath cast(Path path) {
+	static CryptoPath cast(Path path) {
 		if (path instanceof CryptoPath) {
 			CryptoPath cryptoPath = (CryptoPath) path;
 			cryptoPath.getFileSystem().assertOpen();
