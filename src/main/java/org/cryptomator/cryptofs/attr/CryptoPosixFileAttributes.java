@@ -8,6 +8,11 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.attr;
 
+import com.google.common.collect.Sets;
+import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.fh.OpenCryptoFile;
+import org.cryptomator.cryptolib.api.Cryptor;
+
 import java.nio.file.Path;
 import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFileAttributes;
@@ -16,11 +21,6 @@ import java.nio.file.attribute.UserPrincipal;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Set;
-
-import com.google.common.collect.Sets;
-import org.cryptomator.cryptofs.CryptoPathMapper;
-import org.cryptomator.cryptofs.fh.OpenCryptoFile;
-import org.cryptomator.cryptolib.api.Cryptor;
 
 import static java.nio.file.attribute.PosixFilePermission.GROUP_WRITE;
 import static java.nio.file.attribute.PosixFilePermission.OTHERS_WRITE;
@@ -34,18 +34,14 @@ class CryptoPosixFileAttributes extends CryptoBasicFileAttributes implements Pos
 	private final GroupPrincipal group;
 	private final Set<PosixFilePermission> permissions;
 
-	public CryptoPosixFileAttributes(PosixFileAttributes delegate, CryptoPathMapper.CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonly) {
-		super(delegate, ciphertextFileType, ciphertextPath, cryptor, openCryptoFile, readonly);
+	public CryptoPosixFileAttributes(PosixFileAttributes delegate, CryptoPathMapper.CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonlyFileSystem) {
+		super(delegate, ciphertextFileType, ciphertextPath, cryptor, openCryptoFile, readonlyFileSystem);
 		this.owner = delegate.owner();
 		this.group = delegate.group();
-		this.permissions = calcPermissions(delegate.permissions(), readonly);
-	}
-
-	private static Set<PosixFilePermission> calcPermissions(Set<PosixFilePermission> delegatePermissions, boolean readonly) {
-		if (readonly) {
-			return Sets.difference(delegatePermissions, ALL_WRITE);
+		if (readonlyFileSystem) {
+			this.permissions = Sets.difference(delegate.permissions(), ALL_WRITE);
 		} else {
-			return delegatePermissions;
+			this.permissions = delegate.permissions();
 		}
 	}
 

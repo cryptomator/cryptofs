@@ -94,7 +94,7 @@ public class AttributeProvider {
 
 	@FunctionalInterface
 	private interface AttributesConstructor<A extends BasicFileAttributes> {
-		A construct(A delegate, CryptoPathMapper.CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonly);
+		A construct(A delegate, CryptoPathMapper.CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonlyFileSystem);
 	}
 
 }

@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.cryptomator</groupId>
 	<artifactId>cryptofs</artifactId>
-	<version>1.8.0-SNAPSHOT</version>
+	<version>1.9.0-SNAPSHOT</version>
 	<name>Cryptomator Crypto Filesystem</name>
 	<description>This library provides the Java filesystem provider used by Cryptomator.</description>
 	<url>https://github.com/cryptomator/cryptofs</url>
@@ -15,13 +15,13 @@
 
 	<properties>
 		<cryptolib.version>1.2.2</cryptolib.version>
-		<dagger.version>2.20</dagger.version>
-		<guava.version>27.0-jre</guava.version>
-		<slf4j.version>1.7.25</slf4j.version>
+		<dagger.version>2.22.1</dagger.version>
+		<guava.version>27.1-jre</guava.version>
+		<slf4j.version>1.7.26</slf4j.version>
 
-		<junit.jupiter.version>5.4.0</junit.jupiter.version>
-		<mockito.version>2.24.0</mockito.version>
-		<hamcrest.version>1.3</hamcrest.version>
+		<junit.jupiter.version>5.4.2</junit.jupiter.version>
+		<mockito.version>2.27.0</mockito.version>
+		<hamcrest.version>2.1</hamcrest.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
@@ -106,7 +106,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.hamcrest</groupId>
-			<artifactId>hamcrest-all</artifactId>
+			<artifactId>hamcrest</artifactId>
 			<version>${hamcrest.version}</version>
 			<scope>test</scope>
 		</dependency>
