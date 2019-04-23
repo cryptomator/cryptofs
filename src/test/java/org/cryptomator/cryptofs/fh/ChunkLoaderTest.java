@@ -35,7 +35,7 @@ public class ChunkLoaderTest {
 	private final Cryptor cryptor = mock(Cryptor.class);
 	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
 	private final FileHeader header = mock(FileHeader.class);
-	private final FileHeaderHandler headerLoader = mock(FileHeaderHandler.class);
+	private final FileHeaderLoader headerLoader = mock(FileHeaderLoader.class);
 	private final ChunkLoader inTest = new ChunkLoader(cryptor, chunkIO, headerLoader, stats);
 
 	@BeforeEach

@@ -22,7 +22,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class FileHeaderHandlerTest {
+class FileHeaderLoaderTest {
 
 	static {
 		System.setProperty("org.slf4j.simpleLogger.log.org.cryptomator.cryptofs.ch.FileHeaderLoader", "trace");
@@ -36,7 +36,7 @@ class FileHeaderHandlerTest {
 	private final Path path = mock(Path.class, "openFile.txt");
 	private final AtomicReference<Path> pathRef = new AtomicReference<>(path);
 
-	private final FileHeaderHandler inTest = new FileHeaderHandler(chunkIO, cryptor, pathRef);
+	private final FileHeaderLoader inTest = new FileHeaderLoader(chunkIO, cryptor, pathRef);
 
 	@BeforeEach
 	public void setup() throws IOException {
@@ -51,13 +51,14 @@ class FileHeaderHandlerTest {
 
 		@BeforeEach
 		public void setup() throws IOException {
+			byte[] headerBytes = "leHeader".getBytes(StandardCharsets.US_ASCII);
 			when(chunkIO.size()).thenReturn(100l);
-			when(fileHeaderCryptor.headerSize()).thenReturn(100);
+			when(fileHeaderCryptor.headerSize()).thenReturn(headerBytes.length);
 			when(chunkIO.read(Mockito.any(ByteBuffer.class), Mockito.eq(0l))).thenAnswer(invocation -> {
 				ByteBuffer buf = invocation.getArgument(0);
-				Assertions.assertEquals(100, buf.capacity());
-				buf.put("leHeader".getBytes(StandardCharsets.US_ASCII));
-				return null;
+				Assertions.assertEquals(headerBytes.length, buf.capacity());
+				buf.put(headerBytes);
+				return headerBytes.length;
 			});
 			when(fileHeaderCryptor.decryptHeader(Mockito.argThat(buf -> StandardCharsets.US_ASCII.decode(buf).toString().equals("leHeader")))).thenReturn(headerToLoad);
 		}
@@ -73,14 +74,6 @@ class FileHeaderHandlerTest {
 			Assertions.assertSame(headerToLoad, loadedHeader3);
 
 			verify(fileHeaderCryptor, times(1)).decryptHeader(Mockito.any());
-		}
-
-		@Test
-		@DisplayName("don't persist")
-		public void testDontPersistDirtyHeader() throws IOException {
-			inTest.persistIfNeeded();
-
-			verify(chunkIO, Mockito.never()).write(Mockito.any(), Mockito.eq(0l));
 		}
 
 	}
@@ -113,14 +106,6 @@ class FileHeaderHandlerTest {
 			Assertions.assertSame(headerToCreate, createdHeader3);
 
 			verify(fileHeaderCryptor, times(1)).create();
-		}
-
-		@Test
-		@DisplayName("persist")
-		public void testPersistDirtyHeader() throws IOException {
-			inTest.persistIfNeeded();
-
-			verify(chunkIO).write(Mockito.any(), Mockito.eq(0l));
 		}
 
 	}

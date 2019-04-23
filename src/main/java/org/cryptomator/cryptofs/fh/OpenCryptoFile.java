@@ -29,18 +29,18 @@ public class OpenCryptoFile implements Closeable {
 
 	private final FileCloseListener listener;
 	private final AtomicReference<Instant> lastModified;
+	private final ChunkCache chunkCache;
 	private final ChunkIO chunkIO;
-	private final FileHeaderHandler headerHandler;
 	private final AtomicReference<Path> currentFilePath;
 	private final AtomicLong fileSize;
 	private final OpenCryptoFileComponent component;
 	private final ConcurrentMap<CleartextFileChannel, FileChannel> openChannels = new ConcurrentHashMap<>();
 
 	@Inject
-	public OpenCryptoFile(FileCloseListener listener, ChunkIO chunkIO, FileHeaderHandler headerHandler, @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
+	public OpenCryptoFile(FileCloseListener listener, ChunkCache chunkCache, ChunkIO chunkIO, @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
 		this.listener = listener;
+		this.chunkCache = chunkCache;
 		this.chunkIO = chunkIO;
-		this.headerHandler = headerHandler;
 		this.currentFilePath = currentFilePath;
 		this.fileSize = fileSize;
 		this.component = component;
@@ -49,6 +49,10 @@ public class OpenCryptoFile implements Closeable {
 
 	public synchronized FileChannel newFileChannel(EffectiveOpenOptions options) throws IOException {
 		Path path = currentFilePath.get();
+
+		if (options.truncateExisting()) {
+			chunkCache.invalidateAll();
+		}
 
 		FileChannel ciphertextFileChannel = null;
 		CleartextFileChannel cleartextFileChannel = null;
@@ -96,7 +100,6 @@ public class OpenCryptoFile implements Closeable {
 		try {
 			FileChannel ciphertextFileChannel = openChannels.remove(cleartextFileChannel);
 			if (ciphertextFileChannel != null) {
-				headerHandler.persistIfNeeded();
 				chunkIO.unregisterChannel(ciphertextFileChannel);
 				ciphertextFileChannel.close();
 			}
