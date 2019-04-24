@@ -18,12 +18,12 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.parallel.Execution;
 import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
@@ -40,7 +40,7 @@ public class OpenCryptoFileTest {
 	private AtomicReference<Path> currentFilePath;
 	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 	private FileCloseListener closeListener = mock(FileCloseListener.class);
-	private FileHeaderHandler fileHeaderHandler = mock(FileHeaderHandler.class);
+	private ChunkCache chunkCache = mock(ChunkCache.class);
 	private ChunkIO chunkIO = mock(ChunkIO.class);
 	private AtomicLong fileSize = new AtomicLong();
 	private AtomicReference<Instant> lastModified = new AtomicReference(Instant.ofEpochMilli(0));
@@ -55,7 +55,7 @@ public class OpenCryptoFileTest {
 		fs = Jimfs.newFileSystem("OpenCryptoFileTest");
 		currentFilePath = new AtomicReference<>(fs.getPath("currentFile"));
 
-		inTest = new OpenCryptoFile(closeListener, chunkIO, fileHeaderHandler, currentFilePath, fileSize, lastModified, openCryptoFileComponent);
+		inTest = new OpenCryptoFile(closeListener, chunkCache, chunkIO, currentFilePath, fileSize, lastModified, openCryptoFileComponent);
 	}
 
 	@AfterEach
@@ -75,14 +75,12 @@ public class OpenCryptoFileTest {
 	@DisplayName("FileChannels")
 	class FileChannelFactoryTest {
 
-		private EffectiveOpenOptions options;
 		private CleartextFileChannel cleartextFileChannel;
 		private AtomicReference<ChannelCloseListener> listener;
 		private AtomicReference<FileChannel> ciphertextChannel;
 
 		@BeforeAll
 		public void setup() throws IOException {
-			options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), readonlyFlag);
 			cleartextFileChannel = mock(CleartextFileChannel.class);
 			listener = new AtomicReference<>();
 			ciphertextChannel = new AtomicReference<>();
@@ -92,7 +90,7 @@ public class OpenCryptoFileTest {
 				ciphertextChannel.set(invocation.getArgument(0));
 				return channelComponentBuilder;
 			});
-			Mockito.when(channelComponentBuilder.openOptions(options)).thenReturn(channelComponentBuilder);
+			Mockito.when(channelComponentBuilder.openOptions(Mockito.any())).thenReturn(channelComponentBuilder);
 			Mockito.when(channelComponentBuilder.onClose(Mockito.any())).thenAnswer(invocation -> {
 				listener.set(invocation.getArgument(0));
 				return channelComponentBuilder;
@@ -105,20 +103,31 @@ public class OpenCryptoFileTest {
 		@Order(0)
 		@DisplayName("create new FileChannel")
 		public void createFileChannel() throws IOException {
+			EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), readonlyFlag);
 			FileChannel ch = inTest.newFileChannel(options);
 			Assertions.assertSame(cleartextFileChannel, ch);
 			verify(chunkIO).registerChannel(ciphertextChannel.get(), true);
 		}
 
+
+		@Test
+		@Order(10)
+		@DisplayName("TRUNCATE_EXISTING leads to chunk cache invalidation")
+		public void testTruncateExistingInvalidatesChunkCache() throws IOException {
+			Files.write(currentFilePath.get(), new byte[0]);
+			EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE), readonlyFlag);
+			inTest.newFileChannel(options);
+			verify(chunkCache).invalidateAll();
+		}
+
 		@Test
 		@Order(100)
-		@DisplayName("closeListener triggers fileHeaderHandler.persistIfNeeded()")
+		@DisplayName("closeListener triggers chunkIO.unregisterChannel()")
 		public void triggerCloseListener() throws IOException {
 			Assumptions.assumeTrue(listener.get() != null);
 			Assumptions.assumeTrue(ciphertextChannel.get() != null);
 
 			listener.get().closed(cleartextFileChannel);
-			verify(fileHeaderHandler).persistIfNeeded();
 			verify(chunkIO).unregisterChannel(ciphertextChannel.get());
 		}
 

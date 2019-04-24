@@ -34,15 +34,15 @@ public class ChunkSaverTest {
 	private final Cryptor cryptor = mock(Cryptor.class);
 	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
 	private final FileHeader header = mock(FileHeader.class);
-	private final FileHeaderHandler headerHandler = mock(FileHeaderHandler.class);
+	private final FileHeaderLoader headerLoader = mock(FileHeaderLoader.class);
 	private final ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
-	private final ChunkSaver inTest = new ChunkSaver(cryptor, chunkIO, headerHandler, exceptionsDuringWrite, stats);
+	private final ChunkSaver inTest = new ChunkSaver(cryptor, chunkIO, headerLoader, exceptionsDuringWrite, stats);
 
 	@BeforeEach
 	public void setup() throws IOException {
 		when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
-		when(headerHandler.get()).thenReturn(header);
+		when(headerLoader.get()).thenReturn(header);
 		when(fileContentCryptor.ciphertextChunkSize()).thenReturn(CIPHERTEXT_CHUNK_SIZE);
 		when(fileContentCryptor.cleartextChunkSize()).thenReturn(CLEARTEXT_CHUNK_SIZE);
 		when(fileHeaderCryptor.headerSize()).thenReturn(HEADER_SIZE);
