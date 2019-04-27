@@ -6,6 +6,9 @@ import org.cryptomator.cryptofs.ReadonlyFlag;
 import org.cryptomator.cryptofs.ch.ChannelCloseListener;
 import org.cryptomator.cryptofs.ch.ChannelComponent;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.FileContentCryptor;
+import org.cryptomator.cryptolib.api.FileHeaderCryptor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
@@ -33,6 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class OpenCryptoFileTest {
 
@@ -41,8 +45,11 @@ public class OpenCryptoFileTest {
 	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 	private FileCloseListener closeListener = mock(FileCloseListener.class);
 	private ChunkCache chunkCache = mock(ChunkCache.class);
+	private Cryptor cryptor = mock(Cryptor.class);
+	private FileHeaderCryptor fileHeaderCryptor = mock(FileHeaderCryptor.class);
+	private FileContentCryptor fileContentCryptor = mock(FileContentCryptor.class);
 	private ChunkIO chunkIO = mock(ChunkIO.class);
-	private AtomicLong fileSize = new AtomicLong();
+	private AtomicLong fileSize = new AtomicLong(-1l);
 	private AtomicReference<Instant> lastModified = new AtomicReference(Instant.ofEpochMilli(0));
 	private OpenCryptoFileComponent openCryptoFileComponent = mock(OpenCryptoFileComponent.class);
 	private ChannelComponent.Builder channelComponentBuilder = mock(ChannelComponent.Builder.class);
@@ -55,7 +62,11 @@ public class OpenCryptoFileTest {
 		fs = Jimfs.newFileSystem("OpenCryptoFileTest");
 		currentFilePath = new AtomicReference<>(fs.getPath("currentFile"));
 
-		inTest = new OpenCryptoFile(closeListener, chunkCache, chunkIO, currentFilePath, fileSize, lastModified, openCryptoFileComponent);
+		when(fileHeaderCryptor.headerSize()).thenReturn(50);
+		when(fileContentCryptor.cleartextChunkSize()).thenReturn(100);
+		when(fileContentCryptor.ciphertextChunkSize()).thenReturn(110);
+
+		inTest = new OpenCryptoFile(closeListener, chunkCache, cryptor, chunkIO, currentFilePath, fileSize, lastModified, openCryptoFileComponent);
 	}
 
 	@AfterEach
@@ -101,6 +112,15 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@Order(0)
+		@DisplayName("getting size fails before creating first file channel")
+		public void testGetSizeBeforeCreatingFileChannel() {
+			Assertions.assertThrows(IllegalStateException.class, () -> {
+				inTest.size();
+			});
+		}
+
+		@Test
+		@Order(10)
 		@DisplayName("create new FileChannel")
 		public void createFileChannel() throws IOException {
 			EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), readonlyFlag);
@@ -109,9 +129,16 @@ public class OpenCryptoFileTest {
 			verify(chunkIO).registerChannel(ciphertextChannel.get(), true);
 		}
 
+		@Test
+		@Order(15)
+		@DisplayName("getting size succeeds after creating first file channel")
+		public void testGetSizeAfterCreatingFileChannel() {
+			Assertions.assertEquals(0l, inTest.size());
+		}
+
 
 		@Test
-		@Order(10)
+		@Order(20)
 		@DisplayName("TRUNCATE_EXISTING leads to chunk cache invalidation")
 		public void testTruncateExistingInvalidatesChunkCache() throws IOException {
 			Files.write(currentFilePath.get(), new byte[0]);

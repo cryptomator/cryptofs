@@ -75,7 +75,6 @@ public class CleartextFileChannelTest {
 		when(fileHeaderCryptor.headerSize()).thenReturn(50);
 		when(fileContentCryptor.cleartextChunkSize()).thenReturn(100);
 		when(fileContentCryptor.ciphertextChunkSize()).thenReturn(110);
-		when(ciphertextFileChannel.size()).thenReturn(160l); // initial cleartext size will be 100
 		when(attributeViewSupplier.get()).thenReturn(attributeView);
 		when(readWriteLock.readLock()).thenReturn(readLock);
 		when(readWriteLock.writeLock()).thenReturn(writeLock);
@@ -291,7 +290,7 @@ public class CleartextFileChannelTest {
 
 		@Test
 		public void testReadFromMultipleChunks() throws IOException {
-			when(ciphertextFileChannel.size()).thenReturn(5_500_000_160l); // initial cleartext size will be 5_000_000_100l
+			fileSize.set(5_000_000_100l); // initial cleartext size will be 5_000_000_100l
 			when(options.readable()).thenReturn(true);
 
 			inTest = new CleartextFileChannel(ciphertextFileChannel, headerLoader, readWriteLock, cryptor, chunkCache, options, fileSize, lastModified, attributeViewSupplier, exceptionsDuringWrite, closeListener, stats);
