@@ -116,6 +116,8 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			Assertions.assertEquals(0, channel.size());
 			Assertions.assertEquals(0, Files.size(filePath(fileId)));
 		}
+
+		Assertions.assertEquals(0, Files.size(filePath(fileId)));
 	}
 
 	// tests https://github.com/cryptomator/cryptofs/issues/26
@@ -128,6 +130,8 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			Assertions.assertEquals(10, channel.size());
 			Assertions.assertEquals(10, Files.size(filePath(fileId)));
 		}
+
+		Assertions.assertEquals(10, Files.size(filePath(fileId)));
 	}
 
 	@Test

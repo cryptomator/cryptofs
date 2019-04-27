@@ -10,14 +10,12 @@ import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptofs.fh.FileHeaderLoader;
 import org.cryptomator.cryptofs.fh.OpenFileModifiedDate;
 import org.cryptomator.cryptofs.fh.OpenFileSize;
-import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -204,6 +202,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 
 	private void forceInternal(boolean metaData) throws IOException {
 		if (isWritable()) {
+			writeHeaderIfNeeded();
 			chunkCache.invalidateAll(); // TODO performance: write chunks but keep them cached
 			exceptionsDuringWrite.throwIfPresent();
 			attrViewProvider.get().setTimes(FileTime.from(lastModified.get()), null, null);
