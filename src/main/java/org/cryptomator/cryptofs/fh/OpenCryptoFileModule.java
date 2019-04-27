@@ -56,14 +56,9 @@ public class OpenCryptoFileModule {
 	@Provides
 	@OpenFileScoped
 	@OpenFileSize
-	public AtomicLong provideFileSize(@OriginalOpenFilePath Path originalPath, Cryptor cryptor) {
-		long ciphertextSize = readBasicAttributes(originalPath).map(BasicFileAttributes::size).orElse(0l);
-		if (ciphertextSize == 0) {
-			return new AtomicLong();
-		} else {
-			int headerSize = cryptor.fileHeaderCryptor().headerSize();
-			return new AtomicLong(cleartextSize(ciphertextSize - headerSize, cryptor));
-		}
+	public AtomicLong provideFileSize() {
+		// will be initialized when first creating a FileChannel. See OpenCryptoFile#size()
+		return new AtomicLong(-1l);
 	}
 
 	private Optional<BasicFileAttributes> readBasicAttributes(Path path) {

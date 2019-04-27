@@ -40,11 +40,27 @@ public class OpenCryptoFiles implements Closeable {
 		this.component = component;
 	}
 
+	/**
+	 * Gets an OpenCryptoFile (if any is opened) without creating it.
+	 * <p>
+	 * Useful if you don't want to create any FileChannel but want to check whether this file is currently opened (e.g. to get its current {@link OpenCryptoFile#size()}).
+	 *
+	 * @param ciphertextPath Path of the file which might have been opened
+	 * @return The OpenCryptoFile if opened or an empty Optional otherwise.
+	 */
 	public Optional<OpenCryptoFile> get(Path ciphertextPath) {
 		Path normalizedPath = ciphertextPath.toAbsolutePath().normalize();
 		return Optional.ofNullable(openCryptoFiles.get(normalizedPath));
 	}
 
+	/**
+	 * Opens a file to {@link OpenCryptoFile#newFileChannel(EffectiveOpenOptions) retrieve a FileChannel}. If this file is already opened, a shared instance is returned.
+	 * Getting the file channel should be the next invocation, since the {@link OpenFileScoped lifecycle} of the OpenFile strictly depends on the lifecycle of the channel.
+	 *
+	 * @param ciphertextPath Path of the file to open
+	 * @return The opened file.
+	 * @see #get(Path)
+	 */
 	public OpenCryptoFile getOrCreate(Path ciphertextPath) {
 		Path normalizedPath = ciphertextPath.toAbsolutePath().normalize();
 		return openCryptoFiles.computeIfAbsent(normalizedPath, this::create); // computeIfAbsent is atomic, "create" is called at most once

@@ -8,9 +8,14 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.fh;
 
+import com.google.common.base.Preconditions;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ch.ChannelComponent;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
+import org.cryptomator.cryptolib.Cryptors;
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.Closeable;
@@ -27,9 +32,12 @@ import java.util.concurrent.atomic.AtomicReference;
 @OpenFileScoped
 public class OpenCryptoFile implements Closeable {
 
+	private static final Logger LOG = LoggerFactory.getLogger(OpenCryptoFile.class);
+
 	private final FileCloseListener listener;
 	private final AtomicReference<Instant> lastModified;
 	private final ChunkCache chunkCache;
+	private final Cryptor cryptor;
 	private final ChunkIO chunkIO;
 	private final AtomicReference<Path> currentFilePath;
 	private final AtomicLong fileSize;
@@ -37,9 +45,10 @@ public class OpenCryptoFile implements Closeable {
 	private final ConcurrentMap<CleartextFileChannel, FileChannel> openChannels = new ConcurrentHashMap<>();
 
 	@Inject
-	public OpenCryptoFile(FileCloseListener listener, ChunkCache chunkCache, ChunkIO chunkIO, @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
+	public OpenCryptoFile(FileCloseListener listener, ChunkCache chunkCache, Cryptor cryptor, ChunkIO chunkIO, @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
 		this.listener = listener;
 		this.chunkCache = chunkCache;
+		this.cryptor = cryptor;
 		this.chunkIO = chunkIO;
 		this.currentFilePath = currentFilePath;
 		this.fileSize = fileSize;
@@ -47,6 +56,13 @@ public class OpenCryptoFile implements Closeable {
 		this.lastModified = lastModified;
 	}
 
+	/**
+	 * Creates a new file channel with the given open options.
+	 *
+	 * @param options The options to use to open the file channel. For the most part these will be passed through to the ciphertext channel.
+	 * @return A new file channel. Ideally used in a try-with-resource statement. If the channel is not properly closed, this OpenCryptoFile will stay open indefinite.
+	 * @throws IOException
+	 */
 	public synchronized FileChannel newFileChannel(EffectiveOpenOptions options) throws IOException {
 		Path path = currentFilePath.get();
 
@@ -58,6 +74,7 @@ public class OpenCryptoFile implements Closeable {
 		CleartextFileChannel cleartextFileChannel = null;
 		try {
 			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile());
+			initFileSize(ciphertextFileChannel);
 			ChannelComponent channelComponent = component.newChannelComponent() //
 					.ciphertextChannel(ciphertextFileChannel) //
 					.openOptions(options) //
@@ -76,7 +93,36 @@ public class OpenCryptoFile implements Closeable {
 		return cleartextFileChannel;
 	}
 
+	/**
+	 * Called by {@link #newFileChannel(EffectiveOpenOptions)} to determine the fileSize.
+	 * <p>
+	 * Before the size is initialized (i.e. before a channel has been created), {@link #size()} must not be called.
+	 * <p>
+	 * Initialization happens at most once per open file. Subsequent invocations are no-ops.
+	 */
+	private void initFileSize(FileChannel ciphertextFileChannel) throws IOException {
+		if (fileSize.get() == -1l) {
+			LOG.trace("First channel for this openFile. Initializing file size...");
+			long cleartextSize = 0l;
+			try {
+				long ciphertextSize = ciphertextFileChannel.size();
+				if (ciphertextSize > 0l) {
+					cleartextSize = Cryptors.cleartextSize(ciphertextSize - cryptor.fileHeaderCryptor().headerSize(), cryptor);
+				}
+			} catch (IllegalArgumentException e) {
+				LOG.warn("Invalid cipher text file size. Assuming empty file.", e);
+				assert cleartextSize == 0l;
+			}
+			fileSize.compareAndSet(-1l, cleartextSize);
+		}
+	}
+
+	/**
+	 * @return The size of the opened file
+	 * @throws IllegalStateException If the OpenCryptoFile {@link OpenCryptoFiles#getOrCreate(Path) has been created} without {@link #newFileChannel(EffectiveOpenOptions) creating a file channel} next.
+	 */
 	public long size() {
+		Preconditions.checkState(fileSize.get() != -1l, "size must only be called after a FileChannel is created for this OpenCryptoFile");
 		return fileSize.get();
 	}
 

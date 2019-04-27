@@ -68,28 +68,10 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
 		this.closeListener = closeListener;
 		this.stats = stats;
-		updateFileSize();
 		if (options.append()) {
 			position = fileSize.get();
 		}
 		headerWritten = !options.writable();
-	}
-
-	private void updateFileSize() {
-		try {
-			long ciphertextSize = ciphertextFileChannel.size();
-			if (ciphertextSize == 0l) {
-				fileSize.set(0l);
-			} else {
-				long cleartextSize = Cryptors.cleartextSize(ciphertextSize - cryptor.fileHeaderCryptor().headerSize(), cryptor);
-				fileSize.set(cleartextSize);
-			}
-		} catch (IllegalArgumentException e) {
-			LOG.warn("Invalid cipher text file size.", e);
-			fileSize.set(0l);
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
 	}
 
 	@Override
@@ -180,7 +162,8 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			written += len;
 		}
 		long minSize = position + written;
-		fileSize.updateAndGet(size -> max(minSize, size));
+		long newSize = fileSize.updateAndGet(size -> max(minSize, size));
+		assert newSize >= minSize;
 		lastModified.set(Instant.now());
 		stats.addBytesWritten(written);
 		return written;
