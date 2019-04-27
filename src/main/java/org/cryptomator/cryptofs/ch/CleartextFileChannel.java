@@ -10,14 +10,12 @@ import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptofs.fh.FileHeaderLoader;
 import org.cryptomator.cryptofs.fh.OpenFileModifiedDate;
 import org.cryptomator.cryptofs.fh.OpenFileSize;
-import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -68,28 +66,10 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
 		this.closeListener = closeListener;
 		this.stats = stats;
-		updateFileSize();
 		if (options.append()) {
 			position = fileSize.get();
 		}
 		headerWritten = !options.writable();
-	}
-
-	private void updateFileSize() {
-		try {
-			long ciphertextSize = ciphertextFileChannel.size();
-			if (ciphertextSize == 0l) {
-				fileSize.set(0l);
-			} else {
-				long cleartextSize = Cryptors.cleartextSize(ciphertextSize - cryptor.fileHeaderCryptor().headerSize(), cryptor);
-				fileSize.set(cleartextSize);
-			}
-		} catch (IllegalArgumentException e) {
-			LOG.warn("Invalid cipher text file size.", e);
-			fileSize.set(0l);
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
 	}
 
 	@Override
@@ -180,7 +160,8 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			written += len;
 		}
 		long minSize = position + written;
-		fileSize.updateAndGet(size -> max(minSize, size));
+		long newSize = fileSize.updateAndGet(size -> max(minSize, size));
+		assert newSize >= minSize;
 		lastModified.set(Instant.now());
 		stats.addBytesWritten(written);
 		return written;
@@ -221,6 +202,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 
 	private void forceInternal(boolean metaData) throws IOException {
 		if (isWritable()) {
+			writeHeaderIfNeeded();
 			chunkCache.invalidateAll(); // TODO performance: write chunks but keep them cached
 			exceptionsDuringWrite.throwIfPresent();
 			attrViewProvider.get().setTimes(FileTime.from(lastModified.get()), null, null);
