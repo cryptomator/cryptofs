@@ -12,7 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.DosFileAttributes;
 import java.util.Optional;
 
-import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.CiphertextFileType;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptolib.api.Cryptor;
 
@@ -21,7 +21,7 @@ class CryptoDosFileAttributes extends CryptoBasicFileAttributes implements DosFi
 	private final boolean readonlyFileSystem;
 	private final DosFileAttributes delegate;
 
-	public CryptoDosFileAttributes(DosFileAttributes delegate, CryptoPathMapper.CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonlyFileSystem) {
+	public CryptoDosFileAttributes(DosFileAttributes delegate, CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonlyFileSystem) {
 		super(delegate, ciphertextFileType, ciphertextPath, cryptor, openCryptoFile, readonlyFileSystem);
 		this.readonlyFileSystem = readonlyFileSystem;
 		this.delegate = delegate;

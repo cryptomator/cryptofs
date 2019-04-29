@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.attr;
 
+import org.cryptomator.cryptofs.CiphertextFileType;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
@@ -49,10 +50,10 @@ public class CryptoFileOwnerAttributeViewTest {
 		when(provider.getFileAttributeView(linkCiphertextPath, FileOwnerAttributeView.class)).thenReturn(linkDelegate);
 
 		when(symlinks.resolveRecursively(link)).thenReturn(cleartextPath);
-		when(pathMapper.getCiphertextFileType(link)).thenReturn(CryptoPathMapper.CiphertextFileType.SYMLINK);
-		when(pathMapper.getCiphertextFilePath(link, CryptoPathMapper.CiphertextFileType.SYMLINK)).thenReturn(linkCiphertextPath);
-		when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CryptoPathMapper.CiphertextFileType.FILE);
-		when(pathMapper.getCiphertextFilePath(cleartextPath, CryptoPathMapper.CiphertextFileType.FILE)).thenReturn(ciphertextPath);
+		when(pathMapper.getCiphertextFileType(link)).thenReturn(CiphertextFileType.SYMLINK);
+		when(pathMapper.getCiphertextFilePath(link, CiphertextFileType.SYMLINK)).thenReturn(linkCiphertextPath);
+		when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
+		when(pathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE)).thenReturn(ciphertextPath);
 
 		inTest = new CryptoFileOwnerAttributeView(cleartextPath, pathMapper, new LinkOption[]{}, symlinks, openCryptoFiles, readonlyFlag);
 	}

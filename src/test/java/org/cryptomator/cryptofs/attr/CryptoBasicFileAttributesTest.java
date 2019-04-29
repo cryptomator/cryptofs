@@ -8,7 +8,6 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.attr;
 
-import org.cryptomator.cryptofs.attr.CryptoBasicFileAttributes;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
@@ -21,9 +20,9 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Optional;
 
-import static org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType.DIRECTORY;
-import static org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType.FILE;
-import static org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType.SYMLINK;
+import static org.cryptomator.cryptofs.CiphertextFileType.DIRECTORY;
+import static org.cryptomator.cryptofs.CiphertextFileType.FILE;
+import static org.cryptomator.cryptofs.CiphertextFileType.SYMLINK;
 
 public class CryptoBasicFileAttributesTest {
 
