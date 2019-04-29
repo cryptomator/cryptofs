@@ -9,6 +9,7 @@
 package org.cryptomator.cryptofs.fh;
 
 import com.google.common.base.Preconditions;
+import com.google.common.io.MoreFiles;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ch.ChannelComponent;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
@@ -82,15 +83,29 @@ public class OpenCryptoFile implements Closeable {
 					.build();
 			cleartextFileChannel = channelComponent.channel();
 		} finally {
-			if (cleartextFileChannel == null && ciphertextFileChannel != null) {
-				// something didn't work
-				ciphertextFileChannel.close();
+			if (cleartextFileChannel == null) { // i.e. something didn't work
+				closeQuietly(ciphertextFileChannel);
+				// is this the first file channel to be opened?
+				if (openChannels.isEmpty()) {
+					close(); // then also close the file again.
+				}
 			}
 		}
+
 		assert cleartextFileChannel != null; // otherwise there would have been an exception
 		openChannels.put(cleartextFileChannel, ciphertextFileChannel);
 		chunkIO.registerChannel(ciphertextFileChannel, options.writable());
 		return cleartextFileChannel;
+	}
+
+	private void closeQuietly(Closeable closeable) {
+		if (closeable != null) {
+			try {
+				closeable.close();
+			} catch (IOException e) {
+				// no-op
+			}
+		}
 	}
 
 	/**
