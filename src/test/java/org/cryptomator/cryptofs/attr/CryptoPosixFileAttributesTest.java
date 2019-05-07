@@ -1,6 +1,5 @@
 package org.cryptomator.cryptofs.attr;
 
-import org.cryptomator.cryptofs.attr.CryptoPosixFileAttributes;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
@@ -22,7 +21,7 @@ import static java.nio.file.attribute.PosixFilePermission.OTHERS_EXECUTE;
 import static java.nio.file.attribute.PosixFilePermission.OTHERS_READ;
 import static java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE;
 import static java.nio.file.attribute.PosixFilePermission.OWNER_READ;
-import static org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType.FILE;
+import static org.cryptomator.cryptofs.CiphertextFileType.FILE;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 

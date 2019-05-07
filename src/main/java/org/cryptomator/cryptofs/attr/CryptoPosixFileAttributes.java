@@ -9,7 +9,7 @@
 package org.cryptomator.cryptofs.attr;
 
 import com.google.common.collect.Sets;
-import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.CiphertextFileType;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptolib.api.Cryptor;
 
@@ -34,7 +34,7 @@ class CryptoPosixFileAttributes extends CryptoBasicFileAttributes implements Pos
 	private final GroupPrincipal group;
 	private final Set<PosixFilePermission> permissions;
 
-	public CryptoPosixFileAttributes(PosixFileAttributes delegate, CryptoPathMapper.CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonlyFileSystem) {
+	public CryptoPosixFileAttributes(PosixFileAttributes delegate, CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonlyFileSystem) {
 		super(delegate, ciphertextFileType, ciphertextPath, cryptor, openCryptoFile, readonlyFileSystem);
 		this.owner = delegate.owner();
 		this.group = delegate.group();

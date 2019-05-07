@@ -1,9 +1,12 @@
 package org.cryptomator.cryptofs;
 
-import static org.cryptomator.cryptofs.Constants.DIR_PREFIX;
-import static org.cryptomator.cryptofs.Constants.SHORT_NAMES_MAX_LENGTH;
-import static org.cryptomator.cryptofs.LongFileNameProvider.LONG_NAME_FILE_EXT;
+import com.google.common.base.Preconditions;
+import org.cryptomator.cryptolib.api.AuthenticationFailedException;
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
@@ -15,18 +18,14 @@ import java.nio.file.StandardOpenOption;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.inject.Inject;
-
-import org.cryptomator.cryptolib.api.AuthenticationFailedException;
-import org.cryptomator.cryptolib.api.Cryptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.cryptomator.cryptofs.Constants.SHORT_NAMES_MAX_LENGTH;
+import static org.cryptomator.cryptofs.LongFileNameProvider.LONG_NAME_FILE_EXT;
 
 @CryptoFileSystemScoped
 class ConflictResolver {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ConflictResolver.class);
-	private static final Pattern BASE32_PATTERN = Pattern.compile("(0|1[A-Z0-9])?(([A-Z2-7]{8})*[A-Z2-7=]{8})");
+	private static final Pattern CIPHERTEXT_FILENAME_PATTERN = Pattern.compile("(0|1[A-Z0-9])?([A-Z2-7]{8})*[A-Z2-7=]{8}");
 	private static final int MAX_DIR_FILE_SIZE = 87; // "normal" file header has 88 bytes
 
 	private final LongFileNameProvider longFileNameProvider;
@@ -51,10 +50,10 @@ class ConflictResolver {
 	public Path resolveConflictsIfNecessary(Path ciphertextPath, String dirId) throws IOException {
 		String ciphertextFileName = ciphertextPath.getFileName().toString();
 		String basename = StringUtils.removeEnd(ciphertextFileName, LONG_NAME_FILE_EXT);
-		Matcher m = BASE32_PATTERN.matcher(basename);
+		Matcher m = CIPHERTEXT_FILENAME_PATTERN.matcher(basename);
 		if (!m.matches() && m.find(0)) {
 			// no full match, but still contains base32 -> partial match
-			return resolveConflict(ciphertextPath, m.group(2), dirId);
+			return resolveConflict(ciphertextPath, m.group(0), dirId);
 		} else {
 			// full match or no match at all -> nothing to resolve
 			return ciphertextPath;
@@ -65,35 +64,35 @@ class ConflictResolver {
 	 * Resolves a conflict.
 	 * 
 	 * @param conflictingPath The path of a file containing a valid base 32 part.
-	 * @param base32match The base32 part inside the filename of the conflicting file.
+	 * @param ciphertextFileName The base32 part inside the filename of the conflicting file.
 	 * @param dirId The directory id of the file's parent directory.
 	 * @return The new path of the conflicting file after the conflict has been resolved.
 	 * @throws IOException
 	 */
-	private Path resolveConflict(Path conflictingPath, String base32match, String dirId) throws IOException {
-		final Path directory = conflictingPath.getParent();
-		final String originalFileName = conflictingPath.getFileName().toString();
-		final String ciphertext;
-		final boolean isDirectory;
-		final String dirPrefix;
-		final Path canonicalPath;
-		if (longFileNameProvider.isDeflated(originalFileName)) {
-			String inflated = longFileNameProvider.inflate(base32match + LONG_NAME_FILE_EXT);
-			ciphertext = StringUtils.removeStart(inflated, DIR_PREFIX);
-			isDirectory = inflated.startsWith(DIR_PREFIX);
-			dirPrefix = isDirectory ? DIR_PREFIX : "";
-			canonicalPath = directory.resolve(base32match + LONG_NAME_FILE_EXT);
+	private Path resolveConflict(Path conflictingPath, String ciphertextFileName, String dirId) throws IOException {
+		String conflictingFileName = conflictingPath.getFileName().toString();
+		Preconditions.checkArgument(conflictingFileName.contains(ciphertextFileName), "%s does not contain %s", conflictingPath, ciphertextFileName);
+
+		Path parent = conflictingPath.getParent();
+		String inflatedFileName;
+		Path canonicalPath;
+		if (longFileNameProvider.isDeflated(conflictingFileName)) {
+			String deflatedName = ciphertextFileName + LONG_NAME_FILE_EXT;
+			inflatedFileName = longFileNameProvider.inflate(deflatedName);
+			canonicalPath = parent.resolve(deflatedName);
 		} else {
-			ciphertext = base32match;
-			isDirectory = originalFileName.startsWith(DIR_PREFIX);
-			dirPrefix = isDirectory ? DIR_PREFIX : "";
-			canonicalPath = directory.resolve(dirPrefix + ciphertext);
+			inflatedFileName = ciphertextFileName;
+			canonicalPath = parent.resolve(ciphertextFileName);
 		}
 
-		if (isDirectory && resolveDirectoryConflictTrivially(canonicalPath, conflictingPath)) {
+		CiphertextFileType type = CiphertextFileType.forFileName(inflatedFileName);
+		assert inflatedFileName.startsWith(type.getPrefix());
+		String ciphertext = inflatedFileName.substring(type.getPrefix().length());
+
+		if (CiphertextFileType.DIRECTORY.equals(type) && resolveDirectoryConflictTrivially(canonicalPath, conflictingPath)) {
 			return canonicalPath;
 		} else {
-			return renameConflictingFile(canonicalPath, conflictingPath, ciphertext, dirId, dirPrefix);
+			return renameConflictingFile(canonicalPath, conflictingPath, ciphertext, dirId, type.getPrefix());
 		}
 	}
 

@@ -9,7 +9,6 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
-import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType;
 import org.cryptomator.cryptofs.attr.AttributeByNameProvider;
 import org.cryptomator.cryptofs.attr.AttributeProvider;
 import org.cryptomator.cryptofs.attr.AttributeViewProvider;

@@ -8,6 +8,12 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
+import org.cryptomator.cryptolib.api.AuthenticationFailedException;
+import org.cryptomator.cryptolib.api.FileNameCryptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryIteratorException;
@@ -20,12 +26,6 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-
-import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
-import org.cryptomator.cryptolib.api.AuthenticationFailedException;
-import org.cryptomator.cryptolib.api.FileNameCryptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.cryptomator.cryptofs.Constants.SHORT_NAMES_MAX_LENGTH;
 
@@ -149,7 +149,7 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 
 	private boolean isBrokenDirectoryFile(ProcessedPaths paths) {
 		Path potentialDirectoryFile = paths.getCiphertextPath();
-		if (paths.getInflatedPath().getFileName().toString().startsWith(Constants.DIR_PREFIX)) {
+		if (paths.getInflatedPath().getFileName().toString().startsWith(CiphertextFileType.DIRECTORY.getPrefix())) {
 			final Path dirPath;
 			try {
 				dirPath = cryptoPathMapper.resolveDirectory(potentialDirectoryFile).path;
