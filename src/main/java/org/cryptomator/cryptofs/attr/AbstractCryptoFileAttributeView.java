@@ -9,6 +9,7 @@
 package org.cryptomator.cryptofs.attr;
 
 import org.cryptomator.cryptofs.ArrayUtils;
+import org.cryptomator.cryptofs.CiphertextFileType;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
@@ -48,7 +49,7 @@ abstract class AbstractCryptoFileAttributeView implements FileAttributeView {
 	}
 
 	private Path getCiphertextPath(CryptoPath path) throws IOException {
-		CryptoPathMapper.CiphertextFileType type = pathMapper.getCiphertextFileType(path);
+		CiphertextFileType type = pathMapper.getCiphertextFileType(path);
 		switch (type) {
 			case SYMLINK:
 				if (ArrayUtils.contains(linkOptions, LinkOption.NOFOLLOW_LINKS)) {

@@ -1,3 +1,4 @@
+dist: xenial
 language: java
 sudo: false
 jdk:
@@ -13,6 +14,10 @@ before_script:
 - mvn -B --update-snapshots dependency-check:check -Pdependency-check
 script:
 - mvn -B clean test jacoco:report verify -Pcoverage -Dorg.slf4j.simpleLogger.defaultLogLevel=debug
+- |
+  if [[ "$TRAVIS_BRANCH" =~ ^release/.* ]]; then
+    mvn -B javadoc:jar;
+  fi
 after_success:
 - curl -o ~/codacy-coverage-reporter.jar https://oss.sonatype.org/service/local/repositories/releases/content/com/codacy/codacy-coverage-reporter/4.0.3/codacy-coverage-reporter-4.0.3-assembly.jar
 - $JAVA_HOME/bin/java -jar ~/codacy-coverage-reporter.jar report -l Java -r target/site/jacoco/jacoco.xml

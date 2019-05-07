@@ -1,7 +1,6 @@
 package org.cryptomator.cryptofs.attr;
 
 import org.cryptomator.cryptofs.CryptoPath;
-import org.cryptomator.cryptofs.attr.CryptoDosFileAttributes;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
@@ -17,7 +16,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import java.nio.file.attribute.DosFileAttributes;
 import java.util.Optional;
 
-import static org.cryptomator.cryptofs.CryptoPathMapper.CiphertextFileType.FILE;
+import static org.cryptomator.cryptofs.CiphertextFileType.FILE;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 

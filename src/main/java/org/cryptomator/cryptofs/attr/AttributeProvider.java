@@ -9,6 +9,7 @@
 package org.cryptomator.cryptofs.attr;
 
 import org.cryptomator.cryptofs.ArrayUtils;
+import org.cryptomator.cryptofs.CiphertextFileType;
 import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
@@ -61,7 +62,7 @@ public class AttributeProvider {
 		if (!ATTR_CONSTRUCTORS.containsKey(type)) {
 			throw new UnsupportedOperationException("Unsupported file attribute type: " + type);
 		}
-		CryptoPathMapper.CiphertextFileType ciphertextFileType = pathMapper.getCiphertextFileType(cleartextPath);
+		CiphertextFileType ciphertextFileType = pathMapper.getCiphertextFileType(cleartextPath);
 		switch (ciphertextFileType) {
 			case SYMLINK: {
 				if (ArrayUtils.contains(options, LinkOption.NOFOLLOW_LINKS)) {
@@ -85,7 +86,7 @@ public class AttributeProvider {
 		}
 	}
 
-	private <A extends BasicFileAttributes> A readAttributes(CryptoPathMapper.CiphertextFileType ciphertextFileType, Path ciphertextPath, Class<A> type) throws IOException {
+	private <A extends BasicFileAttributes> A readAttributes(CiphertextFileType ciphertextFileType, Path ciphertextPath, Class<A> type) throws IOException {
 		assert ATTR_CONSTRUCTORS.containsKey(type);
 		A ciphertextAttrs = Files.readAttributes(ciphertextPath, type);
 		AttributesConstructor<A> constructor = (AttributesConstructor<A>) ATTR_CONSTRUCTORS.get(type);
@@ -94,7 +95,7 @@ public class AttributeProvider {
 
 	@FunctionalInterface
 	private interface AttributesConstructor<A extends BasicFileAttributes> {
-		A construct(A delegate, CryptoPathMapper.CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonlyFileSystem);
+		A construct(A delegate, CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonlyFileSystem);
 	}
 
 }

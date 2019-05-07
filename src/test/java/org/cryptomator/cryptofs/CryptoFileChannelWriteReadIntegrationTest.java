@@ -20,6 +20,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,7 +29,9 @@ import static java.lang.Math.min;
 import static java.lang.String.format;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.READ;
+import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
@@ -55,6 +58,55 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		inMemoryFs.close();
 	}
 
+	// tests https://github.com/cryptomator/cryptofs/issues/50
+	@Test
+	public void testReadWhileStillWriting() throws IOException {
+		Path file = filePath(nextFileId());
+
+		try (FileChannel ch1 = FileChannel.open(file, CREATE_NEW, WRITE)) {
+			// it actually matters that the channel writes more than one chunk size (32k)
+			ch1.write(repeat(1).times(35000).asByteBuffer(), 0);
+			try (FileChannel ch2 = FileChannel.open(file, READ)) {
+				ch1.write(repeat(2).times(5000).asByteBuffer(), 35000);
+			}
+		}
+
+		try (FileChannel ch1 = FileChannel.open(file, READ)) {
+			ByteBuffer buffer = ByteBuffer.allocate(40000);
+			int result = ch1.read(buffer);
+			Assertions.assertEquals(40000, result);
+			Assertions.assertEquals(EOF, ch1.read(ByteBuffer.allocate(0)));
+			buffer.flip();
+			for (int i = 0; i < 40000; i++) {
+				if (i < 35000) {
+					Assertions.assertEquals(1, buffer.get(i), format("byte(%d) = 1", i));
+				} else {
+					Assertions.assertEquals(2, buffer.get(i), format("byte(%d) = 2", i));
+				}
+			}
+		}
+	}
+
+	// tests https://github.com/cryptomator/cryptofs/issues/48
+	@Test
+	public void testTruncateExistingWhileStillOpen() throws IOException {
+		Path file = filePath(nextFileId());
+
+		try (FileChannel ch1 = FileChannel.open(file, CREATE_NEW, WRITE)) {
+			ch1.write(StandardCharsets.UTF_8.encode("goodbye world"), 0);
+			ch1.force(true); // will generate a file header
+			try (FileChannel ch2 = FileChannel.open(file, CREATE, WRITE, TRUNCATE_EXISTING)) { // reuse existing file header, but will not re-write it
+				ch2.write(StandardCharsets.UTF_8.encode("hello world"), 0);
+			}
+		}
+
+		try (FileChannel ch1 = FileChannel.open(file, READ)) {
+			ByteBuffer buf = ByteBuffer.allocate((int) ch1.size());
+			ch1.read(buf);
+			Assertions.assertArrayEquals("hello world".getBytes(), buf.array());
+		}
+	}
+
 	// tests https://github.com/cryptomator/cryptofs/issues/22
 	@Test
 	public void testFileSizeIsZeroAfterCreatingFileChannel() throws IOException {
@@ -64,6 +116,8 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			Assertions.assertEquals(0, channel.size());
 			Assertions.assertEquals(0, Files.size(filePath(fileId)));
 		}
+
+		Assertions.assertEquals(0, Files.size(filePath(fileId)));
 	}
 
 	// tests https://github.com/cryptomator/cryptofs/issues/26
@@ -76,6 +130,8 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			Assertions.assertEquals(10, channel.size());
 			Assertions.assertEquals(10, Files.size(filePath(fileId)));
 		}
+
+		Assertions.assertEquals(10, Files.size(filePath(fileId)));
 	}
 
 	@Test
@@ -230,13 +286,13 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			Assertions.assertEquals(dataSize, channel.size());
 			channel.write(repeat(1).times(dataSize).asByteBuffer());
 			channel.write(repeat(1).times(dataSize).asByteBuffer());
-			Assertions.assertEquals(3*dataSize, channel.size());
+			Assertions.assertEquals(3 * dataSize, channel.size());
 		}
 
 		try (FileChannel channel = readableChannel(fileId)) {
-			ByteBuffer buffer = ByteBuffer.allocate(3*dataSize);
+			ByteBuffer buffer = ByteBuffer.allocate(3 * dataSize);
 			int result = channel.read(buffer);
-			Assertions.assertEquals(3*dataSize, result);
+			Assertions.assertEquals(3 * dataSize, result);
 			Assertions.assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
 		}
 	}

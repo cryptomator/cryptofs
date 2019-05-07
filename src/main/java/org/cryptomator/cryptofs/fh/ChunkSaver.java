@@ -12,15 +12,15 @@ class ChunkSaver {
 
 	private final Cryptor cryptor;
 	private final ChunkIO ciphertext;
-	private final FileHeaderHandler headerHandler;
+	private final FileHeaderLoader headerLoader;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
 	private final CryptoFileSystemStats stats;
 
 	@Inject
-	public ChunkSaver(Cryptor cryptor, ChunkIO ciphertext, FileHeaderHandler headerHandler, ExceptionsDuringWrite exceptionsDuringWrite, CryptoFileSystemStats stats) {
+	public ChunkSaver(Cryptor cryptor, ChunkIO ciphertext, FileHeaderLoader headerLoader, ExceptionsDuringWrite exceptionsDuringWrite, CryptoFileSystemStats stats) {
 		this.cryptor = cryptor;
 		this.ciphertext = ciphertext;
-		this.headerHandler = headerHandler;
+		this.headerLoader = headerLoader;
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
 		this.stats = stats;
 	}
@@ -30,9 +30,8 @@ class ChunkSaver {
 			long ciphertextPos = chunkIndex * cryptor.fileContentCryptor().ciphertextChunkSize() + cryptor.fileHeaderCryptor().headerSize();
 			ByteBuffer cleartextBuf = chunkData.asReadOnlyBuffer();
 			stats.addBytesEncrypted(cleartextBuf.remaining());
-			ByteBuffer ciphertextBuf = cryptor.fileContentCryptor().encryptChunk(cleartextBuf, chunkIndex, headerHandler.get());
+			ByteBuffer ciphertextBuf = cryptor.fileContentCryptor().encryptChunk(cleartextBuf, chunkIndex, headerLoader.get());
 			try {
-				headerHandler.persistIfNeeded();
 				ciphertext.write(ciphertextBuf, ciphertextPos);
 			} catch (IOException e) {
 				exceptionsDuringWrite.add(e);

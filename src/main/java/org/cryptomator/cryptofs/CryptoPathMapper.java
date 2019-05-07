@@ -28,7 +28,6 @@ import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 import static org.cryptomator.cryptofs.Constants.DATA_DIR_NAME;
-import static org.cryptomator.cryptofs.Constants.DIR_PREFIX;
 
 @CryptoFileSystemScoped
 public class CryptoPathMapper {
@@ -55,20 +54,6 @@ public class CryptoPathMapper {
 		this.ciphertextNames = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_CIPHERTEXT_NAMES).build(CacheLoader.from(this::getCiphertextFileName));
 		this.ciphertextDirectories = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_DIR_PATHS).expireAfterWrite(MAX_CACHE_AGE).build();
 		this.rootDirectory = resolveDirectory(Constants.ROOT_DIR_ID);
-	}
-
-	public enum CiphertextFileType {
-		FILE(""), DIRECTORY(DIR_PREFIX), SYMLINK("1S");
-
-		private final String prefix;
-
-		CiphertextFileType(String prefix) {
-			this.prefix = prefix;
-		}
-
-		public String getPrefix() {
-			return prefix;
-		}
 	}
 
 	/**
