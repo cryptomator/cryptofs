@@ -24,6 +24,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 import static java.lang.Math.min;
 import static java.lang.String.format;
@@ -56,6 +59,23 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 	@AfterAll
 	public static void teardownClass() throws IOException {
 		inMemoryFs.close();
+	}
+
+	// tests https://github.com/cryptomator/cryptofs/issues/55
+	@Test
+	public void testCreateNewFileSetsLastModifiedToNow() throws IOException, InterruptedException {
+		Path file = filePath(nextFileId());
+
+		Instant t0, t1, t2;
+		t0 = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+
+		try (FileChannel ch = FileChannel.open(file, CREATE, WRITE)) {
+			t1 = Files.getLastModifiedTime(file).toInstant().truncatedTo(ChronoUnit.SECONDS);
+			Assertions.assertFalse(t1.isBefore(t0));
+		}
+
+		t2 = Files.getLastModifiedTime(file).toInstant().truncatedTo(ChronoUnit.SECONDS);
+		Assertions.assertFalse(t2.isBefore(t1));
 	}
 
 	// tests https://github.com/cryptomator/cryptofs/issues/50

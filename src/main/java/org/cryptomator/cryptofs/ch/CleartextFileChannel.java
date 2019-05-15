@@ -69,7 +69,10 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		if (options.append()) {
 			position = fileSize.get();
 		}
-		headerWritten = !options.writable();
+		this.headerWritten = !options.writable();
+		if (options.createNew() || options.create()) {
+			lastModified.compareAndSet(Instant.EPOCH, Instant.now());
+		}
 	}
 
 	@Override

@@ -49,7 +49,7 @@ public class OpenCryptoFileModule {
 	@OpenFileScoped
 	@OpenFileModifiedDate
 	public AtomicReference<Instant> provideLastModifiedDate(@OriginalOpenFilePath Path originalPath) {
-		Instant lastModifiedDate = readBasicAttributes(originalPath).map(BasicFileAttributes::lastModifiedTime).map(FileTime::toInstant).orElse(Instant.ofEpochMilli(0));
+		Instant lastModifiedDate = readBasicAttributes(originalPath).map(BasicFileAttributes::lastModifiedTime).map(FileTime::toInstant).orElse(Instant.EPOCH);
 		return new AtomicReference<>(lastModifiedDate);
 	}
 
