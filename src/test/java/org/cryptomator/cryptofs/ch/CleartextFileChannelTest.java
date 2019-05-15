@@ -188,14 +188,24 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
-		public void testForceUpdatesLastModifiedTime() throws IOException {
+		public void testForceWithMetadataUpdatesLastModifiedTime() throws IOException {
 			when(options.writable()).thenReturn(true);
 			lastModified.set(Instant.ofEpochMilli(123456789000l));
 			FileTime fileTime = FileTime.from(lastModified.get());
 
+			inTest.force(true);
+
+			verify(attributeView).setTimes(Mockito.eq(fileTime), Mockito.any(), Mockito.isNull());
+		}
+
+		@Test
+		public void testForceWithoutMetadataDoesntUpdatesLastModifiedTime() throws IOException {
+			when(options.writable()).thenReturn(true);
+			lastModified.set(Instant.ofEpochMilli(123456789000l));
+
 			inTest.force(false);
 
-			verify(attributeView).setTimes(fileTime, null, null);
+			verify(attributeView, Mockito.never()).setTimes(Mockito.any(), Mockito.any(), Mockito.any());
 		}
 
 	}

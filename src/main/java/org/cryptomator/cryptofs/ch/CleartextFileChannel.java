@@ -166,6 +166,9 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		long newSize = fileSize.updateAndGet(size -> max(minSize, size));
 		assert newSize >= minSize;
 		lastModified.set(Instant.now());
+		if (options.syncData()) {
+			forceInternal(options.syncDataAndMetadata());
+		}
 		stats.addBytesWritten(written);
 		return written;
 	}
@@ -208,9 +211,13 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			writeHeaderIfNeeded();
 			chunkCache.invalidateAll(); // TODO performance: write chunks but keep them cached
 			exceptionsDuringWrite.throwIfPresent();
-			attrViewProvider.get().setTimes(FileTime.from(lastModified.get()), null, null);
 		}
 		ciphertextFileChannel.force(metaData);
+		if (metaData) {
+			FileTime lastModifiedTime = isWritable() ? FileTime.from(lastModified.get()) : null;
+			FileTime lastAccessTime = FileTime.from(Instant.now());
+			attrViewProvider.get().setTimes(lastModifiedTime, lastAccessTime, null);
+		}
 	}
 
 	@Override
