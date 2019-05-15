@@ -92,7 +92,7 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		@BeforeAll
 		public void beforeAll() throws IOException {
 			inMemoryFs = Jimfs.newFileSystem();
-			Path vaultPath = inMemoryFs.getPath("/vault");
+			Path vaultPath = inMemoryFs.getPath("vault");
 			Files.createDirectories(vaultPath);
 			CryptoFileSystemProvider.initialize(vaultPath, "masterkey.cryptomator", "asd");
 			fileSystem = new CryptoFileSystemProvider().newFileSystem(vaultPath, cryptoFileSystemProperties().withPassphrase("asd").withFlags().build());
