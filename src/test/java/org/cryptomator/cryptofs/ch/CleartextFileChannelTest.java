@@ -442,6 +442,29 @@ public class CleartextFileChannelTest {
 			Assertions.assertEquals(210l, inTest.size());
 		}
 
+		@Test
+		@DisplayName("write header if it isn't already written")
+		public void testWriteHeaderIfNeeded() throws IOException {
+			when(options.writable()).thenReturn(true);
+
+			inTest.force(true);
+			inTest.force(true);
+			inTest.force(true);
+
+			Mockito.verify(ciphertextFileChannel, Mockito.times(1)).write(Mockito.any(), Mockito.eq(0l));
+		}
+
+		@Test
+		@DisplayName("don't write header if it is already written")
+		public void testDontRewriteHeader() throws IOException {
+			when(options.writable()).thenReturn(true);
+			inTest = new CleartextFileChannel(ciphertextFileChannel, header, false, readWriteLock, cryptor, chunkCache, options, fileSize, lastModified, attributeViewSupplier, exceptionsDuringWrite, closeListener, stats);
+
+			inTest.force(true);
+			
+			Mockito.verify(ciphertextFileChannel, Mockito.never()).write(Mockito.any(), Mockito.eq(0l));
+		}
+
 	}
 
 	@Nested
