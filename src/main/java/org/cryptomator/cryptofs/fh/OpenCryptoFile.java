@@ -9,12 +9,12 @@
 package org.cryptomator.cryptofs.fh;
 
 import com.google.common.base.Preconditions;
-import com.google.common.io.MoreFiles;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ch.ChannelComponent;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
 import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.FileHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +39,7 @@ public class OpenCryptoFile implements Closeable {
 	private final AtomicReference<Instant> lastModified;
 	private final ChunkCache chunkCache;
 	private final Cryptor cryptor;
+	private final FileHeaderHolder headerHolder;
 	private final ChunkIO chunkIO;
 	private final AtomicReference<Path> currentFilePath;
 	private final AtomicLong fileSize;
@@ -46,10 +47,11 @@ public class OpenCryptoFile implements Closeable {
 	private final ConcurrentMap<CleartextFileChannel, FileChannel> openChannels = new ConcurrentHashMap<>();
 
 	@Inject
-	public OpenCryptoFile(FileCloseListener listener, ChunkCache chunkCache, Cryptor cryptor, ChunkIO chunkIO, @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
+	public OpenCryptoFile(FileCloseListener listener, ChunkCache chunkCache, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
 		this.listener = listener;
 		this.chunkCache = chunkCache;
 		this.cryptor = cryptor;
+		this.headerHolder = headerHolder;
 		this.chunkIO = chunkIO;
 		this.currentFilePath = currentFilePath;
 		this.fileSize = fileSize;
@@ -75,11 +77,22 @@ public class OpenCryptoFile implements Closeable {
 		CleartextFileChannel cleartextFileChannel = null;
 		try {
 			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile());
+			final FileHeader header;
+			final boolean isNewHeader;
+			if (ciphertextFileChannel.size() == 0l) {
+				header = headerHolder.createNew();
+				isNewHeader = true;
+			} else {
+				header = headerHolder.loadExisting(ciphertextFileChannel);
+				isNewHeader = false;
+			}
 			initFileSize(ciphertextFileChannel);
 			ChannelComponent channelComponent = component.newChannelComponent() //
 					.ciphertextChannel(ciphertextFileChannel) //
 					.openOptions(options) //
 					.onClose(this::channelClosed) //
+					.mustWriteHeader(isNewHeader) //
+					.fileHeader(header) //
 					.build();
 			cleartextFileChannel = channelComponent.channel();
 		} finally {

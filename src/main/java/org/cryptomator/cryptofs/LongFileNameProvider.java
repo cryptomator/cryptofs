@@ -8,6 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import com.google.common.base.Throwables;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -24,6 +25,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 
@@ -34,16 +36,18 @@ import static org.cryptomator.cryptofs.Constants.METADATA_DIR_NAME;
 class LongFileNameProvider {
 
 	private static final BaseEncoding BASE32 = BaseEncoding.base32();
-	private static final int MAX_CACHE_SIZE = 5000;
+	private static final Duration MAX_CACHE_AGE = Duration.ofMinutes(1);
 	public static final String LONG_NAME_FILE_EXT = ".lng";
 
 	private final Path metadataRoot;
+	private final ReadonlyFlag readonlyFlag;
 	private final LoadingCache<String, String> longNames;
 
 	@Inject
-	public LongFileNameProvider(@PathToVault Path pathToVault) {
+	public LongFileNameProvider(@PathToVault Path pathToVault, ReadonlyFlag readonlyFlag) {
 		this.metadataRoot = pathToVault.resolve(METADATA_DIR_NAME);
-		this.longNames = CacheBuilder.newBuilder().maximumSize(MAX_CACHE_SIZE).build(new Loader());
+		this.readonlyFlag = readonlyFlag;
+		this.longNames = CacheBuilder.newBuilder().expireAfterAccess(MAX_CACHE_AGE).build(new Loader());
 	}
 
 	private class Loader extends CacheLoader<String, String> {
@@ -64,34 +68,48 @@ class LongFileNameProvider {
 		try {
 			return longNames.get(shortFileName);
 		} catch (ExecutionException e) {
-			if (e.getCause() instanceof IOException || e.getCause() instanceof UncheckedIOException) {
-				throw new IOException(e);
-			} else {
-				throw new UncheckedExecutionException("Unexpected exception", e);
-			}
+			Throwables.throwIfInstanceOf(e.getCause(), IOException.class);
+			throw new IllegalStateException("Unexpected exception", e);
 		}
 	}
 
-	public String deflate(String longFileName) throws IOException {
+	public String deflate(String longFileName) {
 		byte[] longFileNameBytes = longFileName.getBytes(UTF_8);
 		byte[] hash = MessageDigestSupplier.SHA1.get().digest(longFileNameBytes);
 		String shortName = BASE32.encode(hash) + LONG_NAME_FILE_EXT;
-		if (longNames.getIfPresent(shortName) == null) {
+		String cachedLongName = longNames.getIfPresent(shortName);
+		if (cachedLongName == null) {
 			longNames.put(shortName, longFileName);
-			// TODO markuskreusch, overheadhunter: do we really want to persist this at this point?...
-			// ...maybe the caller only wanted to know if a file exists without creating anything.
-			Path file = resolveMetadataFile(shortName);
-			Path fileDir = file.getParent();
-			assert fileDir != null : "resolveMetadataFile returned path to a file";
-			Files.createDirectories(fileDir);
-			try (WritableByteChannel ch = Files.newByteChannel(file, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW)) {
-				ch.write(ByteBuffer.wrap(longFileNameBytes));
-			} catch (FileAlreadyExistsException e) {
-				// no-op: if the file already exists, we assume its content to be what we want (or we found a SHA1 collision ;-))
-				assert Arrays.equals(Files.readAllBytes(file), longFileNameBytes);
-			}
+		} else {
+			assert cachedLongName.equals(longFileName);
 		}
 		return shortName;
+	}
+
+	public void persistCachedIfDeflated(Path ciphertextFile) throws IOException {
+		String filename = ciphertextFile.getFileName().toString();
+		if (isDeflated(filename)) {
+			persistCached(filename);
+		}
+	}
+
+	// visible for testing
+	void persistCached(String shortName) throws IOException {
+		readonlyFlag.assertWritable();
+		String longName = longNames.getIfPresent(shortName);
+		if (longName == null) {
+			throw new IllegalStateException("Long name for " + shortName + " has not been shortened within the last " + MAX_CACHE_AGE);
+		}
+		Path file = resolveMetadataFile(shortName);
+		Path fileDir = file.getParent();
+		assert fileDir != null : "resolveMetadataFile returned path to a file";
+		Files.createDirectories(fileDir);
+		try (WritableByteChannel ch = Files.newByteChannel(file, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW)) {
+			ch.write(UTF_8.encode(longName));
+		} catch (FileAlreadyExistsException e) {
+			// no-op: if the file already exists, we assume its content to be what we want (or we found a SHA1 collision ;-))
+			assert Arrays.equals(Files.readAllBytes(file), longName.getBytes(UTF_8));
+		}
 	}
 
 	private Path resolveMetadataFile(String shortName) {

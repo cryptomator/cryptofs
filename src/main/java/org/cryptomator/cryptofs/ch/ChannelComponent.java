@@ -3,6 +3,7 @@ package org.cryptomator.cryptofs.ch;
 import dagger.BindsInstance;
 import dagger.Subcomponent;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
+import org.cryptomator.cryptolib.api.FileHeader;
 
 import java.nio.channels.FileChannel;
 
@@ -23,6 +24,12 @@ public interface ChannelComponent {
 
 		@BindsInstance
 		Builder ciphertextChannel(FileChannel ciphertextChannel);
+
+		@BindsInstance
+		Builder mustWriteHeader(@MustWriteHeader boolean mustWriteHeader);
+
+		@BindsInstance
+		Builder fileHeader(FileHeader fileHeader);
 
 		ChannelComponent build();
 	}

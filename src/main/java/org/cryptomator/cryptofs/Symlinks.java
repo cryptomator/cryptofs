@@ -22,12 +22,14 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class Symlinks {
 
 	private final CryptoPathMapper cryptoPathMapper;
+	private final LongFileNameProvider longFileNameProvider;
 	private final OpenCryptoFiles openCryptoFiles;
 	private final ReadonlyFlag readonlyFlag;
 
 	@Inject
-	Symlinks(CryptoPathMapper cryptoPathMapper, OpenCryptoFiles openCryptoFiles, ReadonlyFlag readonlyFlag) {
+	Symlinks(CryptoPathMapper cryptoPathMapper, LongFileNameProvider longFileNameProvider, OpenCryptoFiles openCryptoFiles, ReadonlyFlag readonlyFlag) {
 		this.cryptoPathMapper = cryptoPathMapper;
+		this.longFileNameProvider = longFileNameProvider;
 		this.openCryptoFiles = openCryptoFiles;
 		this.readonlyFlag = readonlyFlag;
 	}
@@ -41,6 +43,7 @@ public class Symlinks {
 		EffectiveOpenOptions openOptions = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW), readonlyFlag);
 		ByteBuffer content = UTF_8.encode(target.toString());
 		openCryptoFiles.writeCiphertextFile(ciphertextSymlinkFile, openOptions, content);
+		longFileNameProvider.persistCachedIfDeflated(ciphertextSymlinkFile);
 	}
 
 	public CryptoPath readSymbolicLink(CryptoPath cleartextPath) throws IOException {

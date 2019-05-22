@@ -12,6 +12,10 @@
 target/
 test-output/
 
+# Maven #
+target/
+pom.xml.versionsBackup
+
 # IntelliJ Settings Files #
 .idea/
 out/

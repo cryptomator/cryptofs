@@ -80,6 +80,7 @@ public class CryptoFileSystemImplTest {
 	private final OpenCryptoFiles openCryptoFiles = mock(OpenCryptoFiles.class);
 	private final Symlinks symlinks = mock(Symlinks.class);
 	private final CryptoPathMapper cryptoPathMapper = mock(CryptoPathMapper.class);
+	private final LongFileNameProvider longFileNameProvider = Mockito.mock(LongFileNameProvider.class);
 	private final DirectoryIdProvider dirIdProvider = mock(DirectoryIdProvider.class);
 	private final AttributeProvider fileAttributeProvider = mock(AttributeProvider.class);
 	private final AttributeByNameProvider fileAttributeByNameProvider = mock(AttributeByNameProvider.class);
@@ -104,7 +105,7 @@ public class CryptoFileSystemImplTest {
 		when(cryptoPathFactory.emptyFor(any())).thenReturn(empty);
 
 		inTest = new CryptoFileSystemImpl(provider, cryptoFileSystems, pathToVault, cryptor,
-				fileStore, stats, cryptoPathMapper, cryptoPathFactory,
+				fileStore, stats, cryptoPathMapper, longFileNameProvider, cryptoPathFactory,
 				pathMatcherFactory, directoryStreamFactory, dirIdProvider,
 				fileAttributeProvider, fileAttributeByNameProvider, fileAttributeViewProvider,
 				openCryptoFiles, symlinks, finallyUtil, ciphertextDirDeleter, readonlyFlag, rootDirectoryInitializer);

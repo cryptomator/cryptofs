@@ -35,14 +35,14 @@ public class ChunkLoaderTest {
 	private final Cryptor cryptor = mock(Cryptor.class);
 	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
 	private final FileHeader header = mock(FileHeader.class);
-	private final FileHeaderLoader headerLoader = mock(FileHeaderLoader.class);
-	private final ChunkLoader inTest = new ChunkLoader(cryptor, chunkIO, headerLoader, stats);
+	private final FileHeaderHolder headerHolder = mock(FileHeaderHolder.class);
+	private final ChunkLoader inTest = new ChunkLoader(cryptor, chunkIO, headerHolder, stats);
 
 	@BeforeEach
 	public void setup() throws IOException {
 		when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
-		when(headerLoader.get()).thenReturn(header);
+		when(headerHolder.get()).thenReturn(header);
 		when(fileContentCryptor.ciphertextChunkSize()).thenReturn(CIPHERTEXT_CHUNK_SIZE);
 		when(fileContentCryptor.cleartextChunkSize()).thenReturn(CLEARTEXT_CHUNK_SIZE);
 		when(fileHeaderCryptor.headerSize()).thenReturn(HEADER_SIZE);
