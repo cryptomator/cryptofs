@@ -12,14 +12,14 @@ class ChunkLoader {
 
 	private final Cryptor cryptor;
 	private final ChunkIO ciphertext;
-	private final FileHeaderLoader headerLoader;
+	private final FileHeaderHolder headerHolder;
 	private final CryptoFileSystemStats stats;
 
 	@Inject
-	public ChunkLoader(Cryptor cryptor, ChunkIO ciphertext, FileHeaderLoader headerLoader, CryptoFileSystemStats stats) {
+	public ChunkLoader(Cryptor cryptor, ChunkIO ciphertext, FileHeaderHolder headerHolder, CryptoFileSystemStats stats) {
 		this.cryptor = cryptor;
 		this.ciphertext = ciphertext;
-		this.headerLoader = headerLoader;
+		this.headerHolder = headerHolder;
 		this.stats = stats;
 	}
 
@@ -35,7 +35,7 @@ class ChunkLoader {
 			return ChunkData.emptyWithSize(payloadSize);
 		} else {
 			ciphertextBuf.flip();
-			ByteBuffer cleartextBuf = cryptor.fileContentCryptor().decryptChunk(ciphertextBuf, chunkIndex, headerLoader.get(), true);
+			ByteBuffer cleartextBuf = cryptor.fileContentCryptor().decryptChunk(ciphertextBuf, chunkIndex, headerHolder.get(), true);
 			stats.addBytesDecrypted(cleartextBuf.remaining());
 			ByteBuffer cleartextBufWhichCanHoldFullChunk;
 			if (cleartextBuf.capacity() < payloadSize) {

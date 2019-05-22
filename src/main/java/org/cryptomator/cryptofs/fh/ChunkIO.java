@@ -43,10 +43,6 @@ class ChunkIO {
 		writableChannels.remove(channel);
 	}
 
-	long size() throws IOException {
-		return getReadableChannel().size();
-	}
-
 	int read(ByteBuffer dst, long position) throws IOException {
 		return getReadableChannel().read(dst, position);
 	}
