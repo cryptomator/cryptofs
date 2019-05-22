@@ -121,7 +121,9 @@ class ConflictResolver {
 				alternativePath = canonicalPath.resolveSibling(alternativeCiphertextFileName);
 			}
 			LOG.info("Moving conflicting file {} to {}", conflictingPath, alternativePath);
-			return Files.move(conflictingPath, alternativePath, StandardCopyOption.ATOMIC_MOVE);
+			Path resolved = Files.move(conflictingPath, alternativePath, StandardCopyOption.ATOMIC_MOVE);
+			longFileNameProvider.persistCachedIfDeflated(resolved);
+			return resolved;
 		} catch (AuthenticationFailedException e) {
 			// not decryptable, no need to resolve any kind of conflict
 			LOG.info("Found valid Base32 string, which is an unauthentic ciphertext: {}", conflictingPath);

@@ -18,6 +18,7 @@ import java.nio.file.Path;
 public class SymlinksTest {
 
 	private final CryptoPathMapper cryptoPathMapper = Mockito.mock(CryptoPathMapper.class);
+	private final LongFileNameProvider longFileNameProvider = Mockito.mock(LongFileNameProvider.class);
 	private final OpenCryptoFiles openCryptoFiles = Mockito.mock(OpenCryptoFiles.class);
 	private final ReadonlyFlag readonlyFlag = Mockito.mock(ReadonlyFlag.class);
 
@@ -30,7 +31,7 @@ public class SymlinksTest {
 
 	@BeforeEach
 	public void setup() throws IOException {
-		inTest = new Symlinks(cryptoPathMapper, openCryptoFiles, readonlyFlag);
+		inTest = new Symlinks(cryptoPathMapper, longFileNameProvider, openCryptoFiles, readonlyFlag);
 
 		Mockito.when(cleartextPath.getFileSystem()).thenReturn(fs);
 		Mockito.when(openCryptoFiles.getOrCreate(ciphertextPath)).thenReturn(ciphertextFile);

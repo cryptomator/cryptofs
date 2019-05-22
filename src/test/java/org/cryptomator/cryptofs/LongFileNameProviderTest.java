@@ -15,6 +15,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -47,20 +48,25 @@ public class LongFileNameProviderTest {
 	@Test
 	public void testDeflateAndInflate(@TempDir Path tmpPath) throws IOException {
 		String orig = "longName";
-		Assertions.assertEquals(0, countFiles(tmpPath));
 		LongFileNameProvider prov1 = new LongFileNameProvider(tmpPath);
 		String deflated = prov1.deflate(orig);
+		String inflated1 = prov1.inflate(deflated);
+		Assertions.assertEquals(orig, inflated1);
+
+		Assertions.assertEquals(0, countFiles(tmpPath));
+		prov1.persistCached(deflated);
 		Assertions.assertEquals(1, countFiles(tmpPath));
+
 		LongFileNameProvider prov2 = new LongFileNameProvider(tmpPath);
-		String inflated = prov2.inflate(deflated);
-		Assertions.assertEquals(orig, inflated);
+		String inflated2 = prov2.inflate(deflated);
+		Assertions.assertEquals(orig, inflated2);
 	}
 
 	@Test
 	public void testInflateNonExisting(@TempDir Path tmpPath) throws IOException {
 		LongFileNameProvider prov = new LongFileNameProvider(tmpPath);
 
-		Assertions.assertThrows(IOException.class, () -> {
+		Assertions.assertThrows(NoSuchFileException.class, () -> {
 			prov.inflate("doesNotExist");
 		});
 	}
@@ -69,15 +75,10 @@ public class LongFileNameProviderTest {
 	public void testDeflateMultipleTimes(@TempDir Path tmpPath) throws IOException {
 		LongFileNameProvider prov = new LongFileNameProvider(tmpPath);
 		String orig = "longName";
-		Assertions.assertEquals(0, countFiles(tmpPath));
 		prov.deflate(orig);
-		Assertions.assertEquals(1, countFiles(tmpPath));
 		prov.deflate(orig);
-		Assertions.assertEquals(1, countFiles(tmpPath));
 		prov.deflate(orig);
-		Assertions.assertEquals(1, countFiles(tmpPath));
 		prov.deflate(orig);
-		Assertions.assertEquals(1, countFiles(tmpPath));
 	}
 
 }
