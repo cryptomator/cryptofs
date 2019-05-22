@@ -40,11 +40,13 @@ class LongFileNameProvider {
 	public static final String LONG_NAME_FILE_EXT = ".lng";
 
 	private final Path metadataRoot;
+	private final ReadonlyFlag readonlyFlag;
 	private final LoadingCache<String, String> longNames;
 
 	@Inject
-	public LongFileNameProvider(@PathToVault Path pathToVault) {
+	public LongFileNameProvider(@PathToVault Path pathToVault, ReadonlyFlag readonlyFlag) {
 		this.metadataRoot = pathToVault.resolve(METADATA_DIR_NAME);
+		this.readonlyFlag = readonlyFlag;
 		this.longNames = CacheBuilder.newBuilder().expireAfterAccess(MAX_CACHE_AGE).build(new Loader());
 	}
 
@@ -93,6 +95,7 @@ class LongFileNameProvider {
 
 	// visible for testing
 	void persistCached(String shortName) throws IOException {
+		readonlyFlag.assertWritable();
 		String longName = longNames.getIfPresent(shortName);
 		if (longName == null) {
 			throw new IllegalStateException("Long name for " + shortName + " has not been shortened within the last " + MAX_CACHE_AGE);
