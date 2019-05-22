@@ -26,6 +26,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
@@ -108,6 +109,24 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		@AfterEach
 		public void afterEach() throws IOException {
 			Files.deleteIfExists(file);
+		}
+
+		@Test
+		public void testLockEmptyChannel() throws IOException {
+			try (FileChannel ch = FileChannel.open(file, CREATE, WRITE)) {
+				try (FileLock lock = ch.lock()) {
+					Assertions.assertNotNull(lock);
+				}
+			}
+		}
+
+		@Test
+		public void testTryLockEmptyChannel() throws IOException {
+			try (FileChannel ch = FileChannel.open(file, CREATE, WRITE)) {
+				try (FileLock lock = ch.tryLock()) {
+					Assertions.assertNotNull(lock);
+				}
+			}
 		}
 
 		// tests https://github.com/cryptomator/cryptofs/issues/55

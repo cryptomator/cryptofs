@@ -227,38 +227,57 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	}
 
 	@Override
-	public FileLock lock(long position, long size, boolean shared) throws IOException {
+	public FileLock lock(long pos, long size, boolean shared) throws IOException {
 		assertOpen();
 		if (shared && !options.readable()) {
 			throw new NonReadableChannelException(); // shared lock only available on readable channel
 		} else if (!shared && !options.writable()) {
 			throw new NonWritableChannelException(); // exclusive lock only available on writable channel
 		}
-		long firstChunk = position / cryptor.fileContentCryptor().cleartextChunkSize();
-		long lastChunk = firstChunk + size / cryptor.fileContentCryptor().cleartextChunkSize();
-		long ciphertextPosition = cryptor.fileHeaderCryptor().headerSize() + firstChunk * cryptor.fileContentCryptor().ciphertextChunkSize();
-		long ciphertextSize = (lastChunk - firstChunk + 1) * cryptor.fileContentCryptor().ciphertextChunkSize();
-		FileLock ciphertextLock = ciphertextFileChannel.lock(ciphertextPosition, ciphertextSize, shared);
-		return new CleartextFileLock(this, ciphertextLock, position, size);
+		long beginOfFirstChunk = cleartextPosToCiphertextPos(pos);
+		long beginOfLastChunk = cleartextPosToCiphertextPos(pos + size);
+		final FileLock ciphertextLock;
+		if (beginOfFirstChunk == Long.MAX_VALUE || beginOfLastChunk == Long.MAX_VALUE) {
+			ciphertextLock = ciphertextFileChannel.lock(0l, Long.MAX_VALUE, shared);
+		} else {
+			long endOfLastChunk = beginOfLastChunk + cryptor.fileContentCryptor().ciphertextChunkSize();
+			ciphertextLock = ciphertextFileChannel.lock(beginOfFirstChunk, endOfLastChunk - beginOfFirstChunk, shared);
+		}
+		return new CleartextFileLock(this, ciphertextLock, pos, size);
 	}
 
 	@Override
-	public FileLock tryLock(long position, long size, boolean shared) throws IOException {
+	public FileLock tryLock(long pos, long size, boolean shared) throws IOException {
 		assertOpen();
 		if (shared && !options.readable()) {
 			throw new NonReadableChannelException(); // shared lock only available on readable channel
 		} else if (!shared && !options.writable()) {
 			throw new NonWritableChannelException(); // exclusive lock only available on writable channel
 		}
-		long firstChunk = position / cryptor.fileContentCryptor().cleartextChunkSize();
-		long lastChunk = firstChunk + size / cryptor.fileContentCryptor().cleartextChunkSize();
-		long ciphertextPosition = cryptor.fileHeaderCryptor().headerSize() + firstChunk * cryptor.fileContentCryptor().ciphertextChunkSize();
-		long ciphertextSize = (lastChunk - firstChunk + 1) * cryptor.fileContentCryptor().ciphertextChunkSize();
-		FileLock ciphertextLock = ciphertextFileChannel.tryLock(ciphertextPosition, ciphertextSize, shared);
+		long beginOfFirstChunk = cleartextPosToCiphertextPos(pos);
+		long beginOfLastChunk = cleartextPosToCiphertextPos(pos + size);
+		final FileLock ciphertextLock;
+		if (beginOfFirstChunk == Long.MAX_VALUE || beginOfLastChunk == Long.MAX_VALUE) {
+			ciphertextLock = ciphertextFileChannel.tryLock(0l, Long.MAX_VALUE, shared);
+		} else {
+			long endOfLastChunk = beginOfLastChunk + cryptor.fileContentCryptor().ciphertextChunkSize();
+			ciphertextLock = ciphertextFileChannel.tryLock(beginOfFirstChunk, endOfLastChunk - beginOfFirstChunk, shared);
+		}
 		if (ciphertextLock == null) {
 			return null;
 		} else {
-			return new CleartextFileLock(this, ciphertextLock, position, size);
+			return new CleartextFileLock(this, ciphertextLock, pos, size);
+		}
+	}
+
+	private long cleartextPosToCiphertextPos(long pos) {
+		long maxCiphertextPayloadSize = Long.MAX_VALUE - cryptor.fileHeaderCryptor().headerSize();
+		long maxChunks = maxCiphertextPayloadSize / cryptor.fileContentCryptor().ciphertextChunkSize();
+		long chunk = pos / cryptor.fileContentCryptor().cleartextChunkSize();
+		if (chunk > maxChunks) {
+			return Long.MAX_VALUE;
+		} else {
+			return chunk * cryptor.fileContentCryptor().ciphertextChunkSize() + cryptor.fileHeaderCryptor().headerSize();
 		}
 	}
 
