@@ -16,6 +16,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
 
@@ -243,12 +245,21 @@ public class CleartextFileChannelTest {
 			Assumptions.assumeTrue(fileContentCryptor.ciphertextChunkSize() == 110);
 		}
 
+		@ParameterizedTest(name = "beginOfChunk({0}) == {1}")
+		@CsvSource({"0,50", "1,50", "99,50", "100,160", "199,160", "200,270", "300,380", "372,380", "399,380", "400,490", "4200,4670", "9223372036854775807,9223372036854775807"})
+		@DisplayName("correctness of beginOfChunk()")
+		public void testBeginOfChunk(long cleaertextPos, long expectedCiphertextPos) {
+			long ciphertextPos = inTest.beginOfChunk(cleaertextPos);
+
+			Assertions.assertEquals(expectedCiphertextPos, ciphertextPos);
+		}
+
 		@Test
 		@DisplayName("unsuccessful tryLock()")
 		public void testTryLockReturnsNullIfDelegateReturnsNull() throws IOException {
 			when(ciphertextFileChannel.tryLock(Mockito.anyLong(), Mockito.anyLong(), Mockito.anyBoolean())).thenReturn(null);
 
-			FileLock result = inTest.tryLock(380l, 4290l, true);
+			FileLock result = inTest.tryLock(372l, 3828l, true);
 
 			Assertions.assertNull(result);
 		}
@@ -256,7 +267,7 @@ public class CleartextFileChannelTest {
 		@Test
 		@DisplayName("successful tryLock()")
 		public void testTryLockReturnsCryptoFileLockWrappingDelegate() throws IOException {
-			when(ciphertextFileChannel.tryLock(380l, 4290l, true)).thenReturn(delegate);
+			when(ciphertextFileChannel.tryLock(380l, 4670l+110l-380l, true)).thenReturn(delegate);
 
 			FileLock result = inTest.tryLock(372l, 3828l, true);
 
@@ -272,7 +283,7 @@ public class CleartextFileChannelTest {
 		@Test
 		@DisplayName("successful lock()")
 		public void testLockReturnsCryptoFileLockWrappingDelegate() throws IOException {
-			when(ciphertextFileChannel.lock(380l, 4290l, true)).thenReturn(delegate);
+			when(ciphertextFileChannel.lock(380l, 4670l+110l-380l, true)).thenReturn(delegate);
 
 			FileLock result = inTest.lock(372l, 3828l, true);
 
