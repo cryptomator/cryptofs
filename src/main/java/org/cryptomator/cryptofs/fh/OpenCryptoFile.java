@@ -25,6 +25,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -146,12 +147,15 @@ public class OpenCryptoFile implements Closeable {
 	}
 
 	/**
-	 * @return The size of the opened file
-	 * @throws IllegalStateException If the OpenCryptoFile {@link OpenCryptoFiles#getOrCreate(Path) has been created} without {@link #newFileChannel(EffectiveOpenOptions) creating a file channel} next.
+	 * @return The size of the opened file. Note that the filesize is unknown until a {@link #newFileChannel(EffectiveOpenOptions) file channel is opened}. In this case this method returns an empty optional.
 	 */
-	public long size() {
-		Preconditions.checkState(fileSize.get() != -1l, "size must only be called after a FileChannel is created for this OpenCryptoFile");
-		return fileSize.get();
+	public Optional<Long> size() {
+		long val = fileSize.get();
+		if (val == -1l) {
+			return Optional.empty();
+		} else {
+			return Optional.of(val);
+		}
 	}
 
 	public FileTime getLastModifiedTime() {

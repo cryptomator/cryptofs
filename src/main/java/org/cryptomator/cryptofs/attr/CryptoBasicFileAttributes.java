@@ -54,7 +54,7 @@ class CryptoBasicFileAttributes implements BasicFileAttributes {
 	}
 
 	private static long getPlaintextFileSize(Path ciphertextPath, long size, Optional<OpenCryptoFile> openCryptoFile, Cryptor cryptor) {
-		return openCryptoFile.map(OpenCryptoFile::size).orElseGet(() -> calculatePlaintextFileSize(ciphertextPath, size, cryptor));
+		return openCryptoFile.flatMap(OpenCryptoFile::size).orElseGet(() -> calculatePlaintextFileSize(ciphertextPath, size, cryptor));
 	}
 
 	private static long calculatePlaintextFileSize(Path ciphertextPath, long size, Cryptor cryptor) {

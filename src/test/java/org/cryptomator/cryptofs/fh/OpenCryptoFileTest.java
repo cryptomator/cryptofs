@@ -124,9 +124,7 @@ public class OpenCryptoFileTest {
 		@Order(0)
 		@DisplayName("getting size fails before creating first file channel")
 		public void testGetSizeBeforeCreatingFileChannel() {
-			Assertions.assertThrows(IllegalStateException.class, () -> {
-				openCryptoFile.size();
-			});
+			Assertions.assertFalse(openCryptoFile.size().isPresent());
 		}
 
 		@Test
@@ -143,7 +141,7 @@ public class OpenCryptoFileTest {
 		@Order(11)
 		@DisplayName("getting size succeeds after creating first file channel")
 		public void testGetSizeAfterCreatingFirstFileChannel() {
-			Assertions.assertEquals(0l, openCryptoFile.size());
+			Assertions.assertEquals(0l, openCryptoFile.size().get());
 		}
 
 		// related to https://github.com/cryptomator/cryptofs/issues/51
@@ -166,7 +164,7 @@ public class OpenCryptoFileTest {
 		@Order(13)
 		@DisplayName("getting size succeeds after creating second file channel")
 		public void testGetSizeAfterCreatingSecondFileChannel() {
-			Assertions.assertEquals(0l, openCryptoFile.size());
+			Assertions.assertEquals(0l, openCryptoFile.size().get());
 		}
 
 
