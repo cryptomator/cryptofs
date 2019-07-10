@@ -43,7 +43,7 @@ public class Symlinks {
 		EffectiveOpenOptions openOptions = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW), readonlyFlag);
 		ByteBuffer content = UTF_8.encode(target.toString());
 		openCryptoFiles.writeCiphertextFile(ciphertextSymlinkFile, openOptions, content);
-		longFileNameProvider.persistCachedIfDeflated(ciphertextSymlinkFile);
+		longFileNameProvider.getCached(ciphertextSymlinkFile).ifPresent(LongFileNameProvider.DeflatedFileName::persist);
 	}
 
 	public CryptoPath readSymbolicLink(CryptoPath cleartextPath) throws IOException {

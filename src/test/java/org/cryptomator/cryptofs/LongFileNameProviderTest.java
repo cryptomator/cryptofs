@@ -18,10 +18,12 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.ReadOnlyFileSystemException;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class LongFileNameProviderTest {
@@ -58,7 +60,7 @@ public class LongFileNameProviderTest {
 		Assertions.assertEquals(orig, inflated1);
 
 		Assertions.assertEquals(0, countFiles(tmpPath));
-		prov1.persistCached(deflated);
+		prov1.getCached(Paths.get(deflated)).ifPresent(LongFileNameProvider.DeflatedFileName::persist);
 		Assertions.assertEquals(1, countFiles(tmpPath));
 
 		LongFileNameProvider prov2 = new LongFileNameProvider(tmpPath, readonlyFlag);
@@ -89,9 +91,14 @@ public class LongFileNameProviderTest {
 	public void testPerstistCachedFailsOnReadOnlyFileSystems(@TempDir Path tmpPath) {
 		LongFileNameProvider prov = new LongFileNameProvider(tmpPath, readonlyFlag);
 
+		String orig = "longName";
+		String shortened = prov.deflate(orig);
+		Optional<LongFileNameProvider.DeflatedFileName> cachedFileName = prov.getCached(Paths.get(shortened));
+
+		Assertions.assertTrue(cachedFileName.isPresent());
 		Mockito.doThrow(new ReadOnlyFileSystemException()).when(readonlyFlag).assertWritable();
 		Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
-			prov.persistCached("whatever");
+			cachedFileName.get().persist();
 		});
 	}
 

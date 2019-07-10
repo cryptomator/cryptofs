@@ -122,7 +122,7 @@ class ConflictResolver {
 			}
 			LOG.info("Moving conflicting file {} to {}", conflictingPath, alternativePath);
 			Path resolved = Files.move(conflictingPath, alternativePath, StandardCopyOption.ATOMIC_MOVE);
-			longFileNameProvider.persistCachedIfDeflated(resolved);
+			longFileNameProvider.getCached(resolved).ifPresent(LongFileNameProvider.DeflatedFileName::persist);
 			return resolved;
 		} catch (AuthenticationFailedException e) {
 			// not decryptable, no need to resolve any kind of conflict
