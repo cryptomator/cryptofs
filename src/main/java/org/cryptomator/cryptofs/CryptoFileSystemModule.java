@@ -5,6 +5,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import com.google.common.io.BaseEncoding;
 import dagger.Module;
 import dagger.Provides;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -30,7 +31,7 @@ class CryptoFileSystemModule {
 			Path masterKeyPath = pathToVault.resolve(properties.masterkeyFilename());
 			assert Files.exists(masterKeyPath); // since 1.3.0 a file system can only be created for existing vaults. initialization is done before.
 			byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
-			Path backupKeyPath = pathToVault.resolve(properties.masterkeyFilename() + generateFileIdIfPossible(keyFileContents) + Constants.MASTERKEY_BACKUP_SUFFIX);
+			Path backupKeyPath = pathToVault.resolve(properties.masterkeyFilename() + generateFileId(keyFileContents) + Constants.MASTERKEY_BACKUP_SUFFIX);
 			Cryptor cryptor = cryptorProvider.createFromKeyFile(KeyFile.parse(keyFileContents), properties.passphrase(), properties.pepper(), Constants.VAULT_VERSION);
 			backupMasterkeyFileIfRequired(masterKeyPath, backupKeyPath, readonlyFlag);
 			return cryptor;
@@ -39,17 +40,13 @@ class CryptoFileSystemModule {
 		}
 	}
 
-	private String generateFileIdIfPossible(byte[] fileBytes) {
+	private String generateFileId(byte[] fileBytes) {
 		try {
 			MessageDigest md = MessageDigest.getInstance("SHA-256");
-			byte[] truncatedDigest = md.digest(fileBytes);
-			StringBuilder sb = new StringBuilder();
-			for (int i = 0; i < 4; i++) { // we only need the first 4 bytes, since each is translated into two characters
-				sb.append(String.format("%02x", truncatedDigest[i]));
-			}
-			return sb.toString().substring(0, 7);
+			byte[] digest = md.digest(fileBytes);
+			return BaseEncoding.base16().encode(digest, 0, 4);
 		} catch (NoSuchAlgorithmException e) {
-			return "";
+			throw new IllegalStateException("This Java Platform must support the Message Digest algorithm SHA-256");
 		}
 	}
 
