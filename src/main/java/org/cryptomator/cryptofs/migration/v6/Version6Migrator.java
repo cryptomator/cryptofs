@@ -10,14 +10,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.text.Normalizer;
 import java.text.Normalizer.Form;
 
 import javax.inject.Inject;
 
-import com.google.common.io.BaseEncoding;
+import org.cryptomator.cryptofs.BackupUtil;
 import org.cryptomator.cryptofs.Constants;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -47,7 +45,7 @@ public class Version6Migrator implements Migrator {
 		KeyFile keyFile = KeyFile.parse(fileContentsBeforeUpgrade);
 		try (Cryptor cryptor = cryptorProvider.createFromKeyFile(keyFile, passphrase, 5)) {
 			// create backup, as soon as we know the password was correct:
-			Path masterkeyBackupFile = vaultRoot.resolve(masterkeyFilename + generateFileId(fileContentsBeforeUpgrade) + Constants.MASTERKEY_BACKUP_SUFFIX);
+			Path masterkeyBackupFile = vaultRoot.resolve(masterkeyFilename + BackupUtil.generateFileId(fileContentsBeforeUpgrade) + Constants.MASTERKEY_BACKUP_SUFFIX);
 			Files.copy(masterkeyFile, masterkeyBackupFile, StandardCopyOption.REPLACE_EXISTING);
 			LOG.info("Backed up masterkey from {} to {}.", masterkeyFile.getFileName(), masterkeyBackupFile.getFileName());
 			// rewrite masterkey file with normalized passphrase:
@@ -56,17 +54,6 @@ public class Version6Migrator implements Migrator {
 			LOG.info("Updated masterkey.");
 		}
 		LOG.info("Upgraded {} from version 5 to version 6.", vaultRoot);
-	}
-
-
-	private String generateFileId(byte[] fileBytes) {
-		try {
-			MessageDigest md = MessageDigest.getInstance("SHA-256");
-			byte[] digest = md.digest(fileBytes);
-			return BaseEncoding.base16().encode(digest, 0, 4);
-		} catch (NoSuchAlgorithmException e) {
-			throw new IllegalStateException("Every Java Platform must support the Message Digest algorithm SHA-256");
-		}
 	}
 
 }
