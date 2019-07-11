@@ -46,7 +46,7 @@ class CryptoFileSystemModule {
 			byte[] digest = md.digest(fileBytes);
 			return BaseEncoding.base16().encode(digest, 0, 4);
 		} catch (NoSuchAlgorithmException e) {
-			throw new IllegalStateException("This Java Platform must support the Message Digest algorithm SHA-256");
+			throw new IllegalStateException("Every Java Platform must support the Message Digest algorithm SHA-256");
 		}
 	}
 
