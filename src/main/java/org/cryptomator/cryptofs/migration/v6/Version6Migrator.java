@@ -45,7 +45,7 @@ public class Version6Migrator implements Migrator {
 		KeyFile keyFile = KeyFile.parse(fileContentsBeforeUpgrade);
 		try (Cryptor cryptor = cryptorProvider.createFromKeyFile(keyFile, passphrase, 5)) {
 			// create backup, as soon as we know the password was correct:
-			Path masterkeyBackupFile = vaultRoot.resolve(masterkeyFilename + BackupUtil.generateFileId(fileContentsBeforeUpgrade) + Constants.MASTERKEY_BACKUP_SUFFIX);
+			Path masterkeyBackupFile = vaultRoot.resolve(masterkeyFilename + BackupUtil.generateFileIdSuffix(fileContentsBeforeUpgrade) + Constants.MASTERKEY_BACKUP_SUFFIX);
 			Files.copy(masterkeyFile, masterkeyBackupFile, StandardCopyOption.REPLACE_EXISTING);
 			LOG.info("Backed up masterkey from {} to {}.", masterkeyFile.getFileName(), masterkeyBackupFile.getFileName());
 			// rewrite masterkey file with normalized passphrase:

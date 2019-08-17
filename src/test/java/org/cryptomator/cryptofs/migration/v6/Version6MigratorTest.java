@@ -53,7 +53,7 @@ public class Version6MigratorTest {
 		KeyFile beforeMigration = cryptorProvider.createNew().writeKeysToMasterkeyFile(oldPassword, 5);
 		Assertions.assertEquals(5, beforeMigration.getVersion());
 		Files.write(masterkeyFile, beforeMigration.serialize());
-		Path masterkeyBackupFile = pathToVault.resolve("masterkey.cryptomator" + BackupUtil.generateFileId(beforeMigration.serialize()) + Constants.MASTERKEY_BACKUP_SUFFIX);
+		Path masterkeyBackupFile = pathToVault.resolve("masterkey.cryptomator" + BackupUtil.generateFileIdSuffix(beforeMigration.serialize()) + Constants.MASTERKEY_BACKUP_SUFFIX);
 
 		Migrator migrator = new Version6Migrator(cryptorProvider);
 		migrator.migrate(pathToVault, "masterkey.cryptomator", oldPassword);
