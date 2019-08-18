@@ -1,6 +1,5 @@
 package org.cryptomator.cryptofs;
 
-import com.google.common.base.Strings;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
@@ -131,8 +130,7 @@ public class ConflictResolverTest {
 	@ParameterizedTest
 	@ValueSource(strings = {"ABCDEF== (1).lng", "conflict_ABCDEF==.lng"})
 	public void testRenameLongFile(String conflictingFileName) throws IOException {
-		String longCiphertextName = Strings.repeat("ABCDEFGH",Constants.SHORT_NAMES_MAX_LENGTH /8 + 1);
-
+		String longCiphertextName = "ABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGHABCDEFGH2345====";
 		assert longCiphertextName.length() > Constants.SHORT_NAMES_MAX_LENGTH;
 		Mockito.when(testFileName.toString()).thenReturn(conflictingFileName);
 		Mockito.when(longFileNameProvider.inflate("ABCDEF==.lng")).thenReturn("FEDCBA==");
