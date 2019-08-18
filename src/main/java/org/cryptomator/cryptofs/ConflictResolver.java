@@ -103,18 +103,18 @@ class ConflictResolver {
 	 * @param conflictingPath The path to the potentially conflicting file.
 	 * @param ciphertext The (previously inflated) ciphertext name of the file without any preceeding directory prefix.
 	 * @param dirId The directory id of the file's parent directory.
-	 * @param dirPrefix The directory prefix (if the conflicting file is a directory file) or an empty string.
+	 * @param typePrefix The prefix (if the conflicting file is a directory file or a symlink) or an empty string.
 	 * @return The new path after renaming the conflicting file.
 	 * @throws IOException
 	 */
-	private Path renameConflictingFile(Path canonicalPath, Path conflictingPath, String ciphertext, String dirId, String dirPrefix) throws IOException {
+	private Path renameConflictingFile(Path canonicalPath, Path conflictingPath, String ciphertext, String dirId, String typePrefix) throws IOException {
 		try {
 			String cleartext = cryptor.fileNameCryptor().decryptFilename(ciphertext, dirId.getBytes(StandardCharsets.UTF_8));
 			Path alternativePath = canonicalPath;
 			for (int i = 1; Files.exists(alternativePath); i++) {
 				String alternativeCleartext = cleartext + " (Conflict " + i + ")";
 				String alternativeCiphertext = cryptor.fileNameCryptor().encryptFilename(alternativeCleartext, dirId.getBytes(StandardCharsets.UTF_8));
-				String alternativeCiphertextFileName = dirPrefix + alternativeCiphertext;
+				String alternativeCiphertextFileName = typePrefix + alternativeCiphertext;
 				if (alternativeCiphertextFileName.length() > SHORT_NAMES_MAX_LENGTH) {
 					alternativeCiphertextFileName = longFileNameProvider.deflate(alternativeCiphertextFileName);
 				}

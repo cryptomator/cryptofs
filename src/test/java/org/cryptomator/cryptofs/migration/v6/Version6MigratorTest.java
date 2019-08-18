@@ -2,6 +2,8 @@ package org.cryptomator.cryptofs.migration.v6;
 
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
+import org.cryptomator.cryptofs.BackupUtil;
+import org.cryptomator.cryptofs.Constants;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.mocks.NullSecureRandom;
 import org.cryptomator.cryptolib.Cryptors;
@@ -25,7 +27,6 @@ public class Version6MigratorTest {
 	private FileSystem fs;
 	private Path pathToVault;
 	private Path masterkeyFile;
-	private Path masterkeyBackupFile;
 	private CryptorProvider cryptorProvider;
 
 	@BeforeEach
@@ -34,7 +35,7 @@ public class Version6MigratorTest {
 		fs = Jimfs.newFileSystem(Configuration.unix());
 		pathToVault = fs.getPath("/vaultDir");
 		masterkeyFile = pathToVault.resolve("masterkey.cryptomator");
-		masterkeyBackupFile = pathToVault.resolve("masterkey.cryptomator.bkup");
+		//masterkeyBackupFile cannot be set here since we cannot compute a digest from a non-existing file
 		Files.createDirectory(pathToVault);
 	}
 
@@ -52,6 +53,7 @@ public class Version6MigratorTest {
 		KeyFile beforeMigration = cryptorProvider.createNew().writeKeysToMasterkeyFile(oldPassword, 5);
 		Assertions.assertEquals(5, beforeMigration.getVersion());
 		Files.write(masterkeyFile, beforeMigration.serialize());
+		Path masterkeyBackupFile = pathToVault.resolve("masterkey.cryptomator" + BackupUtil.generateFileIdSuffix(beforeMigration.serialize()) + Constants.MASTERKEY_BACKUP_SUFFIX);
 
 		Migrator migrator = new Version6Migrator(cryptorProvider);
 		migrator.migrate(pathToVault, "masterkey.cryptomator", oldPassword);
