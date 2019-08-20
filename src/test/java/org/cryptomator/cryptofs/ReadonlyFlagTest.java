@@ -1,10 +1,18 @@
 package org.cryptomator.cryptofs;
 
+import org.hamcrest.CoreMatchers;
+import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.AccessMode;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
@@ -19,11 +27,9 @@ public class ReadonlyFlagTest {
 	private FileStore fileStore = mock(FileStore.class);
 	private FileSystemProvider provider = mock(FileSystemProvider.class);
 	private FileSystem fileSystem = mock(FileSystem.class);
-	private Path path = mock(Path.class);
+	private Path path = mock(Path.class, "test-path");
 
 	private CryptoFileSystemProperties properties = mock(CryptoFileSystemProperties.class);
-
-	private ReadonlyFlag inTest;
 
 	@BeforeEach
 	public void setup() throws IOException {
@@ -32,66 +38,51 @@ public class ReadonlyFlagTest {
 		when(provider.getFileStore(path)).thenReturn(fileStore);
 	}
 
-	@Test
-	public void testReadonlyFlagIsSetIfReadonlyIsSetOnProperties() throws IOException {
-		when(properties.readonly()).thenReturn(true);
+	@DisplayName("isSet()")
+	@ParameterizedTest(name = "readonlyFlag: {0}, writeProtected: {1} -> mounted readonly {2}")
+	@CsvSource({
+			"false, false, false",
+			"true, false, true",
+			"false, true, true",
+			"true, true, true",
+	})
+	public void testIsSet(boolean readonlyFlag, boolean writeProtected, boolean expectedResult) throws IOException {
+		when(properties.readonly()).thenReturn(readonlyFlag);
+		if (writeProtected) {
+			Mockito.doThrow(new AccessDeniedException(path.toString())).when(provider).checkAccess(path, AccessMode.WRITE);
+		}
+		ReadonlyFlag inTest = new ReadonlyFlag(properties, path);
 
-		inTest = new ReadonlyFlag(properties, path);
+		boolean result = inTest.isSet();
 
-		Assertions.assertTrue(inTest.isSet());
+		MatcherAssert.assertThat(result, CoreMatchers.is(expectedResult));
+		Assertions.assertEquals(expectedResult, result);
 	}
 
-	@Test
-	public void testReadonlyFlagIsSetIfReadonlyIsNotSetOnPropertiesAndFilestoreOfVaultIsReadonly() throws IOException {
-		when(properties.readonly()).thenReturn(false);
-		when(fileStore.isReadOnly()).thenReturn(true);
+	@DisplayName("assertWritable()")
+	@ParameterizedTest(name = "readonlyFlag: {0}, writeProtected: {1} -> mounted readonly {2}")
+	@CsvSource({
+			"false, false, false",
+			"true, false, true",
+			"false, true, true",
+			"true, true, true",
+	})
+	public void testAssertWritable(boolean readonlyFlag, boolean writeProtected, boolean expectedResult) throws IOException {
+		when(properties.readonly()).thenReturn(readonlyFlag);
+		if (writeProtected) {
+			Mockito.doThrow(new AccessDeniedException(path.toString())).when(provider).checkAccess(path, AccessMode.WRITE);
+		}
+		ReadonlyFlag inTest = new ReadonlyFlag(properties, path);
 
-		inTest = new ReadonlyFlag(properties, path);
-
-		Assertions.assertTrue(inTest.isSet());
-	}
-
-	@Test
-	public void testReadonlyFlagIsNotSetIfReadonlyIsNotSetOnPropertiesAndFilestoreOfVaultIsNotReadonly() throws IOException {
-		when(properties.readonly()).thenReturn(false);
-		when(fileStore.isReadOnly()).thenReturn(false);
-
-		inTest = new ReadonlyFlag(properties, path);
-
-		Assertions.assertFalse(inTest.isSet());
-	}
-
-	@Test
-	public void testAssertWritableThrowsIOExceptionIfReadonlyIsSetOnProperties() throws IOException {
-		when(properties.readonly()).thenReturn(true);
-
-		inTest = new ReadonlyFlag(properties, path);
-
-		Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
-			inTest.assertWritable();
-		});
-	}
-
-	@Test
-	public void testAssertWritableThrowsIOExceptionIfReadonlyIsNotSetOnPropertiesAndFilestoreOfVaultIsReadonly() throws IOException {
-		when(properties.readonly()).thenReturn(false);
-		when(fileStore.isReadOnly()).thenReturn(true);
-
-		inTest = new ReadonlyFlag(properties, path);
-
-		Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
-			inTest.assertWritable();
-		});
-	}
-
-	@Test
-	public void testAssertWritableDoesNotThrowIOExceptionIfReadonlyIsNotSetOnPropertiesAndFilestoreOfVaultIsNotReadonly() throws IOException {
-		when(properties.readonly()).thenReturn(false);
-		when(fileStore.isReadOnly()).thenReturn(false);
-
-		inTest = new ReadonlyFlag(properties, path);
-
-		inTest.assertWritable();
+		if (expectedResult) {
+			Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
+				inTest.assertWritable();
+			});
+		} else {
+			Assertions.assertDoesNotThrow(() -> {
+				inTest.assertWritable();
+			});
+		}
 	}
 
 }
