@@ -15,6 +15,7 @@ import dagger.Provides;
 import dagger.multibindings.IntoMap;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.migration.v6.Version6Migrator;
+import org.cryptomator.cryptofs.migration.v7.Version7Migrator;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 
 import static java.lang.annotation.ElementType.METHOD;
@@ -38,6 +39,13 @@ class MigrationModule {
 	@IntoMap
 	@MigratorKey(Migration.FIVE_TO_SIX)
 	Migrator provideVersion6Migrator(Version6Migrator migrator) {
+		return migrator;
+	}
+
+	@Provides
+	@IntoMap
+	@MigratorKey(Migration.SIX_TO_SEVEN)
+	Migrator provideVersion7Migrator(Version7Migrator migrator) {
 		return migrator;
 	}
 

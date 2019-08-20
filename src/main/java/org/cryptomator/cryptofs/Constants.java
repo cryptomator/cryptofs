@@ -10,7 +10,7 @@ package org.cryptomator.cryptofs;
 
 public final class Constants {
 
-	public static final int VAULT_VERSION = 6;
+	public static final int VAULT_VERSION = 7;
 	public static final String MASTERKEY_BACKUP_SUFFIX = ".bkup";
 
 	static final String DATA_DIR_NAME = "d";
