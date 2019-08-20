@@ -91,8 +91,7 @@ public class Version7MigratorTest {
 		Assertions.assertEquals(Strings.repeat("3", 129), namePairs.get("0b51fc45f30a0c3027f2b4c4698c5efca3c62fe0.lng"));
 		Assertions.assertEquals(Strings.repeat("4", 130), namePairs.get("caf8f7708cbf2fd3e735a0c765ebb8e0b879360a.lng"));
 		Assertions.assertEquals(Strings.repeat("5", 250), namePairs.get("1cb1308d10cf786a827c91eec1ff7b08d91acad6.lng"));
-		// > 254 chars should remain shortened:
-		Assertions.assertFalse(namePairs.containsKey("c7d6c6201b5344583a9ed2d8f5c3239ccf666230.lng"));
+		Assertions.assertEquals(Strings.repeat("6", 251), namePairs.get("c7d6c6201b5344583a9ed2d8f5c3239ccf666230.lng"));
 	}
 
 	@Test
