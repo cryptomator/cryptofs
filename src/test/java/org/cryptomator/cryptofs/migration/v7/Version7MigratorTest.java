@@ -46,16 +46,16 @@ public class Version7MigratorTest {
 			Files.write(masterkeyFile, keyFile.serialize());
 		}
 		Path dataFile1 = dataDir.resolve("00/000000000000000000000000000000/111");
-		Path dataFile2 = dataDir.resolve("00/000000000000000000000000000000/1c6637a8f2e1f75e06ff9984894d6bd16a3a36a9.lng"); // 222
-		Path metaFile2 = metaDir.resolve("1c/66/1c6637a8f2e1f75e06ff9984894d6bd16a3a36a9.lng");
-		Path dataFile3 = dataDir.resolve("00/000000000000000000000000000000/0b51fc45f30a0c3027f2b4c4698c5efca3c62fe0.lng"); // 129 chars 33333...
-		Path metaFile3 = metaDir.resolve("0b/51/0b51fc45f30a0c3027f2b4c4698c5efca3c62fe0.lng");
-		Path dataFile4 = dataDir.resolve("00/000000000000000000000000000000/caf8f7708cbf2fd3e735a0c765ebb8e0b879360a.lng"); // 130 chars 44444...
-		Path metaFile4 = metaDir.resolve("ca/f8/caf8f7708cbf2fd3e735a0c765ebb8e0b879360a.lng");
-		Path dataFile5 = dataDir.resolve("00/000000000000000000000000000000/1cb1308d10cf786a827c91eec1ff7b08d91acad6.lng"); // 250 chars 55555...
-		Path metaFile5 = metaDir.resolve("1c/b1/1cb1308d10cf786a827c91eec1ff7b08d91acad6.lng");
-		Path dataFile6 = dataDir.resolve("00/000000000000000000000000000000/c7d6c6201b5344583a9ed2d8f5c3239ccf666230.lng"); // 251 chars 66666...
-		Path metaFile6 = metaDir.resolve("c7/d6/c7d6c6201b5344583a9ed2d8f5c3239ccf666230.lng");
+		Path dataFile2 = dataDir.resolve("00/000000000000000000000000000000/1C6637A8F2E1F75E06FF9984894D6BD16A3A36A9.lng"); // 222
+		Path metaFile2 = metaDir.resolve("1C/66/1C6637A8F2E1F75E06FF9984894D6BD16A3A36A9.lng");
+		Path dataFile3 = dataDir.resolve("00/000000000000000000000000000000/0B51FC45F30A0C3027F2B4C4698C5EFCA3C62FE0.lng"); // 129 chars 33333...
+		Path metaFile3 = metaDir.resolve("0B/51/0B51FC45F30A0C3027F2B4C4698C5EFCA3C62FE0.lng");
+		Path dataFile4 = dataDir.resolve("00/000000000000000000000000000000/CAF8F7708CBF2FD3E735A0C765EBB8E0B879360A.lng"); // 130 chars 44444...
+		Path metaFile4 = metaDir.resolve("CA/F8/CAF8F7708CBF2FD3E735A0C765EBB8E0B879360A.lng");
+		Path dataFile5 = dataDir.resolve("00/000000000000000000000000000000/1CB1308D10CF786A827C91EEC1FF7B08D91ACAD6.lng"); // 250 chars 55555...
+		Path metaFile5 = metaDir.resolve("1C/B1/1CB1308D10CF786A827C91EEC1FF7B08D91ACAD6.lng");
+		Path dataFile6 = dataDir.resolve("00/000000000000000000000000000000/C7D6C6201B5344583A9ED2D8F5C3239CCF666230.lng"); // 251 chars 66666...
+		Path metaFile6 = metaDir.resolve("C7/D6/C7D6C6201B5344583A9ED2D8F5C3239CCF666230.lng");
 		Files.createDirectories(dataDir.resolve("00/000000000000000000000000000000"));
 		Files.createFile(dataFile1);
 		Files.createFile(dataFile2);
@@ -87,11 +87,11 @@ public class Version7MigratorTest {
 		Map<String, String> namePairs = migrator.loadShortenedNames(vaultRoot);
 
 		// <= 254 chars should be unshortened:
-		Assertions.assertEquals(Strings.repeat("2", 3), namePairs.get("1c6637a8f2e1f75e06ff9984894d6bd16a3a36a9.lng"));
-		Assertions.assertEquals(Strings.repeat("3", 129), namePairs.get("0b51fc45f30a0c3027f2b4c4698c5efca3c62fe0.lng"));
-		Assertions.assertEquals(Strings.repeat("4", 130), namePairs.get("caf8f7708cbf2fd3e735a0c765ebb8e0b879360a.lng"));
-		Assertions.assertEquals(Strings.repeat("5", 250), namePairs.get("1cb1308d10cf786a827c91eec1ff7b08d91acad6.lng"));
-		Assertions.assertEquals(Strings.repeat("6", 251), namePairs.get("c7d6c6201b5344583a9ed2d8f5c3239ccf666230.lng"));
+		Assertions.assertEquals(Strings.repeat("2", 3), namePairs.get("1C6637A8F2E1F75E06FF9984894D6BD16A3A36A9.lng"));
+		Assertions.assertEquals(Strings.repeat("3", 129), namePairs.get("0B51FC45F30A0C3027F2B4C4698C5EFCA3C62FE0.lng"));
+		Assertions.assertEquals(Strings.repeat("4", 130), namePairs.get("CAF8F7708CBF2FD3E735A0C765EBB8E0B879360A.lng"));
+		Assertions.assertEquals(Strings.repeat("5", 250), namePairs.get("1CB1308D10CF786A827C91EEC1FF7B08D91ACAD6.lng"));
+		Assertions.assertEquals(Strings.repeat("6", 251), namePairs.get("C7D6C6201B5344583A9ED2D8F5C3239CCF666230.lng"));
 	}
 
 	@Test
