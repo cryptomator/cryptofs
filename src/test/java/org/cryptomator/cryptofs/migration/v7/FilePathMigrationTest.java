@@ -4,12 +4,15 @@ import com.google.common.io.MoreFiles;
 import com.google.common.io.RecursiveDeleteOption;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
+import org.hamcrest.CoreMatchers;
+import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -19,6 +22,7 @@ import org.mockito.Mockito;
 import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Optional;
 
@@ -115,6 +119,47 @@ public class FilePathMigrationTest {
 		@AfterEach
 		public void afterEach() throws IOException {
 			MoreFiles.deleteRecursively(vaultRoot, RecursiveDeleteOption.ALLOW_INSECURE);
+		}
+
+		@DisplayName("inflate with non-existing metadata file")
+		@Test
+		public void testInflateWithMissingMetadata() {
+			UninflatableFileException e = Assertions.assertThrows(UninflatableFileException.class, () -> {
+				FilePathMigration.inflate(vaultRoot, "NTJDZUB3J5S25LGO7CD4TE5VOJCSW7HF.lng");
+
+			});
+			MatcherAssert.assertThat(e.getCause(), CoreMatchers.instanceOf(NoSuchFileException.class));
+		}
+
+		@DisplayName("inflate with too large metadata file")
+		@Test
+		public void testInflateWithTooLargeMetadata() throws IOException {
+			Path lngFilePath = metaDir.resolve("NT/JD/NTJDZUB3J5S25LGO7CD4TE5VOJCSW7HF.lng");
+			Files.createDirectories(lngFilePath.getParent());
+			Files.write(lngFilePath, new byte[10*1024+1]);
+
+			UninflatableFileException e = Assertions.assertThrows(UninflatableFileException.class, () -> {
+				FilePathMigration.inflate(vaultRoot, "NTJDZUB3J5S25LGO7CD4TE5VOJCSW7HF.lng");
+
+			});
+			MatcherAssert.assertThat(e.getMessage(), CoreMatchers.containsString("Unexpectedly large file"));
+		}
+
+		@DisplayName("inflate")
+		@ParameterizedTest(name = "inflate(vaultRoot, {0})")
+		@CsvSource({
+				"NTJDZUB3J5S25LGO7CD4TE5VOJCSW7HF.lng,NT/JD/NTJDZUB3J5S25LGO7CD4TE5VOJCSW7HF.lng,ORSXG5A=",
+				"ZNPCXPWRWYFOGTZHVDBOOQDYPAMKKI5R.lng,ZN/PC/ZNPCXPWRWYFOGTZHVDBOOQDYPAMKKI5R.lng,0ORSXG5A=",
+				"NUC3VFSMWKLD4526JDZKSE5V2IIMSYW5.lng,NU/C3/NUC3VFSMWKLD4526JDZKSE5V2IIMSYW5.lng,1SORSXG5A=",
+		})
+		public void testInflate(String canonicalLongFileName, String metadataFilePath, String expected) throws IOException {
+			Path lngFilePath = metaDir.resolve(metadataFilePath);
+			Files.createDirectories(lngFilePath.getParent());
+			Files.write(lngFilePath, expected.getBytes(UTF_8));
+
+			String result = FilePathMigration.inflate(vaultRoot, canonicalLongFileName);
+
+			Assertions.assertEquals(expected, result);
 		}
 
 		@DisplayName("unrelated files")

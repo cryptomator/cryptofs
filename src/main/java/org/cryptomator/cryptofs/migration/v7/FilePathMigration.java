@@ -1,11 +1,17 @@
 package org.cryptomator.cryptofs.migration.v7;
 
+import com.google.common.base.Throwables;
 import com.google.common.io.BaseEncoding;
 import org.cryptomator.cryptolib.common.MessageDigestSupplier;
 
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -29,6 +35,7 @@ class FilePathMigration {
 	private static final String OLD_SYMLINK_PREFIX = "1S";
 	private static final String NEW_REGULAR_SUFFIX = ".c9r";
 	private static final String NEW_SHORTENED_SUFFIX = ".c9s";
+	private static final int MAX_FILENAME_BUFFER_SIZE = 10 * 1024;
 
 	private final Path oldPath;
 	private final String oldCanonicalName;
@@ -49,7 +56,7 @@ class FilePathMigration {
 	 * @param vaultRoot Path to the vault's base directory (parent of <code>d/</code> and <code>m/</code>).
 	 * @param oldPath   Path of an existing file inside the <code>d/</code> directory of a vault. May be a normal file, directory file or symlink as well as conflicting copies.
 	 * @return A new instance of FileNameMigration
-	 * @throws IOException Non-recoverable I/O error, e.g. if a .lng file could not be inflated due to missing metadata.
+	 * @throws IOException Non-recoverable I/O error, such as {@link UninflatableFileException}s
 	 */
 	public static Optional<FilePathMigration> parse(Path vaultRoot, Path oldPath) throws IOException {
 		final String oldFileName = oldPath.getFileName().toString();
@@ -73,11 +80,20 @@ class FilePathMigration {
 	}
 
 	// visible for testing
-	static String inflate(Path vaultRoot, String canonicalLongFileName) throws IOException {
+	static String inflate(Path vaultRoot, String canonicalLongFileName) throws UninflatableFileException {
 		Path metadataFilePath = vaultRoot.resolve("m/" + canonicalLongFileName.substring(0, 2) + "/" + canonicalLongFileName.substring(2, 4) + "/" + canonicalLongFileName);
-		byte[] contents = Files.readAllBytes(metadataFilePath); // TODO max buffer size...
-		// TODO... if metadatafile missing throw explicit exception?
-		return new String(contents, UTF_8);
+		try (SeekableByteChannel ch = Files.newByteChannel(metadataFilePath, StandardOpenOption.READ)) {
+			if (ch.size() > MAX_FILENAME_BUFFER_SIZE) {
+				throw new UninflatableFileException("Unexpectedly large file: " + metadataFilePath);
+			}
+			ByteBuffer buf = ByteBuffer.allocate((int) Math.min(ch.size(), MAX_FILENAME_BUFFER_SIZE));
+			ch.read(buf);
+			buf.flip();
+			return UTF_8.decode(buf).toString();
+		} catch (IOException e) {
+			Throwables.throwIfInstanceOf(e, UninflatableFileException.class);
+			throw new UninflatableFileException("Failed to read metadata file " + metadataFilePath, e);
+		}
 	}
 
 	/**
