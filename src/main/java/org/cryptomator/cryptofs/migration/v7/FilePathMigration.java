@@ -5,11 +5,10 @@ import com.google.common.io.BaseEncoding;
 import org.cryptomator.cryptolib.common.MessageDigestSupplier;
 
 import java.io.IOException;
-import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Optional;
@@ -26,7 +25,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 class FilePathMigration {
 
 	private static final String OLD_SHORTENED_FILENAME_SUFFIX = ".lng";
-	private static final Pattern OLD_SHORTENED_FILENAME_PATTERN = Pattern.compile("[A-Z2-7]{32}\\.lng");
+	private static final Pattern OLD_SHORTENED_FILENAME_PATTERN = Pattern.compile("[A-Z2-7]{32}");
 	private static final Pattern OLD_CANONICAL_FILENAME_PATTERN = Pattern.compile("(0|1S)?([A-Z2-7]{8})*?[A-Z2-7=]{8}");
 	private static final BaseEncoding BASE32 = BaseEncoding.base32();
 	private static final BaseEncoding BASE64 = BaseEncoding.base64Url();
@@ -36,12 +35,16 @@ class FilePathMigration {
 	private static final String NEW_REGULAR_SUFFIX = ".c9r";
 	private static final String NEW_SHORTENED_SUFFIX = ".c9s";
 	private static final int MAX_FILENAME_BUFFER_SIZE = 10 * 1024;
+	private static final String NEW_SHORTENED_METADATA_FILE = "name.c9s";
+	private static final String NEW_DIR_FILE = "dir.c9r";
+	private static final String NEW_CONTENTS_FILE = "contents.c9r";
+	private static final String NEW_SYMLINK_FILE = "symlink.c9r";
 
 	private final Path oldPath;
 	private final String oldCanonicalName;
 
 	/**
-	 * @param oldPath          The actual file path before migration
+	 * @param oldPath The actual file path before migration
 	 * @param oldCanonicalName The inflated old filename without any conflicting pre- or suffixes but including the file type prefix
 	 */
 	FilePathMigration(Path oldPath, String oldCanonicalName) {
@@ -54,7 +57,7 @@ class FilePathMigration {
 	 * Starts a migration of the given file.
 	 *
 	 * @param vaultRoot Path to the vault's base directory (parent of <code>d/</code> and <code>m/</code>).
-	 * @param oldPath   Path of an existing file inside the <code>d/</code> directory of a vault. May be a normal file, directory file or symlink as well as conflicting copies.
+	 * @param oldPath Path of an existing file inside the <code>d/</code> directory of a vault. May be a normal file, directory file or symlink as well as conflicting copies.
 	 * @return A new instance of FileNameMigration
 	 * @throws IOException Non-recoverable I/O error, such as {@link UninflatableFileException}s
 	 */
@@ -64,7 +67,7 @@ class FilePathMigration {
 		if (oldFileName.endsWith(OLD_SHORTENED_FILENAME_SUFFIX)) {
 			Matcher matcher = OLD_SHORTENED_FILENAME_PATTERN.matcher(oldFileName);
 			if (matcher.find()) {
-				canonicalOldFileName = inflate(vaultRoot, matcher.group());
+				canonicalOldFileName = inflate(vaultRoot, matcher.group() + OLD_SHORTENED_FILENAME_SUFFIX);
 			} else {
 				return Optional.empty();
 			}
@@ -79,9 +82,17 @@ class FilePathMigration {
 		return Optional.of(new FilePathMigration(oldPath, canonicalOldFileName));
 	}
 
+	/**
+	 * Resolves the canonical name of a deflated file represented by the given <code>longFileName</code>.
+	 *
+	 * @param vaultRoot Path to the vault's base directory (parent of <code>d/</code> and <code>m/</code>).
+	 * @param longFileName Canonical name of the {@value #OLD_SHORTENED_FILENAME_SUFFIX} file.
+	 * @return The inflated filename
+	 * @throws UninflatableFileException If the file could not be inflated due to missing or malformed metadata.
+	 */
 	// visible for testing
-	static String inflate(Path vaultRoot, String canonicalLongFileName) throws UninflatableFileException {
-		Path metadataFilePath = vaultRoot.resolve("m/" + canonicalLongFileName.substring(0, 2) + "/" + canonicalLongFileName.substring(2, 4) + "/" + canonicalLongFileName);
+	static String inflate(Path vaultRoot, String longFileName) throws UninflatableFileException {
+		Path metadataFilePath = vaultRoot.resolve("m/" + longFileName.substring(0, 2) + "/" + longFileName.substring(2, 4) + "/" + longFileName);
 		try (SeekableByteChannel ch = Files.newByteChannel(metadataFilePath, StandardOpenOption.READ)) {
 			if (ch.size() > MAX_FILENAME_BUFFER_SIZE) {
 				throw new UninflatableFileException("Unexpectedly large file: " + metadataFilePath);
@@ -104,11 +115,63 @@ class FilePathMigration {
 	 * @throws IOException Non-recoverable I/O error
 	 */
 	public Path migrate() throws IOException {
-		// TODO 4. reencode and add new file extension
-		// TODO 5. deflate if exceeding new threshold
-		// TODO 6. in case of DIRECTORY or SYMLINK: create parent dir?
-		// TODO 7. attempt MOVE, retry with conflict-suffix up to N times in case of FileAlreadyExistsException
-		return null;
+		final String canonicalInflatedName = getNewInflatedName();
+		final String canonicalDeflatedName = getNewDeflatedName();
+		final boolean isShortened = !canonicalInflatedName.equals(canonicalDeflatedName);
+
+		FileAlreadyExistsException attemptsExceeded = new FileAlreadyExistsException(oldPath.toString(), oldPath.resolveSibling(canonicalDeflatedName).toString(), "");
+		String attemptSuffix = "";
+
+		for (int i = 1; i <= 3; i++) {
+			try {
+				Path newPath = getTargetPath(attemptSuffix);
+				if (isShortened || isDirectory() || isSymlink()) {
+					Files.createDirectory(newPath.getParent());
+				}
+				if (isShortened) {
+					Path metadataFilePath = newPath.resolveSibling(NEW_SHORTENED_METADATA_FILE);
+					Files.write(metadataFilePath, canonicalInflatedName.getBytes(UTF_8));
+				}
+				return Files.move(oldPath, newPath);
+			} catch (FileAlreadyExistsException e) {
+				attemptSuffix = "_" + i;
+				attemptsExceeded.addSuppressed(e);
+				continue;
+			}
+		}
+		throw attemptsExceeded;
+	}
+
+	/**
+	 * @param attemptSuffix Empty string or anything starting with a non base64 delimiter
+	 * @return The path after successful migration of {@link #oldPath} if migration is successful for the given attemptSuffix
+	 */
+	// visible for testing
+	Path getTargetPath(String attemptSuffix) {
+		final String canonicalInflatedName = getNewInflatedName();
+		final String canonicalDeflatedName = getNewDeflatedName();
+		final boolean isShortened = !canonicalInflatedName.equals(canonicalDeflatedName);
+
+		final String inflatedName = canonicalInflatedName.substring(0, canonicalInflatedName.length() - NEW_REGULAR_SUFFIX.length()) + attemptSuffix + NEW_REGULAR_SUFFIX;
+		final String deflatedName = canonicalDeflatedName.substring(0, canonicalDeflatedName.length() - NEW_SHORTENED_SUFFIX.length()) + attemptSuffix + NEW_SHORTENED_SUFFIX;
+
+		if (isShortened) {
+			if (isDirectory()) {
+				return oldPath.resolveSibling(deflatedName).resolve(NEW_DIR_FILE);
+			} else if (isSymlink()) {
+				return oldPath.resolveSibling(deflatedName).resolve(NEW_SYMLINK_FILE);
+			} else {
+				return oldPath.resolveSibling(deflatedName).resolve(NEW_CONTENTS_FILE);
+			}
+		} else {
+			if (isDirectory()) {
+				return oldPath.resolveSibling(inflatedName).resolve(NEW_DIR_FILE);
+			} else if (isSymlink()) {
+				return oldPath.resolveSibling(inflatedName).resolve(NEW_SYMLINK_FILE);
+			} else {
+				return oldPath.resolveSibling(inflatedName);
+			}
+		}
 	}
 
 	// visible for testing

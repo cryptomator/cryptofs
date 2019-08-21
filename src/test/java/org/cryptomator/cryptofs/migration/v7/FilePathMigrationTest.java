@@ -24,13 +24,14 @@ import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Optional;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class FilePathMigrationTest {
 
-	private Path vaultRoot = Mockito.mock(Path.class, "vaultRoot");
+	private Path oldPath = Mockito.mock(Path.class, "oldPath");
 
 	@ParameterizedTest(name = "getOldCanonicalNameWithoutTypePrefix() expected to be {1} for {0}")
 	@CsvSource({
@@ -39,7 +40,7 @@ public class FilePathMigrationTest {
 			"1SORSXG5A=,ORSXG5A=",
 	})
 	public void testGetOldCanonicalNameWithoutTypePrefix(String oldCanonicalName, String expectedResult) {
-		FilePathMigration migration = new FilePathMigration(vaultRoot, oldCanonicalName);
+		FilePathMigration migration = new FilePathMigration(oldPath, oldCanonicalName);
 
 		Assertions.assertEquals(expectedResult, migration.getOldCanonicalNameWithoutTypePrefix());
 	}
@@ -51,7 +52,7 @@ public class FilePathMigrationTest {
 			"1SORSXG5A=,dGVzdA==.c9r",
 	})
 	public void testGetNewInflatedName(String oldCanonicalName, String expectedResult) {
-		FilePathMigration migration = new FilePathMigration(vaultRoot, oldCanonicalName);
+		FilePathMigration migration = new FilePathMigration(oldPath, oldCanonicalName);
 
 		Assertions.assertEquals(expectedResult, migration.getNewInflatedName());
 	}
@@ -63,11 +64,11 @@ public class FilePathMigrationTest {
 			"ORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG===,30xtS3YjsiMJRwu1oAVc_0S2aAU=.c9s",
 	})
 	public void testGetNewDeflatedName(String oldCanonicalName, String expectedResult) {
-		FilePathMigration migration = new FilePathMigration(vaultRoot, oldCanonicalName);
+		FilePathMigration migration = new FilePathMigration(oldPath, oldCanonicalName);
 
 		Assertions.assertEquals(expectedResult, migration.getNewDeflatedName());
 	}
-	
+
 	@ParameterizedTest(name = "isDirectory() expected to be {1} for {0}")
 	@CsvSource({
 			"ORSXG5A=,false",
@@ -75,8 +76,8 @@ public class FilePathMigrationTest {
 			"1SORSXG5A=,false",
 	})
 	public void testIsDirectory(String oldCanonicalName, boolean expectedResult) {
-		FilePathMigration migration = new FilePathMigration(vaultRoot, oldCanonicalName);
-		
+		FilePathMigration migration = new FilePathMigration(oldPath, oldCanonicalName);
+
 		Assertions.assertEquals(expectedResult, migration.isDirectory());
 	}
 
@@ -87,20 +88,41 @@ public class FilePathMigrationTest {
 			"1SORSXG5A=,true",
 	})
 	public void testIsSymlink(String oldCanonicalName, boolean expectedResult) {
-		FilePathMigration migration = new FilePathMigration(vaultRoot, oldCanonicalName);
+		FilePathMigration migration = new FilePathMigration(oldPath, oldCanonicalName);
 
 		Assertions.assertEquals(expectedResult, migration.isSymlink());
 	}
-	
+
+	@ParameterizedTest(name = "getTargetPath() expected to be {1} for {0}")
+	@CsvSource({
+			"ORSXG5A=,'',dGVzdA==.c9r",
+			"0ORSXG5A=,'',dGVzdA==.c9r/dir.c9r",
+			"1SORSXG5A=,'',dGVzdA==.c9r/symlink.c9r",
+			"ORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG===,'',30xtS3YjsiMJRwu1oAVc_0S2aAU=.c9s/contents.c9r",
+			"0ORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG===,'',30xtS3YjsiMJRwu1oAVc_0S2aAU=.c9s/dir.c9r",
+			"1SORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG===,'',30xtS3YjsiMJRwu1oAVc_0S2aAU=.c9s/symlink.c9r",
+			"ORSXG5A=,'_1',dGVzdA==_1.c9r",
+			"ORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG===,'_123',30xtS3YjsiMJRwu1oAVc_0S2aAU=_123.c9s/contents.c9r",
+	})
+	public void testGetTargetPath(String oldCanonicalName, String attemptSuffix, String expected) {
+		Path old = Paths.get("/tmp/foo");
+		FilePathMigration migration = new FilePathMigration(old, oldCanonicalName);
+
+		Path result = migration.getTargetPath(attemptSuffix);
+
+		Assertions.assertEquals(old.resolveSibling(expected), result);
+	}
+
 	@DisplayName("FilePathMigration.parse(...)")
 	@Nested
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 	class Parsing {
 
 		private FileSystem fs;
+		private Path vaultRoot;
 		private Path dataDir;
 		private Path metaDir;
-		
+
 		@BeforeAll
 		public void beforeAll() {
 			fs = Jimfs.newFileSystem(Configuration.unix());
@@ -108,14 +130,14 @@ public class FilePathMigrationTest {
 			dataDir = vaultRoot.resolve("d");
 			metaDir = vaultRoot.resolve("m");
 		}
-		
+
 		@BeforeEach
 		public void beforeEach() throws IOException {
 			Files.createDirectory(vaultRoot);
 			Files.createDirectory(dataDir);
 			Files.createDirectory(metaDir);
 		}
-		
+
 		@AfterEach
 		public void afterEach() throws IOException {
 			MoreFiles.deleteRecursively(vaultRoot, RecursiveDeleteOption.ALLOW_INSECURE);
@@ -136,7 +158,7 @@ public class FilePathMigrationTest {
 		public void testInflateWithTooLargeMetadata() throws IOException {
 			Path lngFilePath = metaDir.resolve("NT/JD/NTJDZUB3J5S25LGO7CD4TE5VOJCSW7HF.lng");
 			Files.createDirectories(lngFilePath.getParent());
-			Files.write(lngFilePath, new byte[10*1024+1]);
+			Files.write(lngFilePath, new byte[10 * 1024 + 1]);
 
 			UninflatableFileException e = Assertions.assertThrows(UninflatableFileException.class, () -> {
 				FilePathMigration.inflate(vaultRoot, "NTJDZUB3J5S25LGO7CD4TE5VOJCSW7HF.lng");
@@ -184,7 +206,8 @@ public class FilePathMigrationTest {
 				"00/000000000000000000000000000000/ORSXG5A=,ORSXG5A=",
 				"00/000000000000000000000000000000/0ORSXG5A=,0ORSXG5A=",
 				"00/000000000000000000000000000000/1SORSXG5A=,1SORSXG5A=",
-				// TODO: add conflicting files
+				"00/000000000000000000000000000000/conflict_1SORSXG5A=,1SORSXG5A=",
+				"00/000000000000000000000000000000/1SORSXG5A= (conflict),1SORSXG5A=",
 		})
 		public void testParseNonShortenedFile(String oldPath, String expected) throws IOException {
 			Path path = dataDir.resolve(oldPath);
@@ -201,7 +224,8 @@ public class FilePathMigrationTest {
 				"00/000000000000000000000000000000/NTJDZUB3J5S25LGO7CD4TE5VOJCSW7HF.lng,NT/JD/NTJDZUB3J5S25LGO7CD4TE5VOJCSW7HF.lng,ORSXG5A=",
 				"00/000000000000000000000000000000/ZNPCXPWRWYFOGTZHVDBOOQDYPAMKKI5R.lng,ZN/PC/ZNPCXPWRWYFOGTZHVDBOOQDYPAMKKI5R.lng,0ORSXG5A=",
 				"00/000000000000000000000000000000/NUC3VFSMWKLD4526JDZKSE5V2IIMSYW5.lng,NU/C3/NUC3VFSMWKLD4526JDZKSE5V2IIMSYW5.lng,1SORSXG5A=",
-				// TODO: add conflicting files
+				"00/000000000000000000000000000000/conflict_NUC3VFSMWKLD4526JDZKSE5V2IIMSYW5.lng,NU/C3/NUC3VFSMWKLD4526JDZKSE5V2IIMSYW5.lng,1SORSXG5A=",
+				"00/000000000000000000000000000000/NUC3VFSMWKLD4526JDZKSE5V2IIMSYW5 (conflict).lng,NU/C3/NUC3VFSMWKLD4526JDZKSE5V2IIMSYW5.lng,1SORSXG5A=",
 		})
 		public void testParseShortenedFile(String oldPath, String metadataFilePath, String expected) throws IOException {
 			Path path = dataDir.resolve(oldPath);
@@ -214,7 +238,84 @@ public class FilePathMigrationTest {
 			Assertions.assertTrue(migration.isPresent());
 			Assertions.assertEquals(expected, migration.get().getOldCanonicalName());
 		}
-		
+
 	}
-	
+
+	@DisplayName("FilePathMigration.parse(...).get().migrate(...)")
+	@Nested
+	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+	class Migrating {
+
+		private FileSystem fs;
+		private Path vaultRoot;
+		private Path dataDir;
+		private Path metaDir;
+
+		@BeforeAll
+		public void beforeAll() {
+			fs = Jimfs.newFileSystem(Configuration.unix());
+			vaultRoot = fs.getPath("/vaultDir");
+			dataDir = vaultRoot.resolve("d");
+			metaDir = vaultRoot.resolve("m");
+		}
+
+		@BeforeEach
+		public void beforeEach() throws IOException {
+			Files.createDirectory(vaultRoot);
+			Files.createDirectory(dataDir);
+			Files.createDirectory(metaDir);
+		}
+
+		@AfterEach
+		public void afterEach() throws IOException {
+			MoreFiles.deleteRecursively(vaultRoot, RecursiveDeleteOption.ALLOW_INSECURE);
+		}
+
+		@DisplayName("migrate non-shortened files")
+		@ParameterizedTest(name = "migrating {0} to {1}")
+		@CsvSource({
+				"00/000000000000000000000000000000/ORSXG5A=,00/000000000000000000000000000000/dGVzdA==.c9r",
+				"00/000000000000000000000000000000/0ORSXG5A=,00/000000000000000000000000000000/dGVzdA==.c9r/dir.c9r",
+				"00/000000000000000000000000000000/1SORSXG5A=,00/000000000000000000000000000000/dGVzdA==.c9r/symlink.c9r",
+		})
+		public void testMigrateUnshortened(String oldPathStr, String expectedResult) throws IOException {
+			Path oldPath = dataDir.resolve(oldPathStr);
+			Files.createDirectories(oldPath.getParent());
+			Files.write(oldPath, "test".getBytes(UTF_8));
+
+			Path newPath = FilePathMigration.parse(vaultRoot, oldPath).get().migrate();
+
+			Assertions.assertEquals(dataDir.resolve(expectedResult), newPath);
+			Assertions.assertTrue(Files.exists(newPath));
+			Assertions.assertFalse(Files.exists(oldPath));
+		}
+
+		@DisplayName("migrate shortened files")
+		@ParameterizedTest(name = "migrating {0} to {3}")
+		@CsvSource({
+				"00/000000000000000000000000000000/NTJDZUB3J5S25LGO7CD4TE5VOJCSW7HF.lng,NT/JD/NTJDZUB3J5S25LGO7CD4TE5VOJCSW7HF.lng,ORSXG5A=,00/000000000000000000000000000000/dGVzdA==.c9r",
+				"00/000000000000000000000000000000/ZNPCXPWRWYFOGTZHVDBOOQDYPAMKKI5R.lng,ZN/PC/ZNPCXPWRWYFOGTZHVDBOOQDYPAMKKI5R.lng,0ORSXG5A=,00/000000000000000000000000000000/dGVzdA==.c9r/dir.c9r",
+				"00/000000000000000000000000000000/NUC3VFSMWKLD4526JDZKSE5V2IIMSYW5.lng,NU/C3/NUC3VFSMWKLD4526JDZKSE5V2IIMSYW5.lng,1SORSXG5A=,00/000000000000000000000000000000/dGVzdA==.c9r/symlink.c9r",
+				"00/000000000000000000000000000000/LPFZEP7JSREQMANHG7PRTOLSEKJM5JP5.lng,LP/FZ/LPFZEP7JSREQMANHG7PRTOLSEKJM5JP5.lng,ORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG===,00/000000000000000000000000000000/30xtS3YjsiMJRwu1oAVc_0S2aAU=.c9s/contents.c9r",
+				"00/000000000000000000000000000000/7LX7VYDWDWXRPL7ZKTTCVGUPMGPRNUSG.lng,7L/X7/7LX7VYDWDWXRPL7ZKTTCVGUPMGPRNUSG.lng,0ORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG===,00/000000000000000000000000000000/30xtS3YjsiMJRwu1oAVc_0S2aAU=.c9s/dir.c9r",
+				"00/000000000000000000000000000000/MGBBDEW456AMIDODOA3FUOQ3WNYNQNHZ.lng,MG/BB/MGBBDEW456AMIDODOA3FUOQ3WNYNQNHZ.lng,1SORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG===,00/000000000000000000000000000000/30xtS3YjsiMJRwu1oAVc_0S2aAU=.c9s/symlink.c9r",
+		})
+		public void testMigrateShortened(String oldPathStr, String metadataFilePath, String canonicalOldName, String expectedResult) throws IOException {
+			Path oldPath = dataDir.resolve(oldPathStr);
+			Files.createDirectories(oldPath.getParent());
+			Files.write(oldPath, "test".getBytes(UTF_8));
+			Path lngFilePath = metaDir.resolve(metadataFilePath);
+			Files.createDirectories(lngFilePath.getParent());
+			Files.write(lngFilePath, canonicalOldName.getBytes(UTF_8));
+
+			Path newPath = FilePathMigration.parse(vaultRoot, oldPath).get().migrate();
+
+			Assertions.assertEquals(dataDir.resolve(expectedResult), newPath);
+			Assertions.assertTrue(Files.exists(newPath));
+			Assertions.assertFalse(Files.exists(oldPath));
+		}
+
+
+	}
+
 }
