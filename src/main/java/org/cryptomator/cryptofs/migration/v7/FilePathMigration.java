@@ -67,6 +67,11 @@ class FilePathMigration {
 		// TODO 7. attempt MOVE, retry with conflict-suffix up to N times in case of FileAlreadyExistsException
 		return null;
 	}
+	
+	// visible for testing
+	String getOldCanonicalName() {
+		return oldCanonicalName;
+	}
 
 	/**
 	 * @return {@link #oldCanonicalName} without any preceeding "0" or "1S" in case of dirs or symlinks.
