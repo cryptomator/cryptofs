@@ -69,7 +69,7 @@ public class CryptoDirectoryStreamTest {
 		longFileNameProvider = Mockito.mock(LongFileNameProvider.class);
 		conflictResolver = Mockito.mock(ConflictResolver.class);
 		finallyUtil = mock(FinallyUtil.class);
-		Mockito.when(longFileNameProvider.inflate(Mockito.anyString())).then(invocation -> {
+		Mockito.when(longFileNameProvider.inflate(Mockito.any())).then(invocation -> {
 			String shortName = invocation.getArgument(0);
 			if (shortName.contains("invalid")) {
 				throw new IOException("invalid shortened name");

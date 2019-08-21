@@ -70,7 +70,7 @@ public class CryptoDirectoryStreamIntegrationTest {
 		Files.createFile(ciphertextPath);
 		Path inflatedPath = fileSystem.getPath(inflatedName);
 		when(longFileNameProvider.isDeflated(filename)).thenReturn(true);
-		when(longFileNameProvider.inflate(filename)).thenReturn(inflatedName);
+		when(longFileNameProvider.inflate(ciphertextPath)).thenReturn(inflatedName);
 
 		ProcessedPaths paths = new ProcessedPaths(ciphertextPath);
 

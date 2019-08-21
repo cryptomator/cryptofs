@@ -16,6 +16,7 @@ public enum CiphertextFileType {
 		this.prefix = prefix;
 	}
 
+	@Deprecated
 	public String getPrefix() {
 		return prefix;
 	}

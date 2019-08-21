@@ -14,9 +14,12 @@ public final class Constants {
 	public static final String MASTERKEY_BACKUP_SUFFIX = ".bkup";
 
 	static final String DATA_DIR_NAME = "d";
-	static final String METADATA_DIR_NAME = "m";
-	static final int SHORT_NAMES_MAX_LENGTH = 254; // length of a ciphertext filename before it gets shortened. It should be less than 260 (Windows MAX_PATH limit) and a multiple of 8 when the file extensions (4) and prefix (2) is subtracted.
+	@Deprecated static final String METADATA_DIR_NAME = "m";
+	static final int SHORT_NAMES_MAX_LENGTH = 222; // calculations done in https://github.com/cryptomator/cryptofs/issues/60
 	static final String ROOT_DIR_ID = "";
+	static final String CRYPTOMATOR_FILE_SUFFIX = ".c9r";
+	static final String DIR_FILE_NAME = "dir.c9r";
+	static final String SYMLINK_FILE_NAME = "symlink.c9r";
 
 	static final int MAX_SYMLINK_LENGTH = 32767; // max path length on NTFS and FAT32: 32k-1
 

@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
 
 @Singleton
 class EncryptedNamePattern {
-
+	
 	private static final Pattern BASE32_PATTERN_AT_START_OF_NAME = Pattern.compile("^(0|1[A-Z0-9])?(([A-Z2-7]{8})*[A-Z2-7=]{8})");
 
 	@Inject

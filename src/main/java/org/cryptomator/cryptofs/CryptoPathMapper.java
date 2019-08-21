@@ -78,6 +78,7 @@ public class CryptoPathMapper {
 	 * @throws NoSuchFileException If no node exists at the given path for any known type
 	 * @throws IOException
 	 */
+	@Deprecated
 	public CiphertextFileType getCiphertextFileType(CryptoPath cleartextPath) throws NoSuchFileException, IOException {
 		CryptoPath parentPath = cleartextPath.getParent();
 		if (parentPath == null) {
@@ -87,7 +88,7 @@ public class CryptoPathMapper {
 			String cleartextName = cleartextPath.getFileName().toString();
 			NoSuchFileException notFound = new NoSuchFileException(cleartextPath.toString());
 			for (CiphertextFileType type : CiphertextFileType.values()) {
-				String ciphertextName = getCiphertextFileName(parent.dirId, cleartextName, type);
+				String ciphertextName = ciphertextNames.getUnchecked(new DirIdAndName(parent.dirId, cleartextName));
 				Path ciphertextPath = parent.path.resolve(ciphertextName);
 				try {
 					// readattr is the fastest way of checking if a file exists. Doing so in this loop is still
@@ -109,21 +110,17 @@ public class CryptoPathMapper {
 		}
 		CiphertextDirectory parent = getCiphertextDir(parentPath);
 		String cleartextName = cleartextPath.getFileName().toString();
-		String ciphertextName = getCiphertextFileName(parent.dirId, cleartextName, type);
-		return parent.path.resolve(ciphertextName);
-	}
-
-	private String getCiphertextFileName(String dirId, String cleartextName, CiphertextFileType fileType) throws IOException {
-		String ciphertextName = fileType.getPrefix() + ciphertextNames.getUnchecked(new DirIdAndName(dirId, cleartextName));
+		String ciphertextName = ciphertextNames.getUnchecked(new DirIdAndName(parent.dirId, cleartextName));
+		Path canonicalCiphertextPath = parent.path.resolve(ciphertextName);
 		if (ciphertextName.length() > Constants.SHORT_NAMES_MAX_LENGTH) {
-			return longFileNameProvider.deflate(ciphertextName);
+			return longFileNameProvider.deflate(canonicalCiphertextPath);
 		} else {
-			return ciphertextName;
+			return canonicalCiphertextPath;
 		}
 	}
 
 	private String getCiphertextFileName(DirIdAndName dirIdAndName) {
-		return cryptor.fileNameCryptor().encryptFilename(dirIdAndName.name, dirIdAndName.dirId.getBytes(StandardCharsets.UTF_8));
+		return cryptor.fileNameCryptor().encryptFilename(dirIdAndName.name, dirIdAndName.dirId.getBytes(StandardCharsets.UTF_8)) + Constants.CRYPTOMATOR_FILE_SUFFIX;
 	}
 
 	public void invalidatePathMapping(CryptoPath cleartextPath) {

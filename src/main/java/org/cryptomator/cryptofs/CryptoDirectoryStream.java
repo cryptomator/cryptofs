@@ -99,7 +99,7 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 		String fileName = paths.getCiphertextPath().getFileName().toString();
 		if (longFileNameProvider.isDeflated(fileName)) {
 			try {
-				String longFileName = longFileNameProvider.inflate(fileName);
+				String longFileName = longFileNameProvider.inflate(paths.getCiphertextPath());
 				return paths.withInflatedPath(paths.getCiphertextPath().resolveSibling(longFileName));
 			} catch (IOException e) {
 				LOG.warn(paths.getCiphertextPath() + " could not be inflated.");
