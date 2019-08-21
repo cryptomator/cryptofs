@@ -83,25 +83,4 @@ public class CryptoDirectoryStreamIntegrationTest {
 		MatcherAssert.assertThat(Files.exists(inflatedPath), is(false));
 	}
 
-	@Test
-	public void testInflateIfNeededWithLongFilenameThatShouldActuallyBeShort() throws IOException {
-		String filename = "abc";
-		String inflatedName = IntStream.range(0, SHORT_NAMES_MAX_LENGTH).mapToObj(ignored -> "a").collect(Collectors.joining());
-		Path ciphertextPath = fileSystem.getPath(filename);
-		Files.createFile(ciphertextPath);
-		Path inflatedPath = fileSystem.getPath(inflatedName);
-		when(longFileNameProvider.isDeflated(filename)).thenReturn(true);
-		when(longFileNameProvider.inflate(filename)).thenReturn(inflatedName);
-
-		ProcessedPaths paths = new ProcessedPaths(ciphertextPath);
-
-		ProcessedPaths result = inTest.inflateIfNeeded(paths);
-
-		MatcherAssert.assertThat(result.getCiphertextPath(), is(inflatedPath));
-		MatcherAssert.assertThat(result.getInflatedPath(), is(inflatedPath));
-		MatcherAssert.assertThat(result.getCleartextPath(), is(nullValue()));
-		MatcherAssert.assertThat(Files.exists(ciphertextPath), is(false));
-		MatcherAssert.assertThat(Files.exists(inflatedPath), is(true));
-	}
-
 }
