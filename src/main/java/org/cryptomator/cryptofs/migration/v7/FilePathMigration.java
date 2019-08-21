@@ -4,7 +4,10 @@ import com.google.common.io.BaseEncoding;
 import org.cryptomator.cryptolib.common.MessageDigestSupplier;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -16,7 +19,9 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  */
 class FilePathMigration {
 
-	private static final Pattern BASE32_PATTERN = Pattern.compile("(0|1[A-Z0-9])?(([A-Z2-7]{8})*[A-Z2-7=]{8})");
+	private static final String OLD_SHORTENED_FILENAME_SUFFIX = ".lng";
+	private static final Pattern OLD_SHORTENED_FILENAME_PATTERN = Pattern.compile("[A-Z2-7]{32}\\.lng");
+	private static final Pattern OLD_CANONICAL_FILENAME_PATTERN = Pattern.compile("(0|1S)?([A-Z2-7]{8})*?[A-Z2-7=]{8}");
 	private static final BaseEncoding BASE32 = BaseEncoding.base32();
 	private static final BaseEncoding BASE64 = BaseEncoding.base64Url();
 	private static final int SHORTENING_THRESHOLD = 222; // see calculations in https://github.com/cryptomator/cryptofs/issues/60
@@ -29,11 +34,11 @@ class FilePathMigration {
 	private final String oldCanonicalName;
 
 	/**
-	 * @param oldPath The actual file path before migration
+	 * @param oldPath          The actual file path before migration
 	 * @param oldCanonicalName The inflated old filename without any conflicting pre- or suffixes but including the file type prefix
 	 */
 	FilePathMigration(Path oldPath, String oldCanonicalName) {
-		assert BASE32_PATTERN.matcher(oldCanonicalName).matches();
+		assert OLD_CANONICAL_FILENAME_PATTERN.matcher(oldCanonicalName).matches();
 		this.oldPath = oldPath;
 		this.oldCanonicalName = oldCanonicalName;
 	}
@@ -46,11 +51,33 @@ class FilePathMigration {
 	 * @return A new instance of FileNameMigration
 	 * @throws IOException Non-recoverable I/O error, e.g. if a .lng file could not be inflated due to missing metadata.
 	 */
-	static FilePathMigration parse(Path vaultRoot, Path oldPath) throws IOException {
-		// TODO 1. extract canonical name
-		// TODO 2. inflate
-		// TODO 3. determine whether any conflict pre- or suffixes exist
-		return new FilePathMigration(oldPath, null);
+	public static Optional<FilePathMigration> parse(Path vaultRoot, Path oldPath) throws IOException {
+		final String oldFileName = oldPath.getFileName().toString();
+		final String canonicalOldFileName;
+		if (oldFileName.endsWith(OLD_SHORTENED_FILENAME_SUFFIX)) {
+			Matcher matcher = OLD_SHORTENED_FILENAME_PATTERN.matcher(oldFileName);
+			if (matcher.find()) {
+				canonicalOldFileName = inflate(vaultRoot, matcher.group());
+			} else {
+				return Optional.empty();
+			}
+		} else {
+			Matcher matcher = OLD_CANONICAL_FILENAME_PATTERN.matcher(oldFileName);
+			if (matcher.find()) {
+				canonicalOldFileName = matcher.group();
+			} else {
+				return Optional.empty();
+			}
+		}
+		return Optional.of(new FilePathMigration(oldPath, canonicalOldFileName));
+	}
+
+	// visible for testing
+	static String inflate(Path vaultRoot, String canonicalLongFileName) throws IOException {
+		Path metadataFilePath = vaultRoot.resolve("m/" + canonicalLongFileName.substring(0, 2) + "/" + canonicalLongFileName.substring(2, 4) + "/" + canonicalLongFileName);
+		byte[] contents = Files.readAllBytes(metadataFilePath); // TODO max buffer size...
+		// TODO... if metadatafile missing throw explicit exception?
+		return new String(contents, UTF_8);
 	}
 
 	/**
@@ -60,14 +87,14 @@ class FilePathMigration {
 	 * @return The path after migrating
 	 * @throws IOException Non-recoverable I/O error
 	 */
-	Path migrate() throws IOException {
+	public Path migrate() throws IOException {
 		// TODO 4. reencode and add new file extension
 		// TODO 5. deflate if exceeding new threshold
 		// TODO 6. in case of DIRECTORY or SYMLINK: create parent dir?
 		// TODO 7. attempt MOVE, retry with conflict-suffix up to N times in case of FileAlreadyExistsException
 		return null;
 	}
-	
+
 	// visible for testing
 	String getOldCanonicalName() {
 		return oldCanonicalName;

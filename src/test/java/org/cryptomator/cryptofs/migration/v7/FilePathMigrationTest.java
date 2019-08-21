@@ -10,18 +10,17 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
-import sun.jvm.hotspot.utilities.Assert;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -118,6 +117,22 @@ public class FilePathMigrationTest {
 			MoreFiles.deleteRecursively(vaultRoot, RecursiveDeleteOption.ALLOW_INSECURE);
 		}
 
+		@DisplayName("unrelated files")
+		@ParameterizedTest(name = "parse(vaultRoot, {0}) expected to be unparsable")
+		@ValueSource(strings = {
+				"00/000000000000000000000000000000/.DS_Store",
+				"00/000000000000000000000000000000/foo",
+				"00/000000000000000000000000000000/ORSXG5A", // removed one char
+				"00/000000000000000000000000000000/NTJDZUB3J5S25LGO7CD4TE5VOJCSW7H.lng", // removed one char
+		})
+		public void testParseUnrelatedFile(String oldPath) throws IOException {
+			Path path = dataDir.resolve(oldPath);
+
+			Optional<FilePathMigration> migration = FilePathMigration.parse(vaultRoot, path);
+
+			Assertions.assertFalse(migration.isPresent());
+		}
+
 		@DisplayName("regular files")
 		@ParameterizedTest(name = "parse(vaultRoot, {0}).getOldCanonicalName() expected to be {1}")
 		@CsvSource({
@@ -129,9 +144,10 @@ public class FilePathMigrationTest {
 		public void testParseNonShortenedFile(String oldPath, String expected) throws IOException {
 			Path path = dataDir.resolve(oldPath);
 
-			FilePathMigration migration = FilePathMigration.parse(vaultRoot, path);
+			Optional<FilePathMigration> migration = FilePathMigration.parse(vaultRoot, path);
 
-			Assertions.assertEquals(expected, migration.getOldCanonicalName());
+			Assertions.assertTrue(migration.isPresent());
+			Assertions.assertEquals(expected, migration.get().getOldCanonicalName());
 		}
 
 		@DisplayName("shortened files")
@@ -148,9 +164,10 @@ public class FilePathMigrationTest {
 			Files.createDirectories(lngFilePath.getParent());
 			Files.write(lngFilePath, expected.getBytes(UTF_8));
 
-			FilePathMigration migration = FilePathMigration.parse(vaultRoot, path);
+			Optional<FilePathMigration> migration = FilePathMigration.parse(vaultRoot, path);
 
-			Assertions.assertEquals(expected, migration.getOldCanonicalName());
+			Assertions.assertTrue(migration.isPresent());
+			Assertions.assertEquals(expected, migration.get().getOldCanonicalName());
 		}
 		
 	}
