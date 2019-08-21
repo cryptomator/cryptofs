@@ -1,10 +1,13 @@
 package org.cryptomator.cryptofs.migration.v7;
 
 import com.google.common.io.BaseEncoding;
+import org.cryptomator.cryptolib.common.MessageDigestSupplier;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.regex.Pattern;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Helper class responsible of the migration of a single file
@@ -16,7 +19,11 @@ class FilePathMigration {
 	private static final Pattern BASE32_PATTERN = Pattern.compile("(0|1[A-Z0-9])?(([A-Z2-7]{8})*[A-Z2-7=]{8})");
 	private static final BaseEncoding BASE32 = BaseEncoding.base32();
 	private static final BaseEncoding BASE64 = BaseEncoding.base64Url();
-	static final int SHORTENING_THRESHOLD = 222; // see calculations in https://github.com/cryptomator/cryptofs/issues/60 
+	private static final int SHORTENING_THRESHOLD = 222; // see calculations in https://github.com/cryptomator/cryptofs/issues/60
+	private static final String OLD_DIRECTORY_PREFIX = "0";
+	private static final String OLD_SYMLINK_PREFIX = "1S";
+	private static final String NEW_REGULAR_SUFFIX = ".c9r";
+	private static final String NEW_SHORTENED_SUFFIX = ".c9s";
 
 	private final Path oldPath;
 	private final String oldCanonicalName;
@@ -66,23 +73,37 @@ class FilePathMigration {
 	 */
 	// visible for testing
 	String getOldCanonicalNameWithoutTypePrefix() {
-		return null; // TODO
+		if (oldCanonicalName.startsWith(OLD_DIRECTORY_PREFIX)) {
+			return oldCanonicalName.substring(OLD_DIRECTORY_PREFIX.length());
+		} else if (oldCanonicalName.startsWith(OLD_SYMLINK_PREFIX)) {
+			return oldCanonicalName.substring(OLD_SYMLINK_PREFIX.length());
+		} else {
+			return oldCanonicalName;
+		}
 	}
 
 	/**
-	 * @return BASE64-encode(BASE32-decode({@link #getOldCanonicalNameWithoutTypePrefix oldCanonicalNameWithoutPrefix})) + ".c9r"
+	 * @return BASE64-encode(BASE32-decode({@link #getOldCanonicalNameWithoutTypePrefix oldCanonicalNameWithoutPrefix})) + {@value #NEW_REGULAR_SUFFIX}
 	 */
 	// visible for testing
 	String getNewInflatedName() {
-		return null; // TODO
+		byte[] decoded = BASE32.decode(getOldCanonicalNameWithoutTypePrefix());
+		return BASE64.encode(decoded) + NEW_REGULAR_SUFFIX;
 	}
 
 	/**
-	 * @return {@link #getNewInflatedName() newInflatedName} if it is shorter than {@link #SHORTENING_THRESHOLD}, else SHA1(newInflatedName) + ".c9s"
+	 * @return {@link #getNewInflatedName() newInflatedName} if it is shorter than {@link #SHORTENING_THRESHOLD}, else BASE64(SHA1(newInflatedName)) + ".c9s"
 	 */
 	// visible for testing
 	String getNewDeflatedName() {
-		return null; // TODO
+		String inflatedName = getNewInflatedName();
+		if (inflatedName.length() > SHORTENING_THRESHOLD) {
+			byte[] longFileNameBytes = inflatedName.getBytes(UTF_8);
+			byte[] hash = MessageDigestSupplier.SHA1.get().digest(longFileNameBytes);
+			return BASE64.encode(hash) + NEW_SHORTENED_SUFFIX;
+		} else {
+			return inflatedName;
+		}
 	}
 
 	/**
@@ -90,7 +111,7 @@ class FilePathMigration {
 	 */
 	// visible for testing
 	boolean isDirectory() {
-		return false; // TODO
+		return oldCanonicalName.startsWith(OLD_DIRECTORY_PREFIX);
 	}
 
 	/**
@@ -98,7 +119,7 @@ class FilePathMigration {
 	 */
 	// visible for testing
 	boolean isSymlink() {
-		return false; // TODO
+		return oldCanonicalName.startsWith(OLD_SYMLINK_PREFIX);
 	}
 
 }

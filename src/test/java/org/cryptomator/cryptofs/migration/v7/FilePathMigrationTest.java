@@ -17,7 +17,7 @@ public class FilePathMigrationTest {
 			"0ORSXG5A=,ORSXG5A=",
 			"1SORSXG5A=,ORSXG5A=",
 	})
-	public void testGetOldCanonicalNameWithoutTypePrefix(String oldCanonicalName, boolean expectedResult) {
+	public void testGetOldCanonicalNameWithoutTypePrefix(String oldCanonicalName, String expectedResult) {
 		FilePathMigration migration = new FilePathMigration(vaultRoot, oldCanonicalName);
 
 		Assertions.assertEquals(expectedResult, migration.getOldCanonicalNameWithoutTypePrefix());
@@ -29,7 +29,7 @@ public class FilePathMigrationTest {
 			"0ORSXG5A=,dGVzdA==.c9r",
 			"1SORSXG5A=,dGVzdA==.c9r",
 	})
-	public void testGetNewInflatedName(String oldCanonicalName, boolean expectedResult) {
+	public void testGetNewInflatedName(String oldCanonicalName, String expectedResult) {
 		FilePathMigration migration = new FilePathMigration(vaultRoot, oldCanonicalName);
 
 		Assertions.assertEquals(expectedResult, migration.getNewInflatedName());
@@ -39,9 +39,9 @@ public class FilePathMigrationTest {
 	@CsvSource({
 			"ORSXG5A=,dGVzdA==.c9r",
 			"ORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSQ====,dGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRl.c9r",
-			"ORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG===,df4c6d4b7623b22309470bb5a0055cff44b66805.c9s",
+			"ORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG===,30xtS3YjsiMJRwu1oAVc_0S2aAU=.c9s",
 	})
-	public void testGetNewDeflatedName(String oldCanonicalName, boolean expectedResult) {
+	public void testGetNewDeflatedName(String oldCanonicalName, String expectedResult) {
 		FilePathMigration migration = new FilePathMigration(vaultRoot, oldCanonicalName);
 
 		Assertions.assertEquals(expectedResult, migration.getNewDeflatedName());
