@@ -20,6 +20,7 @@ public final class Constants {
 	static final String CRYPTOMATOR_FILE_SUFFIX = ".c9r";
 	static final String DIR_FILE_NAME = "dir.c9r";
 	static final String SYMLINK_FILE_NAME = "symlink.c9r";
+	static final String CONTENTS_FILE_NAME = "contents.c9r";
 
 	static final int MAX_SYMLINK_LENGTH = 32767; // max path length on NTFS and FAT32: 32k-1
 

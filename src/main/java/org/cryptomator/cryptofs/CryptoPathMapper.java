@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -65,8 +66,11 @@ public class CryptoPathMapper {
 	 */
 	public void assertNonExisting(CryptoPath cleartextPath) throws FileAlreadyExistsException, IOException {
 		try {
-			CiphertextFileType type = getCiphertextFileType(cleartextPath);
-			throw new FileAlreadyExistsException(cleartextPath.toString(), null, "For this path there is already a " + type.name());
+			Path ciphertextPath = getCiphertextFilePath(cleartextPath);
+			BasicFileAttributes attr = Files.readAttributes(ciphertextPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+			if (attr != null) {
+				throw new FileAlreadyExistsException(cleartextPath.toString());
+			}
 		} catch (NoSuchFileException e) {
 			// good!
 		}
@@ -78,32 +82,32 @@ public class CryptoPathMapper {
 	 * @throws NoSuchFileException If no node exists at the given path for any known type
 	 * @throws IOException
 	 */
-	@Deprecated
 	public CiphertextFileType getCiphertextFileType(CryptoPath cleartextPath) throws NoSuchFileException, IOException {
 		CryptoPath parentPath = cleartextPath.getParent();
 		if (parentPath == null) {
 			return CiphertextFileType.DIRECTORY; // ROOT
 		} else {
-			CiphertextDirectory parent = getCiphertextDir(parentPath);
-			String cleartextName = cleartextPath.getFileName().toString();
-			NoSuchFileException notFound = new NoSuchFileException(cleartextPath.toString());
-			for (CiphertextFileType type : CiphertextFileType.values()) {
-				String ciphertextName = ciphertextNames.getUnchecked(new DirIdAndName(parent.dirId, cleartextName));
-				Path ciphertextPath = parent.path.resolve(ciphertextName);
-				try {
-					// readattr is the fastest way of checking if a file exists. Doing so in this loop is still
-					// 1-2 orders of magnitude faster than iterating over directory contents
-					Files.readAttributes(ciphertextPath, BasicFileAttributes.class);
-					return type;
-				} catch (NoSuchFileException e) {
-					notFound.addSuppressed(e);
+			Path ciphertextPath = getCiphertextFilePath(cleartextPath);
+			BasicFileAttributes attr = Files.readAttributes(ciphertextPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+			if (attr.isRegularFile()) {
+				return CiphertextFileType.FILE;
+			} else if (attr.isDirectory()) {
+				Path symlinkFilePath = ciphertextPath.resolve(Constants.SYMLINK_FILE_NAME);
+				Path dirFilePath = ciphertextPath.resolve(Constants.DIR_FILE_NAME);
+				Path contentsFilePath = ciphertextPath.resolve(Constants.CONTENTS_FILE_NAME);
+				if (Files.exists(dirFilePath, LinkOption.NOFOLLOW_LINKS)) {
+					return CiphertextFileType.DIRECTORY;
+				} else if (Files.exists(symlinkFilePath, LinkOption.NOFOLLOW_LINKS)) {
+					return CiphertextFileType.SYMLINK;
+				} else if (Files.exists(contentsFilePath, LinkOption.NOFOLLOW_LINKS)) {
+					return CiphertextFileType.FILE;
 				}
 			}
-			throw notFound;
+			throw new NoSuchFileException(cleartextPath.toString(), null, "Could not determine type of file " + ciphertextPath);
 		}
 	}
 
-	public Path getCiphertextFilePath(CryptoPath cleartextPath, CiphertextFileType type) throws IOException {
+	public Path getCiphertextFilePath(CryptoPath cleartextPath) throws IOException {
 		CryptoPath parentPath = cleartextPath.getParent();
 		if (parentPath == null) {
 			throw new IllegalArgumentException("Invalid file path (must have a parent): " + cleartextPath);
@@ -135,7 +139,7 @@ public class CryptoPathMapper {
 		} else {
 			try {
 				return ciphertextDirectories.get(cleartextPath, () -> {
-					Path dirIdFile = getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY);
+					Path dirIdFile = getCiphertextFilePath(cleartextPath).resolve(Constants.DIR_FILE_NAME);
 					return resolveDirectory(dirIdFile);
 				});
 			} catch (ExecutionException e) {

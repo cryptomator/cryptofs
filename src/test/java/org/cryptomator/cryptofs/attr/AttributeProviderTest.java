@@ -64,7 +64,7 @@ public class AttributeProviderTest {
 		Mockito.when(provider.readAttributes(Mockito.same(ciphertextFilePath), Mockito.same(DosFileAttributes.class), Mockito.any())).thenReturn(dosAttr);
 
 		Mockito.when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
-		Mockito.when(pathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE)).thenReturn(ciphertextFilePath);
+		Mockito.when(pathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextFilePath);
 
 		// needed for cleartxt file size calculation
 		FileHeaderCryptor fileHeaderCryptor = Mockito.mock(FileHeaderCryptor.class);
@@ -87,7 +87,7 @@ public class AttributeProviderTest {
 		@BeforeEach
 		public void setup() throws IOException {
 			Mockito.when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
-			Mockito.when(pathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE)).thenReturn(ciphertextFilePath);
+			Mockito.when(pathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextFilePath);
 		}
 
 		@Test
@@ -154,7 +154,7 @@ public class AttributeProviderTest {
 
 		@Test
 		public void testReadBasicAttributesNoFollow() throws IOException {
-			Mockito.when(pathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.SYMLINK)).thenReturn(ciphertextFilePath);
+			Mockito.when(pathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextFilePath);
 
 			AttributeProvider prov = new AttributeProvider(cryptor, pathMapper, openCryptoFiles, fileSystemProperties, symlinks);
 			BasicFileAttributes attr = prov.readAttributes(cleartextPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
@@ -167,7 +167,7 @@ public class AttributeProviderTest {
 			CryptoPath targetPath = Mockito.mock(CryptoPath.class, "targetPath");
 			Mockito.when(symlinks.resolveRecursively(cleartextPath)).thenReturn(targetPath);
 			Mockito.when(pathMapper.getCiphertextFileType(targetPath)).thenReturn(CiphertextFileType.FILE);
-			Mockito.when(pathMapper.getCiphertextFilePath(targetPath, CiphertextFileType.FILE)).thenReturn(ciphertextFilePath);
+			Mockito.when(pathMapper.getCiphertextFilePath(targetPath)).thenReturn(ciphertextFilePath);
 
 			AttributeProvider prov = new AttributeProvider(cryptor, pathMapper, openCryptoFiles, fileSystemProperties, symlinks);
 			BasicFileAttributes attr = prov.readAttributes(cleartextPath, BasicFileAttributes.class);

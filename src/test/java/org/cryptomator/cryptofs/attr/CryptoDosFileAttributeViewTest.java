@@ -57,9 +57,9 @@ public class CryptoDosFileAttributeViewTest {
 
 		when(symlinks.resolveRecursively(link)).thenReturn(cleartextPath);
 		when(pathMapper.getCiphertextFileType(link)).thenReturn(CiphertextFileType.SYMLINK);
-		when(pathMapper.getCiphertextFilePath(link, CiphertextFileType.SYMLINK)).thenReturn(linkCiphertextPath);
+		when(pathMapper.getCiphertextFilePath(link)).thenReturn(linkCiphertextPath);
 		when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
-		when(pathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE)).thenReturn(ciphertextPath);
+		when(pathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextPath);
 
 		inTest = new CryptoDosFileAttributeView(cleartextPath, pathMapper, new LinkOption[]{}, symlinks, openCryptoFiles, fileAttributeProvider, readonlyFlag);
 	}

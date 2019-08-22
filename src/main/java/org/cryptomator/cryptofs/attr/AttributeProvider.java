@@ -66,7 +66,7 @@ public class AttributeProvider {
 		switch (ciphertextFileType) {
 			case SYMLINK: {
 				if (ArrayUtils.contains(options, LinkOption.NOFOLLOW_LINKS)) {
-					Path ciphertextPath = pathMapper.getCiphertextFilePath(cleartextPath, ciphertextFileType);
+					Path ciphertextPath = pathMapper.getCiphertextFilePath(cleartextPath);
 					return readAttributes(ciphertextFileType, ciphertextPath, type);
 				} else {
 					CryptoPath resolved = symlinks.resolveRecursively(cleartextPath);
@@ -78,7 +78,7 @@ public class AttributeProvider {
 				return readAttributes(ciphertextFileType, ciphertextPath, type);
 			}
 			case FILE: {
-				Path ciphertextPath = pathMapper.getCiphertextFilePath(cleartextPath, ciphertextFileType);
+				Path ciphertextPath = pathMapper.getCiphertextFilePath(cleartextPath);
 				return readAttributes(ciphertextFileType, ciphertextPath, type);
 			}
 			default:
