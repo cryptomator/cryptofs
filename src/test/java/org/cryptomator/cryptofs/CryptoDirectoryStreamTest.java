@@ -8,6 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import com.google.common.io.BaseEncoding;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptofs.mocks.NullSecureRandom;
 import org.cryptomator.cryptolib.Cryptors;
@@ -106,14 +107,14 @@ public class CryptoDirectoryStreamTest {
 		Path cleartextPath = Paths.get("/foo/bar");
 
 		List<String> ciphertextFileNames = new ArrayList<>();
-		ciphertextFileNames.add(filenameCryptor.encryptFilename("one", "foo".getBytes()));
-		ciphertextFileNames.add(filenameCryptor.encryptFilename("two", "foo".getBytes()) + "_conflict");
-		ciphertextFileNames.add("0" + filenameCryptor.encryptFilename("three", "foo".getBytes()));
-		ciphertextFileNames.add("0invalidDirectory");
-		ciphertextFileNames.add("0noDirectory");
-		ciphertextFileNames.add("invalidLongName.lng");
-		ciphertextFileNames.add(filenameCryptor.encryptFilename("four", "foo".getBytes()) + ".lng");
-		ciphertextFileNames.add(filenameCryptor.encryptFilename("invalid", "bar".getBytes()));
+		ciphertextFileNames.add(filenameCryptor.encryptFilename(BaseEncoding.base64Url(), "one", "foo".getBytes()) + Constants.CRYPTOMATOR_FILE_SUFFIX);
+		ciphertextFileNames.add(filenameCryptor.encryptFilename(BaseEncoding.base64Url(),"two", "foo".getBytes()) + " (conflict)" + Constants.CRYPTOMATOR_FILE_SUFFIX);
+		ciphertextFileNames.add("?" + filenameCryptor.encryptFilename(BaseEncoding.base64Url(),"three", "foo".getBytes()) + Constants.CRYPTOMATOR_FILE_SUFFIX);
+		ciphertextFileNames.add("0invalidDirectory" + Constants.CRYPTOMATOR_FILE_SUFFIX);
+		ciphertextFileNames.add("0noDirectory" + Constants.CRYPTOMATOR_FILE_SUFFIX);
+		ciphertextFileNames.add("invalidLongName.lng" + Constants.CRYPTOMATOR_FILE_SUFFIX);
+		ciphertextFileNames.add(filenameCryptor.encryptFilename(BaseEncoding.base64Url(),"four", "foo".getBytes()) + ".lng" + Constants.CRYPTOMATOR_FILE_SUFFIX);
+		ciphertextFileNames.add(filenameCryptor.encryptFilename(BaseEncoding.base64Url(),"invalid", "bar".getBytes()) + Constants.CRYPTOMATOR_FILE_SUFFIX);
 		ciphertextFileNames.add("alsoInvalid");
 		Mockito.when(dirStream.spliterator()).thenReturn(ciphertextFileNames.stream().map(cleartextPath::resolve).spliterator());
 

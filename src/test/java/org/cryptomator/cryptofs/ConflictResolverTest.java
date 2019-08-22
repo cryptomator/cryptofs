@@ -121,7 +121,7 @@ public class ConflictResolverTest {
 		Files.write(canonicalPath, new byte[5]);
 
 		Mockito.when(longFileNameProvider.isDeflated(Mockito.eq(canonicalName))).thenReturn(false);
-		Mockito.when(filenameCryptor.decryptFilename(Mockito.eq("FooBar=="), Mockito.any())).thenReturn("cleartext.txt");
+		Mockito.when(filenameCryptor.decryptFilename(Mockito.any(), Mockito.eq("FooBar=="), Mockito.any())).thenReturn("cleartext.txt");
 		Mockito.when(filenameCryptor.encryptFilename(Mockito.any(), Mockito.eq("cleartext.txt (Conflict 1)"), Mockito.any())).thenReturn("BarFoo==");
 
 		Path result = conflictResolver.resolveConflictsIfNecessary(conflictingPath, dirId);
@@ -143,7 +143,7 @@ public class ConflictResolverTest {
 
 		Mockito.when(longFileNameProvider.isDeflated(canonicalName)).thenReturn(true);
 		Mockito.when(longFileNameProvider.inflate(canonicalPath)).thenReturn(inflatedName);
-		Mockito.when(filenameCryptor.decryptFilename(Mockito.eq(inflatedName), Mockito.any())).thenReturn("cleartext.txt");
+		Mockito.when(filenameCryptor.decryptFilename(Mockito.any(), Mockito.eq(inflatedName), Mockito.any())).thenReturn("cleartext.txt");
 		String resolvedCiphertext = Strings.repeat("b", Constants.SHORT_NAMES_MAX_LENGTH + 1);
 		Path resolvedInflatedPath = canonicalPath.resolveSibling(resolvedCiphertext + Constants.CRYPTOMATOR_FILE_SUFFIX);
 		Path resolvedDeflatedPath = canonicalPath.resolveSibling("BarFoo==.c9s");

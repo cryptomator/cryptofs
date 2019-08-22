@@ -13,6 +13,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.io.BaseEncoding;
 import org.cryptomator.cryptolib.api.Cryptor;
 
 import javax.inject.Inject;
@@ -124,7 +125,7 @@ public class CryptoPathMapper {
 	}
 
 	private String getCiphertextFileName(DirIdAndName dirIdAndName) {
-		return cryptor.fileNameCryptor().encryptFilename(dirIdAndName.name, dirIdAndName.dirId.getBytes(StandardCharsets.UTF_8)) + Constants.CRYPTOMATOR_FILE_SUFFIX;
+		return cryptor.fileNameCryptor().encryptFilename(BaseEncoding.base64Url(), dirIdAndName.name, dirIdAndName.dirId.getBytes(StandardCharsets.UTF_8)) + Constants.CRYPTOMATOR_FILE_SUFFIX;
 	}
 
 	public void invalidatePathMapping(CryptoPath cleartextPath) {

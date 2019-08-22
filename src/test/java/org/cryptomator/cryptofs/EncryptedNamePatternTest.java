@@ -1,30 +1,36 @@
 package org.cryptomator.cryptofs;
 
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
 
 public class EncryptedNamePatternTest {
-
-	private static final String ENCRYPTED_NAME = "ALKDUEEH2445375AUZEJFEFA";
-	private static final Path PATH_WITHOUT_ENCRYPTED_NAME = Paths.get("foo.txt");
-	private static final Path PATH_WITH_ENCRYPTED_NAME_AND_PREFIX_AND_SUFFIX = Paths.get("foo" + ENCRYPTED_NAME + ".txt");
-
+	
 	private EncryptedNamePattern inTest = new EncryptedNamePattern();
 
-	@Test
-	public void testExtractEncryptedNameFromStartReturnsEmptyOptionalIfNoEncryptedNameIsPresent() {
-		Optional<String> result = inTest.extractEncryptedNameFromStart(PATH_WITHOUT_ENCRYPTED_NAME);
+	@ParameterizedTest
+	@ValueSource(strings = {
+			"aaaaBBBBcccc0000----__==",
+			"?aaaaBBBBcccc0000----__==",
+			"aaaaBBBBcccc0000----__== (conflict)",
+			"?aaaaBBBBcccc0000----__== (conflict)",
+	})
+	public void testValidCiphertextNames(String name) {
+		Optional<String> result = inTest.extractEncryptedName(Paths.get(name));
 
-		Assertions.assertFalse(result.isPresent());
+		Assertions.assertTrue(result.isPresent());
 	}
 
-	@Test
-	public void testExtractEncryptedNameFromStartReturnsEmptyOptionalIfEncryptedNameIsPresentAfterStart() {
-		Optional<String> result = inTest.extractEncryptedNameFromStart(PATH_WITH_ENCRYPTED_NAME_AND_PREFIX_AND_SUFFIX);
+	@ParameterizedTest
+	@ValueSource(strings = {
+			"tooShort",
+			"aaaaBBBB====0000----__==",
+	})
+	public void testInvalidCiphertextNames(String name) {
+		Optional<String> result = inTest.extractEncryptedName(Paths.get(name));
 
 		Assertions.assertFalse(result.isPresent());
 	}

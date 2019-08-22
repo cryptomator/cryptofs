@@ -8,6 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import com.google.common.io.BaseEncoding;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
@@ -26,8 +27,6 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-
-import static org.cryptomator.cryptofs.Constants.SHORT_NAMES_MAX_LENGTH;
 
 class CryptoDirectoryStream implements DirectoryStream<Path> {
 
@@ -111,11 +110,11 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 	}
 
 	private ProcessedPaths decrypt(ProcessedPaths paths) {
-		Optional<String> ciphertextName = encryptedNamePattern.extractEncryptedNameFromStart(paths.getInflatedPath());
+		Optional<String> ciphertextName = encryptedNamePattern.extractEncryptedName(paths.getInflatedPath());
 		if (ciphertextName.isPresent()) {
 			String ciphertext = ciphertextName.get();
 			try {
-				String cleartext = filenameCryptor.decryptFilename(ciphertext, directoryId.getBytes(StandardCharsets.UTF_8));
+				String cleartext = filenameCryptor.decryptFilename(BaseEncoding.base64Url(), ciphertext, directoryId.getBytes(StandardCharsets.UTF_8));
 				return paths.withCleartextPath(cleartextDir.resolve(cleartext));
 			} catch (AuthenticationFailedException e) {
 				LOG.warn(paths.getInflatedPath() + " not decryptable due to an unauthentic ciphertext.");

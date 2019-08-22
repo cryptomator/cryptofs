@@ -10,17 +10,17 @@ import java.util.regex.Pattern;
 @Singleton
 class EncryptedNamePattern {
 	
-	private static final Pattern BASE32_PATTERN_AT_START_OF_NAME = Pattern.compile("^(0|1[A-Z0-9])?(([A-Z2-7]{8})*[A-Z2-7=]{8})");
+	private static final Pattern BASE64_PATTERN = Pattern.compile("([a-zA-Z0-9-_]{4})*[a-zA-Z0-9-_]{20}[a-zA-Z0-9-_=]{4}");
 
 	@Inject
 	public EncryptedNamePattern() {
 	}
 
-	public Optional<String> extractEncryptedNameFromStart(Path ciphertextFile) {
+	public Optional<String> extractEncryptedName(Path ciphertextFile) {
 		String name = ciphertextFile.getFileName().toString();
-		Matcher matcher = BASE32_PATTERN_AT_START_OF_NAME.matcher(name);
+		Matcher matcher = BASE64_PATTERN.matcher(name);
 		if (matcher.find(0)) {
-			return Optional.of(matcher.group(2));
+			return Optional.of(matcher.group());
 		} else {
 			return Optional.empty();
 		}

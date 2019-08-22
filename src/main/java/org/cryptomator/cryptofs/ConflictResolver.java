@@ -121,7 +121,7 @@ class ConflictResolver {
 	private Path renameConflictingFile(Path canonicalPath, Path conflictingPath, String ciphertext, String dirId) throws IOException {
 		assert Files.exists(canonicalPath);
 		try {
-			String cleartext = cryptor.fileNameCryptor().decryptFilename(ciphertext, dirId.getBytes(StandardCharsets.UTF_8));
+			String cleartext = cryptor.fileNameCryptor().decryptFilename(BaseEncoding.base64Url(), ciphertext, dirId.getBytes(StandardCharsets.UTF_8));
 			Path alternativePath = canonicalPath;
 			for (int i = 1; Files.exists(alternativePath); i++) {
 				String alternativeCleartext = cleartext + " (Conflict " + i + ")";
@@ -138,7 +138,7 @@ class ConflictResolver {
 			return resolved;
 		} catch (AuthenticationFailedException e) {
 			// not decryptable, no need to resolve any kind of conflict
-			LOG.info("Found valid Base32 string, which is an unauthentic ciphertext: {}", conflictingPath);
+			LOG.info("Found valid Base64 string, which is an unauthentic ciphertext: {}", conflictingPath);
 			return conflictingPath;
 		}
 	}

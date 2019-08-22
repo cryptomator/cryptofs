@@ -83,7 +83,7 @@ public class CryptoPathMapperTest {
 		Mockito.when(d00.resolve("00")).thenReturn(d0000);
 		Mockito.when(d0000.resolve("oof.c9r")).thenReturn(d0000oof);
 		Mockito.when(d0000oof.resolve("dir.c9r")).thenReturn(d0000oofdir);
-		Mockito.when(fileNameCryptor.encryptFilename("foo", "".getBytes())).thenReturn("oof");
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(),Mockito.eq("foo"), Mockito.any())).thenReturn("oof");
 		Mockito.when(dirIdProvider.load(d0000oofdir)).thenReturn("1");
 		Mockito.when(fileNameCryptor.hashDirectoryId("1")).thenReturn("0001");
 
@@ -107,7 +107,7 @@ public class CryptoPathMapperTest {
 		Mockito.when(d00.resolve("00")).thenReturn(d0000);
 		Mockito.when(d0000.resolve("oof.c9r")).thenReturn(d0000oof);
 		Mockito.when(d0000oof.resolve("dir.c9r")).thenReturn(d0000oofdir);
-		Mockito.when(fileNameCryptor.encryptFilename("foo", "".getBytes())).thenReturn("oof");
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("foo"), Mockito.any())).thenReturn("oof");
 		Mockito.when(dirIdProvider.load(d0000oofdir)).thenReturn("1");
 		Mockito.when(fileNameCryptor.hashDirectoryId("1")).thenReturn("0001");
 
@@ -117,7 +117,7 @@ public class CryptoPathMapperTest {
 		Mockito.when(d00.resolve("01")).thenReturn(d0001);
 		Mockito.when(d0001.resolve("rab.c9r")).thenReturn(d0001rab);
 		Mockito.when(d0001rab.resolve("dir.c9r")).thenReturn(d0000rabdir);
-		Mockito.when(fileNameCryptor.encryptFilename("bar", "1".getBytes())).thenReturn("rab");
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("bar"), Mockito.any())).thenReturn("rab");
 		Mockito.when(dirIdProvider.load(d0000rabdir)).thenReturn("2");
 		Mockito.when(fileNameCryptor.hashDirectoryId("2")).thenReturn("0002");
 
@@ -141,7 +141,7 @@ public class CryptoPathMapperTest {
 		Mockito.when(d00.resolve("00")).thenReturn(d0000);
 		Mockito.when(d0000.resolve("oof.c9r")).thenReturn(d0000oof);
 		Mockito.when(d0000oof.resolve("dir.c9r")).thenReturn(d0000oofdir);
-		Mockito.when(fileNameCryptor.encryptFilename("foo", "".getBytes())).thenReturn("oof");
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("foo"), Mockito.any())).thenReturn("oof");
 		Mockito.when(dirIdProvider.load(d0000oofdir)).thenReturn("1");
 		Mockito.when(fileNameCryptor.hashDirectoryId("1")).thenReturn("0001");
 
@@ -151,7 +151,7 @@ public class CryptoPathMapperTest {
 		Mockito.when(d00.resolve("01")).thenReturn(d0001);
 		Mockito.when(d0001.resolve("rab.c9r")).thenReturn(d0001rab);
 		Mockito.when(d0001rab.resolve("dir.c9r")).thenReturn(d0000rabdir);
-		Mockito.when(fileNameCryptor.encryptFilename("bar", "1".getBytes())).thenReturn("rab");
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("bar"), Mockito.any())).thenReturn("rab");
 		Mockito.when(dirIdProvider.load(d0000rabdir)).thenReturn("2");
 		Mockito.when(fileNameCryptor.hashDirectoryId("2")).thenReturn("0002");
 
@@ -159,7 +159,7 @@ public class CryptoPathMapperTest {
 		Path d0002zab = Mockito.mock(Path.class, "d/00/02/zab.c9r");
 		Mockito.when(d00.resolve("02")).thenReturn(d0002);
 		Mockito.when(d0002.resolve("zab.c9r")).thenReturn(d0002zab);
-		Mockito.when(fileNameCryptor.encryptFilename("baz", "2".getBytes())).thenReturn("zab");
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("baz"), Mockito.any())).thenReturn("zab");
 
 		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider);
 		Path path = mapper.getCiphertextFilePath(fileSystem.getPath("/foo/bar/baz"));
@@ -188,7 +188,7 @@ public class CryptoPathMapperTest {
 			Mockito.when(d00.resolve("00")).thenReturn(d0000);
 			Mockito.when(fileNameCryptor.hashDirectoryId("")).thenReturn("0000");
 
-			Mockito.when(fileNameCryptor.encryptFilename("CLEAR", "".getBytes())).thenReturn("CIPHER");
+			Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("CLEAR"), Mockito.any())).thenReturn("CIPHER");
 			c9rPath = Mockito.mock(Path.class, "d/00/00/CIPHER.c9r");
 			c9rAttrs = Mockito.mock(BasicFileAttributes.class, "attributes for d/00/00/CIPHER.c9r");
 			Mockito.when(d0000.resolve("CIPHER.c9r")).thenReturn(c9rPath);
