@@ -372,7 +372,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 				return;
 			default:
 				Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath);
-				Files.deleteIfExists(ciphertextFilePath);
+				Files.walkFileTree(ciphertextFilePath, DeletingFileVisitor.INSTANCE);
 				return;
 		}
 	}
