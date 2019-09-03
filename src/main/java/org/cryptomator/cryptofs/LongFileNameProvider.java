@@ -22,16 +22,16 @@ import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.channels.WritableByteChannel;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.cryptomator.cryptofs.Constants.DEFLATED_FILE_SUFFIX;
+import static org.cryptomator.cryptofs.Constants.INFLATED_FILE_NAME;
 
 @CryptoFileSystemScoped
 class LongFileNameProvider {
@@ -39,8 +39,6 @@ class LongFileNameProvider {
 	private static final int MAX_FILENAME_BUFFER_SIZE = 10 * 1024; // no sane person gives a file a 10kb long name.
 	private static final BaseEncoding BASE64 = BaseEncoding.base64Url();
 	private static final Duration MAX_CACHE_AGE = Duration.ofMinutes(1);
-	public static final String SHORTENED_NAME_EXT = ".c9s";
-	private static final String LONG_NAME_FILE = "name.c9s";
 
 	private final ReadonlyFlag readonlyFlag;
 	private final LoadingCache<Path, String> longNames;
@@ -55,7 +53,7 @@ class LongFileNameProvider {
 
 		@Override
 		public String load(Path c9sPath) throws IOException {
-			Path longNameFile = c9sPath.resolve(LONG_NAME_FILE);
+			Path longNameFile = c9sPath.resolve(INFLATED_FILE_NAME);
 			try (SeekableByteChannel ch = Files.newByteChannel(longNameFile, StandardOpenOption.READ)) {
 				if (ch.size() > MAX_FILENAME_BUFFER_SIZE) {
 					throw new UninflatableFileException("Unexpectedly large file: " + longNameFile);
@@ -71,7 +69,7 @@ class LongFileNameProvider {
 	}
 
 	public boolean isDeflated(String possiblyDeflatedFileName) {
-		return possiblyDeflatedFileName.endsWith(SHORTENED_NAME_EXT);
+		return possiblyDeflatedFileName.endsWith(DEFLATED_FILE_SUFFIX);
 	}
 
 	public String inflate(Path c9sPath) throws IOException {
@@ -87,7 +85,7 @@ class LongFileNameProvider {
 		String longFileName = canonicalFileName.getFileName().toString();
 		byte[] longFileNameBytes = longFileName.getBytes(UTF_8);
 		byte[] hash = MessageDigestSupplier.SHA1.get().digest(longFileNameBytes);
-		String shortName = BASE64.encode(hash) + SHORTENED_NAME_EXT;
+		String shortName = BASE64.encode(hash) + DEFLATED_FILE_SUFFIX;
 		Path result = canonicalFileName.resolveSibling(shortName);
 		String cachedLongName = longNames.getIfPresent(shortName);
 		if (cachedLongName == null) {
@@ -127,7 +125,7 @@ class LongFileNameProvider {
 		}
 
 		private void persistInternal() throws IOException {
-			Path longNameFile = c9sPath.resolve(LONG_NAME_FILE);
+			Path longNameFile = c9sPath.resolve(INFLATED_FILE_NAME);
 			Files.createDirectories(c9sPath);
 			try (WritableByteChannel ch = Files.newByteChannel(longNameFile, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
 				ch.write(UTF_8.encode(longName));

@@ -22,11 +22,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.cryptomator.cryptofs.Constants.CRYPTOMATOR_FILE_SUFFIX;
+import static org.cryptomator.cryptofs.Constants.DEFLATED_FILE_SUFFIX;
 import static org.cryptomator.cryptofs.Constants.DIR_FILE_NAME;
 import static org.cryptomator.cryptofs.Constants.MAX_SYMLINK_LENGTH;
 import static org.cryptomator.cryptofs.Constants.SHORT_NAMES_MAX_LENGTH;
 import static org.cryptomator.cryptofs.Constants.SYMLINK_FILE_NAME;
-import static org.cryptomator.cryptofs.LongFileNameProvider.SHORTENED_NAME_EXT;
 
 @CryptoFileSystemScoped
 class ConflictResolver {
@@ -59,9 +59,9 @@ class ConflictResolver {
 		
 		final String basename;
 		final String extension;
-		if (ciphertextFileName.endsWith(SHORTENED_NAME_EXT)) {
-			basename = StringUtils.removeEnd(ciphertextFileName, SHORTENED_NAME_EXT);
-			extension = SHORTENED_NAME_EXT;
+		if (ciphertextFileName.endsWith(DEFLATED_FILE_SUFFIX)) {
+			basename = StringUtils.removeEnd(ciphertextFileName, DEFLATED_FILE_SUFFIX);
+			extension = DEFLATED_FILE_SUFFIX;
 		} else if (ciphertextFileName.endsWith(CRYPTOMATOR_FILE_SUFFIX)) {
 			basename = StringUtils.removeEnd(ciphertextFileName, CRYPTOMATOR_FILE_SUFFIX);
 			extension = CRYPTOMATOR_FILE_SUFFIX;
