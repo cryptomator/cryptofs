@@ -35,13 +35,11 @@ import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 
 	private static Path pathToVault;
-	private static Path mDir;
 	private static FileSystem fileSystem;
 
 	@BeforeAll
 	public static void setupClass(@TempDir Path tmpDir) throws IOException {
 		pathToVault = tmpDir.resolve("vault");
-		mDir = pathToVault.resolve("m");
 		Files.createDirectory(pathToVault);
 		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
 	}
@@ -84,7 +82,8 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 		Files.createDirectory(cleartextDirectory);
 
 		Path ciphertextDirectory = firstEmptyCiphertextDirectory();
-		createFile(ciphertextDirectory, "HHEZJURE.lng", new byte[] {65});
+		Path longNameDir = createFolder(ciphertextDirectory, "HHEZJURE.c9s");
+		createFile(longNameDir, Constants.CONTENTS_FILE_NAME, new byte[] {65});
 
 		Files.delete(cleartextDirectory);
 	}
@@ -95,10 +94,9 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 		Files.createDirectory(cleartextDirectory);
 
 		Path ciphertextDirectory = firstEmptyCiphertextDirectory();
-		createFile(ciphertextDirectory, "HHEZJURE.lng", new byte[] {65});
-		Path mSubdir = mDir.resolve("HH").resolve("EZ");
-		Files.createDirectories(mSubdir);
-		createFile(mSubdir, "HHEZJURE.lng", "0HHEZJUREHHEZJUREHHEZJURE".getBytes());
+		Path longNameDir = createFolder(ciphertextDirectory, "HHEZJURE.c9s");
+		createFile(longNameDir, Constants.INFLATED_FILE_NAME, "HHEZJUREHHEZJUREHHEZJURE".getBytes());
+		createFile(longNameDir, Constants.CONTENTS_FILE_NAME, new byte[] {65});
 
 		Files.delete(cleartextDirectory);
 	}

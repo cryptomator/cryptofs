@@ -14,7 +14,6 @@ public final class Constants {
 	public static final String MASTERKEY_BACKUP_SUFFIX = ".bkup";
 
 	static final String DATA_DIR_NAME = "d";
-	@Deprecated static final String METADATA_DIR_NAME = "m";
 	static final int SHORT_NAMES_MAX_LENGTH = 222; // calculations done in https://github.com/cryptomator/cryptofs/issues/60
 	static final String ROOT_DIR_ID = "";
 	static final String CRYPTOMATOR_FILE_SUFFIX = ".c9r";
