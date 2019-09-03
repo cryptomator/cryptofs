@@ -37,20 +37,23 @@ public class SymlinksTest {
 	}
 
 	private Path mockExistingSymlink(CryptoPath cleartextPath) throws IOException {
-		Path ciphertextPath = Mockito.mock(Path.class);
+		Path ciphertextRawPath = Mockito.mock(Path.class);
 		Path symlinkFilePath = Mockito.mock(Path.class);
 		BasicFileAttributes ciphertextPathAttr = Mockito.mock(BasicFileAttributes.class);
 		BasicFileAttributes symlinkFilePathAttr = Mockito.mock(BasicFileAttributes.class);
-		Mockito.when(ciphertextPath.resolve("symlink.c9r")).thenReturn(symlinkFilePath);
-		Mockito.when(symlinkFilePath.getParent()).thenReturn(ciphertextPath);
-		Mockito.when(ciphertextPath.getFileSystem()).thenReturn(underlyingFs);
+		CiphertextFilePath ciphertextPath = Mockito.mock(CiphertextFilePath.class);
+		Mockito.when(ciphertextRawPath.resolve("symlink.c9r")).thenReturn(symlinkFilePath);
+		Mockito.when(symlinkFilePath.getParent()).thenReturn(ciphertextRawPath);
+		Mockito.when(ciphertextRawPath.getFileSystem()).thenReturn(underlyingFs);
 		Mockito.when(symlinkFilePath.getFileSystem()).thenReturn(underlyingFs);
-		Mockito.when(underlyingFsProvider.readAttributes(ciphertextPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(ciphertextPathAttr);
+		Mockito.when(underlyingFsProvider.readAttributes(ciphertextRawPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(ciphertextPathAttr);
 		Mockito.when(underlyingFsProvider.readAttributes(symlinkFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(symlinkFilePathAttr);
 		Mockito.when(ciphertextPathAttr.isDirectory()).thenReturn(true);
 		Mockito.when(symlinkFilePathAttr.isRegularFile()).thenReturn(true);
 		Mockito.when(cryptoPathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextPath);
-		return ciphertextPath;
+		Mockito.when(ciphertextPath.getRawPath()).thenReturn(ciphertextRawPath);
+		Mockito.when(ciphertextPath.getSymlinkFilePath()).thenReturn(symlinkFilePath);
+		return ciphertextRawPath;
 	}
 
 	@Test
@@ -80,7 +83,6 @@ public class SymlinksTest {
 		CryptoPath resolvedTargetPath = Mockito.mock(CryptoPath.class, "resolvedTargetPath");
 		Path ciphertextPath = mockExistingSymlink(cleartextPath);
 		Path symlinkFilePath = ciphertextPath.resolve("symlink.c9r");
-		Mockito.when(cryptoPathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextPath);
 		Mockito.when(openCryptoFiles.readCiphertextFile(Mockito.eq(symlinkFilePath), Mockito.any(), Mockito.anyInt())).thenReturn(StandardCharsets.UTF_8.encode(targetPath));
 
 		Mockito.when(cleartextFs.getPath(targetPath)).thenReturn(resolvedTargetPath);
@@ -116,8 +118,6 @@ public class SymlinksTest {
 		Mockito.when(cryptoPathMapper.getCiphertextFileType(cleartextPath1)).thenReturn(CiphertextFileType.SYMLINK);
 		Mockito.when(cryptoPathMapper.getCiphertextFileType(cleartextPath2)).thenReturn(CiphertextFileType.SYMLINK);
 		Mockito.when(cryptoPathMapper.getCiphertextFileType(cleartextPath3)).thenReturn(CiphertextFileType.FILE);
-		Mockito.when(cryptoPathMapper.getCiphertextFilePath(cleartextPath1)).thenReturn(ciphertextPath1);
-		Mockito.when(cryptoPathMapper.getCiphertextFilePath(cleartextPath2)).thenReturn(ciphertextPath2);
 		Mockito.when(openCryptoFiles.readCiphertextFile(Mockito.eq(ciphertextSymlinkPath1), Mockito.any(), Mockito.anyInt())).thenReturn(StandardCharsets.UTF_8.encode("file2"));
 		Mockito.when(openCryptoFiles.readCiphertextFile(Mockito.eq(ciphertextSymlinkPath2), Mockito.any(), Mockito.anyInt())).thenReturn(StandardCharsets.UTF_8.encode("file3"));
 		Mockito.when(cleartextFs.getPath("file2")).thenReturn(cleartextPath2);
@@ -139,7 +139,6 @@ public class SymlinksTest {
 		Mockito.when(cleartextPath2.getFileSystem()).thenReturn(cleartextFs);
 		Mockito.when(cryptoPathMapper.getCiphertextFileType(cleartextPath1)).thenReturn(CiphertextFileType.SYMLINK);
 		Mockito.when(cryptoPathMapper.getCiphertextFileType(cleartextPath2)).thenThrow(new NoSuchFileException("cleartextPath2"));
-		Mockito.when(cryptoPathMapper.getCiphertextFilePath(cleartextPath1)).thenReturn(ciphertextPath1);
 		Mockito.when(openCryptoFiles.readCiphertextFile(Mockito.eq(ciphertextSymlinkPath1), Mockito.any(), Mockito.anyInt())).thenReturn(StandardCharsets.UTF_8.encode("file2"));
 		Mockito.when(cleartextFs.getPath("file2")).thenReturn(cleartextPath2);
 
@@ -166,9 +165,6 @@ public class SymlinksTest {
 		Mockito.when(cryptoPathMapper.getCiphertextFileType(cleartextPath1)).thenReturn(CiphertextFileType.SYMLINK);
 		Mockito.when(cryptoPathMapper.getCiphertextFileType(cleartextPath2)).thenReturn(CiphertextFileType.SYMLINK);
 		Mockito.when(cryptoPathMapper.getCiphertextFileType(cleartextPath3)).thenReturn(CiphertextFileType.SYMLINK);
-		Mockito.when(cryptoPathMapper.getCiphertextFilePath(cleartextPath1)).thenReturn(ciphertextPath1);
-		Mockito.when(cryptoPathMapper.getCiphertextFilePath(cleartextPath2)).thenReturn(ciphertextPath2);
-		Mockito.when(cryptoPathMapper.getCiphertextFilePath(cleartextPath3)).thenReturn(ciphertextPath3);
 		Mockito.when(openCryptoFiles.readCiphertextFile(Mockito.eq(ciphertextSymlinkPath1), Mockito.any(), Mockito.anyInt())).thenReturn(StandardCharsets.UTF_8.encode("file2"));
 		Mockito.when(openCryptoFiles.readCiphertextFile(Mockito.eq(ciphertextSymlinkPath2), Mockito.any(), Mockito.anyInt())).thenReturn(StandardCharsets.UTF_8.encode("file3"));
 		Mockito.when(openCryptoFiles.readCiphertextFile(Mockito.eq(ciphertextSymlinkPath3), Mockito.any(), Mockito.anyInt())).thenReturn(StandardCharsets.UTF_8.encode("file1"));

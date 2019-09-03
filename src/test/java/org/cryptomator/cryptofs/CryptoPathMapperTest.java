@@ -162,7 +162,7 @@ public class CryptoPathMapperTest {
 		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("baz"), Mockito.any())).thenReturn("zab");
 
 		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider);
-		Path path = mapper.getCiphertextFilePath(fileSystem.getPath("/foo/bar/baz"));
+		Path path = mapper.getCiphertextFilePath(fileSystem.getPath("/foo/bar/baz")).getRawPath();
 		Assertions.assertEquals(d0002zab, path);
 	}
 

@@ -67,8 +67,8 @@ public class CryptoPathMapper {
 	 */
 	public void assertNonExisting(CryptoPath cleartextPath) throws FileAlreadyExistsException, IOException {
 		try {
-			Path ciphertextPath = getCiphertextFilePath(cleartextPath);
-			BasicFileAttributes attr = Files.readAttributes(ciphertextPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+			CiphertextFilePath ciphertextPath = getCiphertextFilePath(cleartextPath);
+			BasicFileAttributes attr = Files.readAttributes(ciphertextPath.getRawPath(), BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
 			if (attr != null) {
 				throw new FileAlreadyExistsException(cleartextPath.toString());
 			}
@@ -88,27 +88,24 @@ public class CryptoPathMapper {
 		if (parentPath == null) {
 			return CiphertextFileType.DIRECTORY; // ROOT
 		} else {
-			Path ciphertextPath = getCiphertextFilePath(cleartextPath);
-			BasicFileAttributes attr = Files.readAttributes(ciphertextPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+			CiphertextFilePath ciphertextPath = getCiphertextFilePath(cleartextPath);
+			BasicFileAttributes attr = Files.readAttributes(ciphertextPath.getRawPath(), BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
 			if (attr.isRegularFile()) {
 				return CiphertextFileType.FILE;
 			} else if (attr.isDirectory()) {
-				Path symlinkFilePath = ciphertextPath.resolve(Constants.SYMLINK_FILE_NAME);
-				Path dirFilePath = ciphertextPath.resolve(Constants.DIR_FILE_NAME);
-				Path contentsFilePath = ciphertextPath.resolve(Constants.CONTENTS_FILE_NAME);
-				if (Files.exists(dirFilePath, LinkOption.NOFOLLOW_LINKS)) {
+				if (Files.exists(ciphertextPath.getDirFilePath(), LinkOption.NOFOLLOW_LINKS)) {
 					return CiphertextFileType.DIRECTORY;
-				} else if (Files.exists(symlinkFilePath, LinkOption.NOFOLLOW_LINKS)) {
+				} else if (Files.exists(ciphertextPath.getSymlinkFilePath(), LinkOption.NOFOLLOW_LINKS)) {
 					return CiphertextFileType.SYMLINK;
-				} else if (Files.exists(contentsFilePath, LinkOption.NOFOLLOW_LINKS)) {
+				} else if (Files.exists(ciphertextPath.getFilePath(), LinkOption.NOFOLLOW_LINKS)) {
 					return CiphertextFileType.FILE;
 				}
 			}
-			throw new NoSuchFileException(cleartextPath.toString(), null, "Could not determine type of file " + ciphertextPath);
+			throw new NoSuchFileException(cleartextPath.toString(), null, "Could not determine type of file " + ciphertextPath.getRawPath());
 		}
 	}
 
-	public Path getCiphertextFilePath(CryptoPath cleartextPath) throws IOException {
+	public CiphertextFilePath getCiphertextFilePath(CryptoPath cleartextPath) throws IOException {
 		CryptoPath parentPath = cleartextPath.getParent();
 		if (parentPath == null) {
 			throw new IllegalArgumentException("Invalid file path (must have a parent): " + cleartextPath);
@@ -116,11 +113,12 @@ public class CryptoPathMapper {
 		CiphertextDirectory parent = getCiphertextDir(parentPath);
 		String cleartextName = cleartextPath.getFileName().toString();
 		String ciphertextName = ciphertextNames.getUnchecked(new DirIdAndName(parent.dirId, cleartextName));
-		Path canonicalCiphertextPath = parent.path.resolve(ciphertextName);
+		Path unshortenedName = parent.path.resolve(ciphertextName);
 		if (ciphertextName.length() > Constants.SHORT_NAMES_MAX_LENGTH) {
-			return longFileNameProvider.deflate(canonicalCiphertextPath);
+			Path shortenedName = longFileNameProvider.deflate(unshortenedName);
+			return new CiphertextFilePath(shortenedName, true);
 		} else {
-			return canonicalCiphertextPath;
+			return new CiphertextFilePath(unshortenedName, false);
 		}
 	}
 
@@ -140,7 +138,7 @@ public class CryptoPathMapper {
 		} else {
 			try {
 				return ciphertextDirectories.get(cleartextPath, () -> {
-					Path dirIdFile = getCiphertextFilePath(cleartextPath).resolve(Constants.DIR_FILE_NAME);
+					Path dirIdFile = getCiphertextFilePath(cleartextPath).getDirFilePath();
 					return resolveDirectory(dirIdFile);
 				});
 			} catch (ExecutionException e) {

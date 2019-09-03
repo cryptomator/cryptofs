@@ -53,7 +53,7 @@ abstract class AbstractCryptoFileAttributeView implements FileAttributeView {
 		switch (type) {
 			case SYMLINK:
 				if (ArrayUtils.contains(linkOptions, LinkOption.NOFOLLOW_LINKS)) {
-					return pathMapper.getCiphertextFilePath(path);
+					return pathMapper.getCiphertextFilePath(path).getSymlinkFilePath();
 				} else {
 					CryptoPath resolved = symlinks.resolveRecursively(path);
 					return getCiphertextPath(resolved);
@@ -61,7 +61,7 @@ abstract class AbstractCryptoFileAttributeView implements FileAttributeView {
 			case DIRECTORY:
 				return pathMapper.getCiphertextDir(path).path;
 			default:
-				return pathMapper.getCiphertextFilePath(path);
+				return pathMapper.getCiphertextFilePath(path).getFilePath();
 		}
 	}
 

@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.attr;
 
+import org.cryptomator.cryptofs.CiphertextFilePath;
 import org.cryptomator.cryptofs.CiphertextFileType;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
@@ -27,9 +28,10 @@ import static org.mockito.Mockito.when;
 
 public class CryptoDosFileAttributeViewTest {
 
-	private Path linkCiphertextPath = mock(Path.class);
-
-	private Path ciphertextPath = mock(Path.class);
+	private CiphertextFilePath linkCiphertextPath = mock(CiphertextFilePath.class);
+	private CiphertextFilePath ciphertextPath = mock(CiphertextFilePath.class);
+	private Path linkCiphertextRawPath = mock(Path.class);
+	private Path ciphertextRawPath = mock(Path.class);
 	private FileSystem fileSystem = mock(FileSystem.class);
 	private FileSystemProvider provider = mock(FileSystemProvider.class);
 	private DosFileAttributeView delegate = mock(DosFileAttributeView.class);
@@ -47,19 +49,22 @@ public class CryptoDosFileAttributeViewTest {
 
 	@BeforeEach
 	public void setup() throws IOException {
-		when(linkCiphertextPath.getFileSystem()).thenReturn(fileSystem);
+		when(linkCiphertextRawPath.getFileSystem()).thenReturn(fileSystem);
 
-		when(ciphertextPath.getFileSystem()).thenReturn(fileSystem);
+		when(ciphertextRawPath.getFileSystem()).thenReturn(fileSystem);
 		when(fileSystem.provider()).thenReturn(provider);
-		when(provider.getFileAttributeView(ciphertextPath, DosFileAttributeView.class)).thenReturn(delegate);
-		when(provider.getFileAttributeView(ciphertextPath, BasicFileAttributeView.class)).thenReturn(delegate);
-		when(provider.getFileAttributeView(linkCiphertextPath, DosFileAttributeView.class)).thenReturn(linkDelegate);
+		when(provider.getFileAttributeView(ciphertextRawPath, DosFileAttributeView.class)).thenReturn(delegate);
+		when(provider.getFileAttributeView(ciphertextRawPath, BasicFileAttributeView.class)).thenReturn(delegate);
+		when(provider.getFileAttributeView(linkCiphertextRawPath, DosFileAttributeView.class)).thenReturn(linkDelegate);
 
 		when(symlinks.resolveRecursively(link)).thenReturn(cleartextPath);
 		when(pathMapper.getCiphertextFileType(link)).thenReturn(CiphertextFileType.SYMLINK);
 		when(pathMapper.getCiphertextFilePath(link)).thenReturn(linkCiphertextPath);
 		when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
 		when(pathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextPath);
+
+		when(linkCiphertextPath.getSymlinkFilePath()).thenReturn(linkCiphertextRawPath);
+		when(ciphertextPath.getFilePath()).thenReturn(ciphertextRawPath);
 
 		inTest = new CryptoDosFileAttributeView(cleartextPath, pathMapper, new LinkOption[]{}, symlinks, openCryptoFiles, fileAttributeProvider, readonlyFlag);
 	}
