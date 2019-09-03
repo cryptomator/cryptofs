@@ -366,19 +366,18 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	void delete(CryptoPath cleartextPath) throws IOException {
 		readonlyFlag.assertWritable();
 		CiphertextFileType ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextPath);
+		Path ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextPath);
 		switch (ciphertextFileType) {
 			case DIRECTORY:
-				deleteDirectory(cleartextPath);
+				deleteDirectory(cleartextPath, ciphertextPath);
 				return;
 			default:
-				Path ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath);
-				Files.walkFileTree(ciphertextFilePath, DeletingFileVisitor.INSTANCE);
+				Files.walkFileTree(ciphertextPath, DeletingFileVisitor.INSTANCE);
 				return;
 		}
 	}
 
-	private void deleteDirectory(CryptoPath cleartextPath) throws IOException {
-		Path ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextPath);
+	private void deleteDirectory(CryptoPath cleartextPath, Path ciphertextPath) throws IOException {
 		Path ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextPath).path;
 		Path ciphertextDirFile = ciphertextPath.resolve(Constants.DIR_FILE_NAME);
 		try {
