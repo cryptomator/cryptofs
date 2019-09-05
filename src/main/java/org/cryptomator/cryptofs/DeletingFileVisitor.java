@@ -11,6 +11,7 @@ package org.cryptomator.cryptofs;
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -20,7 +21,12 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.util.EnumSet;
 import java.util.Set;
 
-import static java.nio.file.attribute.PosixFilePermission.*;
+import static java.nio.file.attribute.PosixFilePermission.GROUP_EXECUTE;
+import static java.nio.file.attribute.PosixFilePermission.GROUP_READ;
+import static java.nio.file.attribute.PosixFilePermission.GROUP_WRITE;
+import static java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE;
+import static java.nio.file.attribute.PosixFilePermission.OWNER_READ;
+import static java.nio.file.attribute.PosixFilePermission.OWNER_WRITE;
 
 class DeletingFileVisitor extends SimpleFileVisitor<Path> {
 
@@ -29,6 +35,15 @@ class DeletingFileVisitor extends SimpleFileVisitor<Path> {
 	private static final Set<PosixFilePermission> POSIX_PERMISSIONS_770 = EnumSet.of(OWNER_WRITE, OWNER_READ, OWNER_EXECUTE, GROUP_WRITE, GROUP_READ, GROUP_EXECUTE);
 
 	private DeletingFileVisitor() {
+	}
+
+	@Override
+	public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+		if (exc instanceof NoSuchFileException) {
+			return FileVisitResult.SKIP_SUBTREE;
+		} else {
+			throw exc;
+		}
 	}
 
 	@Override

@@ -134,6 +134,14 @@ public class CryptoPathMapper {
 	public void invalidatePathMapping(CryptoPath cleartextPath) {
 		ciphertextDirectories.invalidate(cleartextPath);
 	}
+	
+	public void movePathMapping(CryptoPath cleartextSrc, CryptoPath cleartextDst) {
+		CiphertextDirectory cachedValue = ciphertextDirectories.getIfPresent(cleartextSrc);
+		if (cachedValue != null) {
+			ciphertextDirectories.put(cleartextDst, cachedValue);
+			ciphertextDirectories.invalidate(cleartextSrc);
+		}
+	}
 
 	public CiphertextDirectory getCiphertextDir(CryptoPath cleartextPath) throws IOException {
 		assert cleartextPath.isAbsolute();

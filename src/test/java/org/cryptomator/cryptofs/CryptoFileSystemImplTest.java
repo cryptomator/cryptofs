@@ -550,7 +550,7 @@ public class CryptoFileSystemImplTest {
 				verify(readonlyFlag).assertWritable();
 				verify(physicalFsProv).move(ciphertextSourceFile, ciphertextDestinationFile, option1, option2);
 				verify(dirIdProvider).move(ciphertextSourceDirFile, ciphertextDestinationDirFile);
-				verify(cryptoPathMapper).invalidatePathMapping(cleartextSource);
+				verify(cryptoPathMapper).movePathMapping(cleartextSource, cleartextDestination);
 			}
 
 			@Test
@@ -558,11 +558,13 @@ public class CryptoFileSystemImplTest {
 			public void moveDirectoryReplaceExisting() throws IOException {
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.DIRECTORY);
 				when(cryptoPathMapper.getCiphertextFileType(cleartextDestination)).thenReturn(CiphertextFileType.DIRECTORY);
-				BasicFileAttributes destinationDirAttrs = mock(BasicFileAttributes.class);
-				when(physicalFsProv.readAttributes(Mockito.same(ciphertextDestinationDir), Mockito.same(BasicFileAttributes.class), Mockito.any())).thenReturn(destinationDirAttrs);
-				when(destinationDirAttrs.isDirectory()).thenReturn(true);
+				BasicFileAttributes dirAttr = mock(BasicFileAttributes.class);
+				when(physicalFsProv.readAttributes(Mockito.same(ciphertextDestinationFile), Mockito.same(BasicFileAttributes.class), Mockito.any())).thenReturn(dirAttr);
+				when(physicalFsProv.readAttributes(Mockito.same(ciphertextDestinationDir), Mockito.same(BasicFileAttributes.class), Mockito.any())).thenReturn(dirAttr);
+				when(dirAttr.isDirectory()).thenReturn(true);
 				DirectoryStream<Path> ds = mock(DirectoryStream.class);
 				Iterator<Path> iter = mock(Iterator.class);
+				when(physicalFsProv.newDirectoryStream(Mockito.same(ciphertextDestinationFile), Mockito.any())).thenReturn(ds);
 				when(physicalFsProv.newDirectoryStream(Mockito.same(ciphertextDestinationDir), Mockito.any())).thenReturn(ds);
 				when(ds.iterator()).thenReturn(iter);
 				when(iter.hasNext()).thenReturn(false);
@@ -571,9 +573,10 @@ public class CryptoFileSystemImplTest {
 
 				verify(readonlyFlag).assertWritable();
 				verify(physicalFsProv).deleteIfExists(ciphertextDestinationDir);
+				verify(physicalFsProv).deleteIfExists(ciphertextDestinationFile);
 				verify(physicalFsProv).move(ciphertextSourceFile, ciphertextDestinationFile, StandardCopyOption.REPLACE_EXISTING);
 				verify(dirIdProvider).move(ciphertextSourceDirFile, ciphertextDestinationDirFile);
-				verify(cryptoPathMapper).invalidatePathMapping(cleartextSource);
+				verify(cryptoPathMapper).movePathMapping(cleartextSource, cleartextDestination);
 			}
 
 			@Test

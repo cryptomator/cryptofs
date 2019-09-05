@@ -563,6 +563,8 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	private void moveDirectory(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption[] options) throws IOException {
 		// Since we only rename the directory file, all ciphertext paths of subresources stay the same.
 		// Hence there is no need to re-map OpenCryptoFile entries.
+		CiphertextFilePath ciphertextSource = cryptoPathMapper.getCiphertextFilePath(cleartextSource);
+		CiphertextFilePath ciphertextTarget = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
 		if (ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
 			// check if not attempting to move atomically:
 			if (ArrayUtils.contains(options, StandardCopyOption.ATOMIC_MOVE)) {
@@ -582,11 +584,10 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			if (oldCiphertextDirExists) {
 				Files.walkFileTree(oldCiphertextDir, DeletingFileVisitor.INSTANCE);
 			}
+			Files.walkFileTree(ciphertextTarget.getRawPath(), DeletingFileVisitor.INSTANCE);
 		}
 		
 		// no exceptions until this point, so MOVE:
-		CiphertextFilePath ciphertextSource = cryptoPathMapper.getCiphertextFilePath(cleartextSource);
-		CiphertextFilePath ciphertextTarget = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
 		Files.move(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath(), options);
 		if (ciphertextTarget.isShortened()) {
 			ciphertextTarget.persistLongFileName();
@@ -594,7 +595,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			Files.deleteIfExists(ciphertextTarget.getInflatedNamePath()); // no longer needed if not shortened
 		}
 		dirIdProvider.move(ciphertextSource.getDirFilePath(), ciphertextTarget.getDirFilePath());
-		cryptoPathMapper.invalidatePathMapping(cleartextSource);
+		cryptoPathMapper.movePathMapping(cleartextSource, cleartextTarget);
 	}
 
 	CryptoFileStore getFileStore() {
