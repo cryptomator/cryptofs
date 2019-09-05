@@ -436,6 +436,7 @@ public class CryptoFileSystemImplTest {
 		private final Path ciphertextSourceDirFile = mock(Path.class, "d/00/00/source.c9r/dir.c9r");
 		private final Path ciphertextSourceDir = mock(Path.class, "d/00/SOURCE/");
 		private final Path ciphertextDestinationFile = mock(Path.class, "d/00/00/dest.c9r");
+		private final Path ciphertextDestinationLongNameFile = mock(Path.class, "d/00/00/dest.c9r/name.c9s");
 		private final Path ciphertextDestinationDirFile = mock(Path.class, "d/00/00/dest.c9r/dir.c9r");
 		private final Path ciphertextDestinationDir = mock(Path.class, "d/00/DEST/");
 		private final FileSystem physicalFs = mock(FileSystem.class);
@@ -451,10 +452,12 @@ public class CryptoFileSystemImplTest {
 			when(ciphertextDestination.getFilePath()).thenReturn(ciphertextDestinationFile);
 			when(ciphertextDestination.getSymlinkFilePath()).thenReturn(ciphertextDestinationFile);
 			when(ciphertextDestination.getDirFilePath()).thenReturn(ciphertextDestinationDirFile);
+			when(ciphertextDestination.getInflatedNamePath()).thenReturn(ciphertextDestinationLongNameFile);
 			when(ciphertextSourceFile.getFileSystem()).thenReturn(physicalFs);
 			when(ciphertextSourceDirFile.getFileSystem()).thenReturn(physicalFs);
 			when(ciphertextSourceDir.getFileSystem()).thenReturn(physicalFs);
 			when(ciphertextDestinationFile.getFileSystem()).thenReturn(physicalFs);
+			when(ciphertextDestinationLongNameFile.getFileSystem()).thenReturn(physicalFs);
 			when(ciphertextDestinationDirFile.getFileSystem()).thenReturn(physicalFs);
 			when(ciphertextDestinationDir.getFileSystem()).thenReturn(physicalFs);
 			when(physicalFs.provider()).thenReturn(physicalFsProv);
@@ -555,6 +558,9 @@ public class CryptoFileSystemImplTest {
 			public void moveDirectoryReplaceExisting() throws IOException {
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.DIRECTORY);
 				when(cryptoPathMapper.getCiphertextFileType(cleartextDestination)).thenReturn(CiphertextFileType.DIRECTORY);
+				BasicFileAttributes destinationDirAttrs = mock(BasicFileAttributes.class);
+				when(physicalFsProv.readAttributes(Mockito.same(ciphertextDestinationDir), Mockito.same(BasicFileAttributes.class), Mockito.any())).thenReturn(destinationDirAttrs);
+				when(destinationDirAttrs.isDirectory()).thenReturn(true);
 				DirectoryStream<Path> ds = mock(DirectoryStream.class);
 				Iterator<Path> iter = mock(Iterator.class);
 				when(physicalFsProv.newDirectoryStream(Mockito.same(ciphertextDestinationDir), Mockito.any())).thenReturn(ds);
@@ -564,7 +570,7 @@ public class CryptoFileSystemImplTest {
 				inTest.move(cleartextSource, cleartextDestination, StandardCopyOption.REPLACE_EXISTING);
 
 				verify(readonlyFlag).assertWritable();
-				verify(physicalFsProv).delete(ciphertextDestinationDir);
+				verify(physicalFsProv).deleteIfExists(ciphertextDestinationDir);
 				verify(physicalFsProv).move(ciphertextSourceFile, ciphertextDestinationFile, StandardCopyOption.REPLACE_EXISTING);
 				verify(dirIdProvider).move(ciphertextSourceDirFile, ciphertextDestinationDirFile);
 				verify(cryptoPathMapper).invalidatePathMapping(cleartextSource);

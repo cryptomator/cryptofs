@@ -533,7 +533,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		CiphertextFilePath ciphertextTarget = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
 		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath())) {
 			Files.move(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath(), options);
-			ciphertextTarget.persistLongFileName();
+			if (ciphertextTarget.isShortened()) {
+				ciphertextTarget.persistLongFileName();
+			} else {
+				Files.deleteIfExists(ciphertextTarget.getInflatedNamePath()); // no longer needed if not shortened
+			}
 			twoPhaseMove.commit();
 		}
 	}
@@ -559,31 +563,35 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	private void moveDirectory(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption[] options) throws IOException {
 		// Since we only rename the directory file, all ciphertext paths of subresources stay the same.
 		// Hence there is no need to re-map OpenCryptoFile entries.
+		if (ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
+			// check if not attempting to move atomically:
+			if (ArrayUtils.contains(options, StandardCopyOption.ATOMIC_MOVE)) {
+				throw new AtomicMoveNotSupportedException(cleartextSource.toString(), cleartextTarget.toString(), "Replacing directories during move requires non-atomic status checks.");
+			}
+			// check if dir is empty:
+			Path oldCiphertextDir = cryptoPathMapper.getCiphertextDir(cleartextTarget).path;
+			boolean oldCiphertextDirExists = true;
+			try (DirectoryStream<Path> ds = Files.newDirectoryStream(oldCiphertextDir)) {
+				if (ds.iterator().hasNext()) {
+					throw new DirectoryNotEmptyException(cleartextTarget.toString());
+				}
+			} catch (NoSuchFileException e) {
+				oldCiphertextDirExists = false;
+			}
+			// cleanup dir to be replaced:
+			if (oldCiphertextDirExists) {
+				Files.walkFileTree(oldCiphertextDir, DeletingFileVisitor.INSTANCE);
+			}
+		}
+		
+		// no exceptions until this point, so MOVE:
 		CiphertextFilePath ciphertextSource = cryptoPathMapper.getCiphertextFilePath(cleartextSource);
 		CiphertextFilePath ciphertextTarget = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
-		if (!ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
-			// try to move, don't replace:
-			Files.move(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath(), options);
+		Files.move(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath(), options);
+		if (ciphertextTarget.isShortened()) {
 			ciphertextTarget.persistLongFileName();
-		} else if (ArrayUtils.contains(options, StandardCopyOption.ATOMIC_MOVE)) {
-			// replace atomically (impossible):
-			assert ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING);
-			throw new AtomicMoveNotSupportedException(cleartextSource.toString(), cleartextTarget.toString(), "Replacing directories during move requires non-atomic status checks.");
 		} else {
-			// move and replace (if dir is empty):
-			assert ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING);
-			assert !ArrayUtils.contains(options, StandardCopyOption.ATOMIC_MOVE);
-			if (Files.exists(ciphertextTarget.getRawPath())) {
-				Path ciphertextTargetDir = cryptoPathMapper.getCiphertextDir(cleartextTarget).path;
-				try (DirectoryStream<Path> ds = Files.newDirectoryStream(ciphertextTargetDir)) {
-					if (ds.iterator().hasNext()) {
-						throw new DirectoryNotEmptyException(cleartextTarget.toString());
-					}
-				}
-				Files.delete(ciphertextTargetDir);
-			}
-			Files.move(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath(), options);
-			ciphertextTarget.persistLongFileName();
+			Files.deleteIfExists(ciphertextTarget.getInflatedNamePath()); // no longer needed if not shortened
 		}
 		dirIdProvider.move(ciphertextSource.getDirFilePath(), ciphertextTarget.getDirFilePath());
 		cryptoPathMapper.invalidatePathMapping(cleartextSource);

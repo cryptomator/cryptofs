@@ -33,6 +33,10 @@ public class CiphertextFilePath {
 	public Path getSymlinkFilePath() {
 		return path.resolve(Constants.SYMLINK_FILE_NAME);
 	}
+	
+	public Path getInflatedNamePath() {
+		return path.resolve(Constants.INFLATED_FILE_NAME);
+	}
 
 	@Override
 	public int hashCode() {
