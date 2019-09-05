@@ -12,6 +12,7 @@ install:
 - echo "MAVEN_OPTS='-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN -Dorg.slf4j.simpleLogger.showDateTime=true'" > ~/.mavenrc
 before_script:
 - mvn -B --update-snapshots dependency-check:check -Pdependency-check
+- if [ -n "$TRAVIS_TAG" ]; then mvn versions:set -DnewVersion=${TRAVIS_TAG}; fi
 script:
 - mvn -B clean test jacoco:report verify -Pcoverage -Dorg.slf4j.simpleLogger.defaultLogLevel=debug
 - |
@@ -26,10 +27,8 @@ cache:
   - $HOME/.m2
 deploy:
 - provider: script
-  script:
-    - mvn versions:set -DnewVersion=${TRAVIS_TAG}
-    - mvn clean deploy -DskipTests -Prelease
-  skip_cleanup: false
+  script: mvn clean deploy -DskipTests -Prelease
+  skip_cleanup: true
   on:
     repo: cryptomator/cryptofs
     tags: true
