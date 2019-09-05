@@ -13,7 +13,6 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.io.BaseEncoding;
-import org.cryptomator.cryptofs.migration.v7.UninflatableFileException;
 import org.cryptomator.cryptolib.common.MessageDigestSupplier;
 
 import javax.inject.Inject;
@@ -55,7 +54,7 @@ class LongFileNameProvider {
 			Path longNameFile = c9sPath.resolve(INFLATED_FILE_NAME);
 			try (SeekableByteChannel ch = Files.newByteChannel(longNameFile, StandardOpenOption.READ)) {
 				if (ch.size() > MAX_FILENAME_BUFFER_SIZE) {
-					throw new UninflatableFileException("Unexpectedly large file: " + longNameFile);
+					throw new IOException("Unexpectedly large file: " + longNameFile);
 				}
 				assert ch.size() <= MAX_FILENAME_BUFFER_SIZE;
 				ByteBuffer buf = ByteBuffer.allocate((int) ch.size());
