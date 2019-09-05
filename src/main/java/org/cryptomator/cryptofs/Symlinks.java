@@ -42,12 +42,12 @@ public class Symlinks {
 		if (target.toString().length() > Constants.MAX_SYMLINK_LENGTH) {
 			throw new IOException("path length limit exceeded.");
 		}
-		Path ciphertextSymlinkFile = cryptoPathMapper.getCiphertextFilePath(cleartextPath).getSymlinkFilePath();
+		CiphertextFilePath ciphertextFilePath = cryptoPathMapper.getCiphertextFilePath(cleartextPath);
 		EffectiveOpenOptions openOptions = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW), readonlyFlag);
 		ByteBuffer content = UTF_8.encode(target.toString());
-		Files.createDirectory(ciphertextSymlinkFile.getParent());
-		openCryptoFiles.writeCiphertextFile(ciphertextSymlinkFile, openOptions, content);
-		longFileNameProvider.getCached(ciphertextSymlinkFile).ifPresent(LongFileNameProvider.DeflatedFileName::persist);
+		Files.createDirectory(ciphertextFilePath.getRawPath());
+		openCryptoFiles.writeCiphertextFile(ciphertextFilePath.getSymlinkFilePath(), openOptions, content);
+		ciphertextFilePath.persistLongFileName();
 	}
 
 	public CryptoPath readSymbolicLink(CryptoPath cleartextPath) throws IOException {

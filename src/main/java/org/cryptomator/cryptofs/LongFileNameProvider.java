@@ -26,7 +26,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -41,7 +40,7 @@ class LongFileNameProvider {
 	private static final Duration MAX_CACHE_AGE = Duration.ofMinutes(1);
 
 	private final ReadonlyFlag readonlyFlag;
-	private final LoadingCache<Path, String> longNames;
+	private final LoadingCache<Path, String> longNames; // Maps from c9s paths to inflated filenames
 
 	@Inject
 	public LongFileNameProvider(ReadonlyFlag readonlyFlag) {
@@ -81,28 +80,14 @@ class LongFileNameProvider {
 		}
 	}
 
-	public Path deflate(Path canonicalFileName) {
-		String longFileName = canonicalFileName.getFileName().toString();
+	public DeflatedFileName deflate(Path c9rPath) {
+		String longFileName = c9rPath.getFileName().toString();
 		byte[] longFileNameBytes = longFileName.getBytes(UTF_8);
 		byte[] hash = MessageDigestSupplier.SHA1.get().digest(longFileNameBytes);
 		String shortName = BASE64.encode(hash) + DEFLATED_FILE_SUFFIX;
-		Path result = canonicalFileName.resolveSibling(shortName);
-		String cachedLongName = longNames.getIfPresent(shortName);
-		if (cachedLongName == null) {
-			longNames.put(result, longFileName);
-		} else {
-			assert cachedLongName.equals(longFileName);
-		}
-		return result;
-	}
-
-	public Optional<DeflatedFileName> getCached(Path c9sPath) {
-		String longName = longNames.getIfPresent(c9sPath);
-		if (longName != null) {
-			return Optional.of(new DeflatedFileName(c9sPath, longName));
-		} else {
-			return Optional.empty();
-		}
+		Path c9sPath = c9rPath.resolveSibling(shortName);
+		longNames.put(c9sPath, longFileName);
+		return new DeflatedFileName(c9sPath, longFileName);
 	}
 
 	public class DeflatedFileName {

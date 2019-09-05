@@ -54,16 +54,16 @@ public class LongFileNameProviderTest {
 	public void testDeflateAndInflate(@TempDir Path tmpPath) throws IOException {
 		String orig = "longName";
 		LongFileNameProvider prov1 = new LongFileNameProvider(readonlyFlag);
-		Path deflated = prov1.deflate(tmpPath.resolve(orig));
-		String inflated1 = prov1.inflate(deflated);
+		LongFileNameProvider.DeflatedFileName deflated = prov1.deflate(tmpPath.resolve(orig));
+		String inflated1 = prov1.inflate(deflated.c9sPath);
 		Assertions.assertEquals(orig, inflated1);
 
 		Assertions.assertEquals(0, countFiles(tmpPath));
-		prov1.getCached(deflated).ifPresent(LongFileNameProvider.DeflatedFileName::persist);
+		deflated.persist();
 		Assertions.assertEquals(1, countFiles(tmpPath));
 
 		LongFileNameProvider prov2 = new LongFileNameProvider(readonlyFlag);
-		String inflated2 = prov2.inflate(deflated);
+		String inflated2 = prov2.inflate(deflated.c9sPath);
 		Assertions.assertEquals(orig, inflated2);
 	}
 
@@ -92,13 +92,11 @@ public class LongFileNameProviderTest {
 
 		String orig = "longName";
 		Path canonicalFileName = tmpPath.resolve(orig);
-		Path c9sFile = prov.deflate(canonicalFileName);
-		Optional<LongFileNameProvider.DeflatedFileName> cachedFileName = prov.getCached(c9sFile);
+		LongFileNameProvider.DeflatedFileName deflated = prov.deflate(canonicalFileName);
 
-		Assertions.assertTrue(cachedFileName.isPresent());
 		Mockito.doThrow(new ReadOnlyFileSystemException()).when(readonlyFlag).assertWritable();
 		Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
-			cachedFileName.get().persist();
+			deflated.persist();
 		});
 	}
 

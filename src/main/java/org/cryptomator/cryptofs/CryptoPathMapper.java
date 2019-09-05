@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
 import static org.cryptomator.cryptofs.Constants.DATA_DIR_NAME;
@@ -112,13 +113,17 @@ public class CryptoPathMapper {
 		}
 		CiphertextDirectory parent = getCiphertextDir(parentPath);
 		String cleartextName = cleartextPath.getFileName().toString();
-		String ciphertextName = ciphertextNames.getUnchecked(new DirIdAndName(parent.dirId, cleartextName));
-		Path unshortenedName = parent.path.resolve(ciphertextName);
+		return getCiphertextFilePath(parent.path, parent.dirId, cleartextName);
+	}
+	
+	public CiphertextFilePath getCiphertextFilePath(Path parentCiphertextDir, String parentDirId, String cleartextName) {
+		String ciphertextName = ciphertextNames.getUnchecked(new DirIdAndName(parentDirId, cleartextName));
+		Path c9rPath = parentCiphertextDir.resolve(ciphertextName);
 		if (ciphertextName.length() > Constants.SHORT_NAMES_MAX_LENGTH) {
-			Path shortenedName = longFileNameProvider.deflate(unshortenedName);
-			return new CiphertextFilePath(shortenedName, true);
+			LongFileNameProvider.DeflatedFileName deflatedFileName = longFileNameProvider.deflate(c9rPath);
+			return new CiphertextFilePath(deflatedFileName.c9sPath, Optional.of(deflatedFileName));
 		} else {
-			return new CiphertextFilePath(unshortenedName, false);
+			return new CiphertextFilePath(c9rPath, Optional.empty());
 		}
 	}
 

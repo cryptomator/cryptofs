@@ -21,20 +21,22 @@ import java.nio.file.Path;
 
 public class ConflictResolverTest {
 
+	private Path tmpDir;
 	private LongFileNameProvider longFileNameProvider;
+	private CryptoPathMapper cryptoPathMapper;
 	private Cryptor cryptor;
 	private FileNameCryptor filenameCryptor;
 	private ConflictResolver conflictResolver;
 	private String dirId;
-	private Path tmpDir;
 
 	@BeforeEach
 	public void setup(@TempDir Path tmpDir) {
 		this.tmpDir = tmpDir;
 		this.longFileNameProvider = Mockito.mock(LongFileNameProvider.class);
+		this.cryptoPathMapper = Mockito.mock(CryptoPathMapper.class);
 		this.cryptor = Mockito.mock(Cryptor.class);
 		this.filenameCryptor = Mockito.mock(FileNameCryptor.class);
-		this.conflictResolver = new ConflictResolver(longFileNameProvider, cryptor);
+		this.conflictResolver = new ConflictResolver(longFileNameProvider, cryptoPathMapper, cryptor);
 		this.dirId = "foo";
 
 		Mockito.when(cryptor.fileNameCryptor()).thenReturn(filenameCryptor);
@@ -122,11 +124,15 @@ public class ConflictResolverTest {
 
 		Mockito.when(longFileNameProvider.isDeflated(Mockito.eq(canonicalName))).thenReturn(false);
 		Mockito.when(filenameCryptor.decryptFilename(Mockito.any(), Mockito.eq("FooBar=="), Mockito.any())).thenReturn("cleartext.txt");
-		Mockito.when(filenameCryptor.encryptFilename(Mockito.any(), Mockito.eq("cleartext.txt (Conflict 1)"), Mockito.any())).thenReturn("BarFoo==");
+		Path resolvedC9rPath = canonicalPath.resolveSibling("BarFoo==.c9r");
+		CiphertextFilePath alternativeCiphertextPath = Mockito.mock(CiphertextFilePath.class);
+		Mockito.when(cryptoPathMapper.getCiphertextFilePath(Mockito.eq(tmpDir), Mockito.any(), Mockito.eq("cleartext.txt (Conflict 1)"))).thenReturn(alternativeCiphertextPath);
+		Mockito.when(alternativeCiphertextPath.getRawPath()).thenReturn(resolvedC9rPath);
 
 		Path result = conflictResolver.resolveConflictsIfNecessary(conflictingPath, dirId);
 
-		Assertions.assertEquals("BarFoo==.c9r", result.getFileName().toString());
+		Mockito.verify(alternativeCiphertextPath).persistLongFileName();
+		Assertions.assertEquals(resolvedC9rPath, result);
 		Assertions.assertFalse(Files.exists(conflictingPath));
 		Assertions.assertTrue(Files.exists(result));
 	}
@@ -144,15 +150,15 @@ public class ConflictResolverTest {
 		Mockito.when(longFileNameProvider.isDeflated(canonicalName)).thenReturn(true);
 		Mockito.when(longFileNameProvider.inflate(canonicalPath)).thenReturn(inflatedName);
 		Mockito.when(filenameCryptor.decryptFilename(Mockito.any(), Mockito.eq(inflatedName), Mockito.any())).thenReturn("cleartext.txt");
-		String resolvedCiphertext = Strings.repeat("b", Constants.SHORT_NAMES_MAX_LENGTH + 1);
-		Path resolvedInflatedPath = canonicalPath.resolveSibling(resolvedCiphertext + Constants.CRYPTOMATOR_FILE_SUFFIX);
-		Path resolvedDeflatedPath = canonicalPath.resolveSibling("BarFoo==.c9s");
-		Mockito.when(filenameCryptor.encryptFilename(Mockito.any(), Mockito.eq("cleartext.txt (Conflict 1)"), Mockito.any())).thenReturn(resolvedCiphertext);
-		Mockito.when(longFileNameProvider.deflate(resolvedInflatedPath)).thenReturn(resolvedDeflatedPath);
+		Path resolvedC9sPath = canonicalPath.resolveSibling("BarFoo==.c9s");
+		CiphertextFilePath alternativeCiphertextPath = Mockito.mock(CiphertextFilePath.class);
+		Mockito.when(cryptoPathMapper.getCiphertextFilePath(Mockito.eq(tmpDir), Mockito.any(), Mockito.eq("cleartext.txt (Conflict 1)"))).thenReturn(alternativeCiphertextPath);
+		Mockito.when(alternativeCiphertextPath.getRawPath()).thenReturn(resolvedC9sPath);
 
 		Path result = conflictResolver.resolveConflictsIfNecessary(conflictingPath, dirId);
-
-		Assertions.assertEquals(resolvedDeflatedPath, result);
+		
+		Mockito.verify(alternativeCiphertextPath).persistLongFileName();
+		Assertions.assertEquals(resolvedC9sPath, result);
 		Assertions.assertFalse(Files.exists(conflictingPath));
 		Assertions.assertTrue(Files.exists(result));
 	}

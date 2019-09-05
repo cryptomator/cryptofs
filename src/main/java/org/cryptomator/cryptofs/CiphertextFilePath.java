@@ -2,16 +2,16 @@ package org.cryptomator.cryptofs;
 
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.Optional;
 
 public class CiphertextFilePath {
 
 	private final Path path;
-	private final boolean isShortened;
+	private final Optional<LongFileNameProvider.DeflatedFileName> deflatedFileName;
 
-	// TODO: add deflatedName instead of caching it inside the longFileNameProvider
-	CiphertextFilePath(Path path, boolean isShortened) {
+	CiphertextFilePath(Path path, Optional<LongFileNameProvider.DeflatedFileName> deflatedFileName) {
 		this.path = Objects.requireNonNull(path);
-		this.isShortened = isShortened;
+		this.deflatedFileName = Objects.requireNonNull(deflatedFileName);
 	}
 	
 	public Path getRawPath() {
@@ -19,11 +19,11 @@ public class CiphertextFilePath {
 	}
 
 	public boolean isShortened() {
-		return isShortened;
+		return deflatedFileName.isPresent();
 	}
 
 	public Path getFilePath() {
-		return isShortened ? path.resolve(Constants.CONTENTS_FILE_NAME) : path;
+		return isShortened() ? path.resolve(Constants.CONTENTS_FILE_NAME) : path;
 	}
 
 	public Path getDirFilePath() {
@@ -36,14 +36,14 @@ public class CiphertextFilePath {
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(path, isShortened);
+		return Objects.hash(path, deflatedFileName);
 	}
 
 	@Override
 	public boolean equals(Object obj) {
 		if (obj instanceof CiphertextFilePath) {
 			CiphertextFilePath other = (CiphertextFilePath) obj;
-			return this.path.equals(other.path) && this.isShortened == other.isShortened;
+			return this.path.equals(other.path) && this.deflatedFileName.equals(other.deflatedFileName);
 		} else {
 			return false;
 		}
@@ -52,5 +52,9 @@ public class CiphertextFilePath {
 	@Override
 	public String toString() {
 		return path.toString();
+	}
+
+	public void persistLongFileName() {
+		deflatedFileName.ifPresent(LongFileNameProvider.DeflatedFileName::persist);
 	}
 }

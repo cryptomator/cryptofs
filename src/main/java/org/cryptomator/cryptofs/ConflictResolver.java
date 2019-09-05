@@ -36,11 +36,13 @@ class ConflictResolver {
 	private static final int MAX_DIR_FILE_SIZE = 87; // "normal" file header has 88 bytes
 
 	private final LongFileNameProvider longFileNameProvider;
+	private final CryptoPathMapper cryptoPathMapper;
 	private final Cryptor cryptor;
 
 	@Inject
-	public ConflictResolver(LongFileNameProvider longFileNameProvider, Cryptor cryptor) {
+	public ConflictResolver(LongFileNameProvider longFileNameProvider, CryptoPathMapper cryptoPathMapper, Cryptor cryptor) {
 		this.longFileNameProvider = longFileNameProvider;
+		this.cryptoPathMapper = cryptoPathMapper;
 		this.cryptor = cryptor;
 	}
 
@@ -120,21 +122,18 @@ class ConflictResolver {
 	 */
 	private Path renameConflictingFile(Path canonicalPath, Path conflictingPath, String ciphertext, String dirId) throws IOException {
 		assert Files.exists(canonicalPath);
+		Path ciphertextParentDir = canonicalPath.getParent();
 		try {
 			String cleartext = cryptor.fileNameCryptor().decryptFilename(BaseEncoding.base64Url(), ciphertext, dirId.getBytes(StandardCharsets.UTF_8));
-			Path alternativePath = canonicalPath;
-			for (int i = 1; Files.exists(alternativePath); i++) {
-				String alternativeCleartext = cleartext + " (Conflict " + i + ")";
-				String alternativeCiphertext = cryptor.fileNameCryptor().encryptFilename(BaseEncoding.base64Url(), alternativeCleartext, dirId.getBytes(StandardCharsets.UTF_8));
-				String alternativeCiphertextFileName = alternativeCiphertext + CRYPTOMATOR_FILE_SUFFIX;
-				alternativePath = canonicalPath.resolveSibling(alternativeCiphertextFileName);
-				if (alternativeCiphertextFileName.length() > SHORT_NAMES_MAX_LENGTH) {
-					alternativePath = longFileNameProvider.deflate(alternativePath);
-				}
-			}
-			LOG.info("Moving conflicting file {} to {}", conflictingPath, alternativePath);
-			Path resolved = Files.move(conflictingPath, alternativePath, StandardCopyOption.ATOMIC_MOVE);
-			longFileNameProvider.getCached(resolved).ifPresent(LongFileNameProvider.DeflatedFileName::persist);
+			CiphertextFilePath alternativePath;
+			int i = 1;
+			do {
+				String alternativeCleartext = cleartext + " (Conflict " + i++ + ")";
+				alternativePath = cryptoPathMapper.getCiphertextFilePath(ciphertextParentDir, dirId, alternativeCleartext);
+			} while(Files.exists(alternativePath.getRawPath()));
+			LOG.info("Moving conflicting file {} to {}", conflictingPath, alternativePath.getRawPath());
+			Path resolved = Files.move(conflictingPath, alternativePath.getRawPath(), StandardCopyOption.ATOMIC_MOVE);
+			alternativePath.persistLongFileName();
 			return resolved;
 		} catch (AuthenticationFailedException e) {
 			// not decryptable, no need to resolve any kind of conflict
