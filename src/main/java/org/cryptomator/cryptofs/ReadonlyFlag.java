@@ -22,20 +22,12 @@ public class ReadonlyFlag {
 		if (properties.readonly()) {
 			LOG.info("Vault opened readonly.");
 			readonly = true;
-		} else if (targetFileStoreIsReadonly(pathToVault)) {
-			LOG.warn("Vault on readonly filesystem.");
+		} else if (!Files.isWritable(pathToVault)) {
+			LOG.warn("Vault directory is write-protected.");
 			readonly = true;
 		} else {
 			LOG.debug("Vault opened for read and write.");
 			readonly = false;
-		}
-	}
-
-	private boolean targetFileStoreIsReadonly(Path pathToVault) {
-		try {
-			return Files.getFileStore(pathToVault).isReadOnly();
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
 		}
 	}
 
