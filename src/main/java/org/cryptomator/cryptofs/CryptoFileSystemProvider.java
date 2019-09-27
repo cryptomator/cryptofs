@@ -254,7 +254,6 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @param masterkeyFilename Name of the masterkey file
 	 * @param pepper            An application-specific pepper added to the salt during key-derivation (if applicable)
 	 * @param passphrase        Future passphrase
-	 * @return A 64 byte array consisting of 32 byte aes key and 32 byte mac key
 	 * @since 1.9.0
 	 */
 	public static void restoreRawKey(Path pathToVault, String masterkeyFilename, byte[] rawKey, byte[] pepper, CharSequence passphrase) throws InvalidPassphraseException, IOException {
