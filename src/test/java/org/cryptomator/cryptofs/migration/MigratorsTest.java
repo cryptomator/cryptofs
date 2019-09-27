@@ -5,6 +5,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.migration;
 
+import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.migration.api.NoApplicableMigratorException;
 import org.cryptomator.cryptolib.api.InvalidPassphraseException;
@@ -76,21 +77,22 @@ public class MigratorsTest {
 	public void testMigrateWithoutMigrators() throws IOException {
 		Migrators migrators = new Migrators(Collections.emptyMap());
 		Assertions.assertThrows(NoApplicableMigratorException.class, () -> {
-			migrators.migrate(pathToVault, "masterkey.cryptomator", "secret");
+			migrators.migrate(pathToVault, "masterkey.cryptomator", "secret", (state, progress) -> {});
 		});
 	}
 
 	@Test
 	@SuppressWarnings("deprecation")
 	public void testMigrate() throws NoApplicableMigratorException, InvalidPassphraseException, IOException {
+		MigrationProgressListener listener = Mockito.mock(MigrationProgressListener.class);
 		Migrator migrator = Mockito.mock(Migrator.class);
 		Migrators migrators = new Migrators(new HashMap<Migration, Migrator>() {
 			{
 				put(Migration.ZERO_TO_ONE, migrator);
 			}
 		});
-		migrators.migrate(pathToVault, "masterkey.cryptomator", "secret");
-		Mockito.verify(migrator).migrate(pathToVault, "masterkey.cryptomator", "secret");
+		migrators.migrate(pathToVault, "masterkey.cryptomator", "secret", listener);
+		Mockito.verify(migrator).migrate(pathToVault, "masterkey.cryptomator", "secret", listener);
 	}
 
 	@Test
@@ -102,9 +104,9 @@ public class MigratorsTest {
 				put(Migration.ZERO_TO_ONE, migrator);
 			}
 		});
-		Mockito.doThrow(new UnsupportedVaultFormatException(Integer.MAX_VALUE, 1)).when(migrator).migrate(pathToVault, "masterkey.cryptomator", "secret");
+		Mockito.doThrow(new UnsupportedVaultFormatException(Integer.MAX_VALUE, 1)).when(migrator).migrate(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
 		Assertions.assertThrows(IllegalStateException.class, () -> {
-			migrators.migrate(pathToVault, "masterkey.cryptomator", "secret");
+			migrators.migrate(pathToVault, "masterkey.cryptomator", "secret", (state, progress) -> {});
 		});
 	}
 

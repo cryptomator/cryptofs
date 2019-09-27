@@ -7,6 +7,8 @@ package org.cryptomator.cryptofs.migration.v7;
 
 import org.cryptomator.cryptofs.BackupUtil;
 import org.cryptomator.cryptofs.Constants;
+import org.cryptomator.cryptofs.DeletingFileVisitor;
+import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
@@ -29,6 +31,7 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.EnumSet;
 import java.util.Optional;
+import java.util.concurrent.atomic.LongAdder;
 
 public class Version7Migrator implements Migrator {
 
@@ -42,8 +45,9 @@ public class Version7Migrator implements Migrator {
 	}
 
 	@Override
-	public void migrate(Path vaultRoot, String masterkeyFilename, CharSequence passphrase) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException {
+	public void migrate(Path vaultRoot, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException {
 		LOG.info("Upgrading {} from version 6 to version 7.", vaultRoot);
+		progressListener.update(MigrationProgressListener.ProgressState.INITIALIZING, 0.0);
 		Path masterkeyFile = vaultRoot.resolve(masterkeyFilename);
 		byte[] fileContentsBeforeUpgrade = Files.readAllBytes(masterkeyFile);
 		KeyFile keyFile = KeyFile.parse(fileContentsBeforeUpgrade);
@@ -53,9 +57,15 @@ public class Version7Migrator implements Migrator {
 			Files.copy(masterkeyFile, masterkeyBackupFile, StandardCopyOption.REPLACE_EXISTING);
 			LOG.info("Backed up masterkey from {} to {}.", masterkeyFile.getFileName(), masterkeyBackupFile.getFileName());
 
-			migrateFileNames(vaultRoot);
+			long toBeMigrated = countFileNames(vaultRoot);
+			if (toBeMigrated > 0) {
+				migrateFileNames(vaultRoot, progressListener, toBeMigrated);
+			}
 
-			// TODO remove deprecated .lng from /m/
+			progressListener.update(MigrationProgressListener.ProgressState.FINALIZING, 0.0);
+
+			// remove deprecated /m/ directory
+			Files.walkFileTree(vaultRoot.resolve("m"), DeletingFileVisitor.INSTANCE);
 
 			// rewrite masterkey file with normalized passphrase:
 			byte[] fileContentsAfterUpgrade = cryptor.writeKeysToMasterkeyFile(passphrase, 7).serialize();
@@ -64,13 +74,32 @@ public class Version7Migrator implements Migrator {
 		}
 		LOG.info("Upgraded {} from version 6 to version 7.", vaultRoot);
 	}
-
-	private void migrateFileNames(Path vaultRoot) throws IOException {
+	
+	private long countFileNames(Path vaultRoot) throws IOException {
+		LongAdder counter = new LongAdder();
 		Path dataDir = vaultRoot.resolve("d");
 		Files.walkFileTree(dataDir, EnumSet.noneOf(FileVisitOption.class), 3, new SimpleFileVisitor<Path>() {
 
 			@Override
+			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+				counter.increment();
+				return FileVisitResult.CONTINUE;
+			}
+		});
+		return counter.sum();
+	}
+
+	private void migrateFileNames(Path vaultRoot, MigrationProgressListener progressListener, long totalFiles) throws IOException {
+		assert totalFiles > 0;
+		Path dataDir = vaultRoot.resolve("d");
+		Files.walkFileTree(dataDir, EnumSet.noneOf(FileVisitOption.class), 3, new SimpleFileVisitor<Path>() {
+			
+			long migratedFiles = 0;
+
+			@Override
 			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+				migratedFiles++;
+				progressListener.update(MigrationProgressListener.ProgressState.MIGRATING, (double) migratedFiles / totalFiles);
 				final Optional<FilePathMigration> migration;
 				try {
 					migration = FilePathMigration.parse(vaultRoot, file);

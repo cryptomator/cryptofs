@@ -26,19 +26,21 @@ public interface Migrator {
 	 * @throws UnsupportedVaultFormatException
 	 * @throws IOException
 	 */
-	void migrate(Path vaultRoot, String masterkeyFilename, CharSequence passphrase) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException;
+	default void migrate(Path vaultRoot, String masterkeyFilename, CharSequence passphrase) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException {
+		migrate(vaultRoot, masterkeyFilename, passphrase, (state, progress) -> {});
+	}
 
 	/**
-	 * Chains this migrator with a consecutive migrator.
-	 * 
-	 * @param nextMigration The next migrator able to read the vault format created by this migrator.
-	 * @return A combined migrator performing both steps in order.
+	 * Performs the migration this migrator is built for.
+	 *
+	 * @param vaultRoot
+	 * @param masterkeyFilename
+	 * @param passphrase
+	 * @param progressListener 
+	 * @throws InvalidPassphraseException
+	 * @throws UnsupportedVaultFormatException
+	 * @throws IOException
 	 */
-	default Migrator andThen(Migrator nextMigration) {
-		return (Path vaultRoot, String masterkeyFilename, CharSequence passphrase) -> {
-			migrate(vaultRoot, masterkeyFilename, passphrase);
-			nextMigration.migrate(vaultRoot, masterkeyFilename, passphrase);
-		};
-	}
+	void migrate(Path vaultRoot, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException;
 
 }

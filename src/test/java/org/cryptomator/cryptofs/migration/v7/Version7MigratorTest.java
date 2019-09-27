@@ -61,4 +61,12 @@ public class Version7MigratorTest {
 		Assertions.assertEquals(7, afterMigration.getVersion());
 	}
 
+	@Test
+	public void testMDirectoryGetsDeleted() throws IOException {
+		Migrator migrator = new Version7Migrator(cryptorProvider);
+		migrator.migrate(vaultRoot, "masterkey.cryptomator", "test");
+		
+		Assertions.assertFalse(Files.exists(metaDir));
+	}
+
 }

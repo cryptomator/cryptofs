@@ -28,7 +28,7 @@ import static java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE;
 import static java.nio.file.attribute.PosixFilePermission.OWNER_READ;
 import static java.nio.file.attribute.PosixFilePermission.OWNER_WRITE;
 
-class DeletingFileVisitor extends SimpleFileVisitor<Path> {
+public class DeletingFileVisitor extends SimpleFileVisitor<Path> {
 
 	public static final DeletingFileVisitor INSTANCE = new DeletingFileVisitor();
 

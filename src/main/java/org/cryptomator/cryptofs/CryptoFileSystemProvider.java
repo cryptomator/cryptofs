@@ -255,16 +255,18 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		return fileSystems.create(this, parsedUri.pathToVault(), properties);
 	}
 
+	@Deprecated
 	private void migrateFileSystemIfRequired(CryptoFileSystemUri parsedUri, CryptoFileSystemProperties properties) throws IOException, FileSystemNeedsMigrationException {
 		if (Migrators.get().needsMigration(parsedUri.pathToVault(), properties.masterkeyFilename())) {
 			if (properties.migrateImplicitly()) {
-				Migrators.get().migrate(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase());
+				Migrators.get().migrate(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase(), (state, progress) -> {});
 			} else {
 				throw new FileSystemNeedsMigrationException(parsedUri.pathToVault());
 			}
 		}
 	}
 
+	@Deprecated
 	private void initializeFileSystemIfRequired(CryptoFileSystemUri parsedUri, CryptoFileSystemProperties properties) throws NotDirectoryException, IOException, NoSuchFileException {
 		if (!CryptoFileSystemProvider.containsVault(parsedUri.pathToVault(), properties.masterkeyFilename())) {
 			if (properties.initializeImplicitly()) {

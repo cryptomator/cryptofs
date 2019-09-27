@@ -49,20 +49,6 @@ class MigrationModule {
 		return migrator;
 	}
 
-	// @Provides
-	// @IntoMap
-	// @MigratorKey(Migration.SIX_TO_SEVEN)
-	// Migrator provideVersion7Migrator(Version7Migrator migrator) {
-	// return migrator;
-	// }
-	//
-	// @Provides
-	// @IntoMap
-	// @MigratorKey(Migration.FIVE_TO_SEVEN)
-	// Migrator provideVersion7Migrator(Version6Migrator v6Migrator, Version7Migrator v7Migrator) {
-	// return v6Migrator.andThen(v7Migrator);
-	// }
-
 	@Documented
 	@Target(METHOD)
 	@Retention(RUNTIME)

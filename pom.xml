@@ -16,10 +16,10 @@
 	<properties>
 		<cryptolib.version>1.2.2</cryptolib.version>
 		<dagger.version>2.24</dagger.version>
-		<guava.version>28.0-jre</guava.version>
+		<guava.version>28.1-jre</guava.version>
 		<slf4j.version>1.7.28</slf4j.version>
 
-		<junit.jupiter.version>5.5.1</junit.jupiter.version>
+		<junit.jupiter.version>5.5.2</junit.jupiter.version>
 		<mockito.version>3.0.0</mockito.version>
 		<hamcrest.version>2.1</hamcrest.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
