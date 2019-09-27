@@ -231,6 +231,45 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	/**
+	 * Exports the raw key for backup purposes or external key management.
+	 *
+	 * @param pathToVault       Vault directory
+	 * @param masterkeyFilename Name of the masterkey file
+	 * @param pepper            An application-specific pepper added to the salt during key-derivation (if applicable)
+	 * @param passphrase        Current passphrase
+	 * @return A 64 byte array consisting of 32 byte aes key and 32 byte mac key
+	 * @since 1.9.0
+	 */
+	public static byte[] exportRawKey(Path pathToVault, String masterkeyFilename, byte[] pepper, CharSequence passphrase) throws InvalidPassphraseException, IOException {
+		String normalizedPassphrase = Normalizer.normalize(passphrase, Form.NFC);
+		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
+		byte[] masterKeyBytes = Files.readAllBytes(masterKeyPath);
+		return Cryptors.exportRawKey(CRYPTOR_PROVIDER, masterKeyBytes, pepper, normalizedPassphrase);
+	}
+
+	/**
+	 * Imports a raw key from backup or external key management.
+	 *
+	 * @param pathToVault       Vault directory
+	 * @param masterkeyFilename Name of the masterkey file
+	 * @param pepper            An application-specific pepper added to the salt during key-derivation (if applicable)
+	 * @param passphrase        Future passphrase
+	 * @return A 64 byte array consisting of 32 byte aes key and 32 byte mac key
+	 * @since 1.9.0
+	 */
+	public static void restoreRawKey(Path pathToVault, String masterkeyFilename, byte[] rawKey, byte[] pepper, CharSequence passphrase) throws InvalidPassphraseException, IOException {
+		String normalizedPassphrase = Normalizer.normalize(passphrase, Form.NFC);
+		byte[] masterKeyBytes = Cryptors.restoreRawKey(CRYPTOR_PROVIDER, rawKey, pepper, normalizedPassphrase, Constants.VAULT_VERSION);
+		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
+		if (Files.exists(masterKeyPath)) {
+			byte[] oldMasterkeyBytes = Files.readAllBytes(masterKeyPath);
+			Path backupKeyPath = pathToVault.resolve(masterkeyFilename + BackupUtil.generateFileIdSuffix(oldMasterkeyBytes) + Constants.MASTERKEY_BACKUP_SUFFIX);
+			Files.move(masterKeyPath, backupKeyPath, REPLACE_EXISTING, ATOMIC_MOVE);
+		}
+		Files.write(masterKeyPath, masterKeyBytes, CREATE_NEW, WRITE);
+	}
+
+	/**
 	 * @deprecated only for testing
 	 */
 	@Deprecated
