@@ -173,6 +173,10 @@ class FilePathMigration {
 			}
 		}
 	}
+	
+	public Path getOldPath() {
+		return oldPath;
+	}
 
 	// visible for testing
 	String getOldCanonicalName() {

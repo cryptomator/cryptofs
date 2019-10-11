@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -30,7 +29,6 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.EnumSet;
-import java.util.Optional;
 import java.util.concurrent.atomic.LongAdder;
 
 public class Version7Migrator implements Migrator {
@@ -92,33 +90,7 @@ public class Version7Migrator implements Migrator {
 	private void migrateFileNames(Path vaultRoot, MigrationProgressListener progressListener, long totalFiles) throws IOException {
 		assert totalFiles > 0;
 		Path dataDir = vaultRoot.resolve("d");
-		Files.walkFileTree(dataDir, EnumSet.noneOf(FileVisitOption.class), 3, new SimpleFileVisitor<Path>() {
-			
-			long migratedFiles = 0;
-
-			@Override
-			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-				migratedFiles++;
-				progressListener.update(MigrationProgressListener.ProgressState.MIGRATING, (double) migratedFiles / totalFiles);
-				final Optional<FilePathMigration> migration;
-				try {
-					migration = FilePathMigration.parse(vaultRoot, file);
-				} catch (UninflatableFileException e) {
-					LOG.warn("SKIP {} because inflation failed.", file);
-					return FileVisitResult.CONTINUE;
-				}
-				if (migration.isPresent()) {
-					try {
-						Path migratedFile = migration.get().migrate();
-						LOG.info("MOVED {} to {}", file, migratedFile);
-					} catch (FileAlreadyExistsException e) {
-						LOG.error("Failed to migrate " + file + " due to FileAlreadyExistsException. Already migrated?.", e);
-						return FileVisitResult.TERMINATE;
-					}
-				}
-				return FileVisitResult.CONTINUE;
-			}
-		});
+		Files.walkFileTree(dataDir, EnumSet.noneOf(FileVisitOption.class), 3, new MigratingVisitor(vaultRoot, progressListener, totalFiles));
 	}
 
 }
