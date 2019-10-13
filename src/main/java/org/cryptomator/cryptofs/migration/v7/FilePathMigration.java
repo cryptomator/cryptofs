@@ -64,7 +64,11 @@ class FilePathMigration {
 	public static Optional<FilePathMigration> parse(Path vaultRoot, Path oldPath) throws IOException {
 		final String oldFileName = oldPath.getFileName().toString();
 		final String canonicalOldFileName;
-		if (oldFileName.endsWith(OLD_SHORTENED_FILENAME_SUFFIX)) {
+		if (oldFileName.endsWith(NEW_REGULAR_SUFFIX) || oldFileName.endsWith(NEW_SHORTENED_SUFFIX)) {
+			// make sure to not match already migrated files
+			// (since BASE32 is a subset of BASE64, pure pattern matching could accidentally match those)
+			return Optional.empty();
+		} else if (oldFileName.endsWith(OLD_SHORTENED_FILENAME_SUFFIX)) {
 			Matcher matcher = OLD_SHORTENED_FILENAME_PATTERN.matcher(oldFileName);
 			if (matcher.find()) {
 				canonicalOldFileName = inflate(vaultRoot, matcher.group() + OLD_SHORTENED_FILENAME_SUFFIX);
