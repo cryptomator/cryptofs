@@ -23,7 +23,7 @@ script:
     mvn clean test jacoco:report verify -Pcoverage
   fi
 after_success:
-- curl -o ~/codacy-coverage-reporter.jar https://oss.sonatype.org/service/local/repositories/releases/content/com/codacy/codacy-coverage-reporter/4.0.3/codacy-coverage-reporter-4.0.3-assembly.jar
+- curl -o ~/codacy-coverage-reporter.jar https://oss.sonatype.org/service/local/repositories/releases/content/com/codacy/codacy-coverage-reporter/6.0.7/codacy-coverage-reporter-6.0.7-assembly.jar
 - $JAVA_HOME/bin/java -jar ~/codacy-coverage-reporter.jar report -l Java -r target/site/jacoco/jacoco.xml
 cache:
   directories:
