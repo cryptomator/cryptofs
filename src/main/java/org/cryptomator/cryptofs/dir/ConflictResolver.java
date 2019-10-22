@@ -1,8 +1,13 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.dir;
 
 import com.google.common.io.BaseEncoding;
 import com.google.common.io.MoreFiles;
 import com.google.common.io.RecursiveDeleteOption;
+import org.cryptomator.cryptofs.CiphertextFilePath;
+import org.cryptomator.cryptofs.CryptoFileSystemScoped;
+import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.LongFileNameProvider;
+import org.cryptomator.cryptofs.common.StringUtils;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
@@ -21,12 +26,11 @@ import java.nio.file.StandardOpenOption;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.cryptomator.cryptofs.Constants.CRYPTOMATOR_FILE_SUFFIX;
-import static org.cryptomator.cryptofs.Constants.DEFLATED_FILE_SUFFIX;
-import static org.cryptomator.cryptofs.Constants.DIR_FILE_NAME;
-import static org.cryptomator.cryptofs.Constants.MAX_SYMLINK_LENGTH;
-import static org.cryptomator.cryptofs.Constants.SHORT_NAMES_MAX_LENGTH;
-import static org.cryptomator.cryptofs.Constants.SYMLINK_FILE_NAME;
+import static org.cryptomator.cryptofs.common.Constants.CRYPTOMATOR_FILE_SUFFIX;
+import static org.cryptomator.cryptofs.common.Constants.DEFLATED_FILE_SUFFIX;
+import static org.cryptomator.cryptofs.common.Constants.DIR_FILE_NAME;
+import static org.cryptomator.cryptofs.common.Constants.MAX_SYMLINK_LENGTH;
+import static org.cryptomator.cryptofs.common.Constants.SYMLINK_FILE_NAME;
 
 @CryptoFileSystemScoped
 class ConflictResolver {

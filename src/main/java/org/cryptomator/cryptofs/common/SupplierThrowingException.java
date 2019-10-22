@@ -1,4 +1,4 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.common;
 
 @FunctionalInterface
 public interface SupplierThrowingException<T, E extends Exception> {

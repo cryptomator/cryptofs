@@ -1,4 +1,8 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.dir;
+
+import org.cryptomator.cryptofs.CryptoFileSystemScoped;
+import org.cryptomator.cryptofs.CryptoPath;
+import org.cryptomator.cryptofs.common.DeletingFileVisitor;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -9,11 +13,11 @@ import java.nio.file.Path;
 import java.util.Set;
 
 import static java.util.stream.Collectors.toSet;
-import static org.cryptomator.cryptofs.CiphertextDirectoryDeleter.DeleteResult.NO_FILES_DELETED;
-import static org.cryptomator.cryptofs.CiphertextDirectoryDeleter.DeleteResult.SOME_FILES_DELETED;
+import static org.cryptomator.cryptofs.dir.CiphertextDirectoryDeleter.DeleteResult.NO_FILES_DELETED;
+import static org.cryptomator.cryptofs.dir.CiphertextDirectoryDeleter.DeleteResult.SOME_FILES_DELETED;
 
 @CryptoFileSystemScoped
-class CiphertextDirectoryDeleter {
+public class CiphertextDirectoryDeleter {
 
 	private final DirectoryStreamFactory directoryStreamFactory;
 

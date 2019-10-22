@@ -1,6 +1,14 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.dir;
 
+import org.cryptomator.cryptofs.CryptoPath;
+import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
+import org.cryptomator.cryptofs.LongFileNameProvider;
+import org.cryptomator.cryptofs.common.FinallyUtil;
+import org.cryptomator.cryptofs.common.RunnableThrowingException;
+import org.cryptomator.cryptofs.dir.ConflictResolver;
+import org.cryptomator.cryptofs.dir.DirectoryStreamFactory;
+import org.cryptomator.cryptofs.dir.EncryptedNamePattern;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;

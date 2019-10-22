@@ -1,4 +1,4 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.dir;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;

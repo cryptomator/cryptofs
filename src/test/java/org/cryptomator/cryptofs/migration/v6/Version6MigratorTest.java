@@ -3,7 +3,7 @@ package org.cryptomator.cryptofs.migration.v6;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.BackupUtil;
-import org.cryptomator.cryptofs.Constants;
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.mocks.NullSecureRandom;
 import org.cryptomator.cryptolib.Cryptors;

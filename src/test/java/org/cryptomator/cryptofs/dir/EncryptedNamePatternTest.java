@@ -1,5 +1,6 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.dir;
 
+import org.cryptomator.cryptofs.dir.EncryptedNamePattern;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;

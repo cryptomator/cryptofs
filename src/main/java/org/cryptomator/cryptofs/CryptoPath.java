@@ -24,7 +24,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 
-import static org.cryptomator.cryptofs.Constants.SEPARATOR;
+import static org.cryptomator.cryptofs.common.Constants.SEPARATOR;
 
 public class CryptoPath implements Path {
 

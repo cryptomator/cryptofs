@@ -14,6 +14,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.io.BaseEncoding;
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptolib.api.Cryptor;
 
 import javax.inject.Inject;
@@ -30,7 +31,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
-import static org.cryptomator.cryptofs.Constants.DATA_DIR_NAME;
+import static org.cryptomator.cryptofs.common.Constants.DATA_DIR_NAME;
 
 @CryptoFileSystemScoped
 public class CryptoPathMapper {

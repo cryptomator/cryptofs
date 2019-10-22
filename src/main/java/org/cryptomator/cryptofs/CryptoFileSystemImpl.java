@@ -13,6 +13,10 @@ import org.cryptomator.cryptofs.attr.AttributeByNameProvider;
 import org.cryptomator.cryptofs.attr.AttributeProvider;
 import org.cryptomator.cryptofs.attr.AttributeViewProvider;
 import org.cryptomator.cryptofs.attr.AttributeViewType;
+import org.cryptomator.cryptofs.common.DeletingFileVisitor;
+import org.cryptomator.cryptofs.common.FinallyUtil;
+import org.cryptomator.cryptofs.dir.CiphertextDirectoryDeleter;
+import org.cryptomator.cryptofs.dir.DirectoryStreamFactory;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
@@ -56,13 +60,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.cryptomator.cryptofs.Constants.SEPARATOR;
+import static org.cryptomator.cryptofs.common.Constants.SEPARATOR;
 
 @CryptoFileSystemScoped
 class CryptoFileSystemImpl extends CryptoFileSystem {

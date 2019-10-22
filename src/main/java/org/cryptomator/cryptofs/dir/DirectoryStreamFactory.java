@@ -1,5 +1,15 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.dir;
 
+import org.cryptomator.cryptofs.CryptoFileSystemScoped;
+import org.cryptomator.cryptofs.CryptoPath;
+import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
+import org.cryptomator.cryptofs.LongFileNameProvider;
+import org.cryptomator.cryptofs.common.FinallyUtil;
+import org.cryptomator.cryptofs.common.RunnableThrowingException;
+import org.cryptomator.cryptolib.api.Cryptor;
+
+import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.file.ClosedFileSystemException;
 import java.nio.file.DirectoryStream.Filter;
@@ -7,13 +17,8 @@ import java.nio.file.Path;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import javax.inject.Inject;
-
-import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
-import org.cryptomator.cryptolib.api.Cryptor;
-
 @CryptoFileSystemScoped
-class DirectoryStreamFactory {
+public class DirectoryStreamFactory {
 
 	private final Cryptor cryptor;
 	private final LongFileNameProvider longFileNameProvider;

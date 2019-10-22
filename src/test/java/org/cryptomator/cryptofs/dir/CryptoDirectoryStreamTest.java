@@ -6,10 +6,16 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.dir;
 
 import com.google.common.io.BaseEncoding;
+import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
+import org.cryptomator.cryptofs.LongFileNameProvider;
+import org.cryptomator.cryptofs.common.FinallyUtil;
+import org.cryptomator.cryptofs.common.RunnableThrowingException;
+import org.cryptomator.cryptofs.common.StringUtils;
 import org.cryptomator.cryptofs.mocks.NullSecureRandom;
 import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.CryptorProvider;

@@ -8,6 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.common.Constants;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -25,7 +26,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
-import static org.cryptomator.cryptofs.Constants.SHORT_NAMES_MAX_LENGTH;
+import static org.cryptomator.cryptofs.common.Constants.SHORT_NAMES_MAX_LENGTH;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 

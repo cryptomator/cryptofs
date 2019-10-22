@@ -6,8 +6,8 @@
 package org.cryptomator.cryptofs.migration.v7;
 
 import org.cryptomator.cryptofs.BackupUtil;
-import org.cryptomator.cryptofs.Constants;
-import org.cryptomator.cryptofs.DeletingFileVisitor;
+import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.common.DeletingFileVisitor;
 import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptolib.api.Cryptor;

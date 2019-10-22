@@ -6,7 +6,7 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.common;
 
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -63,7 +63,7 @@ public class DeletingFileVisitor extends SimpleFileVisitor<Path> {
 	 * @param path Path ot a single file or directory. Will not be deleted recursively.
 	 * @throws IOException exception thrown by delete. Any exceptions during removal of write protection will be ignored.
 	 */
-	static void forceDeleteIfExists(Path path) throws IOException {
+	public static void forceDeleteIfExists(Path path) throws IOException {
 		setWritableSilently(path);
 		Files.deleteIfExists(path);
 	}

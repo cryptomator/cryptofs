@@ -1,5 +1,7 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.common;
 
+import org.cryptomator.cryptofs.common.FinallyUtil;
+import org.cryptomator.cryptofs.common.RunnableThrowingException;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 

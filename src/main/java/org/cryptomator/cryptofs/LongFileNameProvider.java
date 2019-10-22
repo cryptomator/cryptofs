@@ -28,11 +28,11 @@ import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.cryptomator.cryptofs.Constants.DEFLATED_FILE_SUFFIX;
-import static org.cryptomator.cryptofs.Constants.INFLATED_FILE_NAME;
+import static org.cryptomator.cryptofs.common.Constants.DEFLATED_FILE_SUFFIX;
+import static org.cryptomator.cryptofs.common.Constants.INFLATED_FILE_NAME;
 
 @CryptoFileSystemScoped
-class LongFileNameProvider {
+public class LongFileNameProvider {
 
 	private static final int MAX_FILENAME_BUFFER_SIZE = 10 * 1024; // no sane person gives a file a 10kb long name.
 	private static final BaseEncoding BASE64 = BaseEncoding.base64Url();

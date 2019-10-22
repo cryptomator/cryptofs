@@ -1,6 +1,10 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.dir;
 
 import com.google.common.base.Strings;
+import org.cryptomator.cryptofs.CiphertextFilePath;
+import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.LongFileNameProvider;
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.junit.jupiter.api.Assertions;

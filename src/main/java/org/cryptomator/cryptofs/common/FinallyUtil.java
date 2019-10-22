@@ -1,4 +1,4 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.common;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -8,7 +8,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 @Singleton
-class FinallyUtil {
+public class FinallyUtil {
 
 	@Inject
 	public FinallyUtil() {

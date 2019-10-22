@@ -6,11 +6,12 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.dir;
 
 import com.google.common.jimfs.Jimfs;
-import org.cryptomator.cryptofs.CryptoDirectoryStream.ProcessedPaths;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
+import org.cryptomator.cryptofs.LongFileNameProvider;
+import org.cryptomator.cryptofs.dir.CryptoDirectoryStream.ProcessedPaths;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,7 +23,7 @@ import java.nio.file.Path;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.cryptomator.cryptofs.Constants.SHORT_NAMES_MAX_LENGTH;
+import static org.cryptomator.cryptofs.common.Constants.SHORT_NAMES_MAX_LENGTH;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.mock;

@@ -1,9 +1,9 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.common;
 
 /**
  * Functions used from commons-lang
  */
-final class StringUtils {
+public final class StringUtils {
 
 	public static String removeEnd(String str, String remove) {
 		if (str == null || remove == null) {

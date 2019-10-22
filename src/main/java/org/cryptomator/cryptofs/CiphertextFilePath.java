@@ -1,5 +1,7 @@
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.common.Constants;
+
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Optional;

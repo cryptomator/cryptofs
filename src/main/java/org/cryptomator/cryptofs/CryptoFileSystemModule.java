@@ -7,6 +7,7 @@ package org.cryptomator.cryptofs;
 
 import dagger.Module;
 import dagger.Provides;
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.KeyFile;
