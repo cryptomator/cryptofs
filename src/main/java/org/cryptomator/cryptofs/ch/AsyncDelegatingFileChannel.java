@@ -32,22 +32,6 @@ public class AsyncDelegatingFileChannel extends AsynchronousFileChannel {
 		this.executor = executor;
 	}
 
-	/**
-	 * @deprecated only for testing
-	 */
-	@Deprecated
-	FileChannel getChannel() {
-		return channel;
-	}
-
-	/**
-	 * @deprecated only for testing
-	 */
-	@Deprecated
-	ExecutorService getExecutor() {
-		return executor;
-	}
-
 	@Override
 	public void close() throws IOException {
 		channel.close();

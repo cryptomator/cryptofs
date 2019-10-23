@@ -362,8 +362,7 @@ public class CryptoFileSystemProviderTest {
 	}
 
 	@Test
-	@SuppressWarnings("deprecation")
-	public void testNewAsyncFileChannelReturnsAsyncDelegatingFileChannelWithNewFileChannelAndExecutor() throws IOException {
+	public void testNewAsyncFileChannelReturnsAsyncDelegatingFileChannel() throws IOException {
 		@SuppressWarnings("unchecked")
 		Set<OpenOption> options = mock(Set.class);
 		ExecutorService executor = mock(ExecutorService.class);
@@ -371,11 +370,8 @@ public class CryptoFileSystemProviderTest {
 		when(cryptoFileSystem.newFileChannel(cryptoPath, options)).thenReturn(channel);
 
 		AsynchronousFileChannel result = inTest.newAsynchronousFileChannel(cryptoPath, options, executor);
-
-		MatcherAssert.assertThat(result, is(instanceOf(AsyncDelegatingFileChannel.class)));
-		AsyncDelegatingFileChannel asyncDelegatingFileChannel = (AsyncDelegatingFileChannel) result;
-		Assertions.assertSame(channel, asyncDelegatingFileChannel.getChannel());
-		Assertions.assertSame(executor, asyncDelegatingFileChannel.getExecutor());
+		
+		MatcherAssert.assertThat(result, instanceOf(AsyncDelegatingFileChannel.class));
 	}
 
 	@Test
