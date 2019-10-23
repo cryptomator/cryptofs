@@ -87,6 +87,42 @@ class ConflictResolver {
 		}
 	}
 
+	//private static final Pattern BASE64_PATTERN = Pattern.compile("([a-zA-Z0-9-_]{4})*[a-zA-Z0-9-_]{20}[a-zA-Z0-9-_=]{4}");
+	//private static final Pattern DELIM_PATTERN = Pattern.compile("[!a-zA-Z0-9]");
+//	public String extractCiphertext(String potentialCiphertext, byte[] dirIdBytes) {
+//		// attempt a full match:
+//		Matcher m = BASE64_PATTERN.matcher(potentialCiphertext);
+//		if (m.matches()) {
+//			try {
+//				String cleartext = cryptor.fileNameCryptor().decryptFilename(BaseEncoding.base64Url(), potentialCiphertext, dirIdBytes);
+//				return potentialCiphertext;
+//			} catch (AuthenticationFailedException e) {
+//				// proceed with partial matches
+//			}
+//		}
+//		
+//		// strip potential prefix:
+//		Matcher d = DELIM_PATTERN.matcher(potentialCiphertext);
+//		if (d.find()) {
+//			int endOfPrefix = d.end();
+//			assert endOfPrefix > 0;
+//			return extractCiphertext(potentialCiphertext.substring(endOfPrefix), dirIdBytes);
+//		}
+//		
+//		// strip potential suffix:
+//		int beginOfSuffix = 0;
+//		while (d.find(beginOfSuffix)) { // we can only loop through matches from begin to end to find the last match
+//			beginOfSuffix = d.start();
+//		}
+//		if (beginOfSuffix > 0) {
+//			assert beginOfSuffix < potentialCiphertext.length() - 1;
+//			return extractCiphertext(potentialCiphertext.substring(0, beginOfSuffix), dirIdBytes);
+//		}
+//		
+//		// no match:
+//		return null;
+//	}
+
 	/**
 	 * Resolves a conflict.
 	 *

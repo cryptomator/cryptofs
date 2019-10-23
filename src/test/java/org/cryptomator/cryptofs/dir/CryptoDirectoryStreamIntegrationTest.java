@@ -12,9 +12,11 @@ import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptofs.LongFileNameProvider;
 import org.cryptomator.cryptofs.dir.CryptoDirectoryStream.ProcessedPaths;
+import org.cryptomator.cryptolib.api.Cryptor;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.file.FileSystem;
@@ -43,7 +45,7 @@ public class CryptoDirectoryStreamIntegrationTest {
 
 		Path dir = fileSystem.getPath("crapDirDoNotUse");
 		Files.createDirectory(dir);
-		inTest = new CryptoDirectoryStream(new CiphertextDirectory("", dir), null, null, null, longFileNameProvider, null, null, null, null, null);
+		inTest = new CryptoDirectoryStream(new CiphertextDirectory("", dir), null,null, Mockito.mock(Cryptor.class), null, longFileNameProvider, null, null, null, null, null);
 	}
 
 	@Test

@@ -7,7 +7,10 @@ package org.cryptomator.cryptofs;
 
 import dagger.Module;
 import dagger.Provides;
+import org.cryptomator.cryptofs.attr.AttributeViewComponent;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.dir.DirectoryStreamComponent;
+import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.KeyFile;
@@ -19,7 +22,7 @@ import java.nio.file.Path;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
-@Module
+@Module(subcomponents = {AttributeViewComponent.class, OpenCryptoFileComponent.class, DirectoryStreamComponent.class})
 class CryptoFileSystemModule {
 
 	@Provides

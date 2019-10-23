@@ -9,16 +9,19 @@
 package org.cryptomator.cryptofs.dir;
 
 import com.google.common.io.BaseEncoding;
-import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptofs.LongFileNameProvider;
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FinallyUtil;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
+import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
+import javax.inject.Named;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryIteratorException;
@@ -32,7 +35,8 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-class CryptoDirectoryStream implements DirectoryStream<Path> {
+@DirectoryStreamScoped
+public class CryptoDirectoryStream implements DirectoryStream<Path> {
 
 	private static final Logger LOG = LoggerFactory.getLogger(CryptoDirectoryStream.class);
 
@@ -48,17 +52,17 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 	private final FinallyUtil finallyUtil;
 	private final EncryptedNamePattern encryptedNamePattern;
 
-	public CryptoDirectoryStream(CiphertextDirectory ciphertextDir, Path cleartextDir, FileNameCryptor filenameCryptor, CryptoPathMapper cryptoPathMapper, LongFileNameProvider longFileNameProvider,
-								 ConflictResolver conflictResolver, DirectoryStream.Filter<? super Path> filter, Consumer<CryptoDirectoryStream> onClose, FinallyUtil finallyUtil, EncryptedNamePattern encryptedNamePattern)
-			throws IOException {
+	@Inject
+	public CryptoDirectoryStream(CiphertextDirectory ciphertextDir, DirectoryStream<Path> ciphertextDirStream, @Named("cleartextPath") Path cleartextDir, Cryptor cryptor, CryptoPathMapper cryptoPathMapper, LongFileNameProvider longFileNameProvider,
+								 ConflictResolver conflictResolver, DirectoryStream.Filter<? super Path> filter, Consumer<CryptoDirectoryStream> onClose, FinallyUtil finallyUtil, EncryptedNamePattern encryptedNamePattern) {
 		this.onClose = onClose;
 		this.finallyUtil = finallyUtil;
 		this.encryptedNamePattern = encryptedNamePattern;
 		this.directoryId = ciphertextDir.dirId;
-		this.ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path);
+		this.ciphertextDirStream = ciphertextDirStream;
 		LOG.trace("OPEN {}", directoryId);
 		this.cleartextDir = cleartextDir;
-		this.filenameCryptor = filenameCryptor;
+		this.filenameCryptor = cryptor.fileNameCryptor();
 		this.cryptoPathMapper = cryptoPathMapper;
 		this.longFileNameProvider = longFileNameProvider;
 		this.conflictResolver = conflictResolver;
@@ -131,7 +135,7 @@ class CryptoDirectoryStream implements DirectoryStream<Path> {
 
 	/**
 	 * Checks if a given file belongs into this ciphertext dir.
-	 * 
+	 *
 	 * @param paths The path to check.
 	 * @return <code>true</code> if the file is an existing ciphertext or directory file.
 	 */

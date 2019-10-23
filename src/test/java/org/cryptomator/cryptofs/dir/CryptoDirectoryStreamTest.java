@@ -18,6 +18,7 @@ import org.cryptomator.cryptofs.common.RunnableThrowingException;
 import org.cryptomator.cryptofs.common.StringUtils;
 import org.cryptomator.cryptofs.mocks.NullSecureRandom;
 import org.cryptomator.cryptolib.Cryptors;
+import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.junit.jupiter.api.Assertions;
@@ -52,6 +53,7 @@ public class CryptoDirectoryStreamTest {
 	private static final Filter<? super Path> ACCEPT_ALL = ignored -> true;
 	private static CryptorProvider CRYPTOR_PROVIDER = Cryptors.version1(NullSecureRandom.INSTANCE);
 
+	private Cryptor cryptor;
 	private FileNameCryptor filenameCryptor;
 	private Path ciphertextDirPath;
 	private DirectoryStream<Path> dirStream;
@@ -64,7 +66,8 @@ public class CryptoDirectoryStreamTest {
 	@BeforeEach
 	@SuppressWarnings("unchecked")
 	public void setup() throws IOException {
-		filenameCryptor = CRYPTOR_PROVIDER.createNew().fileNameCryptor();
+		cryptor = CRYPTOR_PROVIDER.createNew();
+		filenameCryptor = cryptor.fileNameCryptor();
 
 		ciphertextDirPath = Mockito.mock(Path.class);
 		FileSystem fs = Mockito.mock(FileSystem.class);
@@ -124,7 +127,7 @@ public class CryptoDirectoryStreamTest {
 		ciphertextFileNames.add("alsoInvalid");
 		Mockito.when(dirStream.spliterator()).thenReturn(ciphertextFileNames.stream().map(cleartextPath::resolve).spliterator());
 
-		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new CiphertextDirectory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, cryptoPathMapper, longFileNameProvider, conflictResolver, ACCEPT_ALL,
+		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new CiphertextDirectory("foo", ciphertextDirPath), dirStream, cleartextPath, cryptor, cryptoPathMapper, longFileNameProvider, conflictResolver, ACCEPT_ALL,
 				DO_NOTHING_ON_CLOSE, finallyUtil, encryptedNamePattern)) {
 			Iterator<Path> iter = stream.iterator();
 			Assertions.assertTrue(iter.hasNext());
@@ -147,7 +150,7 @@ public class CryptoDirectoryStreamTest {
 
 		Mockito.when(dirStream.spliterator()).thenReturn(Spliterators.emptySpliterator());
 
-		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new CiphertextDirectory("foo", ciphertextDirPath), cleartextPath, filenameCryptor, cryptoPathMapper, longFileNameProvider, conflictResolver, ACCEPT_ALL,
+		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new CiphertextDirectory("foo", ciphertextDirPath), dirStream, cleartextPath, cryptor, cryptoPathMapper, longFileNameProvider, conflictResolver, ACCEPT_ALL,
 				DO_NOTHING_ON_CLOSE, finallyUtil, encryptedNamePattern)) {
 			Iterator<Path> iter = stream.iterator();
 			Assertions.assertFalse(iter.hasNext());

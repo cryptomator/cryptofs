@@ -32,12 +32,12 @@ import java.util.concurrent.ConcurrentMap;
 @CryptoFileSystemScoped
 public class OpenCryptoFiles implements Closeable {
 
-	private final CryptoFileSystemComponent component;
+	private final OpenCryptoFileComponent.Builder openCryptoFileComponentBuilder;
 	private final ConcurrentMap<Path, OpenCryptoFile> openCryptoFiles = new ConcurrentHashMap<>();
 
 	@Inject
-	OpenCryptoFiles(CryptoFileSystemComponent component) {
-		this.component = component;
+	OpenCryptoFiles(OpenCryptoFileComponent.Builder openCryptoFileComponentBuilder) {
+		this.openCryptoFileComponentBuilder = openCryptoFileComponentBuilder;
 	}
 
 	/**
@@ -67,7 +67,7 @@ public class OpenCryptoFiles implements Closeable {
 	}
 
 	private OpenCryptoFile create(Path normalizedPath) {
-		OpenCryptoFileComponent openCryptoFileComponent = component.newOpenCryptoFileComponent()
+		OpenCryptoFileComponent openCryptoFileComponent = openCryptoFileComponentBuilder
 				.path(normalizedPath)
 				.onClose(openCryptoFiles::remove)
 				.build();
