@@ -4,7 +4,6 @@ import org.cryptomator.cryptofs.CryptoFileSystemScoped;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
-import org.cryptomator.cryptofs.common.FinallyUtil;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -39,7 +38,7 @@ public class DirectoryStreamFactory {
 		CiphertextDirectory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
 		DirectoryStream<Path> ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path);
 		CryptoDirectoryStream cleartextDirStream = directoryStreamComponentBuilder //
-				.ciphertextDirectory(ciphertextDir) //
+				.dirId(ciphertextDir.dirId) //
 				.ciphertextDirectoryStream(ciphertextDirStream) //
 				.cleartextPath(cleartextDir) //
 				.filter(filter) //

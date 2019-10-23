@@ -38,7 +38,7 @@ public class DirectoryStreamFactoryTest {
 	@BeforeEach
 	public void setup() throws IOException {
 		when(directoryStreamBuilder.cleartextPath(Mockito.any())).thenReturn(directoryStreamBuilder);
-		when(directoryStreamBuilder.ciphertextDirectory(Mockito.any())).thenReturn(directoryStreamBuilder);
+		when(directoryStreamBuilder.dirId(Mockito.any())).thenReturn(directoryStreamBuilder);
 		when(directoryStreamBuilder.ciphertextDirectoryStream(Mockito.any())).thenReturn(directoryStreamBuilder);
 		when(directoryStreamBuilder.filter(Mockito.any())).thenReturn(directoryStreamBuilder);
 		when(directoryStreamBuilder.onClose(Mockito.any())).thenReturn(directoryStreamBuilder);

@@ -23,7 +23,7 @@ public interface DirectoryStreamComponent {
 		Builder cleartextPath(@Named("cleartextPath") Path cleartextPath);
 
 		@BindsInstance
-		Builder ciphertextDirectory(CryptoPathMapper.CiphertextDirectory type);
+		Builder dirId(@Named("dirId") String dirId);
 
 		@BindsInstance
 		Builder ciphertextDirectoryStream(DirectoryStream<Path> ciphertextDirectoryStream);
