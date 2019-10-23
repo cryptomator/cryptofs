@@ -9,12 +9,10 @@
 package org.cryptomator.cryptofs.dir;
 
 import com.google.common.io.BaseEncoding;
-import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptofs.LongFileNameProvider;
-import org.cryptomator.cryptofs.common.FinallyUtil;
-import org.cryptomator.cryptofs.common.RunnableThrowingException;
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.StringUtils;
 import org.cryptomator.cryptofs.mocks.NullSecureRandom;
 import org.cryptomator.cryptolib.Cryptors;
@@ -42,9 +40,6 @@ import java.util.Spliterators;
 import java.util.function.Consumer;
 
 import static org.mockito.AdditionalAnswers.returnsFirstArg;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
 
 public class CryptoDirectoryStreamTest {
 
@@ -60,7 +55,6 @@ public class CryptoDirectoryStreamTest {
 	private CryptoPathMapper cryptoPathMapper;
 	private LongFileNameProvider longFileNameProvider;
 	private ConflictResolver conflictResolver;
-	private FinallyUtil finallyUtil;
 	private EncryptedNamePattern encryptedNamePattern = new EncryptedNamePattern();
 
 	@BeforeEach
@@ -78,7 +72,6 @@ public class CryptoDirectoryStreamTest {
 		Mockito.when(provider.newDirectoryStream(Mockito.same(ciphertextDirPath), Mockito.any())).thenReturn(dirStream);
 		longFileNameProvider = Mockito.mock(LongFileNameProvider.class);
 		conflictResolver = Mockito.mock(ConflictResolver.class);
-		finallyUtil = mock(FinallyUtil.class);
 		Mockito.when(longFileNameProvider.inflate(Mockito.any())).then(invocation -> {
 			String shortName = invocation.getArgument(0);
 			if (shortName.contains("invalid")) {
@@ -102,13 +95,6 @@ public class CryptoDirectoryStreamTest {
 		});
 
 		Mockito.when(conflictResolver.resolveConflictsIfNecessary(Mockito.any(), Mockito.any())).then(returnsFirstArg());
-
-		doAnswer(invocation -> {
-			for (Object runnable : invocation.getArguments()) {
-				((RunnableThrowingException<?>) runnable).run();
-			}
-			return null;
-		}).when(finallyUtil).guaranteeInvocationOf(any(RunnableThrowingException.class), any(RunnableThrowingException.class), any(RunnableThrowingException.class));
 	}
 
 	@Test
@@ -128,7 +114,7 @@ public class CryptoDirectoryStreamTest {
 		Mockito.when(dirStream.spliterator()).thenReturn(ciphertextFileNames.stream().map(cleartextPath::resolve).spliterator());
 
 		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new CiphertextDirectory("foo", ciphertextDirPath), dirStream, cleartextPath, cryptor, cryptoPathMapper, longFileNameProvider, conflictResolver, ACCEPT_ALL,
-				DO_NOTHING_ON_CLOSE, finallyUtil, encryptedNamePattern)) {
+				DO_NOTHING_ON_CLOSE, encryptedNamePattern)) {
 			Iterator<Path> iter = stream.iterator();
 			Assertions.assertTrue(iter.hasNext());
 			Assertions.assertEquals(cleartextPath.resolve("one"), iter.next());
@@ -151,7 +137,7 @@ public class CryptoDirectoryStreamTest {
 		Mockito.when(dirStream.spliterator()).thenReturn(Spliterators.emptySpliterator());
 
 		try (CryptoDirectoryStream stream = new CryptoDirectoryStream(new CiphertextDirectory("foo", ciphertextDirPath), dirStream, cleartextPath, cryptor, cryptoPathMapper, longFileNameProvider, conflictResolver, ACCEPT_ALL,
-				DO_NOTHING_ON_CLOSE, finallyUtil, encryptedNamePattern)) {
+				DO_NOTHING_ON_CLOSE, encryptedNamePattern)) {
 			Iterator<Path> iter = stream.iterator();
 			Assertions.assertFalse(iter.hasNext());
 			Assertions.assertThrows(NoSuchElementException.class, () -> {

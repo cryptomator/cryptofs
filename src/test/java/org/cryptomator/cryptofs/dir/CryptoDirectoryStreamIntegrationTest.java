@@ -45,7 +45,7 @@ public class CryptoDirectoryStreamIntegrationTest {
 
 		Path dir = fileSystem.getPath("crapDirDoNotUse");
 		Files.createDirectory(dir);
-		inTest = new CryptoDirectoryStream(new CiphertextDirectory("", dir), null,null, Mockito.mock(Cryptor.class), null, longFileNameProvider, null, null, null, null, null);
+		inTest = new CryptoDirectoryStream(new CiphertextDirectory("", dir), null,null, Mockito.mock(Cryptor.class), null, longFileNameProvider, null, null, null, null);
 	}
 
 	@Test

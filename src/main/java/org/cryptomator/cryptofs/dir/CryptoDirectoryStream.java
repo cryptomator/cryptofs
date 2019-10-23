@@ -13,7 +13,6 @@ import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptofs.LongFileNameProvider;
 import org.cryptomator.cryptofs.common.Constants;
-import org.cryptomator.cryptofs.common.FinallyUtil;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
@@ -49,14 +48,12 @@ public class CryptoDirectoryStream implements DirectoryStream<Path> {
 	private final ConflictResolver conflictResolver;
 	private final DirectoryStream.Filter<? super Path> filter;
 	private final Consumer<CryptoDirectoryStream> onClose;
-	private final FinallyUtil finallyUtil;
 	private final EncryptedNamePattern encryptedNamePattern;
 
 	@Inject
 	public CryptoDirectoryStream(CiphertextDirectory ciphertextDir, DirectoryStream<Path> ciphertextDirStream, @Named("cleartextPath") Path cleartextDir, Cryptor cryptor, CryptoPathMapper cryptoPathMapper, LongFileNameProvider longFileNameProvider,
-								 ConflictResolver conflictResolver, DirectoryStream.Filter<? super Path> filter, Consumer<CryptoDirectoryStream> onClose, FinallyUtil finallyUtil, EncryptedNamePattern encryptedNamePattern) {
+								 ConflictResolver conflictResolver, DirectoryStream.Filter<? super Path> filter, Consumer<CryptoDirectoryStream> onClose, EncryptedNamePattern encryptedNamePattern) {
 		this.onClose = onClose;
-		this.finallyUtil = finallyUtil;
 		this.encryptedNamePattern = encryptedNamePattern;
 		this.directoryId = ciphertextDir.dirId;
 		this.ciphertextDirStream = ciphertextDirStream;
@@ -175,12 +172,13 @@ public class CryptoDirectoryStream implements DirectoryStream<Path> {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public void close() throws IOException {
-		finallyUtil.guaranteeInvocationOf( //
-				() -> ciphertextDirStream.close(), //
-				() -> onClose.accept(this), //
-				() -> LOG.trace("CLOSE {}", directoryId));
+		try {
+			ciphertextDirStream.close();
+			LOG.trace("CLOSE {}", directoryId);
+		} finally {
+			onClose.accept(this);
+		}
 	}
 
 	static class ProcessedPaths {
