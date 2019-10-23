@@ -6,7 +6,7 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.ch;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -22,7 +22,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
-class AsyncDelegatingFileChannel extends AsynchronousFileChannel {
+public class AsyncDelegatingFileChannel extends AsynchronousFileChannel {
 
 	private final FileChannel channel;
 	private final ExecutorService executor;
@@ -84,9 +84,7 @@ class AsyncDelegatingFileChannel extends AsynchronousFileChannel {
 		if (!isOpen()) {
 			return exceptionalFuture(new ClosedChannelException());
 		}
-		return executor.submit(() -> {
-			return channel.lock(position, size, shared);
-		});
+		return executor.submit(() -> channel.lock(position, size, shared));
 	}
 
 	@Override
@@ -104,9 +102,7 @@ class AsyncDelegatingFileChannel extends AsynchronousFileChannel {
 		if (!isOpen()) {
 			return exceptionalFuture(new ClosedChannelException());
 		}
-		return executor.submit(() -> {
-			return channel.read(dst, position);
-		});
+		return executor.submit(() -> channel.read(dst, position));
 	}
 
 	@Override
@@ -119,9 +115,7 @@ class AsyncDelegatingFileChannel extends AsynchronousFileChannel {
 		if (!isOpen()) {
 			return exceptionalFuture(new ClosedChannelException());
 		}
-		return executor.submit(() -> {
-			return channel.write(src, position);
-		});
+		return executor.submit(() -> channel.write(src, position));
 	}
 
 	private <T> Future<T> exceptionalFuture(Throwable exception) {

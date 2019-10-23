@@ -9,7 +9,7 @@
 package org.cryptomator.cryptofs.attr;
 
 import com.google.common.collect.Sets;
-import org.cryptomator.cryptofs.CiphertextFileType;
+import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptolib.api.Cryptor;
 

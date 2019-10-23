@@ -8,6 +8,8 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.common.ArrayUtils;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;

@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 

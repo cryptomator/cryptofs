@@ -8,6 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.ch.AsyncDelegatingFileChannel;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.migration.Migrators;
 import org.cryptomator.cryptolib.Cryptors;

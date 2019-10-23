@@ -1,4 +1,4 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.common;
 
 import java.util.Arrays;
 import java.util.Objects;

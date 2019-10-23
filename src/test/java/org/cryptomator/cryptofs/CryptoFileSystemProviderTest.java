@@ -3,6 +3,7 @@ package org.cryptomator.cryptofs;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.CryptoFileSystemProperties.FileSystemFlags;
+import org.cryptomator.cryptofs.ch.AsyncDelegatingFileChannel;
 import org.cryptomator.cryptolib.api.InvalidPassphraseException;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Assertions;
