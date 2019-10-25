@@ -32,6 +32,7 @@ import static org.cryptomator.cryptofs.common.Constants.DIR_FILE_NAME;
 import static org.cryptomator.cryptofs.common.Constants.MAX_SYMLINK_LENGTH;
 import static org.cryptomator.cryptofs.common.Constants.SYMLINK_FILE_NAME;
 
+@Deprecated
 @CryptoFileSystemScoped
 class ConflictResolver {
 
