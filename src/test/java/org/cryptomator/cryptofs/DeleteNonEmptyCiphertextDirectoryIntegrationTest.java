@@ -8,6 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import com.google.common.base.Strings;
 import org.cryptomator.cryptofs.common.Constants;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -26,7 +27,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
-import static org.cryptomator.cryptofs.common.Constants.SHORT_NAMES_MAX_LENGTH;
+import static org.cryptomator.cryptofs.common.Constants.MAX_CIPHERTEXT_NAME_LENGTH;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 
@@ -120,9 +121,7 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 
 		// a
 		// .. LongNameaaa...
-		String name = "LongName" + IntStream.range(0, SHORT_NAMES_MAX_LENGTH) //
-				.mapToObj(ignored -> "a") //
-				.collect(Collectors.joining());
+		String name = "LongName" + Strings.repeat("a", MAX_CIPHERTEXT_NAME_LENGTH);
 		createFolder(cleartextDirectory, name);
 
 		Assertions.assertThrows(DirectoryNotEmptyException.class, () -> {

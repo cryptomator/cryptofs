@@ -145,7 +145,7 @@ public class ConflictResolverTest {
 	public void testResolveByRenamingShortenedFile() throws IOException {
 		String conflictingName = "FooBar== (2).c9s";
 		String canonicalName = "FooBar==.c9s";
-		String inflatedName = Strings.repeat("a", Constants.SHORT_NAMES_MAX_LENGTH + 1);
+		String inflatedName = Strings.repeat("a", Constants.MAX_CIPHERTEXT_NAME_LENGTH + 1);
 		Path conflictingPath = tmpDir.resolve(conflictingName);
 		Path canonicalPath = tmpDir.resolve(canonicalName);
 		Files.write(conflictingPath, new byte[3]);

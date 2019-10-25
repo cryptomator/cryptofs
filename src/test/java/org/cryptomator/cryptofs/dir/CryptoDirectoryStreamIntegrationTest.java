@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static org.cryptomator.cryptofs.common.Constants.SHORT_NAMES_MAX_LENGTH;
+import static org.cryptomator.cryptofs.common.Constants.MAX_CIPHERTEXT_NAME_LENGTH;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.Mockito.mock;
@@ -55,7 +55,7 @@ public class CryptoDirectoryStreamIntegrationTest {
 	@Test
 	public void testInflateIfNeededWithRegularLongFilename() throws IOException {
 		String filename = "abc";
-		String inflatedName = Strings.repeat("a", SHORT_NAMES_MAX_LENGTH + 1);
+		String inflatedName = Strings.repeat("a", MAX_CIPHERTEXT_NAME_LENGTH + 1);
 		Path ciphertextPath = Paths.get(filename);
 		Path inflatedPath = Paths.get(inflatedName);
 		when(longFileNameProvider.isDeflated(filename)).thenReturn(true);
