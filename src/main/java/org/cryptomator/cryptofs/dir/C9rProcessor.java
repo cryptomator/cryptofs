@@ -1,5 +1,7 @@
 package org.cryptomator.cryptofs.dir;
 
+import org.cryptomator.cryptofs.common.Constants;
+
 import javax.inject.Inject;
 import java.util.stream.Stream;
 
@@ -16,6 +18,7 @@ class C9rProcessor {
 	}
 
 	public Stream<Node> process(Node node) {
+		assert node.fullCiphertextFileName.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX);
 		return decryptor.process(node).flatMap(conflictResolver::process);
 	}
 	
