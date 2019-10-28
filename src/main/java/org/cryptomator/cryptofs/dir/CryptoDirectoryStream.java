@@ -62,37 +62,7 @@ public class CryptoDirectoryStream implements DirectoryStream<Path> {
 
 	private Stream<Node> directoryListing() {
 		return StreamSupport.stream(ciphertextDirStream.spliterator(), false).map(Node::new).flatMap(nodeProcessor::process);
-//		Stream<NodeNames> sanitized = decrypted.filter(this::passesPlausibilityChecks);
-//		return sanitized;
 	}
-
-//	/**
-//	 * Checks if a given file belongs into this ciphertext dir.
-//	 *
-//	 * @param paths The path to check.
-//	 * @return <code>true</code> if the file is an existing ciphertext or directory file.
-//	 */
-//	private boolean passesPlausibilityChecks(NodeNames paths) {
-//		return !isBrokenDirectoryFile(paths);
-//	}
-//
-//	private boolean isBrokenDirectoryFile(NodeNames paths) {
-//		Path potentialDirectoryFile = paths.getCiphertextPath().resolve(Constants.DIR_FILE_NAME);
-//		if (Files.isRegularFile(potentialDirectoryFile)) {
-//			final Path dirPath;
-//			try {
-//				dirPath = cryptoPathMapper.resolveDirectory(potentialDirectoryFile).path;
-//			} catch (IOException e) {
-//				LOG.warn("Broken directory file {}. Exception: {}", potentialDirectoryFile, e.getMessage());
-//				return true;
-//			}
-//			if (!Files.isDirectory(dirPath)) {
-//				LOG.warn("Broken directory file {}. Directory {} does not exist.", potentialDirectoryFile, dirPath);
-//				return true;
-//			}
-//		}
-//		return false;
-//	}
 
 	private boolean isAcceptableByFilter(Path path) {
 		try {
