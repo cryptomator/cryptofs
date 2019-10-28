@@ -18,7 +18,7 @@ import java.util.Map;
 
 @CryptoFileSystemScoped
 public class DirectoryStreamFactory {
-	
+
 	private final CryptoPathMapper cryptoPathMapper;
 	private final DirectoryStreamComponent.Builder directoryStreamComponentBuilder;
 	private final Map<CryptoDirectoryStream, DirectoryStream> streams = new HashMap<>();

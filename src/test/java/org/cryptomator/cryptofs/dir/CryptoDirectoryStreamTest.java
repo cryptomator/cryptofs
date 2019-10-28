@@ -41,10 +41,6 @@ public class CryptoDirectoryStreamTest {
 		nodeProcessor = Mockito.mock(NodeProcessor.class);
 		dirStream = Mockito.mock(DirectoryStream.class);
 	}
-	
-	private ArgumentMatcher<Node> nodeNamed(String name) {
-		return node -> node.fullCiphertextFileName.equals(name);
-	}
 
 	@Test
 	public void testDirListing() throws IOException {
