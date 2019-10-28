@@ -32,10 +32,10 @@ class C9rDecryptor {
 		this.dirId = dirId.getBytes(StandardCharsets.US_ASCII);
 	}
 
-	public Stream<NodeNames> process(NodeNames nodeNames) {
-		String basename = StringUtils.removeEnd(nodeNames.ciphertextFileName, Constants.CRYPTOMATOR_FILE_SUFFIX);
+	public Stream<Node> process(Node node) {
+		String basename = StringUtils.removeEnd(node.fullCiphertextFileName, Constants.CRYPTOMATOR_FILE_SUFFIX);
 		Matcher matcher = BASE64_PATTERN.matcher(basename);
-		Optional<NodeNames> match = extractCiphertext(nodeNames, matcher, 0, basename.length());
+		Optional<Node> match = extractCiphertext(node, matcher, 0, basename.length());
 		if (match.isPresent()) {
 			return Stream.of(match.get());
 		} else {
@@ -43,17 +43,17 @@ class C9rDecryptor {
 		}
 	}
 
-	private Optional<NodeNames> extractCiphertext(NodeNames nodeNames, Matcher matcher, int start, int end) {
+	private Optional<Node> extractCiphertext(Node node, Matcher matcher, int start, int end) {
 		matcher.region(start, end);
 		if (matcher.find()) {
-			final MatchResult matchResult = matcher.toMatchResult();
-			final String validBase64 = matchResult.group();
+			final MatchResult match = matcher.toMatchResult();
+			final String validBase64 = match.group();
 			assert validBase64.length() >= 24;
-			assert matchResult.end() - matchResult.start() >= 24;
+			assert match.end() - match.start() >= 24;
 			try {
-				nodeNames.cleartextName = cryptor.fileNameCryptor().decryptFilename(BaseEncoding.base64Url(), validBase64, dirId);
-				nodeNames.ciphertextName = validBase64;
-				return Optional.of(nodeNames);
+				node.cleartextName = cryptor.fileNameCryptor().decryptFilename(BaseEncoding.base64Url(), validBase64, dirId);
+				node.extractedCiphertext = validBase64;
+				return Optional.of(node);
 			} catch (AuthenticationFailedException e) {
 				// narrow down to sub-base64-sequences:
 				int firstDelimIdx = DELIM_MATCHER.indexIn(validBase64);
@@ -64,18 +64,18 @@ class C9rDecryptor {
 				}
 				assert firstDelimIdx != -1;
 				assert lastDelimIdx != -1;
-				Optional<NodeNames> subsequenceMatch = Optional.empty();
+				Optional<Node> subsequenceMatch = Optional.empty();
 				if (!subsequenceMatch.isPresent() && firstDelimIdx == 0) {
-					subsequenceMatch = extractCiphertext(nodeNames, matcher, matchResult.start() + 1, end);
+					subsequenceMatch = extractCiphertext(node, matcher, match.start() + 1, end);
 				}
 				if (!subsequenceMatch.isPresent() && lastDelimIdx == validBase64.length() - 1) {
-					subsequenceMatch = extractCiphertext(nodeNames, matcher, start, matchResult.end() - 1);
+					subsequenceMatch = extractCiphertext(node, matcher, start, match.end() - 1);
 				}
 				if (!subsequenceMatch.isPresent() && firstDelimIdx > 0) {
-					subsequenceMatch = extractCiphertext(nodeNames, matcher, matchResult.start() + firstDelimIdx, end);
+					subsequenceMatch = extractCiphertext(node, matcher, match.start() + firstDelimIdx, end);
 				}
 				if (!subsequenceMatch.isPresent() && lastDelimIdx < validBase64.length() - 1) {
-					subsequenceMatch = extractCiphertext(nodeNames, matcher, start, matchResult.start() + lastDelimIdx);
+					subsequenceMatch = extractCiphertext(node, matcher, start, match.start() + lastDelimIdx);
 				}
 				return subsequenceMatch;
 			}

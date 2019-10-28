@@ -3,16 +3,16 @@ package org.cryptomator.cryptofs.dir;
 import java.nio.file.Path;
 import java.util.Objects;
 
-class NodeNames {
+class Node {
 
 	public final Path ciphertextPath;
-	public final String ciphertextFileName;
-	public String ciphertextName;
+	public final String fullCiphertextFileName;
+	public String extractedCiphertext;
 	public String cleartextName;
 
-	public NodeNames(Path ciphertextPath) {
+	public Node(Path ciphertextPath) {
 		this.ciphertextPath = Objects.requireNonNull(ciphertextPath);
-		this.ciphertextFileName = ciphertextPath.getFileName().toString();
+		this.fullCiphertextFileName = ciphertextPath.getFileName().toString();
 	}
 
 }

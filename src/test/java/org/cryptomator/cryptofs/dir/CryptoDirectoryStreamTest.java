@@ -42,8 +42,8 @@ public class CryptoDirectoryStreamTest {
 		dirStream = Mockito.mock(DirectoryStream.class);
 	}
 	
-	private ArgumentMatcher<NodeNames> nodeNamed(String name) {
-		return node -> node.ciphertextFileName.equals(name);
+	private ArgumentMatcher<Node> nodeNamed(String name) {
+		return node -> node.fullCiphertextFileName.equals(name);
 	}
 
 	@Test
@@ -57,23 +57,23 @@ public class CryptoDirectoryStreamTest {
 		ciphertextFileNames.add("invalidCiphertext");
 		Mockito.when(dirStream.spliterator()).thenReturn(ciphertextFileNames.stream().map(ciphertextPath::resolve).spliterator());
 		Mockito.doAnswer(invocation -> {
-			NodeNames nodeNames = invocation.getArgument(0);
-			nodeNames.cleartextName = "cleartextFile1";
-			return Stream.of(nodeNames);
-		}).when(nodeProcessor).process(Mockito.argThat(node -> node.ciphertextFileName.equals("ciphertextFile1")));
+			Node node = invocation.getArgument(0);
+			node.cleartextName = "cleartextFile1";
+			return Stream.of(node);
+		}).when(nodeProcessor).process(Mockito.argThat(node -> node.fullCiphertextFileName.equals("ciphertextFile1")));
 		Mockito.doAnswer(invocation -> {
-			NodeNames nodeNames = invocation.getArgument(0);
-			nodeNames.cleartextName = "cleartextFile2";
-			return Stream.of(nodeNames);
-		}).when(nodeProcessor).process(Mockito.argThat(node -> node.ciphertextFileName.equals("ciphertextFile2")));
+			Node node = invocation.getArgument(0);
+			node.cleartextName = "cleartextFile2";
+			return Stream.of(node);
+		}).when(nodeProcessor).process(Mockito.argThat(node -> node.fullCiphertextFileName.equals("ciphertextFile2")));
 		Mockito.doAnswer(invocation -> {
-			NodeNames nodeNames = invocation.getArgument(0);
-			nodeNames.cleartextName = "cleartextDirectory1";
-			return Stream.of(nodeNames);
-		}).when(nodeProcessor).process(Mockito.argThat(node -> node.ciphertextFileName.equals("ciphertextDirectory1")));
+			Node node = invocation.getArgument(0);
+			node.cleartextName = "cleartextDirectory1";
+			return Stream.of(node);
+		}).when(nodeProcessor).process(Mockito.argThat(node -> node.fullCiphertextFileName.equals("ciphertextDirectory1")));
 		Mockito.doAnswer(invocation -> {
 			return Stream.empty();
-		}).when(nodeProcessor).process(Mockito.argThat(node -> node.ciphertextFileName.equals("invalidCiphertext")));
+		}).when(nodeProcessor).process(Mockito.argThat(node -> node.fullCiphertextFileName.equals("invalidCiphertext")));
 		
 		try (CryptoDirectoryStream stream = new CryptoDirectoryStream("foo", dirStream, cleartextPath, ACCEPT_ALL, DO_NOTHING_ON_CLOSE, nodeProcessor)) {
 			Iterator<Path> iter = stream.iterator();

@@ -4,9 +4,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.io.BaseEncoding;
 import com.google.common.io.MoreFiles;
 import com.google.common.io.RecursiveDeleteOption;
-import org.cryptomator.cryptofs.CiphertextFilePath;
 import org.cryptomator.cryptofs.common.Constants;
-import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,33 +43,33 @@ class C9rConflictResolver {
 		this.dirId = dirId.getBytes(StandardCharsets.US_ASCII);
 	}
 
-	public Stream<NodeNames> process(NodeNames nodeNames) {
-		Preconditions.checkArgument(nodeNames.ciphertextName != null, "Can only resolve conflicts if ciphertextName is set");
-		Preconditions.checkArgument(nodeNames.cleartextName != null, "Can only resolve conflicts if cleartextName is set");
+	public Stream<Node> process(Node node) {
+		Preconditions.checkArgument(node.extractedCiphertext != null, "Can only resolve conflicts if extractedCiphertext is set");
+		Preconditions.checkArgument(node.cleartextName != null, "Can only resolve conflicts if cleartextName is set");
 
-		String canonicalName = nodeNames.ciphertextName + Constants.CRYPTOMATOR_FILE_SUFFIX;
-		if (nodeNames.ciphertextFileName.equals(canonicalName)) {
-			return Stream.of(nodeNames);
+		String canonicalCiphertextFileName = node.extractedCiphertext + Constants.CRYPTOMATOR_FILE_SUFFIX;
+		if (node.fullCiphertextFileName.equals(canonicalCiphertextFileName)) {
+			return Stream.of(node);
 		} else {
 			try {
-				Path canonicalPath = nodeNames.ciphertextPath.resolveSibling(canonicalName);
-				return resolveConflict(nodeNames, canonicalPath);
+				Path canonicalPath = node.ciphertextPath.resolveSibling(canonicalCiphertextFileName);
+				return resolveConflict(node, canonicalPath);
 			} catch (IOException e) {
-				LOG.error("Failed to resolve conflict for " + nodeNames.ciphertextPath, e);
+				LOG.error("Failed to resolve conflict for " + node.ciphertextPath, e);
 				return Stream.empty();
 			}
 		}
 	}
 
-	private Stream<NodeNames> resolveConflict(NodeNames nodeNames, Path canonicalPath) throws IOException {
-		Path conflictingPath = nodeNames.ciphertextPath;
+	private Stream<Node> resolveConflict(Node conflicting, Path canonicalPath) throws IOException {
+		Path conflictingPath = conflicting.ciphertextPath;
 		if (resolveConflictTrivially(canonicalPath, conflictingPath)) {
-			NodeNames resolvedNames = new NodeNames(canonicalPath);
-			resolvedNames.cleartextName = nodeNames.cleartextName;
-			resolvedNames.ciphertextName = nodeNames.ciphertextName;
-			return Stream.of(resolvedNames);
+			Node resolved = new Node(canonicalPath);
+			resolved.cleartextName = conflicting.cleartextName;
+			resolved.extractedCiphertext = conflicting.extractedCiphertext;
+			return Stream.of(resolved);
 		} else {
-			return Stream.of(renameConflictingFile(canonicalPath, conflictingPath, nodeNames.cleartextName));
+			return Stream.of(renameConflictingFile(canonicalPath, conflictingPath, conflicting.cleartextName));
 		}
 	}
 
@@ -84,7 +82,7 @@ class C9rConflictResolver {
 	 * @return The NodeNames for the newly created node after renaming the conflicting file.
 	 * @throws IOException
 	 */
-	private NodeNames renameConflictingFile(Path canonicalPath, Path conflictingPath, String cleartext) throws IOException {
+	private Node renameConflictingFile(Path canonicalPath, Path conflictingPath, String cleartext) throws IOException {
 		assert Files.exists(canonicalPath);
 		final int beginOfFileExtension = cleartext.lastIndexOf('.');
 		final String fileExtension = (beginOfFileExtension > 0) ? cleartext.substring(beginOfFileExtension) : "";
@@ -104,10 +102,10 @@ class C9rConflictResolver {
 		assert alternativeCiphertextName.length() <= MAX_CIPHERTEXT_NAME_LENGTH;
 		LOG.info("Moving conflicting file {} to {}", conflictingPath, alternativePath);
 		Files.move(conflictingPath, alternativePath, StandardCopyOption.ATOMIC_MOVE);
-		NodeNames nodeNames = new NodeNames(alternativePath);
-		nodeNames.cleartextName = alternativeCleartext;
-		nodeNames.ciphertextName = alternativeCiphertext;
-		return nodeNames;
+		Node node = new Node(alternativePath);
+		node.cleartextName = alternativeCleartext;
+		node.extractedCiphertext = alternativeCiphertext;
+		return node;
 	}
 
 

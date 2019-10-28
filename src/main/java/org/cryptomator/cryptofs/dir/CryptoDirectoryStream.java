@@ -56,12 +56,12 @@ public class CryptoDirectoryStream implements DirectoryStream<Path> {
 				.filter(this::isAcceptableByFilter);
 	}
 
-	public Stream<Path> ciphertextDirectoryListing() {
+	Stream<Path> ciphertextDirectoryListing() {
 		return directoryListing().map(node -> node.ciphertextPath);
 	}
 
-	private Stream<NodeNames> directoryListing() {
-		return StreamSupport.stream(ciphertextDirStream.spliterator(), false).map(NodeNames::new).flatMap(nodeProcessor::process);
+	private Stream<Node> directoryListing() {
+		return StreamSupport.stream(ciphertextDirStream.spliterator(), false).map(Node::new).flatMap(nodeProcessor::process);
 //		Stream<NodeNames> sanitized = decrypted.filter(this::passesPlausibilityChecks);
 //		return sanitized;
 	}

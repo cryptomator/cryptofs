@@ -60,10 +60,10 @@ class C9rDecryptorTest {
 	@DisplayName("process canonical filename")
 	public void testProcessFullMatch() {
 		Mockito.when(fileNameCryptor.decryptFilename(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn("helloWorld.txt");
-		NodeNames input = new NodeNames(Paths.get("aaaaBBBBccccDDDDeeeeFFFF.c9r"));
+		Node input = new Node(Paths.get("aaaaBBBBccccDDDDeeeeFFFF.c9r"));
 
-		Stream<NodeNames> resultStream = decryptor.process(input);
-		Optional<NodeNames> optionalResult = resultStream.findAny();
+		Stream<Node> resultStream = decryptor.process(input);
+		Optional<Node> optionalResult = resultStream.findAny();
 
 		Assertions.assertTrue(optionalResult.isPresent());
 		Assertions.assertEquals("helloWorld.txt", optionalResult.get().cleartextName);
@@ -90,10 +90,10 @@ class C9rDecryptorTest {
 				throw new AuthenticationFailedException("Invalid ciphertext " + ciphertext);
 			}
 		});
-		NodeNames input = new NodeNames(Paths.get(filename));
+		Node input = new Node(Paths.get(filename));
 
-		Stream<NodeNames> resultStream = decryptor.process(input);
-		Optional<NodeNames> optionalResult = resultStream.findAny();
+		Stream<Node> resultStream = decryptor.process(input);
+		Optional<Node> optionalResult = resultStream.findAny();
 
 		Assertions.assertTrue(optionalResult.isPresent());
 		Assertions.assertEquals("helloWorld.txt", optionalResult.get().cleartextName);
@@ -109,10 +109,10 @@ class C9rDecryptorTest {
 	})
 	public void testProcessNoMatch(String filename) {
 		Mockito.when(fileNameCryptor.decryptFilename(Mockito.any(), Mockito.any(), Mockito.any())).thenThrow(new AuthenticationFailedException("Invalid ciphertext."));
-		NodeNames input = new NodeNames(Paths.get(filename));
+		Node input = new Node(Paths.get(filename));
 
-		Stream<NodeNames> resultStream = decryptor.process(input);
-		Optional<NodeNames> optionalResult = resultStream.findAny();
+		Stream<Node> resultStream = decryptor.process(input);
+		Optional<Node> optionalResult = resultStream.findAny();
 
 		Assertions.assertFalse(optionalResult.isPresent());
 	}

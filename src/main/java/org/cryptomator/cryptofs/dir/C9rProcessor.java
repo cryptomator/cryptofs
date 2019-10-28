@@ -15,8 +15,8 @@ class C9rProcessor {
 		this.conflictResolver = conflictResolver;
 	}
 
-	public Stream<NodeNames> process(NodeNames nodeNames) {
-		return decryptor.process(nodeNames).flatMap(conflictResolver::process);
+	public Stream<Node> process(Node node) {
+		return decryptor.process(node).flatMap(conflictResolver::process);
 	}
 	
 }
