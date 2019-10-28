@@ -58,30 +58,34 @@ class C9rDecryptor {
 				// narrow down to sub-base64-sequences:
 				int firstDelimIdx = DELIM_MATCHER.indexIn(validBase64);
 				int lastDelimIdx = DELIM_MATCHER.lastIndexIn(validBase64);
+				
+				// fail fast if there is no way to find a different subsequence:
 				if (firstDelimIdx == -1) {
 					assert lastDelimIdx == -1;
 					return Optional.empty();
 				}
-				assert firstDelimIdx != -1;
-				assert lastDelimIdx != -1;
-				Optional<Node> subsequenceMatch = Optional.empty();
-				if (!subsequenceMatch.isPresent() && firstDelimIdx == 0) {
-					subsequenceMatch = extractCiphertext(node, matcher, match.start() + 1, end);
+
+				// try matching with adjusted start and same end:
+				int newStart = match.start() + Math.max(1, firstDelimIdx);
+				assert match.start() >= start;
+				assert newStart > start;
+				Optional<Node> matchWithNewStart = extractCiphertext(node, matcher, newStart, end);
+				if (matchWithNewStart.isPresent()) {
+					return matchWithNewStart;
 				}
-				if (!subsequenceMatch.isPresent() && lastDelimIdx == validBase64.length() - 1) {
-					subsequenceMatch = extractCiphertext(node, matcher, start, match.end() - 1);
+				
+				// try matching with same start and adjusted end:
+				int delimDistanceFromEnd = validBase64.length() - lastDelimIdx;
+				int newEnd = match.end() - Math.max(1, delimDistanceFromEnd);
+				assert match.end() <= end;
+				assert newEnd < end;
+				Optional<Node> matchWithNewEnd = extractCiphertext(node, matcher, start, newEnd);
+				if (matchWithNewEnd.isPresent()) {
+					return matchWithNewEnd;
 				}
-				if (!subsequenceMatch.isPresent() && firstDelimIdx > 0) {
-					subsequenceMatch = extractCiphertext(node, matcher, match.start() + firstDelimIdx, end);
-				}
-				if (!subsequenceMatch.isPresent() && lastDelimIdx < validBase64.length() - 1) {
-					subsequenceMatch = extractCiphertext(node, matcher, start, match.start() + lastDelimIdx);
-				}
-				return subsequenceMatch;
 			}
-		} else {
-			return Optional.empty();
 		}
+		return Optional.empty();
 	}
 	
 }
