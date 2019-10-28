@@ -79,7 +79,7 @@ class C9rConflictResolver {
 	 * @param canonicalPath   The path to the original (conflict-free) file.
 	 * @param conflictingPath The path to the potentially conflicting file.
 	 * @param cleartext       The cleartext name of the conflicting file.
-	 * @return The NodeNames for the newly created node after renaming the conflicting file.
+	 * @return The newly created Node after renaming the conflicting file.
 	 * @throws IOException
 	 */
 	private Node renameConflictingFile(Path canonicalPath, Path conflictingPath, String cleartext) throws IOException {
