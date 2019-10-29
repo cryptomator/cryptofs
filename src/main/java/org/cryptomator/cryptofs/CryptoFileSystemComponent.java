@@ -3,6 +3,7 @@ package org.cryptomator.cryptofs;
 import dagger.BindsInstance;
 import dagger.Subcomponent;
 import org.cryptomator.cryptofs.attr.AttributeViewComponent;
+import org.cryptomator.cryptofs.dir.DirectoryStreamComponent;
 import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
 
 import java.nio.file.Path;
@@ -12,10 +13,6 @@ import java.nio.file.Path;
 public interface CryptoFileSystemComponent {
 
 	CryptoFileSystemImpl cryptoFileSystem();
-
-	OpenCryptoFileComponent.Builder newOpenCryptoFileComponent();
-
-	AttributeViewComponent.Builder newFileAttributeViewComponent();
 
 	@Subcomponent.Builder
 	interface Builder {

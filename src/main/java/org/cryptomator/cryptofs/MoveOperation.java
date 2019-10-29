@@ -1,5 +1,7 @@
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.common.ArrayUtils;
+
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;

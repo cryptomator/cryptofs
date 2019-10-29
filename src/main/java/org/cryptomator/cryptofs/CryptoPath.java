@@ -8,6 +8,8 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.common.ArrayUtils;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -24,7 +26,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 
-import static org.cryptomator.cryptofs.Constants.SEPARATOR;
+import static org.cryptomator.cryptofs.common.Constants.SEPARATOR;
 
 public class CryptoPath implements Path {
 

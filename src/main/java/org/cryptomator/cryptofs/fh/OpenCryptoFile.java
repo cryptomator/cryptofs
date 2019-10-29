@@ -8,7 +8,6 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.fh;
 
-import com.google.common.base.Preconditions;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ch.ChannelComponent;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;

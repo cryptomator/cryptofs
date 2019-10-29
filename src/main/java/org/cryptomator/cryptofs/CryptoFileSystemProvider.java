@@ -8,6 +8,9 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.ch.AsyncDelegatingFileChannel;
+import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.common.MasterkeyBackupFileHasher;
 import org.cryptomator.cryptofs.migration.Migrators;
 import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -166,8 +169,6 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 			String rootDirHash = cryptor.fileNameCryptor().hashDirectoryId(Constants.ROOT_DIR_ID);
 			Path rootDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(rootDirHash.substring(0, 2)).resolve(rootDirHash.substring(2));
 			Files.createDirectories(rootDirPath);
-			// create "m":
-			Files.createDirectory(pathToVault.resolve(Constants.METADATA_DIR_NAME));
 		}
 		assert containsVault(pathToVault, masterkeyFilename);
 	}
@@ -227,9 +228,47 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
 		byte[] oldMasterkeyBytes = Files.readAllBytes(masterKeyPath);
 		byte[] newMasterkeyBytes = Cryptors.changePassphrase(CRYPTOR_PROVIDER, oldMasterkeyBytes, pepper, normalizedOldPassphrase, normalizedNewPassphrase);
-		Path backupKeyPath = pathToVault.resolve(masterkeyFilename + BackupUtil.generateFileIdSuffix(oldMasterkeyBytes) + Constants.MASTERKEY_BACKUP_SUFFIX);
+		Path backupKeyPath = pathToVault.resolve(masterkeyFilename + MasterkeyBackupFileHasher.generateFileIdSuffix(oldMasterkeyBytes) + Constants.MASTERKEY_BACKUP_SUFFIX);
 		Files.move(masterKeyPath, backupKeyPath, REPLACE_EXISTING, ATOMIC_MOVE);
 		Files.write(masterKeyPath, newMasterkeyBytes, CREATE_NEW, WRITE);
+	}
+
+	/**
+	 * Exports the raw key for backup purposes or external key management.
+	 *
+	 * @param pathToVault       Vault directory
+	 * @param masterkeyFilename Name of the masterkey file
+	 * @param pepper            An application-specific pepper added to the salt during key-derivation (if applicable)
+	 * @param passphrase        Current passphrase
+	 * @return A 64 byte array consisting of 32 byte aes key and 32 byte mac key
+	 * @since 1.9.0
+	 */
+	public static byte[] exportRawKey(Path pathToVault, String masterkeyFilename, byte[] pepper, CharSequence passphrase) throws InvalidPassphraseException, IOException {
+		String normalizedPassphrase = Normalizer.normalize(passphrase, Form.NFC);
+		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
+		byte[] masterKeyBytes = Files.readAllBytes(masterKeyPath);
+		return Cryptors.exportRawKey(CRYPTOR_PROVIDER, masterKeyBytes, pepper, normalizedPassphrase);
+	}
+
+	/**
+	 * Imports a raw key from backup or external key management.
+	 *
+	 * @param pathToVault       Vault directory
+	 * @param masterkeyFilename Name of the masterkey file
+	 * @param pepper            An application-specific pepper added to the salt during key-derivation (if applicable)
+	 * @param passphrase        Future passphrase
+	 * @since 1.9.0
+	 */
+	public static void restoreRawKey(Path pathToVault, String masterkeyFilename, byte[] rawKey, byte[] pepper, CharSequence passphrase) throws InvalidPassphraseException, IOException {
+		String normalizedPassphrase = Normalizer.normalize(passphrase, Form.NFC);
+		byte[] masterKeyBytes = Cryptors.restoreRawKey(CRYPTOR_PROVIDER, rawKey, pepper, normalizedPassphrase, Constants.VAULT_VERSION);
+		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
+		if (Files.exists(masterKeyPath)) {
+			byte[] oldMasterkeyBytes = Files.readAllBytes(masterKeyPath);
+			Path backupKeyPath = pathToVault.resolve(masterkeyFilename + MasterkeyBackupFileHasher.generateFileIdSuffix(oldMasterkeyBytes) + Constants.MASTERKEY_BACKUP_SUFFIX);
+			Files.move(masterKeyPath, backupKeyPath, REPLACE_EXISTING, ATOMIC_MOVE);
+		}
+		Files.write(masterKeyPath, masterKeyBytes, CREATE_NEW, WRITE);
 	}
 
 	/**
@@ -257,16 +296,18 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		return fileSystems.create(this, parsedUri.pathToVault(), properties);
 	}
 
+	@Deprecated
 	private void migrateFileSystemIfRequired(CryptoFileSystemUri parsedUri, CryptoFileSystemProperties properties) throws IOException, FileSystemNeedsMigrationException {
 		if (Migrators.get().needsMigration(parsedUri.pathToVault(), properties.masterkeyFilename())) {
 			if (properties.migrateImplicitly()) {
-				Migrators.get().migrate(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase());
+				Migrators.get().migrate(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase(), (state, progress) -> {});
 			} else {
 				throw new FileSystemNeedsMigrationException(parsedUri.pathToVault());
 			}
 		}
 	}
 
+	@Deprecated
 	private void initializeFileSystemIfRequired(CryptoFileSystemUri parsedUri, CryptoFileSystemProperties properties) throws NotDirectoryException, IOException, NoSuchFileException {
 		if (!CryptoFileSystemProvider.containsVault(parsedUri.pathToVault(), properties.masterkeyFilename())) {
 			if (properties.initializeImplicitly()) {

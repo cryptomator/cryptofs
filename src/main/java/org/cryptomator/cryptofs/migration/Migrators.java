@@ -15,7 +15,8 @@ import java.util.Optional;
 
 import javax.inject.Inject;
 
-import org.cryptomator.cryptofs.Constants;
+import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.migration.api.NoApplicableMigratorException;
 import org.cryptomator.cryptolib.Cryptors;
@@ -31,7 +32,7 @@ import org.cryptomator.cryptolib.api.UnsupportedVaultFormatException;
  * <pre>
  * <code>
  * if (Migrators.get().{@link #needsMigration(Path, String) needsMigration(pathToVault, masterkeyFileName)}) {
- * 	Migrators.get().{@link #migrate(Path, String, CharSequence) migrate(pathToVault, masterkeyFileName, passphrase)};
+ * 	Migrators.get().{@link #migrate(Path, String, CharSequence, MigrationProgressListener) migrate(pathToVault, masterkeyFileName, passphrase, migrationProgressListener)};
  * }
  * </code>
  * </pre>
@@ -88,14 +89,14 @@ public class Migrators {
 	 * @throws InvalidPassphraseException If the passphrase could not be used to unlock the vault
 	 * @throws IOException if an I/O error occurs migrating the vault
 	 */
-	public void migrate(Path pathToVault, String masterkeyFilename, CharSequence passphrase) throws NoApplicableMigratorException, InvalidPassphraseException, IOException {
+	public void migrate(Path pathToVault, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener) throws NoApplicableMigratorException, InvalidPassphraseException, IOException {
 		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
 		byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
 		KeyFile keyFile = KeyFile.parse(keyFileContents);
 
 		try {
 			Migrator migrator = findApplicableMigrator(keyFile.getVersion()).orElseThrow(NoApplicableMigratorException::new);
-			migrator.migrate(pathToVault, masterkeyFilename, passphrase);
+			migrator.migrate(pathToVault, masterkeyFilename, passphrase, progressListener);
 		} catch (UnsupportedVaultFormatException e) {
 			// might be a tampered masterkey file, as this exception is also thrown if the vault version MAC is not authentic.
 			throw new IllegalStateException("Vault version checked beforehand but not supported by migrator.");
@@ -103,7 +104,6 @@ public class Migrators {
 	}
 
 	private Optional<Migrator> findApplicableMigrator(int version) {
-		// TODO return "5->6->7" instead of "5->6" and "6->7", if possible
 		return migrators.entrySet().stream().filter(entry -> entry.getKey().isApplicable(version)).map(Map.Entry::getValue).findAny();
 	}
 

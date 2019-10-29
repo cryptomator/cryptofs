@@ -3,7 +3,7 @@ package org.cryptomator.cryptofs;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
-import static org.cryptomator.cryptofs.Constants.SEPARATOR;
+import static org.cryptomator.cryptofs.common.Constants.SEPARATOR;
 
 @Singleton
 class GlobToRegexConverter {

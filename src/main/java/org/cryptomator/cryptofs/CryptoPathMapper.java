@@ -13,6 +13,9 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.io.BaseEncoding;
+import org.cryptomator.cryptofs.common.CiphertextFileType;
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptolib.api.Cryptor;
 
 import javax.inject.Inject;
@@ -20,14 +23,16 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 
-import static org.cryptomator.cryptofs.Constants.DATA_DIR_NAME;
+import static org.cryptomator.cryptofs.common.Constants.DATA_DIR_NAME;
 
 @CryptoFileSystemScoped
 public class CryptoPathMapper {
@@ -65,8 +70,11 @@ public class CryptoPathMapper {
 	 */
 	public void assertNonExisting(CryptoPath cleartextPath) throws FileAlreadyExistsException, IOException {
 		try {
-			CiphertextFileType type = getCiphertextFileType(cleartextPath);
-			throw new FileAlreadyExistsException(cleartextPath.toString(), null, "For this path there is already a " + type.name());
+			CiphertextFilePath ciphertextPath = getCiphertextFilePath(cleartextPath);
+			BasicFileAttributes attr = Files.readAttributes(ciphertextPath.getRawPath(), BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+			if (attr != null) {
+				throw new FileAlreadyExistsException(cleartextPath.toString());
+			}
 		} catch (NoSuchFileException e) {
 			// good!
 		}
@@ -83,51 +91,58 @@ public class CryptoPathMapper {
 		if (parentPath == null) {
 			return CiphertextFileType.DIRECTORY; // ROOT
 		} else {
-			CiphertextDirectory parent = getCiphertextDir(parentPath);
-			String cleartextName = cleartextPath.getFileName().toString();
-			NoSuchFileException notFound = new NoSuchFileException(cleartextPath.toString());
-			for (CiphertextFileType type : CiphertextFileType.values()) {
-				String ciphertextName = getCiphertextFileName(parent.dirId, cleartextName, type);
-				Path ciphertextPath = parent.path.resolve(ciphertextName);
-				try {
-					// readattr is the fastest way of checking if a file exists. Doing so in this loop is still
-					// 1-2 orders of magnitude faster than iterating over directory contents
-					Files.readAttributes(ciphertextPath, BasicFileAttributes.class);
-					return type;
-				} catch (NoSuchFileException e) {
-					notFound.addSuppressed(e);
+			CiphertextFilePath ciphertextPath = getCiphertextFilePath(cleartextPath);
+			BasicFileAttributes attr = Files.readAttributes(ciphertextPath.getRawPath(), BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+			if (attr.isRegularFile()) {
+				return CiphertextFileType.FILE;
+			} else if (attr.isDirectory()) {
+				if (Files.exists(ciphertextPath.getDirFilePath(), LinkOption.NOFOLLOW_LINKS)) {
+					return CiphertextFileType.DIRECTORY;
+				} else if (Files.exists(ciphertextPath.getSymlinkFilePath(), LinkOption.NOFOLLOW_LINKS)) {
+					return CiphertextFileType.SYMLINK;
+				} else if (Files.exists(ciphertextPath.getFilePath(), LinkOption.NOFOLLOW_LINKS)) {
+					return CiphertextFileType.FILE;
 				}
 			}
-			throw notFound;
+			throw new NoSuchFileException(cleartextPath.toString(), null, "Could not determine type of file " + ciphertextPath.getRawPath());
 		}
 	}
 
-	public Path getCiphertextFilePath(CryptoPath cleartextPath, CiphertextFileType type) throws IOException {
+	public CiphertextFilePath getCiphertextFilePath(CryptoPath cleartextPath) throws IOException {
 		CryptoPath parentPath = cleartextPath.getParent();
 		if (parentPath == null) {
 			throw new IllegalArgumentException("Invalid file path (must have a parent): " + cleartextPath);
 		}
 		CiphertextDirectory parent = getCiphertextDir(parentPath);
 		String cleartextName = cleartextPath.getFileName().toString();
-		String ciphertextName = getCiphertextFileName(parent.dirId, cleartextName, type);
-		return parent.path.resolve(ciphertextName);
+		return getCiphertextFilePath(parent.path, parent.dirId, cleartextName);
 	}
-
-	private String getCiphertextFileName(String dirId, String cleartextName, CiphertextFileType fileType) throws IOException {
-		String ciphertextName = fileType.getPrefix() + ciphertextNames.getUnchecked(new DirIdAndName(dirId, cleartextName));
-		if (ciphertextName.length() > Constants.SHORT_NAMES_MAX_LENGTH) {
-			return longFileNameProvider.deflate(ciphertextName);
+	
+	public CiphertextFilePath getCiphertextFilePath(Path parentCiphertextDir, String parentDirId, String cleartextName) {
+		String ciphertextName = ciphertextNames.getUnchecked(new DirIdAndName(parentDirId, cleartextName));
+		Path c9rPath = parentCiphertextDir.resolve(ciphertextName);
+		if (ciphertextName.length() > Constants.MAX_CIPHERTEXT_NAME_LENGTH) {
+			LongFileNameProvider.DeflatedFileName deflatedFileName = longFileNameProvider.deflate(c9rPath);
+			return new CiphertextFilePath(deflatedFileName.c9sPath, Optional.of(deflatedFileName));
 		} else {
-			return ciphertextName;
+			return new CiphertextFilePath(c9rPath, Optional.empty());
 		}
 	}
 
 	private String getCiphertextFileName(DirIdAndName dirIdAndName) {
-		return cryptor.fileNameCryptor().encryptFilename(dirIdAndName.name, dirIdAndName.dirId.getBytes(StandardCharsets.UTF_8));
+		return cryptor.fileNameCryptor().encryptFilename(BaseEncoding.base64Url(), dirIdAndName.name, dirIdAndName.dirId.getBytes(StandardCharsets.UTF_8)) + Constants.CRYPTOMATOR_FILE_SUFFIX;
 	}
 
 	public void invalidatePathMapping(CryptoPath cleartextPath) {
 		ciphertextDirectories.invalidate(cleartextPath);
+	}
+	
+	public void movePathMapping(CryptoPath cleartextSrc, CryptoPath cleartextDst) {
+		CiphertextDirectory cachedValue = ciphertextDirectories.getIfPresent(cleartextSrc);
+		if (cachedValue != null) {
+			ciphertextDirectories.put(cleartextDst, cachedValue);
+			ciphertextDirectories.invalidate(cleartextSrc);
+		}
 	}
 
 	public CiphertextDirectory getCiphertextDir(CryptoPath cleartextPath) throws IOException {
@@ -138,7 +153,7 @@ public class CryptoPathMapper {
 		} else {
 			try {
 				return ciphertextDirectories.get(cleartextPath, () -> {
-					Path dirIdFile = getCiphertextFilePath(cleartextPath, CiphertextFileType.DIRECTORY);
+					Path dirIdFile = getCiphertextFilePath(cleartextPath).getDirFilePath();
 					return resolveDirectory(dirIdFile);
 				});
 			} catch (ExecutionException e) {

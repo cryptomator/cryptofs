@@ -7,6 +7,11 @@ package org.cryptomator.cryptofs;
 
 import dagger.Module;
 import dagger.Provides;
+import org.cryptomator.cryptofs.attr.AttributeViewComponent;
+import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.common.MasterkeyBackupFileHasher;
+import org.cryptomator.cryptofs.dir.DirectoryStreamComponent;
+import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.KeyFile;
@@ -18,7 +23,7 @@ import java.nio.file.Path;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
-@Module
+@Module(subcomponents = {AttributeViewComponent.class, OpenCryptoFileComponent.class, DirectoryStreamComponent.class})
 class CryptoFileSystemModule {
 
 	@Provides
@@ -28,7 +33,7 @@ class CryptoFileSystemModule {
 			Path masterKeyPath = pathToVault.resolve(properties.masterkeyFilename());
 			assert Files.exists(masterKeyPath); // since 1.3.0 a file system can only be created for existing vaults. initialization is done before.
 			byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
-			Path backupKeyPath = pathToVault.resolve(properties.masterkeyFilename() + BackupUtil.generateFileIdSuffix(keyFileContents) + Constants.MASTERKEY_BACKUP_SUFFIX);
+			Path backupKeyPath = pathToVault.resolve(properties.masterkeyFilename() + MasterkeyBackupFileHasher.generateFileIdSuffix(keyFileContents) + Constants.MASTERKEY_BACKUP_SUFFIX);
 			Cryptor cryptor = cryptorProvider.createFromKeyFile(KeyFile.parse(keyFileContents), properties.passphrase(), properties.pepper(), Constants.VAULT_VERSION);
 			backupMasterkeyFileIfRequired(masterKeyPath, backupKeyPath, readonlyFlag);
 			return cryptor;

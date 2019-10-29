@@ -25,7 +25,6 @@ import static org.mockito.Mockito.mock;
 
 public class OpenCryptoFilesTest {
 
-	private final CryptoFileSystemComponent cryptoFileSystemComponent = mock(CryptoFileSystemComponent.class);
 	private final OpenCryptoFileComponent.Builder openCryptoFileComponentBuilder = mock(OpenCryptoFileComponent.Builder.class);
 	private final OpenCryptoFile file = mock(OpenCryptoFile.class, "file");
 	private final FileChannel ciphertextFileChannel = Mockito.mock(FileChannel.class);
@@ -37,7 +36,6 @@ public class OpenCryptoFilesTest {
 		OpenCryptoFileComponent subComponent = mock(OpenCryptoFileComponent.class);
 		Mockito.when(subComponent.openCryptoFile()).thenReturn(file);
 
-		Mockito.when(cryptoFileSystemComponent.newOpenCryptoFileComponent()).thenReturn(openCryptoFileComponentBuilder);
 		Mockito.when(openCryptoFileComponentBuilder.path(Mockito.any())).thenReturn(openCryptoFileComponentBuilder);
 		Mockito.when(openCryptoFileComponentBuilder.onClose(Mockito.any())).thenReturn(openCryptoFileComponentBuilder);
 		Mockito.when(openCryptoFileComponentBuilder.build()).thenReturn(subComponent);
@@ -47,7 +45,7 @@ public class OpenCryptoFilesTest {
 		closeLockField.setAccessible(true);
 		closeLockField.set(ciphertextFileChannel, new Object());
 
-		inTest = new OpenCryptoFiles(cryptoFileSystemComponent);
+		inTest = new OpenCryptoFiles(openCryptoFileComponentBuilder);
 	}
 
 	@Test
@@ -60,7 +58,6 @@ public class OpenCryptoFilesTest {
 		OpenCryptoFile file2 = mock(OpenCryptoFile.class);
 		Mockito.when(subComponent2.openCryptoFile()).thenReturn(file2);
 
-		Mockito.when(cryptoFileSystemComponent.newOpenCryptoFileComponent()).thenReturn(openCryptoFileComponentBuilder);
 		Mockito.when(openCryptoFileComponentBuilder.build()).thenReturn(subComponent1, subComponent2);
 
 		Path p1 = Paths.get("/foo");

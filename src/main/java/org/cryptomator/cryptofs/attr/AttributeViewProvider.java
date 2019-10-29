@@ -25,11 +25,11 @@ public class AttributeViewProvider {
 
 	private static final Logger LOG = LoggerFactory.getLogger(AttributeViewProvider.class);
 
-	private final CryptoFileSystemComponent component;
+	private final AttributeViewComponent.Builder attrViewComponentBuilder;
 
 	@Inject
-	AttributeViewProvider(CryptoFileSystemComponent component) {
-		this.component = component;
+	AttributeViewProvider(AttributeViewComponent.Builder attrViewComponentBuilder) {
+		this.attrViewComponentBuilder = attrViewComponentBuilder;
 	}
 
 	/**
@@ -39,7 +39,7 @@ public class AttributeViewProvider {
 	 * @see Files#getFileAttributeView(java.nio.file.Path, Class, java.nio.file.LinkOption...)
 	 */
 	public <A extends FileAttributeView> A getAttributeView(CryptoPath cleartextPath, Class<A> type, LinkOption... options) {
-		Optional<FileAttributeView> view = component.newFileAttributeViewComponent() //
+		Optional<FileAttributeView> view = attrViewComponentBuilder //
 				.cleartextPath(cleartextPath) //
 				.viewType(type) //
 				.linkOptions(options) //

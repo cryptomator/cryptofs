@@ -8,8 +8,11 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import com.google.common.base.Strings;
+import org.cryptomator.cryptofs.common.Constants;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -25,7 +28,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
-import static org.cryptomator.cryptofs.Constants.SHORT_NAMES_MAX_LENGTH;
+import static org.cryptomator.cryptofs.common.Constants.MAX_CIPHERTEXT_NAME_LENGTH;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 
@@ -35,13 +38,11 @@ import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 
 	private static Path pathToVault;
-	private static Path mDir;
 	private static FileSystem fileSystem;
 
 	@BeforeAll
 	public static void setupClass(@TempDir Path tmpDir) throws IOException {
 		pathToVault = tmpDir.resolve("vault");
-		mDir = pathToVault.resolve("m");
 		Files.createDirectory(pathToVault);
 		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
 	}
@@ -79,26 +80,28 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 	}
 
 	@Test
+	@Disabled // c9s not yet implemented
 	public void testDeleteDirectoryContainingLongNameFileWithoutMetadata() throws IOException {
 		Path cleartextDirectory = fileSystem.getPath("/b");
 		Files.createDirectory(cleartextDirectory);
 
 		Path ciphertextDirectory = firstEmptyCiphertextDirectory();
-		createFile(ciphertextDirectory, "HHEZJURE.lng", new byte[] {65});
+		Path longNameDir = createFolder(ciphertextDirectory, "HHEZJURE.c9s");
+		createFile(longNameDir, Constants.CONTENTS_FILE_NAME, new byte[] {65});
 
 		Files.delete(cleartextDirectory);
 	}
 
 	@Test
+	@Disabled // c9s not yet implemented
 	public void testDeleteDirectoryContainingUnauthenticLongNameDirectoryFile() throws IOException {
 		Path cleartextDirectory = fileSystem.getPath("/c");
 		Files.createDirectory(cleartextDirectory);
 
 		Path ciphertextDirectory = firstEmptyCiphertextDirectory();
-		createFile(ciphertextDirectory, "HHEZJURE.lng", new byte[] {65});
-		Path mSubdir = mDir.resolve("HH").resolve("EZ");
-		Files.createDirectories(mSubdir);
-		createFile(mSubdir, "HHEZJURE.lng", "0HHEZJUREHHEZJUREHHEZJURE".getBytes());
+		Path longNameDir = createFolder(ciphertextDirectory, "HHEZJURE.c9s");
+		createFile(longNameDir, Constants.INFLATED_FILE_NAME, "HHEZJUREHHEZJUREHHEZJURE".getBytes());
+		createFile(longNameDir, Constants.CONTENTS_FILE_NAME, new byte[] {65});
 
 		Files.delete(cleartextDirectory);
 	}
@@ -115,15 +118,14 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 	}
 
 	@Test
+	@Disabled // c9s not yet implemented
 	public void testDeleteDirectoryContainingLongNamedDirectory() throws IOException {
 		Path cleartextDirectory = fileSystem.getPath("/e");
 		Files.createDirectory(cleartextDirectory);
 
 		// a
 		// .. LongNameaaa...
-		String name = "LongName" + IntStream.range(0, SHORT_NAMES_MAX_LENGTH) //
-				.mapToObj(ignored -> "a") //
-				.collect(Collectors.joining());
+		String name = "LongName" + Strings.repeat("a", MAX_CIPHERTEXT_NAME_LENGTH);
 		createFolder(cleartextDirectory, name);
 
 		Assertions.assertThrows(DirectoryNotEmptyException.class, () -> {
