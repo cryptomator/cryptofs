@@ -9,6 +9,7 @@ import dagger.Module;
 import dagger.Provides;
 import org.cryptomator.cryptofs.attr.AttributeViewComponent;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.common.MasterkeyBackupFileHasher;
 import org.cryptomator.cryptofs.dir.DirectoryStreamComponent;
 import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -32,7 +33,7 @@ class CryptoFileSystemModule {
 			Path masterKeyPath = pathToVault.resolve(properties.masterkeyFilename());
 			assert Files.exists(masterKeyPath); // since 1.3.0 a file system can only be created for existing vaults. initialization is done before.
 			byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
-			Path backupKeyPath = pathToVault.resolve(properties.masterkeyFilename() + BackupUtil.generateFileIdSuffix(keyFileContents) + Constants.MASTERKEY_BACKUP_SUFFIX);
+			Path backupKeyPath = pathToVault.resolve(properties.masterkeyFilename() + MasterkeyBackupFileHasher.generateFileIdSuffix(keyFileContents) + Constants.MASTERKEY_BACKUP_SUFFIX);
 			Cryptor cryptor = cryptorProvider.createFromKeyFile(KeyFile.parse(keyFileContents), properties.passphrase(), properties.pepper(), Constants.VAULT_VERSION);
 			backupMasterkeyFileIfRequired(masterKeyPath, backupKeyPath, readonlyFlag);
 			return cryptor;

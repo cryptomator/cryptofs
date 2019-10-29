@@ -1,4 +1,4 @@
-package org.cryptomator.cryptofs;
+package org.cryptomator.cryptofs.common;
 
 import com.google.common.io.BaseEncoding;
 
@@ -8,7 +8,7 @@ import java.security.NoSuchAlgorithmException;
 /**
  * Utility class for generating a suffix for the backup file to make it unique to its original master key file.
  */
-public class BackupUtil {
+public final class MasterkeyBackupFileHasher {
 
 	/**
 	 * Computes the SHA-256 digest of the given byte array and returns a file suffix containing the first 4 bytes in hex string format.

@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.ch.AsyncDelegatingFileChannel;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.common.MasterkeyBackupFileHasher;
 import org.cryptomator.cryptofs.migration.Migrators;
 import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -227,7 +228,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
 		byte[] oldMasterkeyBytes = Files.readAllBytes(masterKeyPath);
 		byte[] newMasterkeyBytes = Cryptors.changePassphrase(CRYPTOR_PROVIDER, oldMasterkeyBytes, pepper, normalizedOldPassphrase, normalizedNewPassphrase);
-		Path backupKeyPath = pathToVault.resolve(masterkeyFilename + BackupUtil.generateFileIdSuffix(oldMasterkeyBytes) + Constants.MASTERKEY_BACKUP_SUFFIX);
+		Path backupKeyPath = pathToVault.resolve(masterkeyFilename + MasterkeyBackupFileHasher.generateFileIdSuffix(oldMasterkeyBytes) + Constants.MASTERKEY_BACKUP_SUFFIX);
 		Files.move(masterKeyPath, backupKeyPath, REPLACE_EXISTING, ATOMIC_MOVE);
 		Files.write(masterKeyPath, newMasterkeyBytes, CREATE_NEW, WRITE);
 	}
@@ -264,7 +265,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
 		if (Files.exists(masterKeyPath)) {
 			byte[] oldMasterkeyBytes = Files.readAllBytes(masterKeyPath);
-			Path backupKeyPath = pathToVault.resolve(masterkeyFilename + BackupUtil.generateFileIdSuffix(oldMasterkeyBytes) + Constants.MASTERKEY_BACKUP_SUFFIX);
+			Path backupKeyPath = pathToVault.resolve(masterkeyFilename + MasterkeyBackupFileHasher.generateFileIdSuffix(oldMasterkeyBytes) + Constants.MASTERKEY_BACKUP_SUFFIX);
 			Files.move(masterKeyPath, backupKeyPath, REPLACE_EXISTING, ATOMIC_MOVE);
 		}
 		Files.write(masterKeyPath, masterKeyBytes, CREATE_NEW, WRITE);
