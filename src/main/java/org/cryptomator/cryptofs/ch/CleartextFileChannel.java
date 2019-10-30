@@ -208,16 +208,24 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	}
 
 	private void forceInternal(boolean metaData) throws IOException {
-		if (isWritable()) {
-			writeHeaderIfNeeded();
-			chunkCache.invalidateAll(); // TODO performance: write chunks but keep them cached
-			exceptionsDuringWrite.throwIfPresent();
-		}
+		flush();
 		ciphertextFileChannel.force(metaData);
 		if (metaData) {
 			FileTime lastModifiedTime = isWritable() ? FileTime.from(lastModified.get()) : null;
 			FileTime lastAccessTime = FileTime.from(Instant.now());
 			attrViewProvider.get().setTimes(lastModifiedTime, lastAccessTime, null);
+		}
+	}
+
+	/**
+	 * Writes in-memory contents to the ciphertext file
+	 * @throws IOException
+	 */
+	private void flush() throws IOException {
+		if (isWritable()) {
+			writeHeaderIfNeeded();
+			chunkCache.invalidateAll(); // TODO performance: write chunks but keep them cached
+			exceptionsDuringWrite.throwIfPresent();
 		}
 	}
 
@@ -285,7 +293,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	@Override
 	protected void implCloseChannel() throws IOException {
 		try {
-			forceInternal(true);
+			flush();
 		} finally {
 			super.implCloseChannel();
 			closeListener.closed(this);
