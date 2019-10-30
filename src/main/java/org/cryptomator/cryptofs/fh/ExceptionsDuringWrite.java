@@ -14,20 +14,19 @@ import java.util.List;
 @OpenFileScoped
 public class ExceptionsDuringWrite {
 
-	private final List<IOException> exceptions = new ArrayList<>();
+	private final IOException e = new IOException("Exceptions occured while writing");
 
 	@Inject
 	public ExceptionsDuringWrite() {
 	}
 
 	public synchronized void add(IOException e) {
-		exceptions.add(e);
+		e.addSuppressed(e);
 	}
 
 	public synchronized void throwIfPresent() throws IOException {
-		if (!exceptions.isEmpty()) {
-			IOException e = new IOException("Exceptions occured while writing");
-			exceptions.forEach(e::addSuppressed);
+		if (e.getSuppressed().length > 0) {
+			e.fillInStackTrace();
 			throw e;
 		}
 	}
