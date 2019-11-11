@@ -71,9 +71,7 @@ import static org.cryptomator.cryptofs.common.Constants.SEPARATOR;
 
 @CryptoFileSystemScoped
 class CryptoFileSystemImpl extends CryptoFileSystem {
-
-	private static final Logger LOG = LoggerFactory.getLogger(CryptoFileSystemImpl.class);
-
+	
 	private final CryptoFileSystemProvider provider;
 	private final CryptoFileSystems cryptoFileSystems;
 	private final Path pathToVault;
@@ -81,7 +79,6 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	private final CryptoFileStore fileStore;
 	private final CryptoFileSystemStats stats;
 	private final CryptoPathMapper cryptoPathMapper;
-	private final LongFileNameProvider longFileNameProvider;
 	private final CryptoPathFactory cryptoPathFactory;
 	private final PathMatcherFactory pathMatcherFactory;
 	private final DirectoryStreamFactory directoryStreamFactory;
@@ -102,7 +99,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	@Inject
 	public CryptoFileSystemImpl(CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, @PathToVault Path pathToVault, Cryptor cryptor,
-								CryptoFileStore fileStore, CryptoFileSystemStats stats, CryptoPathMapper cryptoPathMapper, LongFileNameProvider longFileNameProvider, CryptoPathFactory cryptoPathFactory,
+								CryptoFileStore fileStore, CryptoFileSystemStats stats, CryptoPathMapper cryptoPathMapper, CryptoPathFactory cryptoPathFactory,
 								PathMatcherFactory pathMatcherFactory, DirectoryStreamFactory directoryStreamFactory, DirectoryIdProvider dirIdProvider,
 								AttributeProvider fileAttributeProvider, AttributeByNameProvider fileAttributeByNameProvider, AttributeViewProvider fileAttributeViewProvider,
 								OpenCryptoFiles openCryptoFiles, Symlinks symlinks, FinallyUtil finallyUtil, CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag, RootDirectoryInitializer rootDirectoryInitializer) {
@@ -113,7 +110,6 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		this.fileStore = fileStore;
 		this.stats = stats;
 		this.cryptoPathMapper = cryptoPathMapper;
-		this.longFileNameProvider = longFileNameProvider;
 		this.cryptoPathFactory = cryptoPathFactory;
 		this.pathMatcherFactory = pathMatcherFactory;
 		this.directoryStreamFactory = directoryStreamFactory;
