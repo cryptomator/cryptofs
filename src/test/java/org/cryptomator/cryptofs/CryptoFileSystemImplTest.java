@@ -5,6 +5,7 @@ import org.cryptomator.cryptofs.attr.AttributeByNameProvider;
 import org.cryptomator.cryptofs.attr.AttributeProvider;
 import org.cryptomator.cryptofs.attr.AttributeViewProvider;
 import org.cryptomator.cryptofs.attr.AttributeViewType;
+import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles.TwoPhaseMove;
 import org.cryptomator.cryptofs.mocks.FileChannelMock;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import javax.inject.Named;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
@@ -52,6 +54,7 @@ import java.nio.file.spi.FileSystemProvider;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Iterator;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -332,6 +335,59 @@ public class CryptoFileSystemImplTest {
 		Assertions.assertThrows(UnsupportedOperationException.class, () -> {
 			inTest.newWatchService();
 		});
+	}
+	
+	@Nested
+	public class NewFileChannel {
+		
+		private final CryptoPath cleartextPath = mock(CryptoPath.class, "cleartext");
+		private final Path ciphertextPath = mock(Path.class, "ciphertext");
+		private final OpenCryptoFile openCryptoFile = mock(OpenCryptoFile.class);
+		private final FileChannel fileChannel = mock(FileChannel.class);
+
+		@BeforeEach
+		public void setup() throws IOException {
+			when(cryptoPathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
+			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath, CiphertextFileType.FILE)).thenReturn(ciphertextPath);
+			when(openCryptoFiles.getOrCreate(ciphertextPath)).thenReturn(openCryptoFile);
+			when(openCryptoFile.newFileChannel(any())).thenReturn(fileChannel);
+		}
+		
+		@Test
+		@Named("newFileChannel read-only")
+		public void testNewFileChannelReadOnly() throws IOException {
+			FileChannel ch = inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.READ));
+			
+			Assertions.assertSame(fileChannel, ch);
+			verify(readonlyFlag, Mockito.never()).assertWritable();
+		}
+
+		@Test
+		@Named("newFileChannel read-only with long filename")
+		public void testNewFileChannelReadOnlyShortened() throws IOException {
+			LongFileNameProvider.DeflatedFileName deflatedFileName = Mockito.mock(LongFileNameProvider.DeflatedFileName.class);
+			when(longFileNameProvider.getCached(ciphertextPath)).thenReturn(Optional.of(deflatedFileName));
+			
+			FileChannel ch = inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.READ));
+
+			Assertions.assertSame(fileChannel, ch);
+			verify(readonlyFlag, Mockito.never()).assertWritable();
+			verify(deflatedFileName, Mockito.never()).persist();
+		}
+
+		@Test
+		@Named("newFileChannel read-write with long filename")
+		public void testNewFileChannelReadWriteShortened() throws IOException {
+			LongFileNameProvider.DeflatedFileName deflatedFileName = Mockito.mock(LongFileNameProvider.DeflatedFileName.class);
+			when(longFileNameProvider.getCached(ciphertextPath)).thenReturn(Optional.of(deflatedFileName));
+
+			FileChannel ch = inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.WRITE));
+
+			Assertions.assertSame(fileChannel, ch);
+			verify(readonlyFlag, Mockito.atLeastOnce()).assertWritable();
+			verify(deflatedFileName).persist();
+		}
+		
 	}
 
 	@Nested
