@@ -3,6 +3,7 @@ package org.cryptomator.cryptofs;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.CryptoFileSystemProperties.FileSystemFlags;
+import org.cryptomator.cryptofs.ch.AsyncDelegatingFileChannel;
 import org.cryptomator.cryptolib.api.InvalidPassphraseException;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Assertions;
@@ -361,8 +362,7 @@ public class CryptoFileSystemProviderTest {
 	}
 
 	@Test
-	@SuppressWarnings("deprecation")
-	public void testNewAsyncFileChannelReturnsAsyncDelegatingFileChannelWithNewFileChannelAndExecutor() throws IOException {
+	public void testNewAsyncFileChannelReturnsAsyncDelegatingFileChannel() throws IOException {
 		@SuppressWarnings("unchecked")
 		Set<OpenOption> options = mock(Set.class);
 		ExecutorService executor = mock(ExecutorService.class);
@@ -370,11 +370,8 @@ public class CryptoFileSystemProviderTest {
 		when(cryptoFileSystem.newFileChannel(cryptoPath, options)).thenReturn(channel);
 
 		AsynchronousFileChannel result = inTest.newAsynchronousFileChannel(cryptoPath, options, executor);
-
-		MatcherAssert.assertThat(result, is(instanceOf(AsyncDelegatingFileChannel.class)));
-		AsyncDelegatingFileChannel asyncDelegatingFileChannel = (AsyncDelegatingFileChannel) result;
-		Assertions.assertSame(channel, asyncDelegatingFileChannel.getChannel());
-		Assertions.assertSame(executor, asyncDelegatingFileChannel.getExecutor());
+		
+		MatcherAssert.assertThat(result, instanceOf(AsyncDelegatingFileChannel.class));
 	}
 
 	@Test

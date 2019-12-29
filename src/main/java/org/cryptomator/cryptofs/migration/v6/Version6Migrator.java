@@ -15,8 +15,9 @@ import java.text.Normalizer.Form;
 
 import javax.inject.Inject;
 
-import org.cryptomator.cryptofs.BackupUtil;
-import org.cryptomator.cryptofs.Constants;
+import org.cryptomator.cryptofs.common.MasterkeyBackupFileHasher;
+import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
@@ -38,16 +39,20 @@ public class Version6Migrator implements Migrator {
 	}
 
 	@Override
-	public void migrate(Path vaultRoot, String masterkeyFilename, CharSequence passphrase) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException {
+	public void migrate(Path vaultRoot, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException {
 		LOG.info("Upgrading {} from version 5 to version 6.", vaultRoot);
+		progressListener.update(MigrationProgressListener.ProgressState.INITIALIZING, 0.0);
 		Path masterkeyFile = vaultRoot.resolve(masterkeyFilename);
 		byte[] fileContentsBeforeUpgrade = Files.readAllBytes(masterkeyFile);
 		KeyFile keyFile = KeyFile.parse(fileContentsBeforeUpgrade);
 		try (Cryptor cryptor = cryptorProvider.createFromKeyFile(keyFile, passphrase, 5)) {
 			// create backup, as soon as we know the password was correct:
-			Path masterkeyBackupFile = vaultRoot.resolve(masterkeyFilename + BackupUtil.generateFileIdSuffix(fileContentsBeforeUpgrade) + Constants.MASTERKEY_BACKUP_SUFFIX);
+			Path masterkeyBackupFile = vaultRoot.resolve(masterkeyFilename + MasterkeyBackupFileHasher.generateFileIdSuffix(fileContentsBeforeUpgrade) + Constants.MASTERKEY_BACKUP_SUFFIX);
 			Files.copy(masterkeyFile, masterkeyBackupFile, StandardCopyOption.REPLACE_EXISTING);
 			LOG.info("Backed up masterkey from {} to {}.", masterkeyFile.getFileName(), masterkeyBackupFile.getFileName());
+
+			progressListener.update(MigrationProgressListener.ProgressState.FINALIZING, 0.0);
+			
 			// rewrite masterkey file with normalized passphrase:
 			byte[] fileContentsAfterUpgrade = cryptor.writeKeysToMasterkeyFile(Normalizer.normalize(passphrase, Form.NFC), 6).serialize();
 			Files.write(masterkeyFile, fileContentsAfterUpgrade, StandardOpenOption.TRUNCATE_EXISTING);

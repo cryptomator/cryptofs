@@ -16,7 +16,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import java.nio.file.attribute.DosFileAttributes;
 import java.util.Optional;
 
-import static org.cryptomator.cryptofs.CiphertextFileType.FILE;
+import static org.cryptomator.cryptofs.common.CiphertextFileType.FILE;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 

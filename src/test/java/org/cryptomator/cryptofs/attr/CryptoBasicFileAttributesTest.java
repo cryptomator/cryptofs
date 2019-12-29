@@ -20,9 +20,9 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Optional;
 
-import static org.cryptomator.cryptofs.CiphertextFileType.DIRECTORY;
-import static org.cryptomator.cryptofs.CiphertextFileType.FILE;
-import static org.cryptomator.cryptofs.CiphertextFileType.SYMLINK;
+import static org.cryptomator.cryptofs.common.CiphertextFileType.DIRECTORY;
+import static org.cryptomator.cryptofs.common.CiphertextFileType.FILE;
+import static org.cryptomator.cryptofs.common.CiphertextFileType.SYMLINK;
 
 public class CryptoBasicFileAttributesTest {
 

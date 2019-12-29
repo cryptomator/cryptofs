@@ -8,8 +8,8 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.attr;
 
-import org.cryptomator.cryptofs.ArrayUtils;
-import org.cryptomator.cryptofs.CiphertextFileType;
+import org.cryptomator.cryptofs.common.ArrayUtils;
+import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
@@ -66,7 +66,7 @@ public class AttributeProvider {
 		switch (ciphertextFileType) {
 			case SYMLINK: {
 				if (ArrayUtils.contains(options, LinkOption.NOFOLLOW_LINKS)) {
-					Path ciphertextPath = pathMapper.getCiphertextFilePath(cleartextPath, ciphertextFileType);
+					Path ciphertextPath = pathMapper.getCiphertextFilePath(cleartextPath).getSymlinkFilePath();
 					return readAttributes(ciphertextFileType, ciphertextPath, type);
 				} else {
 					CryptoPath resolved = symlinks.resolveRecursively(cleartextPath);
@@ -78,7 +78,7 @@ public class AttributeProvider {
 				return readAttributes(ciphertextFileType, ciphertextPath, type);
 			}
 			case FILE: {
-				Path ciphertextPath = pathMapper.getCiphertextFilePath(cleartextPath, ciphertextFileType);
+				Path ciphertextPath = pathMapper.getCiphertextFilePath(cleartextPath).getFilePath();
 				return readAttributes(ciphertextFileType, ciphertextPath, type);
 			}
 			default:

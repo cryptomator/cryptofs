@@ -8,8 +8,8 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.attr;
 
-import org.cryptomator.cryptofs.ArrayUtils;
-import org.cryptomator.cryptofs.CiphertextFileType;
+import org.cryptomator.cryptofs.common.ArrayUtils;
+import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
@@ -53,7 +53,7 @@ abstract class AbstractCryptoFileAttributeView implements FileAttributeView {
 		switch (type) {
 			case SYMLINK:
 				if (ArrayUtils.contains(linkOptions, LinkOption.NOFOLLOW_LINKS)) {
-					return pathMapper.getCiphertextFilePath(path, type);
+					return pathMapper.getCiphertextFilePath(path).getSymlinkFilePath();
 				} else {
 					CryptoPath resolved = symlinks.resolveRecursively(path);
 					return getCiphertextPath(resolved);
@@ -61,7 +61,7 @@ abstract class AbstractCryptoFileAttributeView implements FileAttributeView {
 			case DIRECTORY:
 				return pathMapper.getCiphertextDir(path).path;
 			default:
-				return pathMapper.getCiphertextFilePath(path, type);
+				return pathMapper.getCiphertextFilePath(path).getFilePath();
 		}
 	}
 

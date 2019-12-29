@@ -260,16 +260,53 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 		@Test
 		@Order(8)
-		@DisplayName("mkdir '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen'")
-		public void testLongFileNames() throws IOException {
-			Path longNamePath = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen");
+		@DisplayName("rm /link")
+		public void testRemoveSymlink() throws IOException {
+			Path link = fs1.getPath("/link");
+			Assumptions.assumeTrue(Files.isSymbolicLink(link));
+			Files.delete(link);
+		}
+
+		@Test
+		@Order(9)
+		@DisplayName("mkdir '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet'")
+		public void testCreateDirWithLongName() throws IOException {
+			Path longNamePath = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet");
 			Files.createDirectory(longNamePath);
 			Assertions.assertTrue(Files.isDirectory(longNamePath));
 			MatcherAssert.assertThat(MoreFiles.listFiles(fs1.getPath("/")), Matchers.hasItem(longNamePath));
 		}
 
 		@Test
-		@Order(9)
+		@Order(10)
+		@DisplayName("rm -r '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet'")
+		public void testRemoveDirWithLongName() throws IOException {
+			Path longNamePath = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet");
+			Files.delete(longNamePath);
+			Assertions.assertTrue(Files.notExists(longNamePath));
+		}
+
+		@Test
+		@Order(11)
+		@DisplayName("touch '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet'")
+		public void testCreateFileWithLongName() throws IOException {
+			Path longNamePath = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet");
+			Files.createFile(longNamePath);
+			Assertions.assertTrue(Files.isRegularFile(longNamePath));
+			MatcherAssert.assertThat(MoreFiles.listFiles(fs1.getPath("/")), Matchers.hasItem(longNamePath));
+		}
+
+		@Test
+		@Order(12)
+		@DisplayName("rm '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet'")
+		public void testRemoveFileWithLongName() throws IOException {
+			Path longNamePath = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet");
+			Files.delete(longNamePath);
+			Assertions.assertTrue(Files.notExists(longNamePath));
+		}
+
+		@Test
+		@Order(13)
 		@DisplayName("cp fs1:/foo fs2:/bar")
 		public void testCopyFileAcrossFilesystem() throws IOException {
 			Path file1 = fs1.getPath("/foo");
@@ -283,7 +320,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		}
 
 		@Test
-		@Order(10)
+		@Order(14)
 		@DisplayName("echo 'goodbye world' > /foo")
 		public void testWriteToFile() throws IOException {
 			Path file1 = fs1.getPath("/foo");
@@ -292,7 +329,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		}
 
 		@Test
-		@Order(11)
+		@Order(15)
 		@DisplayName("cp -f fs1:/foo fs2:/bar")
 		public void testCopyFileAcrossFilesystemReplaceExisting() throws IOException {
 			Path file1 = fs1.getPath("/foo");
@@ -306,7 +343,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		}
 
 		@Test
-		@Order(12)
+		@Order(16)
 		@DisplayName("readattr /attributes.txt")
 		public void testLazinessOfFileAttributeViews() throws IOException {
 			Path file = fs1.getPath("/attributes.txt");
@@ -331,7 +368,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		}
 
 		@Test
-		@Order(13)
+		@Order(17)
 		@DisplayName("ln -s /linked/targetY /links/linkX")
 		public void testSymbolicLinks() throws IOException {
 			Path linksDir = fs1.getPath("/links");
@@ -370,7 +407,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		}
 
 		@Test
-		@Order(13)
+		@Order(18)
 		@DisplayName("mv -f fs1:/foo fs2:/baz")
 		public void testMoveFileFromOneCryptoFileSystemToAnother() throws IOException {
 			Path file1 = fs1.getPath("/foo");
@@ -490,7 +527,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Path pathToVault = tmpDir.resolve("vaultDir1");
 			Files.createDirectories(pathToVault);
 			CryptoFileSystemProvider.initialize(pathToVault, "masterkey.cryptomator", "asd");
-			fs =  CryptoFileSystemProvider.newFileSystem(pathToVault, cryptoFileSystemProperties().withPassphrase("asd").build());
+			fs = CryptoFileSystemProvider.newFileSystem(pathToVault, cryptoFileSystemProperties().withPassphrase("asd").build());
 		}
 
 		@Test

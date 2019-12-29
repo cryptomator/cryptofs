@@ -14,11 +14,16 @@ enum Migration {
 	/**
 	 * Migrates vault format 5 to 6.
 	 */
-	FIVE_TO_SIX(5);
+	FIVE_TO_SIX(5),
+
+	/**
+	 * Migrates vault format 5 to 6.
+	 */
+	SIX_TO_SEVEN(6);
 
 	private final int applicableVersion;
 
-	private Migration(int applicableVersion) {
+	Migration(int applicableVersion) {
 		this.applicableVersion = applicableVersion;
 	}
 
