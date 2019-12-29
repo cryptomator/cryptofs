@@ -21,10 +21,12 @@ import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.channels.WritableByteChannel;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -111,8 +113,11 @@ public class LongFileNameProvider {
 		private void persistInternal() throws IOException {
 			Path longNameFile = c9sPath.resolve(INFLATED_FILE_NAME);
 			Files.createDirectories(c9sPath);
-			try (WritableByteChannel ch = Files.newByteChannel(longNameFile, StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+			try (WritableByteChannel ch = Files.newByteChannel(longNameFile, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW)) {
 				ch.write(UTF_8.encode(longName));
+			} catch (FileAlreadyExistsException e) {
+				// no-op: if the file already exists, we assume its content to be what we want (or we found a SHA1 collision ;-))
+				assert Arrays.equals(Files.readAllBytes(longNameFile), longName.getBytes(UTF_8));
 			}
 		}
 	}
