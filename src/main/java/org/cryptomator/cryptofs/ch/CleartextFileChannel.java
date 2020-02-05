@@ -211,9 +211,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		flush();
 		ciphertextFileChannel.force(metaData);
 		if (metaData) {
-			FileTime lastModifiedTime = isWritable() ? FileTime.from(lastModified.get()) : null;
-			FileTime lastAccessTime = FileTime.from(Instant.now());
-			attrViewProvider.get().setTimes(lastModifiedTime, lastAccessTime, null);
+			persistLastModified();
 		}
 	}
 
@@ -227,6 +225,17 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			chunkCache.invalidateAll(); // TODO performance: write chunks but keep them cached
 			exceptionsDuringWrite.throwIfPresent();
 		}
+	}
+
+	/**
+	 * Corrects the last modified and access date due to possible cache invalidation (i.e. write operation!)
+	 *
+	 * @throws IOException
+	 */
+	private void persistLastModified() throws IOException {
+		FileTime lastModifiedTime = isWritable() ? FileTime.from(lastModified.get()) : null;
+		FileTime lastAccessTime = FileTime.from(Instant.now());
+		attrViewProvider.get().setTimes(lastModifiedTime, lastAccessTime, null);
 	}
 
 	@Override
@@ -294,6 +303,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	protected void implCloseChannel() throws IOException {
 		try {
 			flush();
+			persistLastModified();
 		} finally {
 			super.implCloseChannel();
 			closeListener.closed(this);
