@@ -104,7 +104,7 @@ class C9rDecryptorTest {
 	@ValueSource(strings = {
 			"foo.bar",
 			"foo.c9r",
-			"aaaaBBBB????DDDDeeeeFFFF.c9r",
+			"aaaaBBBB$$$$DDDDeeeeFFFF.c9r",
 			"aaaaBBBBxxxxDDDDeeeeFFFF.c9r",
 	})
 	public void testProcessNoMatch(String filename) {
