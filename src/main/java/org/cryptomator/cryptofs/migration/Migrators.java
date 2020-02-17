@@ -16,6 +16,7 @@ import java.util.Optional;
 import javax.inject.Inject;
 
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
 import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.migration.api.NoApplicableMigratorException;
@@ -46,10 +47,12 @@ public class Migrators {
 			.build();
 
 	private final Map<Migration, Migrator> migrators;
+	private final FileSystemCapabilityChecker fsCapabilityChecker;
 
 	@Inject
-	Migrators(Map<Migration, Migrator> migrators) {
+	Migrators(Map<Migration, Migrator> migrators, FileSystemCapabilityChecker fsCapabilityChecker) {
 		this.migrators = migrators;
+		this.fsCapabilityChecker = fsCapabilityChecker;
 	}
 
 	private static SecureRandom strongSecureRandom() {
@@ -87,9 +90,12 @@ public class Migrators {
 	 * @param passphrase The passphrase needed to unlock the vault
 	 * @throws NoApplicableMigratorException If the vault can not be migrated, because no migrator could be found
 	 * @throws InvalidPassphraseException If the passphrase could not be used to unlock the vault
+	 * @throws FileSystemCapabilityChecker.MissingCapabilityException If the underlying filesystem lacks features required to store a vault
 	 * @throws IOException if an I/O error occurs migrating the vault
 	 */
 	public void migrate(Path pathToVault, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener) throws NoApplicableMigratorException, InvalidPassphraseException, IOException {
+		fsCapabilityChecker.checkCapabilities(pathToVault);
+		
 		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
 		byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
 		KeyFile keyFile = KeyFile.parse(keyFileContents);
