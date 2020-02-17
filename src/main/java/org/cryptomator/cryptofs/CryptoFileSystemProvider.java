@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.ch.AsyncDelegatingFileChannel;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
 import org.cryptomator.cryptofs.common.MasterkeyBackupFileHasher;
 import org.cryptomator.cryptofs.migration.Migrators;
 import org.cryptomator.cryptolib.Cryptors;
@@ -124,6 +125,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @param properties Parameters used during initialization of the file system
 	 * @return a new file system
 	 * @throws FileSystemNeedsMigrationException if the vault format needs to get updated and <code>properties</code> did not contain a flag for implicit migration.
+	 * @throws FileSystemCapabilityChecker.MissingCapabilityException If the underlying filesystem lacks features required to store a vault
 	 * @throws IOException if an I/O error occurs creating the file system
 	 */
 	public static CryptoFileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws FileSystemNeedsMigrationException, IOException {
@@ -138,6 +140,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @param masterkeyFilename Name of the masterkey file
 	 * @param passphrase Passphrase that should be used to unlock the vault
 	 * @throws NotDirectoryException If the given path is not an existing directory.
+	 * @throws FileSystemCapabilityChecker.MissingCapabilityException If the underlying filesystem lacks features required to store a vault
 	 * @throws IOException If the vault structure could not be initialized due to I/O errors
 	 * @since 1.3.0
 	 */
@@ -153,6 +156,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @param pepper Application-specific pepper used during key derivation
 	 * @param passphrase Passphrase that should be used to unlock the vault
 	 * @throws NotDirectoryException If the given path is not an existing directory.
+	 * @throws FileSystemCapabilityChecker.MissingCapabilityException If the underlying filesystem lacks features required to store a vault
 	 * @throws IOException If the vault structure could not be initialized due to I/O errors
 	 * @since 1.3.2
 	 */
@@ -160,6 +164,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		if (!Files.isDirectory(pathToVault)) {
 			throw new NotDirectoryException(pathToVault.toString());
 		}
+		new FileSystemCapabilityChecker().checkCapabilities(pathToVault);
 		try (Cryptor cryptor = CRYPTOR_PROVIDER.createNew()) {
 			// save masterkey file:
 			Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
@@ -288,6 +293,8 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	public CryptoFileSystem newFileSystem(URI uri, Map<String, ?> rawProperties) throws IOException {
 		CryptoFileSystemUri parsedUri = CryptoFileSystemUri.parse(uri);
 		CryptoFileSystemProperties properties = CryptoFileSystemProperties.wrap(rawProperties);
+		
+		new FileSystemCapabilityChecker().checkCapabilities(parsedUri.pathToVault());
 
 		// TODO remove implicit initialization in 2.0.0
 		initializeFileSystemIfRequired(parsedUri, properties);

@@ -222,6 +222,26 @@ public class CleartextFileChannelTest {
 
 			verify(closeListener).closed(inTest);
 		}
+
+		@Test
+		public void testCloseUpdatesLastModifiedTimeIfWriteable() throws IOException {
+			when(options.writable()).thenReturn(true);
+			lastModified.set(Instant.ofEpochMilli(123456789000l));
+			FileTime fileTime = FileTime.from(lastModified.get());
+
+			inTest.implCloseChannel();
+
+			verify(attributeView).setTimes(Mockito.eq(fileTime), Mockito.any(), Mockito.isNull());
+		}
+
+		@Test
+		public void testCloseDoesNotUpdateLastModifiedTimeIfReadOnly() throws IOException {
+			when(options.writable()).thenReturn(false);
+
+			inTest.implCloseChannel();
+
+			verify(attributeView).setTimes(Mockito.isNull(), Mockito.any(), Mockito.isNull());
+		}
 	}
 
 	@Test
@@ -267,7 +287,7 @@ public class CleartextFileChannelTest {
 		@Test
 		@DisplayName("successful tryLock()")
 		public void testTryLockReturnsCryptoFileLockWrappingDelegate() throws IOException {
-			when(ciphertextFileChannel.tryLock(380l, 4670l+110l-380l, true)).thenReturn(delegate);
+			when(ciphertextFileChannel.tryLock(380l, 4670l + 110l - 380l, true)).thenReturn(delegate);
 
 			FileLock result = inTest.tryLock(372l, 3828l, true);
 
@@ -283,7 +303,7 @@ public class CleartextFileChannelTest {
 		@Test
 		@DisplayName("successful lock()")
 		public void testLockReturnsCryptoFileLockWrappingDelegate() throws IOException {
-			when(ciphertextFileChannel.lock(380l, 4670l+110l-380l, true)).thenReturn(delegate);
+			when(ciphertextFileChannel.lock(380l, 4670l + 110l - 380l, true)).thenReturn(delegate);
 
 			FileLock result = inTest.lock(372l, 3828l, true);
 
@@ -472,7 +492,7 @@ public class CleartextFileChannelTest {
 			inTest = new CleartextFileChannel(ciphertextFileChannel, header, false, readWriteLock, cryptor, chunkCache, options, fileSize, lastModified, attributeViewSupplier, exceptionsDuringWrite, closeListener, stats);
 
 			inTest.force(true);
-			
+
 			Mockito.verify(ciphertextFileChannel, Mockito.never()).write(Mockito.any(), Mockito.eq(0l));
 		}
 

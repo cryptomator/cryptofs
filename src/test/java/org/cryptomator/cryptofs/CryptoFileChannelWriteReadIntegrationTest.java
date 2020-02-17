@@ -63,9 +63,9 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			fileSystem = new CryptoFileSystemProvider().newFileSystem(create(tmpDir), cryptoFileSystemProperties().withPassphrase("asd").build());
 		}
 
-		// tests https://github.com/cryptomator/cryptofs/issues/56
+		// tests https://github.com/cryptomator/cryptofs/issues/69
 		@Test
-		public void testForceDoesntBumpModifiedDate() throws IOException {
+		public void testCloseDoesNotBumpModifiedDate() throws IOException {
 			Path file = fileSystem.getPath("/file.txt");
 
 			Instant t0, t1;
@@ -76,7 +76,43 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			}
 
 			t1 = Files.getLastModifiedTime(file).toInstant().truncatedTo(ChronoUnit.SECONDS);
-			Assertions.assertTrue(t1.equals(t0));
+			Assertions.assertEquals(t0, t1);
+		}
+
+		@Test
+		public void testLastModifiedIsPreservedOverSeveralOperations() throws IOException, InterruptedException {
+			Path file = fileSystem.getPath("/file2.txt");
+
+			Instant t0, t1, t2, t3, t4, t5;
+			t0 = Instant.ofEpochSecond(123456789).truncatedTo(ChronoUnit.SECONDS);
+			ByteBuffer data = ByteBuffer.wrap("CryptoFS".getBytes());
+
+			try (FileChannel ch = FileChannel.open(file, CREATE_NEW, WRITE)) {
+				t1 = Files.getLastModifiedTime(file).toInstant().truncatedTo(ChronoUnit.MILLIS);
+				Thread.currentThread().sleep(50);
+
+				ch.write(data);
+				ch.force(true);
+				Thread.currentThread().sleep(50);
+				t2 = Files.getLastModifiedTime(file).toInstant().truncatedTo(ChronoUnit.MILLIS);
+
+				Files.setLastModifiedTime(file, FileTime.from(t0));
+				ch.force(true);
+				Thread.currentThread().sleep(50);
+				t3 = Files.getLastModifiedTime(file).toInstant().truncatedTo(ChronoUnit.MILLIS);
+
+				ch.write(data);
+				ch.force(true);
+				Thread.currentThread().sleep(1000);
+				t4 = Files.getLastModifiedTime(file).toInstant().truncatedTo(ChronoUnit.SECONDS);
+
+			}
+
+			t5 = Files.getLastModifiedTime(file).toInstant().truncatedTo(ChronoUnit.SECONDS);
+			Assertions.assertNotEquals(t1, t2);
+			Assertions.assertEquals(t0, t3);
+			Assertions.assertNotEquals(t4, t3);
+			Assertions.assertEquals(t4, t5);
 		}
 
 	}

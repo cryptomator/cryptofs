@@ -13,6 +13,7 @@ import dagger.MapKey;
 import dagger.Module;
 import dagger.Provides;
 import dagger.multibindings.IntoMap;
+import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.migration.v6.Version6Migrator;
 import org.cryptomator.cryptofs.migration.v7.Version7Migrator;
@@ -33,6 +34,11 @@ class MigrationModule {
 	@Provides
 	CryptorProvider provideVersion1CryptorProvider() {
 		return version1Cryptor;
+	}
+	
+	@Provides
+	FileSystemCapabilityChecker provideFileSystemCapabilityChecker() {
+		return new FileSystemCapabilityChecker();
 	}
 
 	@Provides

@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.cryptomator</groupId>
 	<artifactId>cryptofs</artifactId>
-	<version>1.9.1</version>
+	<version>1.9.2</version>
 	<name>Cryptomator Crypto Filesystem</name>
 	<description>This library provides the Java filesystem provider used by Cryptomator.</description>
 	<url>https://github.com/cryptomator/cryptofs</url>
@@ -15,11 +15,11 @@
 
 	<properties>
 		<cryptolib.version>1.3.0</cryptolib.version>
-		<dagger.version>2.25.4</dagger.version>
+		<dagger.version>2.26</dagger.version>
 		<guava.version>28.2-jre</guava.version>
 		<slf4j.version>1.7.30</slf4j.version>
 
-		<junit.jupiter.version>5.5.2</junit.jupiter.version>
+		<junit.jupiter.version>5.6.0</junit.jupiter.version>
 		<mockito.version>3.2.4</mockito.version>
 		<hamcrest.version>2.2</hamcrest.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -239,6 +239,31 @@
 							</execution>
 						</executions>
 						<configuration>
+							<tags>
+								<!-- workaround for "unknown tag: implNote", see https://blog.codefx.org/java/new-javadoc-tags/#Maven  -->
+								<tag>
+									<name>apiNote</name>
+									<placement>a</placement>
+									<head>API Note:</head>
+								</tag>
+								<tag>
+									<name>implSpec</name>
+									<placement>a</placement>
+									<head>Implementation Requirements:</head>
+								</tag>
+								<tag>
+									<name>implNote</name>
+									<placement>a</placement>
+									<head>Implementation Note:</head>
+								</tag>
+								<tag><name>param</name></tag>
+								<tag><name>return</name></tag>
+								<tag><name>throws</name></tag>
+								<tag><name>since</name></tag>
+								<tag><name>version</name></tag>
+								<tag><name>serialData</name></tag>
+								<tag><name>see</name></tag>
+							</tags>
 							<additionalDependencies>
 								<additionalDependency>
 									<groupId>javax.annotation</groupId>
