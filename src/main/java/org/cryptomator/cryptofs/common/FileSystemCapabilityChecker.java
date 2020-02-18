@@ -18,14 +18,33 @@ public class FileSystemCapabilityChecker {
 
 	public enum Capability {
 		/**
+		 * File system allows write access
+		 * @since 1.9.3
+		 */
+		WRITE_ACCESS,
+		
+		/**
 		 * File system supports filenames with ≥ 230 chars.
+		 * @since @since 1.9.2
 		 */
 		LONG_FILENAMES,
 
 		/**
 		 * File system supports paths with ≥ 400 chars.
+		 * @since @since 1.9.2
 		 */
 		LONG_PATHS,
+	}
+
+	/**
+	 * Checks whether the underlying filesystem has all required capabilities for readonly access.
+	 * @param pathToVault Path to a vault's storage location
+	 * @throws MissingCapabilityException if any check fails
+	 * @implNote Only short-running tests with constant time are performed
+	 * @since 1.9.3
+	 */
+	public void assertReadOnlyCapabilities(Path pathToVault) throws MissingCapabilityException {
+		// no-op
 	}
 
 	/**
@@ -36,17 +55,28 @@ public class FileSystemCapabilityChecker {
 	 * @implNote Only short-running tests with constant time are performed
 	 * @since 1.9.2
 	 */
-	public void checkCapabilities(Path pathToVault) throws MissingCapabilityException {
+	public void assertReadWriteCapabilities(Path pathToVault) throws MissingCapabilityException {
 		Path checkDir = pathToVault.resolve("c");
 		try {
+			checkWriteAccess(checkDir);
 			checkLongFilenames(checkDir);
 			checkLongFilePaths(checkDir);
 		} finally {
 			try {
-				MoreFiles.deleteRecursively(checkDir, RecursiveDeleteOption.ALLOW_INSECURE);
+				if (Files.exists(checkDir)) {
+					MoreFiles.deleteRecursively(checkDir, RecursiveDeleteOption.ALLOW_INSECURE);
+				}
 			} catch (IOException e) {
 				LOG.warn("Failed to clean up " + checkDir, e);
 			}
+		}
+	}
+	
+	private void checkWriteAccess(Path checkDir) throws MissingCapabilityException {
+		try {
+			Files.createDirectories(checkDir);
+		} catch (IOException e) {
+			throw new MissingCapabilityException(checkDir, Capability.WRITE_ACCESS);
 		}
 	}
 

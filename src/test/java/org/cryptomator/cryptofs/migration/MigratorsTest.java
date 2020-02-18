@@ -89,7 +89,7 @@ public class MigratorsTest {
 		Migrators migrators = new Migrators(Collections.emptyMap(), fsCapabilityChecker);
 
 		Exception expected = new FileSystemCapabilityChecker.MissingCapabilityException(pathToVault, FileSystemCapabilityChecker.Capability.LONG_FILENAMES);
-		Mockito.doThrow(expected).when(fsCapabilityChecker).checkCapabilities(pathToVault);
+		Mockito.doThrow(expected).when(fsCapabilityChecker).assertReadWriteCapabilities(pathToVault);
 		
 		Exception thrown = Assertions.assertThrows(FileSystemCapabilityChecker.MissingCapabilityException.class, () -> {
 			migrators.migrate(pathToVault, "masterkey.cryptomator", "secret", (state, progress) -> {});

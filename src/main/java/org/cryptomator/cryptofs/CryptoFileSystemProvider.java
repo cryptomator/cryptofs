@@ -164,7 +164,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		if (!Files.isDirectory(pathToVault)) {
 			throw new NotDirectoryException(pathToVault.toString());
 		}
-		new FileSystemCapabilityChecker().checkCapabilities(pathToVault);
+		new FileSystemCapabilityChecker().assertReadWriteCapabilities(pathToVault);
 		try (Cryptor cryptor = CRYPTOR_PROVIDER.createNew()) {
 			// save masterkey file:
 			Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
@@ -293,8 +293,6 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	public CryptoFileSystem newFileSystem(URI uri, Map<String, ?> rawProperties) throws IOException {
 		CryptoFileSystemUri parsedUri = CryptoFileSystemUri.parse(uri);
 		CryptoFileSystemProperties properties = CryptoFileSystemProperties.wrap(rawProperties);
-		
-		new FileSystemCapabilityChecker().checkCapabilities(parsedUri.pathToVault());
 
 		// TODO remove implicit initialization in 2.0.0
 		initializeFileSystemIfRequired(parsedUri, properties);

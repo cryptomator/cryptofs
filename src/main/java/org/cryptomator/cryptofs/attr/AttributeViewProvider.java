@@ -8,9 +8,8 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.attr;
 
-import org.cryptomator.cryptofs.CryptoFileSystemComponent;
-import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoFileSystemScoped;
+import org.cryptomator.cryptofs.CryptoPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

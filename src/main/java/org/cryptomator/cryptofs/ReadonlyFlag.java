@@ -18,12 +18,9 @@ public class ReadonlyFlag {
 	private final boolean readonly;
 
 	@Inject
-	public ReadonlyFlag(CryptoFileSystemProperties properties, @PathToVault Path pathToVault) {
+	public ReadonlyFlag(CryptoFileSystemProperties properties) {
 		if (properties.readonly()) {
 			LOG.info("Vault opened readonly.");
-			readonly = true;
-		} else if (!Files.isWritable(pathToVault)) {
-			LOG.warn("Vault directory is write-protected.");
 			readonly = true;
 		} else {
 			LOG.debug("Vault opened for read and write.");
