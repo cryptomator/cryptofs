@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,14 +26,13 @@ public class CryptoFileSystemsTest {
 	private final CryptoFileSystemComponent cryptoFileSystemComponent = mock(CryptoFileSystemComponent.class);
 	private final CryptoFileSystemImpl cryptoFileSystem = mock(CryptoFileSystemImpl.class);
 
-	private final CryptoFileSystemProviderComponent cryptoFileSystemProviderComponent = mock(CryptoFileSystemProviderComponent.class);
 	private final CryptoFileSystemComponent.Builder cryptoFileSystemComponentBuilder = mock(CryptoFileSystemComponent.Builder.class);
+	private final FileSystemCapabilityChecker capabilityChecker = mock(FileSystemCapabilityChecker.class);
 
-	private final CryptoFileSystems inTest = new CryptoFileSystems(cryptoFileSystemProviderComponent);
+	private final CryptoFileSystems inTest = new CryptoFileSystems(cryptoFileSystemComponentBuilder, capabilityChecker);
 
 	@BeforeEach
 	public void setup() {
-		when(cryptoFileSystemProviderComponent.newCryptoFileSystemComponent()).thenReturn(cryptoFileSystemComponentBuilder);
 		when(cryptoFileSystemComponentBuilder.provider(any())).thenReturn(cryptoFileSystemComponentBuilder);
 		when(cryptoFileSystemComponentBuilder.pathToVault(any())).thenReturn(cryptoFileSystemComponentBuilder);
 		when(cryptoFileSystemComponentBuilder.properties(any())).thenReturn(cryptoFileSystemComponentBuilder);
