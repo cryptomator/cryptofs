@@ -57,16 +57,18 @@ class CryptoFileSystems {
 	private CryptoFileSystemProperties adjustForCapabilities(Path pathToVault, CryptoFileSystemProperties originalProperties) throws FileSystemCapabilityChecker.MissingCapabilityException {
 		if (!originalProperties.readonly()) {
 			try {
-				capabilityChecker.assertReadWriteCapabilities(pathToVault);
+				capabilityChecker.assertWriteAccess(pathToVault);
 				return originalProperties;
 			} catch (FileSystemCapabilityChecker.MissingCapabilityException e) {
-				LOG.warn("Missing file system capabilities for read-write access. Fallback to read-only access.");
+				capabilityChecker.assertReadAccess(pathToVault);
+				LOG.warn("No write access to vault. Fallback to read-only access.");
+				Set<CryptoFileSystemProperties.FileSystemFlags> flags = EnumSet.copyOf(originalProperties.flags());
+				flags.add(CryptoFileSystemProperties.FileSystemFlags.READONLY);
+				return CryptoFileSystemProperties.cryptoFileSystemPropertiesFrom(originalProperties).withFlags(flags).build();
 			}
+		} else {
+			return originalProperties;
 		}
-		capabilityChecker.assertReadOnlyCapabilities(pathToVault);
-		Set<CryptoFileSystemProperties.FileSystemFlags> flags = EnumSet.copyOf(originalProperties.flags());
-		flags.add(CryptoFileSystemProperties.FileSystemFlags.READONLY);
-		return CryptoFileSystemProperties.cryptoFileSystemPropertiesFrom(originalProperties).withFlags(flags).build();
 	}
 
 	public void remove(CryptoFileSystemImpl cryptoFileSystem) {

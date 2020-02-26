@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,6 +18,12 @@ public class FileSystemCapabilityChecker {
 	private static final Logger LOG = LoggerFactory.getLogger(FileSystemCapabilityChecker.class);
 
 	public enum Capability {
+		/**
+		 * File system allows read access
+		 * @since 1.9.3
+		 */
+		READ_ACCESS,
+
 		/**
 		 * File system allows write access
 		 * @since 1.9.3
@@ -37,17 +44,6 @@ public class FileSystemCapabilityChecker {
 	}
 
 	/**
-	 * Checks whether the underlying filesystem has all required capabilities for readonly access.
-	 * @param pathToVault Path to a vault's storage location
-	 * @throws MissingCapabilityException if any check fails
-	 * @implNote Only short-running tests with constant time are performed
-	 * @since 1.9.3
-	 */
-	public void assertReadOnlyCapabilities(Path pathToVault) throws MissingCapabilityException {
-		// no-op
-	}
-
-	/**
 	 * Checks whether the underlying filesystem has all required capabilities.
 	 *
 	 * @param pathToVault Path to a vault's storage location
@@ -55,49 +51,78 @@ public class FileSystemCapabilityChecker {
 	 * @implNote Only short-running tests with constant time are performed
 	 * @since 1.9.2
 	 */
-	public void assertReadWriteCapabilities(Path pathToVault) throws MissingCapabilityException {
-		Path checkDir = pathToVault.resolve("c");
-		try {
-			checkWriteAccess(checkDir);
-			checkLongFilenames(checkDir);
-			checkLongFilePaths(checkDir);
-		} finally {
-			try {
-				if (Files.exists(checkDir)) {
-					MoreFiles.deleteRecursively(checkDir, RecursiveDeleteOption.ALLOW_INSECURE);
-				}
-			} catch (IOException e) {
-				LOG.warn("Failed to clean up " + checkDir, e);
-			}
-		}
+	public void assertAllCapabilities(Path pathToVault) throws MissingCapabilityException {
+		assertReadAccess(pathToVault);
+		assertWriteAccess(pathToVault);
+		assertLongFilenameSupport(pathToVault);
+		assertLongFilePathSupport(pathToVault);
 	}
-	
-	private void checkWriteAccess(Path checkDir) throws MissingCapabilityException {
-		try {
-			Files.createDirectories(checkDir);
+
+	/**
+	 * Checks whether the underlying filesystem allows reading the given dir.
+	 * @param pathToVault Path to a vault's storage location
+	 * @throws MissingCapabilityException if the check fails
+	 * @since 1.9.3
+	 */
+	public void assertReadAccess(Path pathToVault) throws MissingCapabilityException {
+		try (DirectoryStream ds = Files.newDirectoryStream(pathToVault)) {
+			assert ds != null;
 		} catch (IOException e) {
-			throw new MissingCapabilityException(checkDir, Capability.WRITE_ACCESS);
+			throw new MissingCapabilityException(pathToVault, Capability.READ_ACCESS);
 		}
 	}
 
-	private void checkLongFilenames(Path checkDir) throws MissingCapabilityException {
+	/**
+	 * Checks whether the underlying filesystem allows writing to the given dir.
+	 * @param pathToVault Path to a vault's storage location
+	 * @throws MissingCapabilityException if the check fails
+	 * @since 1.9.3
+	 */
+	public void assertWriteAccess(Path pathToVault) throws MissingCapabilityException {
+		Path checkDir = pathToVault.resolve("c");
+		try {
+			Files.createDirectory(checkDir);
+		} catch (IOException e) {
+			throw new MissingCapabilityException(checkDir, Capability.WRITE_ACCESS);
+		} finally {
+			deleteSilently(checkDir);
+		}
+	}
+
+	public void assertLongFilenameSupport(Path pathToVault) throws MissingCapabilityException {
 		String longFileName = Strings.repeat("a", 226) + ".c9r";
+		Path checkDir = pathToVault.resolve("c");
 		Path p = checkDir.resolve(longFileName);
 		try {
 			Files.createDirectories(p);
 		} catch (IOException e) {
 			throw new MissingCapabilityException(p, Capability.LONG_FILENAMES);
+		} finally {
+			deleteSilently(checkDir);
 		}
 	}
 
-	private void checkLongFilePaths(Path checkDir) throws MissingCapabilityException {
+	public void assertLongFilePathSupport(Path pathToVault) throws MissingCapabilityException {
 		String longFileName = Strings.repeat("a", 96) + ".c9r";
 		String longPath = Joiner.on('/').join(longFileName, longFileName, longFileName, longFileName);
+		Path checkDir = pathToVault.resolve("c");
 		Path p = checkDir.resolve(longPath);
 		try {
 			Files.createDirectories(p);
 		} catch (IOException e) {
 			throw new MissingCapabilityException(p, Capability.LONG_PATHS);
+		} finally {
+			deleteSilently(checkDir);
+		}
+	}
+
+	private void deleteSilently(Path dir) {
+		try {
+			if (Files.exists(dir)) {
+				MoreFiles.deleteRecursively(dir, RecursiveDeleteOption.ALLOW_INSECURE);
+			}
+		} catch (IOException e) {
+			LOG.warn("Failed to clean up " + dir, e);
 		}
 	}
 

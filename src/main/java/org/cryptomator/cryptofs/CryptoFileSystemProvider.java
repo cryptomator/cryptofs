@@ -164,7 +164,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		if (!Files.isDirectory(pathToVault)) {
 			throw new NotDirectoryException(pathToVault.toString());
 		}
-		new FileSystemCapabilityChecker().assertReadWriteCapabilities(pathToVault);
+		new FileSystemCapabilityChecker().assertAllCapabilities(pathToVault);
 		try (Cryptor cryptor = CRYPTOR_PROVIDER.createNew()) {
 			// save masterkey file:
 			Path masterKeyPath = pathToVault.resolve(masterkeyFilename);

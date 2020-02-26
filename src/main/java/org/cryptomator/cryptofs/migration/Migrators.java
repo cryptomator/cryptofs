@@ -94,7 +94,7 @@ public class Migrators {
 	 * @throws IOException if an I/O error occurs migrating the vault
 	 */
 	public void migrate(Path pathToVault, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener) throws NoApplicableMigratorException, InvalidPassphraseException, IOException {
-		fsCapabilityChecker.assertReadWriteCapabilities(pathToVault);
+		fsCapabilityChecker.assertAllCapabilities(pathToVault);
 		
 		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
 		byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
