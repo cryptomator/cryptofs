@@ -15,12 +15,14 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.Optional;
 
+@AttributeScoped
 class CryptoBasicFileAttributes implements BasicFileAttributes {
 
 	private static final Logger LOG = LoggerFactory.getLogger(CryptoBasicFileAttributes.class);
@@ -32,7 +34,8 @@ class CryptoBasicFileAttributes implements BasicFileAttributes {
 	private final FileTime creationTime;
 	private final Object fileKey;
 
-	public CryptoBasicFileAttributes(BasicFileAttributes delegate, CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, @SuppressWarnings("unused") boolean readonlyFileSystem) {
+	@Inject
+	public CryptoBasicFileAttributes(BasicFileAttributes delegate, CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile) {
 		this.ciphertextFileType = ciphertextFileType;
 		switch (ciphertextFileType) {
 			case SYMLINK:

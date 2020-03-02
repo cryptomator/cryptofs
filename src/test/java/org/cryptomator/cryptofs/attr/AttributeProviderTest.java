@@ -9,16 +9,11 @@
 package org.cryptomator.cryptofs.attr;
 
 import org.cryptomator.cryptofs.CiphertextFilePath;
-import org.cryptomator.cryptofs.common.CiphertextFileType;
-import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
-import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptofs.Symlinks;
-import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.FileContentCryptor;
-import org.cryptomator.cryptolib.api.FileHeaderCryptor;
+import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -33,24 +28,32 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.DosFileAttributes;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.Optional;
 
 public class AttributeProviderTest {
 
-	private Cryptor cryptor;
+	private AttributeComponent.Builder attributeComponentBuilder;
+	private AttributeComponent attributeComponent;
 	private CryptoPathMapper pathMapper;
-	private OpenCryptoFiles openCryptoFiles;
-	private CryptoFileSystemProperties fileSystemProperties;
 	private CryptoPath cleartextPath;
 	private CiphertextFilePath ciphertextPath;
 	private Path ciphertextRawPath;
 	private Symlinks symlinks;
+	private BasicFileAttributes ciphertextBasicAttr;
+	private PosixFileAttributes ciphertextPosixAttr;
+	private DosFileAttributes ciphertextDosAttr;
 
 	@BeforeEach
 	public void setup() throws IOException {
-		cryptor = Mockito.mock(Cryptor.class);
+		attributeComponentBuilder = Mockito.mock(AttributeComponent.Builder.class);
+		attributeComponent = Mockito.mock(AttributeComponent.class);
+		Mockito.when(attributeComponentBuilder.ciphertextFileType(Mockito.any())).thenReturn(attributeComponentBuilder);
+		Mockito.when(attributeComponentBuilder.ciphertextPath(Mockito.any())).thenReturn(attributeComponentBuilder);
+		Mockito.when(attributeComponentBuilder.ciphertextAttributes(Mockito.any())).thenReturn(attributeComponentBuilder);
+		Mockito.when(attributeComponentBuilder.type(Mockito.any())).thenReturn(attributeComponentBuilder);
+		Mockito.when(attributeComponentBuilder.build()).thenReturn(attributeComponent);
+
 		pathMapper = Mockito.mock(CryptoPathMapper.class);
-		openCryptoFiles = Mockito.mock(OpenCryptoFiles.class);
-		fileSystemProperties = Mockito.mock(CryptoFileSystemProperties.class);
 		cleartextPath = Mockito.mock(CryptoPath.class, "cleartextPath");
 		ciphertextRawPath = Mockito.mock(Path.class, "ciphertextPath");
 		ciphertextPath = Mockito.mock(CiphertextFilePath.class);
@@ -59,12 +62,12 @@ public class AttributeProviderTest {
 		Mockito.when(ciphertextRawPath.getFileSystem()).thenReturn(fs);
 		FileSystemProvider provider = Mockito.mock(FileSystemProvider.class);
 		Mockito.when(fs.provider()).thenReturn(provider);
-		BasicFileAttributes basicAttr = Mockito.mock(BasicFileAttributes.class);
-		PosixFileAttributes posixAttr = Mockito.mock(PosixFileAttributes.class);
-		DosFileAttributes dosAttr = Mockito.mock(DosFileAttributes.class);
-		Mockito.when(provider.readAttributes(Mockito.same(ciphertextRawPath), Mockito.same(BasicFileAttributes.class), Mockito.any())).thenReturn(basicAttr);
-		Mockito.when(provider.readAttributes(Mockito.same(ciphertextRawPath), Mockito.same(PosixFileAttributes.class), Mockito.any())).thenReturn(posixAttr);
-		Mockito.when(provider.readAttributes(Mockito.same(ciphertextRawPath), Mockito.same(DosFileAttributes.class), Mockito.any())).thenReturn(dosAttr);
+		ciphertextBasicAttr = Mockito.mock(BasicFileAttributes.class);
+		ciphertextPosixAttr = Mockito.mock(PosixFileAttributes.class);
+		ciphertextDosAttr = Mockito.mock(DosFileAttributes.class);
+		Mockito.when(provider.readAttributes(Mockito.same(ciphertextRawPath), Mockito.same(BasicFileAttributes.class), Mockito.any())).thenReturn(ciphertextBasicAttr);
+		Mockito.when(provider.readAttributes(Mockito.same(ciphertextRawPath), Mockito.same(PosixFileAttributes.class), Mockito.any())).thenReturn(ciphertextPosixAttr);
+		Mockito.when(provider.readAttributes(Mockito.same(ciphertextRawPath), Mockito.same(DosFileAttributes.class), Mockito.any())).thenReturn(ciphertextDosAttr);
 
 		Mockito.when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
 		Mockito.when(pathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextPath);
@@ -73,61 +76,71 @@ public class AttributeProviderTest {
 		Mockito.when(ciphertextPath.getDirFilePath()).thenReturn(ciphertextRawPath);
 		Mockito.when(ciphertextPath.getSymlinkFilePath()).thenReturn(ciphertextRawPath);
 
-		// needed for cleartxt file size calculation
-		FileHeaderCryptor fileHeaderCryptor = Mockito.mock(FileHeaderCryptor.class);
-		FileContentCryptor fileContentCryptor = Mockito.mock(FileContentCryptor.class);
-		Mockito.when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
-		Mockito.when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
-		Mockito.when(fileHeaderCryptor.headerSize()).thenReturn(10);
-		Mockito.when(fileContentCryptor.ciphertextChunkSize()).thenReturn(50);
-		Mockito.when(fileContentCryptor.cleartextChunkSize()).thenReturn(40);
-
-		// results in 2 full chunks = 80 cleartext bytes:
-		Mockito.when(basicAttr.size()).thenReturn(110l);
-		Mockito.when(posixAttr.size()).thenReturn(110l);
-		Mockito.when(dosAttr.size()).thenReturn(110l);
 	}
 
 	@Nested
 	public class Files {
 
+		private AttributeProvider prov;
+
 		@BeforeEach
 		public void setup() throws IOException {
+			Mockito.when(symlinks.resolveRecursively(cleartextPath)).thenReturn(cleartextPath);
 			Mockito.when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
 			Mockito.when(pathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextPath);
+
+			prov = new AttributeProvider(attributeComponentBuilder, pathMapper, symlinks);
 		}
 
 		@Test
 		public void testReadBasicAttributes() throws IOException {
-			AttributeProvider prov = new AttributeProvider(cryptor, pathMapper, openCryptoFiles, fileSystemProperties, symlinks);
+			Mockito.when(attributeComponent.attributes()).thenReturn(Optional.of(ciphertextBasicAttr));
+
 			BasicFileAttributes attr = prov.readAttributes(cleartextPath, BasicFileAttributes.class);
-			Assertions.assertTrue(attr instanceof BasicFileAttributes);
-			Assertions.assertTrue(attr.isRegularFile());
+
+			Mockito.verify(attributeComponentBuilder).type(BasicFileAttributes.class);
+			Mockito.verify(attributeComponentBuilder).ciphertextPath(ciphertextRawPath);
+			Mockito.verify(attributeComponentBuilder).ciphertextFileType(CiphertextFileType.FILE);
+			Mockito.verify(attributeComponentBuilder).ciphertextAttributes(ciphertextBasicAttr);
+			Assertions.assertEquals(ciphertextBasicAttr, attr);
 		}
 
 		@Test
 		public void testReadPosixAttributes() throws IOException {
-			AttributeProvider prov = new AttributeProvider(cryptor, pathMapper, openCryptoFiles, fileSystemProperties, symlinks);
+			Mockito.when(attributeComponent.attributes()).thenReturn(Optional.of(ciphertextPosixAttr));
+
 			PosixFileAttributes attr = prov.readAttributes(cleartextPath, PosixFileAttributes.class);
-			Assertions.assertTrue(attr instanceof PosixFileAttributes);
-			Assertions.assertTrue(attr.isRegularFile());
+
+			Mockito.verify(attributeComponentBuilder).type(PosixFileAttributes.class);
+			Mockito.verify(attributeComponentBuilder).ciphertextPath(ciphertextRawPath);
+			Mockito.verify(attributeComponentBuilder).ciphertextFileType(CiphertextFileType.FILE);
+			Mockito.verify(attributeComponentBuilder).ciphertextAttributes(ciphertextPosixAttr);
+			Assertions.assertEquals(ciphertextPosixAttr, attr);
 		}
 
 		@Test
 		public void testReadDosAttributes() throws IOException {
-			AttributeProvider prov = new AttributeProvider(cryptor, pathMapper, openCryptoFiles, fileSystemProperties, symlinks);
+			Mockito.when(attributeComponent.attributes()).thenReturn(Optional.of(ciphertextDosAttr));
+
 			DosFileAttributes attr = prov.readAttributes(cleartextPath, DosFileAttributes.class);
-			Assertions.assertTrue(attr instanceof DosFileAttributes);
-			Assertions.assertTrue(attr.isRegularFile());
+
+			Mockito.verify(attributeComponentBuilder).type(DosFileAttributes.class);
+			Mockito.verify(attributeComponentBuilder).ciphertextPath(ciphertextRawPath);
+			Mockito.verify(attributeComponentBuilder).ciphertextFileType(CiphertextFileType.FILE);
+			Mockito.verify(attributeComponentBuilder).ciphertextAttributes(ciphertextDosAttr);
+			Assertions.assertEquals(ciphertextDosAttr, attr);
 		}
 
 		@Test
 		public void testReadUnsupportedAttributes() {
-			AttributeProvider prov = new AttributeProvider(cryptor, pathMapper, openCryptoFiles, fileSystemProperties, symlinks);
+			Mockito.when(attributeComponent.attributes()).thenReturn(Optional.empty());
 
-			Assertions.assertThrows(UnsupportedOperationException.class, () -> {
+			UnsupportedOperationException e = Assertions.assertThrows(UnsupportedOperationException.class, () -> {
 				prov.readAttributes(cleartextPath, UnsupportedAttributes.class);
 			});
+			Mockito.verify(attributeComponentBuilder).type(UnsupportedAttributes.class);
+			Mockito.verify(attributeComponentBuilder).ciphertextPath(ciphertextRawPath);
+			Mockito.verify(attributeComponentBuilder).ciphertextFileType(CiphertextFileType.FILE);
 		}
 
 	}
@@ -135,18 +148,28 @@ public class AttributeProviderTest {
 	@Nested
 	public class Directories {
 
+		private AttributeProvider prov;
+
 		@BeforeEach
 		public void setup() throws IOException {
+			Mockito.when(symlinks.resolveRecursively(cleartextPath)).thenReturn(cleartextPath);
 			Mockito.when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.DIRECTORY);
 			Mockito.when(pathMapper.getCiphertextDir(cleartextPath)).thenReturn(new CiphertextDirectory("foo", ciphertextRawPath));
+
+			prov = new AttributeProvider(attributeComponentBuilder, pathMapper, symlinks);
 		}
 
 		@Test
 		public void testReadBasicAttributes() throws IOException {
-			AttributeProvider prov = new AttributeProvider(cryptor, pathMapper, openCryptoFiles, fileSystemProperties, symlinks);
+			Mockito.when(attributeComponent.attributes()).thenReturn(Optional.of(ciphertextBasicAttr));
+
 			BasicFileAttributes attr = prov.readAttributes(cleartextPath, BasicFileAttributes.class);
-			Assertions.assertTrue(attr instanceof BasicFileAttributes);
-			Assertions.assertTrue(attr.isDirectory());
+
+			Mockito.verify(attributeComponentBuilder).type(BasicFileAttributes.class);
+			Mockito.verify(attributeComponentBuilder).ciphertextPath(ciphertextRawPath);
+			Mockito.verify(attributeComponentBuilder).ciphertextFileType(CiphertextFileType.DIRECTORY);
+			Mockito.verify(attributeComponentBuilder).ciphertextAttributes(ciphertextBasicAttr);
+			Assertions.assertEquals(ciphertextBasicAttr, attr);
 		}
 
 	}
@@ -154,19 +177,28 @@ public class AttributeProviderTest {
 	@Nested
 	public class SymbolicLinks {
 
+		private AttributeProvider prov;
+
 		@BeforeEach
 		public void setup() throws IOException {
 			Mockito.when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.SYMLINK);
+
+			prov = new AttributeProvider(attributeComponentBuilder, pathMapper, symlinks);
 		}
 
 		@Test
 		public void testReadBasicAttributesNoFollow() throws IOException {
+			Mockito.when(symlinks.resolveRecursively(cleartextPath)).thenReturn(cleartextPath);
 			Mockito.when(pathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextPath);
+			Mockito.when(attributeComponent.attributes()).thenReturn(Optional.of(ciphertextBasicAttr));
 
-			AttributeProvider prov = new AttributeProvider(cryptor, pathMapper, openCryptoFiles, fileSystemProperties, symlinks);
 			BasicFileAttributes attr = prov.readAttributes(cleartextPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-			Assertions.assertTrue(attr instanceof BasicFileAttributes);
-			Assertions.assertTrue(attr.isSymbolicLink());
+
+			Mockito.verify(attributeComponentBuilder).type(BasicFileAttributes.class);
+			Mockito.verify(attributeComponentBuilder).ciphertextPath(ciphertextRawPath);
+			Mockito.verify(attributeComponentBuilder).ciphertextFileType(CiphertextFileType.SYMLINK);
+			Mockito.verify(attributeComponentBuilder).ciphertextAttributes(ciphertextBasicAttr);
+			Assertions.assertEquals(ciphertextBasicAttr, attr);
 		}
 
 		@Test
@@ -175,12 +207,15 @@ public class AttributeProviderTest {
 			Mockito.when(symlinks.resolveRecursively(cleartextPath)).thenReturn(targetPath);
 			Mockito.when(pathMapper.getCiphertextFileType(targetPath)).thenReturn(CiphertextFileType.FILE);
 			Mockito.when(pathMapper.getCiphertextFilePath(targetPath)).thenReturn(ciphertextPath);
+			Mockito.when(attributeComponent.attributes()).thenReturn(Optional.of(ciphertextBasicAttr));
 
-			AttributeProvider prov = new AttributeProvider(cryptor, pathMapper, openCryptoFiles, fileSystemProperties, symlinks);
 			BasicFileAttributes attr = prov.readAttributes(cleartextPath, BasicFileAttributes.class);
-			Assertions.assertTrue(attr instanceof BasicFileAttributes);
-			Assertions.assertTrue(attr.isRegularFile());
-			Assertions.assertSame(80l, attr.size());
+
+			Mockito.verify(attributeComponentBuilder).type(BasicFileAttributes.class);
+			Mockito.verify(attributeComponentBuilder).ciphertextPath(ciphertextRawPath);
+			Mockito.verify(attributeComponentBuilder).ciphertextFileType(CiphertextFileType.FILE);
+			Mockito.verify(attributeComponentBuilder).ciphertextAttributes(ciphertextBasicAttr);
+			Assertions.assertEquals(ciphertextBasicAttr, attr);
 		}
 
 	}

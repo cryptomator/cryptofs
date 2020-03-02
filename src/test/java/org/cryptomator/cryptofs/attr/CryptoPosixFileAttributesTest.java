@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.attr;
 
+import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
@@ -32,6 +33,7 @@ public class CryptoPosixFileAttributesTest {
 	private FileHeaderCryptor headerCryptor = mock(FileHeaderCryptor.class);
 	private FileContentCryptor contentCryptor = mock(FileContentCryptor.class);
 	private OpenCryptoFile openCryptoFile = mock(OpenCryptoFile.class);
+	private CryptoFileSystemProperties cryptoFileSystemProperties = mock(CryptoFileSystemProperties.class);
 
 	@BeforeEach
 	public void setup() {
@@ -47,8 +49,9 @@ public class CryptoPosixFileAttributesTest {
 	public void testGetPermissions() {
 		Set<PosixFilePermission> delegatePermissions = EnumSet.allOf(PosixFilePermission.class);
 		Mockito.when(delegate.permissions()).thenReturn(delegatePermissions);
-
-		CryptoPosixFileAttributes attrs = new CryptoPosixFileAttributes(delegate, FILE,null, cryptor, Optional.of(openCryptoFile), false);
+		Mockito.when(cryptoFileSystemProperties.readonly()).thenReturn(false);
+		
+		CryptoPosixFileAttributes attrs = new CryptoPosixFileAttributes(delegate, FILE,null, cryptor, Optional.of(openCryptoFile), cryptoFileSystemProperties);
 		Assertions.assertArrayEquals(delegatePermissions.toArray(), attrs.permissions().toArray());
 	}
 
@@ -56,8 +59,9 @@ public class CryptoPosixFileAttributesTest {
 	public void testGetPermissionsReadOnly() {
 		Set<PosixFilePermission> delegatePermissions = EnumSet.allOf(PosixFilePermission.class);
 		Mockito.when(delegate.permissions()).thenReturn(delegatePermissions);
+		Mockito.when(cryptoFileSystemProperties.readonly()).thenReturn(true);
 
-		CryptoPosixFileAttributes attrs = new CryptoPosixFileAttributes(delegate, FILE,null, cryptor, Optional.of(openCryptoFile), true);
+		CryptoPosixFileAttributes attrs = new CryptoPosixFileAttributes(delegate, FILE,null, cryptor, Optional.of(openCryptoFile), cryptoFileSystemProperties);
 		Assertions.assertArrayEquals(EnumSet.of(OWNER_READ, GROUP_READ, OTHERS_READ, OWNER_EXECUTE, GROUP_EXECUTE, OTHERS_EXECUTE).toArray(), attrs.permissions().toArray());
 	}
 

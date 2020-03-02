@@ -8,16 +8,12 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.attr;
 
-import org.cryptomator.cryptofs.common.ArrayUtils;
-import org.cryptomator.cryptofs.common.CiphertextFileType;
-import org.cryptomator.cryptofs.CryptoFileSystemProperties;
+import org.cryptomator.cryptofs.CryptoFileSystemScoped;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
-import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
-import org.cryptomator.cryptofs.CryptoFileSystemScoped;
 import org.cryptomator.cryptofs.Symlinks;
-import org.cryptomator.cryptofs.fh.OpenCryptoFile;
-import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptofs.common.ArrayUtils;
+import org.cryptomator.cryptofs.common.CiphertextFileType;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -25,77 +21,55 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.DosFileAttributes;
-import java.nio.file.attribute.PosixFileAttributes;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
 @CryptoFileSystemScoped
 public class AttributeProvider {
 
-	private static final Map<Class<? extends BasicFileAttributes>, AttributesConstructor<? extends BasicFileAttributes>> ATTR_CONSTRUCTORS;
-
-	static {
-		ATTR_CONSTRUCTORS = new HashMap<>();
-		ATTR_CONSTRUCTORS.put(BasicFileAttributes.class, (AttributesConstructor<BasicFileAttributes>) CryptoBasicFileAttributes::new);
-		ATTR_CONSTRUCTORS.put(PosixFileAttributes.class, (AttributesConstructor<PosixFileAttributes>) CryptoPosixFileAttributes::new);
-		ATTR_CONSTRUCTORS.put(DosFileAttributes.class, (AttributesConstructor<DosFileAttributes>) CryptoDosFileAttributes::new);
-	}
-
-	private final Cryptor cryptor;
+	private final AttributeComponent.Builder attributeComponentBuilder;
 	private final CryptoPathMapper pathMapper;
-	private final OpenCryptoFiles openCryptoFiles;
-	private final CryptoFileSystemProperties fileSystemProperties;
 	private final Symlinks symlinks;
 
 	@Inject
-	AttributeProvider(Cryptor cryptor, CryptoPathMapper pathMapper, OpenCryptoFiles openCryptoFiles, CryptoFileSystemProperties fileSystemProperties, Symlinks symlinks) {
-		this.cryptor = cryptor;
+	AttributeProvider(AttributeComponent.Builder attributeComponentBuilder, CryptoPathMapper pathMapper, Symlinks symlinks) {
+		this.attributeComponentBuilder = attributeComponentBuilder;
 		this.pathMapper = pathMapper;
-		this.openCryptoFiles = openCryptoFiles;
-		this.fileSystemProperties = fileSystemProperties;
 		this.symlinks = symlinks;
 	}
 
 	public <A extends BasicFileAttributes> A readAttributes(CryptoPath cleartextPath, Class<A> type, LinkOption... options) throws IOException {
-		if (!ATTR_CONSTRUCTORS.containsKey(type)) {
+		CiphertextFileType ciphertextFileType = pathMapper.getCiphertextFileType(cleartextPath);
+		if (ciphertextFileType == CiphertextFileType.SYMLINK && !ArrayUtils.contains(options, LinkOption.NOFOLLOW_LINKS)) {
+			cleartextPath = symlinks.resolveRecursively(cleartextPath);
+			ciphertextFileType = pathMapper.getCiphertextFileType(cleartextPath);
+		}
+		Path ciphertextPath = getCiphertextPath(cleartextPath, ciphertextFileType);
+		A ciphertextAttrs = Files.readAttributes(ciphertextPath, type);
+		Optional<BasicFileAttributes> cleartextAttrs = attributeComponentBuilder  //
+				.type(type) //
+				.ciphertextFileType(ciphertextFileType) //
+				.ciphertextPath(ciphertextPath) //
+				.ciphertextAttributes(ciphertextAttrs) //
+				.build() //
+				.attributes();
+		if (cleartextAttrs.isPresent() && type.isInstance(cleartextAttrs.get())) {
+			return type.cast(cleartextAttrs.get());
+		} else {
 			throw new UnsupportedOperationException("Unsupported file attribute type: " + type);
 		}
-		CiphertextFileType ciphertextFileType = pathMapper.getCiphertextFileType(cleartextPath);
-		switch (ciphertextFileType) {
-			case SYMLINK: {
-				if (ArrayUtils.contains(options, LinkOption.NOFOLLOW_LINKS)) {
-					Path ciphertextPath = pathMapper.getCiphertextFilePath(cleartextPath).getSymlinkFilePath();
-					return readAttributes(ciphertextFileType, ciphertextPath, type);
-				} else {
-					CryptoPath resolved = symlinks.resolveRecursively(cleartextPath);
-					return readAttributes(resolved, type, options);
-				}
-			}
-			case DIRECTORY: {
-				Path ciphertextPath = pathMapper.getCiphertextDir(cleartextPath).path;
-				return readAttributes(ciphertextFileType, ciphertextPath, type);
-			}
-			case FILE: {
-				Path ciphertextPath = pathMapper.getCiphertextFilePath(cleartextPath).getFilePath();
-				return readAttributes(ciphertextFileType, ciphertextPath, type);
-			}
+	}
+
+	private Path getCiphertextPath(CryptoPath path, CiphertextFileType type) throws IOException {
+		switch (type) {
+			case SYMLINK:
+				return pathMapper.getCiphertextFilePath(path).getSymlinkFilePath();
+			case DIRECTORY:
+				return pathMapper.getCiphertextDir(path).path;
+			case FILE:
+				return pathMapper.getCiphertextFilePath(path).getFilePath();
 			default:
-				throw new UnsupportedOperationException("Unhandled node type " + ciphertextFileType);
+				throw new UnsupportedOperationException("Unhandled node type " + type);
 		}
-	}
-
-	private <A extends BasicFileAttributes> A readAttributes(CiphertextFileType ciphertextFileType, Path ciphertextPath, Class<A> type) throws IOException {
-		assert ATTR_CONSTRUCTORS.containsKey(type);
-		A ciphertextAttrs = Files.readAttributes(ciphertextPath, type);
-		AttributesConstructor<A> constructor = (AttributesConstructor<A>) ATTR_CONSTRUCTORS.get(type);
-		return constructor.construct(ciphertextAttrs, ciphertextFileType, ciphertextPath, cryptor, openCryptoFiles.get(ciphertextPath), fileSystemProperties.readonly());
-	}
-
-	@FunctionalInterface
-	private interface AttributesConstructor<A extends BasicFileAttributes> {
-		A construct(A delegate, CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, boolean readonlyFileSystem);
 	}
 
 }
