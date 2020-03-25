@@ -46,11 +46,17 @@ class C9rConflictResolver {
 	public Stream<Node> process(Node node) {
 		Preconditions.checkArgument(node.extractedCiphertext != null, "Can only resolve conflicts if extractedCiphertext is set");
 		Preconditions.checkArgument(node.cleartextName != null, "Can only resolve conflicts if cleartextName is set");
-
+		
 		String canonicalCiphertextFileName = node.extractedCiphertext + Constants.CRYPTOMATOR_FILE_SUFFIX;
 		if (node.fullCiphertextFileName.equals(canonicalCiphertextFileName)) {
+			// not a conflict:
 			return Stream.of(node);
+		} else if (node.fullCiphertextFileName.startsWith(".")) {
+			// ignore hidden files:
+			LOG.debug("Ignoring hidden file {}", node.ciphertextPath);
+			return Stream.empty();
 		} else {
+			// conflicting file:
 			try {
 				Path canonicalPath = node.ciphertextPath.resolveSibling(canonicalCiphertextFileName);
 				return resolveConflict(node, canonicalPath);

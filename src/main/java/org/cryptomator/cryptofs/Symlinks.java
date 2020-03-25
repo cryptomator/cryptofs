@@ -88,6 +88,12 @@ public class Symlinks {
 		}
 	}
 
+	/**
+	 * Gets the target of a symlink. Recursive, if the target is a symlink itself.
+	 * @param cleartextPath A cleartext path. Might be a symlink, otherwise this method is no-op.
+	 * @return The resolved cleartext path. Might be the same as <code>cleartextPath</code> if it wasn't a symlink in the first place.
+	 * @throws IOException
+	 */
 	public CryptoPath resolveRecursively(CryptoPath cleartextPath) throws IOException {
 		return resolveRecursively(new HashSet<>(), cleartextPath);
 	}

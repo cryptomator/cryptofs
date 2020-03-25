@@ -8,7 +8,7 @@ env:
   - secure: "LT4nMSKCu4qL+jQ80BdBIOqFO3GCyAPoxNkskS0q0wvscDpEx2bvFZa9KF6/dQxubhWnfACqWxxPKfF3VadfZoKn1z01TaZ/rKHkA5GedZweFO0wBIvi/gDIcAxVX0oPOkIruugYY3iDOzOqTUuBM686cW1XWs0LEV7qPTb6KM02/IeckQs+P9SSiarqSKROlQ8dABGdyxJTXheHHphFu4mDiQsi1vtub6OoQclKLLuK2MJvFiyDeZDYYXAnjFNC/pcBUBjr5b886zPB6HLLGgvQKRLvzQudedz08ZlJdnt3k6u7HvLINbs00U60fnD/+4krQQN4EEx0Natv4L1SxFjYO4wFK2FTCKoBMkVfjINqiWzmb/yhoG33Sw9VGiYdcV45QbH32CX1oiATohV+79gfIID6p3UOL1SZuELR2XzRq70K4Kw2BXig99a0+LjYCv4ynnzetqyWVZIdhBQ1Srf/4GxUwF21Urn9TJCNr2F5BcbqGrMUMvXNjTI0WqQCTMqM+Ha9Rbe27GG7ZMtMUHd83YWP0GDiSIg2S0T0lNL2e9iQGXsGBiX3Bz+E3HEWhnE4l6XKYVgn3NXrlDjwc2B6GTGeImZXkrbFFJwQihUSujj5H6l/+5a7NxbyA1MvzNwjeTaHzdNdYovTq6ywydVtF/Kt5h7oA2KmUoajaFs=" # CODACY_PROJECT_TOKEN
   - secure: "atP4OKMKBLaixI1BiypWRxdQ1DJKpUcxQStwJpXteaZuXdkTMx31ts9WGhwwWJCjDaPJJRmWqhxTNKxJLThWFWLmBso1gHm8KDoHWBGM5jS1ua8Ly7s72HCpa7z+ABZ1/2LsoUXfQGLGDIPs1EdL/2E8OlaPSFUDFwgyquEIEm0hcKOO9q9MxjXwj8EO8OsfGt3PjiWEsh+JRaK5+hRPPVbG7TXidG84C/2cndzNSnin57LUSNkKDPoysRrQipGZQSLm12MpBagcota2HDdiuDXLHJLauNllCsr/NLnurGhwqeV3zVjPlN6z5TbZhbWvni+a8jVO9tMR3zCPs2MR++rJqXoQ4Gviy9yHQFc/RnVtCIRfCHhmh3XyhEM/Z5c1zEjhyZD1eGzr625/1F/RJLJEi0jb0kihKBpEKRgGw/ppt9BkdWQ4xJsMI8H9IQ5ZfzvRhLMXhbLDwqfyfyr3fX8pWg8T9lajEcDwnWMrYerAIF67lyQBjl3c3cGcGn909FTPGjum2PFSY7MuFfmbzzi41Y9ekssiRun4XrgNu563VtIywwuy/35N4ub1+oXS0I2PCG5XBY5uvxZbL8niqmoKiFFeyIhkMdGcbvIqA7PLapPqY5NxkY4+gRSP/eOMzMCnJv/No1ZaDV/8PW4/Q5IRxehVIIX/sXPiOvDSR58=" # BINTRAY_API_KEY
 install:
-- curl -o $HOME/.m2/settings.xml https://gist.githubusercontent.com/cryptobot/cf5fbd909c4782aaeeeb7c7f4a1a43da/raw/e60ee486e34ee0c79f89f947abe2c83b4290c6bb/settings.xml
+- curl -o $HOME/.m2/settings.xml https://gist.githubusercontent.com/cryptobot/cf5fbd909c4782aaeeeb7c7f4a1a43da/raw/fb3fe9a6db00cdac09788285b108a3645193a45b/settings.xml
 before_script:
 - mvn -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN --update-snapshots dependency-check:check -Pdependency-check
 - if [ -n "$TRAVIS_TAG" ]; then mvn versions:set -DnewVersion=${TRAVIS_TAG}; fi
@@ -22,7 +22,7 @@ script:
     mvn clean test jacoco:report verify -Pcoverage
   fi
 after_success:
-- curl -o ~/codacy-coverage-reporter.jar https://oss.sonatype.org/service/local/repositories/releases/content/com/codacy/codacy-coverage-reporter/6.0.7/codacy-coverage-reporter-6.0.7-assembly.jar
+- curl -o ~/codacy-coverage-reporter.jar https://repo1.maven.org/maven2/com/codacy/codacy-coverage-reporter/7.1.0/codacy-coverage-reporter-7.1.0.jar
 - $JAVA_HOME/bin/java -jar ~/codacy-coverage-reporter.jar report -l Java -r target/site/jacoco/jacoco.xml
 cache:
   directories:

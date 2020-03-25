@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -33,11 +35,22 @@ class C9rConflictResolverTest {
 		Node unresolved = new Node(Paths.get("foo.c9r"));
 		unresolved.cleartextName = "bar";
 		unresolved.extractedCiphertext = "foo";
-		
+
 		Stream<Node> result = conflictResolver.process(unresolved);
 		Node resolved = result.findAny().get();
 
 		Assertions.assertSame(unresolved, resolved);
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {"._foo.c9r", ".foo.c9r"})
+	public void testResolveHiddenNode(String filename) {
+		Node unresolved = new Node(Paths.get(filename));
+		unresolved.cleartextName = "bar";
+		unresolved.extractedCiphertext = "foo";
+
+		Stream<Node> result = conflictResolver.process(unresolved);
+		Assertions.assertFalse(result.findAny().isPresent());
 	}
 
 	@Test

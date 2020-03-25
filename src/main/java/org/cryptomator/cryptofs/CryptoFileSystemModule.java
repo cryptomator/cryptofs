@@ -7,6 +7,7 @@ package org.cryptomator.cryptofs;
 
 import dagger.Module;
 import dagger.Provides;
+import org.cryptomator.cryptofs.attr.AttributeComponent;
 import org.cryptomator.cryptofs.attr.AttributeViewComponent;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.MasterkeyBackupFileHasher;
@@ -23,7 +24,7 @@ import java.nio.file.Path;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
-@Module(subcomponents = {AttributeViewComponent.class, OpenCryptoFileComponent.class, DirectoryStreamComponent.class})
+@Module(subcomponents = {AttributeComponent.class, AttributeViewComponent.class, OpenCryptoFileComponent.class, DirectoryStreamComponent.class})
 class CryptoFileSystemModule {
 
 	@Provides

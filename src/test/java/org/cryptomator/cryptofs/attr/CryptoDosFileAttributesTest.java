@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.attr;
 
+import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -29,6 +30,7 @@ public class CryptoDosFileAttributesTest {
 	private FileHeaderCryptor headerCryptor = mock(FileHeaderCryptor.class);
 	private FileContentCryptor contentCryptor = mock(FileContentCryptor.class);
 	private OpenCryptoFile openCryptoFile = mock(OpenCryptoFile.class);
+	private CryptoFileSystemProperties cryptoFileSystemProperties = mock(CryptoFileSystemProperties.class);
 
 	@BeforeAll
 	public void setup() {
@@ -49,7 +51,8 @@ public class CryptoDosFileAttributesTest {
 
 		@BeforeAll
 		public void setup() {
-			inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), false);
+			when(cryptoFileSystemProperties.readonly()).thenReturn(false);
+			inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), cryptoFileSystemProperties);
 		}
 
 		@DisplayName("isArchive()")
@@ -99,7 +102,8 @@ public class CryptoDosFileAttributesTest {
 
 		@BeforeAll
 		public void setup() {
-			inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), true);
+			when(cryptoFileSystemProperties.readonly()).thenReturn(true);
+			inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), cryptoFileSystemProperties);
 		}
 
 		@DisplayName("isReadOnly()")
