@@ -87,6 +87,13 @@ public class CryptoBasicFileAttributesTest {
 	}
 
 	@Test
+	public void testSizeOfSymlink() {
+		Mockito.when(delegateAttr.size()).thenReturn(123l);
+		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, SYMLINK, ciphertextFilePath, cryptor, Optional.empty());
+		Assertions.assertEquals(123l, attr.size());
+	}
+
+	@Test
 	public void testSizeSetToZeroIfCryptoHeaderToSmall() {
 		Mockito.when(delegateAttr.size()).thenReturn(88l + 20l);
 		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, FILE, ciphertextFilePath, cryptor, Optional.empty());
