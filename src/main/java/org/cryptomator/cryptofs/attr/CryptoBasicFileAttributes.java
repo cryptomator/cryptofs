@@ -39,8 +39,6 @@ class CryptoBasicFileAttributes implements BasicFileAttributes {
 		this.ciphertextFileType = ciphertextFileType;
 		switch (ciphertextFileType) {
 			case SYMLINK:
-				this.size = -1;
-				break;
 			case DIRECTORY:
 				this.size = delegate.size();
 				break;
