@@ -55,8 +55,7 @@ class MigratingVisitor extends SimpleFileVisitor<Path> {
 				Path migratedFile = migration.migrate();
 				LOG.info("MOVED {} to {}", migration.getOldPath(), migratedFile);
 			} catch (FileAlreadyExistsException e) {
-				LOG.error("Failed to migrate " + migration.getOldPath() + " due to FileAlreadyExistsException. Already migrated on a different machine?.", e);
-				return FileVisitResult.TERMINATE;
+				LOG.warn("Failed to migrate " + migration.getOldPath() + " due to FileAlreadyExistsException. This can be caused either by sync conflicts or because this file has already been migrated on a different machine.", e);
 			}
 		}
 		migrationsInCurrentDir.clear();
