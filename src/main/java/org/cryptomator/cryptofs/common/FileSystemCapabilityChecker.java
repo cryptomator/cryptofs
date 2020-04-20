@@ -37,7 +37,7 @@ public class FileSystemCapabilityChecker {
 		LONG_FILENAMES,
 
 		/**
-		 * File system supports paths with ≥ 400 chars.
+		 * File system supports paths with ≥ 300 chars.
 		 * @since @since 1.9.2
 		 */
 		LONG_PATHS,
@@ -104,7 +104,7 @@ public class FileSystemCapabilityChecker {
 
 	public void assertLongFilePathSupport(Path pathToVault) throws MissingCapabilityException {
 		String longFileName = Strings.repeat("a", 96) + ".c9r";
-		String longPath = Joiner.on('/').join(longFileName, longFileName, longFileName, longFileName);
+		String longPath = Joiner.on('/').join(longFileName, longFileName, longFileName);
 		Path checkDir = pathToVault.resolve("c");
 		Path p = checkDir.resolve(longPath);
 		try {
