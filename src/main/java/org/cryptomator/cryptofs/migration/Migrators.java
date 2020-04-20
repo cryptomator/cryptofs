@@ -78,8 +78,12 @@ public class Migrators {
 	public boolean needsMigration(Path pathToVault, String masterkeyFilename) throws IOException {
 		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
 		byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
-		KeyFile keyFile = KeyFile.parse(keyFileContents);
-		return keyFile.getVersion() < Constants.VAULT_VERSION;
+		try {
+			KeyFile keyFile = KeyFile.parse(keyFileContents);
+			return keyFile.getVersion() < Constants.VAULT_VERSION;
+		} catch (IllegalArgumentException e) {
+			throw new IOException("Malformed masterkey file " + masterKeyPath, e);
+		}
 	}
 
 	/**
