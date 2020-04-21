@@ -44,7 +44,7 @@ class FilePathMigration {
 	private final String oldCanonicalName;
 
 	/**
-	 * @param oldPath The actual file path before migration
+	 * @param oldPath          The actual file path before migration
 	 * @param oldCanonicalName The inflated old filename without any conflicting pre- or suffixes but including the file type prefix
 	 */
 	FilePathMigration(Path oldPath, String oldCanonicalName) {
@@ -57,7 +57,7 @@ class FilePathMigration {
 	 * Starts a migration of the given file.
 	 *
 	 * @param vaultRoot Path to the vault's base directory (parent of <code>d/</code> and <code>m/</code>).
-	 * @param oldPath Path of an existing file inside the <code>d/</code> directory of a vault. May be a normal file, directory file or symlink as well as conflicting copies.
+	 * @param oldPath   Path of an existing file inside the <code>d/</code> directory of a vault. May be a normal file, directory file or symlink as well as conflicting copies.
 	 * @return A new instance of FileNameMigration
 	 * @throws IOException Non-recoverable I/O error, such as {@link UninflatableFileException}s
 	 */
@@ -89,7 +89,7 @@ class FilePathMigration {
 	/**
 	 * Resolves the canonical name of a deflated file represented by the given <code>longFileName</code>.
 	 *
-	 * @param vaultRoot Path to the vault's base directory (parent of <code>d/</code> and <code>m/</code>).
+	 * @param vaultRoot    Path to the vault's base directory (parent of <code>d/</code> and <code>m/</code>).
 	 * @param longFileName Canonical name of the {@value #OLD_SHORTENED_FILENAME_SUFFIX} file.
 	 * @return The inflated filename
 	 * @throws UninflatableFileException If the file could not be inflated due to missing or malformed metadata.
@@ -151,7 +151,7 @@ class FilePathMigration {
 	 * @return The path after successful migration of {@link #oldPath} if migration is successful for the given attemptSuffix
 	 */
 	// visible for testing
-	Path getTargetPath(String attemptSuffix) {
+	Path getTargetPath(String attemptSuffix) throws InvalidOldFilenameException {
 		final String canonicalInflatedName = getNewInflatedName();
 		final String canonicalDeflatedName = getNewDeflatedName();
 		final boolean isShortened = !canonicalInflatedName.equals(canonicalDeflatedName);
@@ -177,7 +177,7 @@ class FilePathMigration {
 			}
 		}
 	}
-	
+
 	public Path getOldPath() {
 		return oldPath;
 	}
@@ -202,19 +202,34 @@ class FilePathMigration {
 	}
 
 	/**
-	 * @return BASE64-encode(BASE32-decode({@link #getOldCanonicalNameWithoutTypePrefix oldCanonicalNameWithoutPrefix})) + {@value #NEW_REGULAR_SUFFIX}
+	 * @return BASE64-encode({@link #getDecodedCiphertext oldDecodedCiphertext}) + {@value #NEW_REGULAR_SUFFIX}
+	 * @throws InvalidOldFilenameException if failing to base32-decode the old filename
 	 */
 	// visible for testing
-	String getNewInflatedName() {
-		byte[] decoded = BASE32.decode(getOldCanonicalNameWithoutTypePrefix());
+	String getNewInflatedName() throws InvalidOldFilenameException {
+		byte[] decoded = getDecodedCiphertext();
 		return BASE64.encode(decoded) + NEW_REGULAR_SUFFIX;
+	}
+
+	/**
+	 * @return BASE32-decode({@link #getOldCanonicalNameWithoutTypePrefix oldCanonicalNameWithoutPrefix})
+	 * @throws InvalidOldFilenameException if failing to base32-decode the old filename
+	 */
+	// visible for testing
+	byte[] getDecodedCiphertext() throws InvalidOldFilenameException {
+		String encodedCiphertext = getOldCanonicalNameWithoutTypePrefix();
+		try {
+			return BASE32.decode(encodedCiphertext);
+		} catch (IllegalArgumentException e) {
+			throw new InvalidOldFilenameException("Can't base32-decode '" + encodedCiphertext + "' in file " + oldPath.toString(), e);
+		}
 	}
 
 	/**
 	 * @return {@link #getNewInflatedName() newInflatedName} if it is shorter than {@link #SHORTENING_THRESHOLD}, else BASE64(SHA1(newInflatedName)) + ".c9s"
 	 */
 	// visible for testing
-	String getNewDeflatedName() {
+	String getNewDeflatedName() throws InvalidOldFilenameException {
 		String inflatedName = getNewInflatedName();
 		if (inflatedName.length() > SHORTENING_THRESHOLD) {
 			byte[] longFileNameBytes = inflatedName.getBytes(UTF_8);

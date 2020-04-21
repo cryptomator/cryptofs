@@ -15,6 +15,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.converter.ArgumentConversionException;
+import org.junit.jupiter.params.converter.ConvertWith;
+import org.junit.jupiter.params.converter.SimpleArgumentConverter;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
@@ -25,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Base64;
 import java.util.Optional;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -44,6 +48,31 @@ public class FilePathMigrationTest {
 
 		Assertions.assertEquals(expectedResult, migration.getOldCanonicalNameWithoutTypePrefix());
 	}
+	
+	@ParameterizedTest(name = "getDecodedCiphertext() expected to be {1} for {0}")
+	@CsvSource({
+			"ORSXG5A=,dGVzdA==",
+			"0ORSXG5A=,dGVzdA==",
+			"1SORSXG5A=,dGVzdA==",
+	})
+	public void testGetDecodedCiphertext(String oldCanonicalName, @ConvertWith(ByteArrayArgumentConverter.class) byte[] expected) throws InvalidOldFilenameException {
+		FilePathMigration migration = new FilePathMigration(oldPath, oldCanonicalName);
+		Assertions.assertArrayEquals(expected, migration.getDecodedCiphertext());
+	}
+
+	@ParameterizedTest(name = "getDecodedCiphertext() throws InvalidOldFilenameException for {0}")
+	@ValueSource(strings = {
+		"ORSXG5=A",
+		"ORSX=G5A"
+	})
+	public void testMalformedGetDecodedCiphertext(String oldCanonicalName) {
+		FilePathMigration migration = new FilePathMigration(oldPath, oldCanonicalName);
+
+		InvalidOldFilenameException e = Assertions.assertThrows(InvalidOldFilenameException.class, () -> {
+			migration.getDecodedCiphertext();
+		});
+		Assertions.assertTrue(e.getMessage().contains(oldPath.toString()));
+	}
 
 	@ParameterizedTest(name = "getNewInflatedName() expected to be {1} for {0}")
 	@CsvSource({
@@ -51,7 +80,7 @@ public class FilePathMigrationTest {
 			"0ORSXG5A=,dGVzdA==.c9r",
 			"1SORSXG5A=,dGVzdA==.c9r",
 	})
-	public void testGetNewInflatedName(String oldCanonicalName, String expectedResult) {
+	public void testGetNewInflatedName(String oldCanonicalName, String expectedResult) throws InvalidOldFilenameException {
 		FilePathMigration migration = new FilePathMigration(oldPath, oldCanonicalName);
 
 		Assertions.assertEquals(expectedResult, migration.getNewInflatedName());
@@ -63,7 +92,7 @@ public class FilePathMigrationTest {
 			"ORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSQ====,dGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRlc3QgdGVzdCB0ZXN0IHRl.c9r",
 			"ORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG===,30xtS3YjsiMJRwu1oAVc_0S2aAU=.c9s",
 	})
-	public void testGetNewDeflatedName(String oldCanonicalName, String expectedResult) {
+	public void testGetNewDeflatedName(String oldCanonicalName, String expectedResult) throws InvalidOldFilenameException {
 		FilePathMigration migration = new FilePathMigration(oldPath, oldCanonicalName);
 
 		Assertions.assertEquals(expectedResult, migration.getNewDeflatedName());
@@ -104,7 +133,7 @@ public class FilePathMigrationTest {
 			"ORSXG5A=,'_1',dGVzdA==_1.c9r",
 			"ORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG===,'_123',30xtS3YjsiMJRwu1oAVc_0S2aAU=_123.c9s/contents.c9r",
 	})
-	public void testGetTargetPath(String oldCanonicalName, String attemptSuffix, String expected) {
+	public void testGetTargetPath(String oldCanonicalName, String attemptSuffix, String expected) throws InvalidOldFilenameException {
 		Path old = Paths.get("/tmp/foo");
 		FilePathMigration migration = new FilePathMigration(old, oldCanonicalName);
 
@@ -325,4 +354,12 @@ public class FilePathMigrationTest {
 
 	}
 
+	public static class ByteArrayArgumentConverter extends SimpleArgumentConverter {
+
+		@Override
+		protected Object convert(Object source, Class<?> targetType) throws ArgumentConversionException {
+			Assertions.assertEquals(byte[].class, targetType, "Can only convert to byte[]");
+			return Base64.getUrlDecoder().decode(String.valueOf(source));
+		}
+	}
 }
