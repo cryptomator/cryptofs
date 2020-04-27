@@ -14,6 +14,7 @@ public final class Constants {
 	public static final String MASTERKEY_BACKUP_SUFFIX = ".bkup";
 
 	public static final String DATA_DIR_NAME = "d";
+	public static final int MAX_CIPHERTEXT_PATH_LENGTH = 268; // inclusive, beginning at d/... see https://github.com/cryptomator/cryptofs/issues/77
 	public static final int MAX_CIPHERTEXT_NAME_LENGTH = 220; // inclusive. calculations done in https://github.com/cryptomator/cryptofs/issues/60#issuecomment-523238303
 	public static final int MAX_CLEARTEXT_NAME_LENGTH = 146; // inclusive. calculations done in https://github.com/cryptomator/cryptofs/issues/60#issuecomment-523238303
 	public static final String ROOT_DIR_ID = "";

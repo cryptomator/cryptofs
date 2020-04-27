@@ -17,7 +17,7 @@ import java.nio.file.Path;
 public class FileSystemCapabilityChecker {
 
 	private static final Logger LOG = LoggerFactory.getLogger(FileSystemCapabilityChecker.class);
-	private static final int MAX_PATH_LEN_REQUIRED = 268; // see math at https://github.com/cryptomator/cryptofs/issues/77
+	private static final int MAX_PATH_LEN_REQUIRED = Constants.MAX_CIPHERTEXT_PATH_LENGTH;
 	private static final int MIN_PATH_LEN_REQUIRED = 64;
 	private static final String TMP_FS_CHECK_DIR = "temporary-filesystem-capability-check-dir"; // must have 41 chars!
 

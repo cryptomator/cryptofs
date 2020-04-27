@@ -33,6 +33,7 @@ import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.net.URI;
@@ -68,6 +69,99 @@ import static org.hamcrest.Matchers.is;
 
 
 public class CryptoFileSystemProviderIntegrationTest {
+
+	@Nested
+	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+	class WithLimitedPaths {
+
+		private CryptoFileSystem fs;
+		private Path shortFilePath;
+		private Path shortSymlinkPath;
+		private Path shortDirPath;
+
+		@BeforeAll
+		public void setup(@TempDir Path tmpDir) throws IOException {
+			CryptoFileSystemProvider.initialize(tmpDir, "masterkey.cryptomator", "asd");
+			CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
+					.withFlags() //
+					.withMasterkeyFilename("masterkey.cryptomator") //
+					.withPassphrase("asd") //
+					.withMaxPathLength(100)
+					.build();
+			fs = CryptoFileSystemProvider.newFileSystem(tmpDir, properties);
+		}
+		
+		@BeforeEach
+		public void setupEach() throws IOException {
+			shortFilePath = fs.getPath("/short-enough.txt");
+			shortDirPath = fs.getPath("/short-enough-dir");
+			shortSymlinkPath = fs.getPath("/symlink.txt");
+			Files.createFile(shortFilePath);
+			Files.createDirectory(shortDirPath);
+			Files.createSymbolicLink(shortSymlinkPath, shortFilePath);
+		}
+		
+		@AfterEach
+		public void tearDownEach() throws IOException {
+			Files.deleteIfExists(shortFilePath);
+			Files.deleteIfExists(shortDirPath);
+			Files.deleteIfExists(shortSymlinkPath);
+		}
+
+		@DisplayName("expect create file to fail with FileNameTooLongException")
+		@Test
+		public void testCreateFileExceedingPathLengthLimit() {
+			Path p = fs.getPath("/this-should-result-in-ciphertext-path-longer-than-100");
+			Assertions.assertThrows(FileNameTooLongException.class, () -> {
+				Files.createFile(p);
+			});
+		}
+
+		@DisplayName("expect create directory to fail with FileNameTooLongException")
+		@Test
+		public void testCreateDirExceedingPathLengthLimit() {
+			Path p = fs.getPath("/this-should-result-in-ciphertext-path-longer-than-100");
+			Assertions.assertThrows(FileNameTooLongException.class, () -> {
+				Files.createDirectory(p);
+			});
+		}
+
+		@DisplayName("expect create symlink to fail with FileNameTooLongException")
+		@Test
+		public void testCreateSymlinkExceedingPathLengthLimit() {
+			Path p = fs.getPath("/this-should-result-in-ciphertext-path-longer-than-100");
+			Assertions.assertThrows(FileNameTooLongException.class, () -> {
+				Files.createSymbolicLink(p, shortFilePath);
+			});
+		}
+
+		@DisplayName("expect move to fail with FileNameTooLongException")
+		@ParameterizedTest(name = "move {0} -> this-should-result-in-ciphertext-path-longer-than-100")
+		@ValueSource(strings = {"/short-enough.txt", "/short-enough-dir", "/symlink.txt"})
+		public void testMoveExceedingPathLengthLimit(String path) {
+			Path src = fs.getPath(path);
+			Path dst = fs.getPath("/this-should-result-in-ciphertext-path-longer-than-100");
+			Assertions.assertThrows(FileNameTooLongException.class, () -> {
+				Files.move(src, dst);
+			});
+			Assertions.assertTrue(Files.exists(src));
+			Assertions.assertTrue(Files.notExists(dst));
+		}
+
+		@DisplayName("expect copy to fail with FileNameTooLongException")
+		@ParameterizedTest(name = "copy {0} -> this-should-result-in-ciphertext-path-longer-than-100")
+		@ValueSource(strings = {"/short-enough.txt", "/short-enough-dir", "/symlink.txt"})
+		public void testCopyExceedingPathLengthLimit(String path) {
+			Path src = fs.getPath(path);
+			Path dst = fs.getPath("/this-should-result-in-ciphertext-path-longer-than-100");
+			Assertions.assertThrows(FileNameTooLongException.class, () -> {
+				Files.copy(src, dst, LinkOption.NOFOLLOW_LINKS);
+			});
+			Assertions.assertTrue(Files.exists(src));
+			Assertions.assertTrue(Files.notExists(dst));
+		}
+		
+	}
 
 	@Nested
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
