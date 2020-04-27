@@ -431,7 +431,8 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			CiphertextFilePath ciphertextSourceFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource);
 			CiphertextFilePath ciphertextTargetFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
 			CopyOption[] resolvedOptions = ArrayUtils.without(options, LinkOption.NOFOLLOW_LINKS).toArray(CopyOption[]::new);
-			Files.copy(ciphertextSourceFile.getRawPath(), ciphertextTargetFile.getRawPath(), resolvedOptions);
+			Files.createDirectories(ciphertextTargetFile.getRawPath());
+			Files.copy(ciphertextSourceFile.getSymlinkFilePath(), ciphertextTargetFile.getSymlinkFilePath(), resolvedOptions);
 			ciphertextTargetFile.persistLongFileName();
 		} else {
 			CryptoPath resolvedSource = symlinks.resolveRecursively(cleartextSource);

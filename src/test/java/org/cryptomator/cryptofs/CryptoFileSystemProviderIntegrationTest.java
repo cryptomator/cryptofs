@@ -47,11 +47,14 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
+import java.nio.file.CopyOption;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -230,7 +233,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		}
 
 		@Test
-		@Order(6)
+		@Order(7)
 		@DisplayName("echo 'hello world' > /link")
 		public void testWriteToSymlink() throws IOException {
 			Path link = fs1.getPath("/link");
@@ -259,10 +262,32 @@ public class CryptoFileSystemProviderIntegrationTest {
 		}
 
 		@Test
+		@Order(7)
+		@DisplayName("cp /link /otherlink")
+		public void testCopySymlinkSymlink() throws IOException {
+			Path src = fs1.getPath("/link");
+			Path dst = fs1.getPath("/otherlink");
+			Assumptions.assumeTrue(Files.isSymbolicLink(src));
+			Assumptions.assumeTrue(Files.notExists(dst));
+			Files.copy(src, dst, LinkOption.NOFOLLOW_LINKS);
+			Assertions.assertTrue(Files.isSymbolicLink(src));
+			Assertions.assertTrue(Files.isSymbolicLink(dst));
+		}
+
+		@Test
 		@Order(8)
 		@DisplayName("rm /link")
 		public void testRemoveSymlink() throws IOException {
 			Path link = fs1.getPath("/link");
+			Assumptions.assumeTrue(Files.isSymbolicLink(link));
+			Files.delete(link);
+		}
+
+		@Test
+		@Order(8)
+		@DisplayName("rm /otherlink")
+		public void testRemoveOtherSymlink() throws IOException {
+			Path link = fs1.getPath("/otherlink");
 			Assumptions.assumeTrue(Files.isSymbolicLink(link));
 			Files.delete(link);
 		}
