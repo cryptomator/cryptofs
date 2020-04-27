@@ -1,6 +1,5 @@
 package org.cryptomator.cryptofs.common;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.io.MoreFiles;
 import com.google.common.io.RecursiveDeleteOption;
@@ -14,7 +13,6 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 public class FileSystemCapabilityChecker {
 

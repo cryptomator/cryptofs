@@ -7,7 +7,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import org.mockito.MockSettings;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -85,6 +84,35 @@ class FileSystemCapabilityCheckerTest {
 
 			int determinedLimit = new FileSystemCapabilityChecker().determineSupportedPathLength(pathToVault);
 			
+			Assertions.assertEquals(limit, determinedLimit);
+		}
+
+		@Test
+		public void testDetermineSupportedPathLengthWithLimitedNameLength() {
+			int limit = 150;
+			Mockito.when(pathToVault.resolve(Mockito.anyString())).then(invocation -> {
+				String checkDirStr = invocation.getArgument(0);
+				Path checkDirMock = Mockito.mock(Path.class, checkDirStr);
+				Mockito.when(checkDirMock.getFileSystem()).thenReturn(fileSystem);
+				Mockito.when(checkDirMock.resolve(Mockito.anyString())).then(invocation2 -> {
+					String checkFileStr = invocation.getArgument(0);
+					Path checkFileMock = Mockito.mock(Path.class, checkFileStr);
+					Mockito.when(checkFileMock.getFileSystem()).thenReturn(fileSystem);
+					if (Integer.valueOf(checkDirStr.substring(44, 47)) > limit) {
+						Mockito.when(fileSystemProvider.newByteChannel(Mockito.eq(checkFileMock), Mockito.any()))
+								.thenThrow(new IOException("name too long"));
+					} else {
+						Mockito.when(fileSystemProvider.newByteChannel(Mockito.eq(checkFileMock), Mockito.any()))
+								.thenReturn(new SeekableByteChannelMock(0));
+					}
+					return checkFileMock;
+				});
+				Mockito.when(fileSystemProvider.newDirectoryStream(Mockito.eq(checkDirMock), Mockito.any())).thenReturn(DirectoryStreamMock.empty());
+				return checkDirMock;
+			});
+
+			int determinedLimit = new FileSystemCapabilityChecker().determineSupportedPathLength(pathToVault);
+
 			Assertions.assertEquals(limit, determinedLimit);
 		}
 		
