@@ -17,6 +17,7 @@ import javax.inject.Inject;
 
 import org.cryptomator.cryptofs.common.MasterkeyBackupFileHasher;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener;
 import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -39,7 +40,7 @@ public class Version6Migrator implements Migrator {
 	}
 
 	@Override
-	public void migrate(Path vaultRoot, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException {
+	public void migrate(Path vaultRoot, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException {
 		LOG.info("Upgrading {} from version 5 to version 6.", vaultRoot);
 		progressListener.update(MigrationProgressListener.ProgressState.INITIALIZING, 0.0);
 		Path masterkeyFile = vaultRoot.resolve(masterkeyFilename);
