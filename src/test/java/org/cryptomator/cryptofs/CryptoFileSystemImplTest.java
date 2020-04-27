@@ -111,6 +111,11 @@ public class CryptoFileSystemImplTest {
 	public void setup() {
 		when(cryptoPathFactory.rootFor(any())).thenReturn(root);
 		when(cryptoPathFactory.emptyFor(any())).thenReturn(empty);
+		when(pathToVault.relativize(Mockito.any(Path.class))).then(invocation -> {
+			Path other = invocation.getArgument(0);
+			return other;
+		});
+		when(fileSystemProperties.maxPathLength()).thenReturn(Integer.MAX_VALUE);
 
 		inTest = new CryptoFileSystemImpl(provider, cryptoFileSystems, pathToVault, cryptor,
 				fileStore, stats, cryptoPathMapper, cryptoPathFactory,
