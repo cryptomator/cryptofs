@@ -21,7 +21,10 @@ public interface MigrationContinuationListener {
 	}
 	
 	enum ContinuationEvent {
-		REQUIRES_FULL_VAULT_DIR_SCAN;
+		/**
+		 * Migrator wants to do a full recursive directory listing. This might take a while.
+		 */
+		REQUIRES_FULL_VAULT_DIR_SCAN
 	}
 	
 }

@@ -5,10 +5,14 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.migration.v7;
 
+import org.cryptomator.cryptofs.FileNameTooLongException;
+import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
 import org.cryptomator.cryptofs.common.MasterkeyBackupFileHasher;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.DeletingFileVisitor;
 import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener;
+import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener.ContinuationEvent;
+import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener.ContinuationResult;
 import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -22,15 +26,11 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.file.FileVisitOption;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.EnumSet;
-import java.util.concurrent.atomic.LongAdder;
 
 public class Version7Migrator implements Migrator {
 
@@ -55,15 +55,47 @@ public class Version7Migrator implements Migrator {
 			Path masterkeyBackupFile = vaultRoot.resolve(masterkeyFilename + MasterkeyBackupFileHasher.generateFileIdSuffix(fileContentsBeforeUpgrade) + Constants.MASTERKEY_BACKUP_SUFFIX);
 			Files.copy(masterkeyFile, masterkeyBackupFile, StandardCopyOption.REPLACE_EXISTING);
 			LOG.info("Backed up masterkey from {} to {}.", masterkeyFile.getFileName(), masterkeyBackupFile.getFileName());
+			
+			// check file system capabilities:
+			int pathLengthLimit = new FileSystemCapabilityChecker().determineSupportedPathLength(vaultRoot);
+			VaultStatsVisitor vaultStats;
+			if (pathLengthLimit >= Constants.MAX_CIPHERTEXT_PATH_LENGTH) {
+				LOG.info("Underlying file system meets path length requirements.");
+				vaultStats = new VaultStatsVisitor(vaultRoot, false);
+			} else {
+				LOG.warn("Underlying file system only supports paths with up to {} chars (required: {}). Asking for user feedback...", pathLengthLimit, Constants.MAX_CIPHERTEXT_PATH_LENGTH);
+				ContinuationResult result = continuationListener.continueMigrationOnEvent(ContinuationEvent.REQUIRES_FULL_VAULT_DIR_SCAN);
+				switch (result) {
+					case PROCEED:
+						vaultStats = new VaultStatsVisitor(vaultRoot, true);
+						break;
+					case CANCEL:
+						LOG.info("Migration canceled by user.");
+						return;
+					default:
+						throw new IllegalStateException("Unexpected result " + result);
+				}
+			}
 
-			long toBeMigrated = countFileNames(vaultRoot);
+			// dry-run to collect stats:
+			Path dataDir = vaultRoot.resolve("d");
+			Files.walkFileTree(dataDir, EnumSet.noneOf(FileVisitOption.class), 3, vaultStats);
+			
+			// fail if file names are too long:
+			if (vaultStats.getMaxCiphertextPathLength() > pathLengthLimit) {
+				LOG.error("Migration aborted due to lacking capabilities of underlying file system. Vault is unchanged.");
+				throw new FileNameTooLongException(vaultStats.getLongestNewFile().toString(), pathLengthLimit);
+			}
+			
+			// start migration:
+			long toBeMigrated = vaultStats.getTotalFileCount();
+			LOG.info("Starting migration of {} files", toBeMigrated);
 			if (toBeMigrated > 0) {
 				migrateFileNames(vaultRoot, progressListener, toBeMigrated);
 			}
 
+			// cleanup:
 			progressListener.update(MigrationProgressListener.ProgressState.FINALIZING, 0.0);
-
-			// remove deprecated /m/ directory
 			Files.walkFileTree(vaultRoot.resolve("m"), DeletingFileVisitor.INSTANCE);
 
 			// rewrite masterkey file with normalized passphrase:
@@ -72,20 +104,6 @@ public class Version7Migrator implements Migrator {
 			LOG.info("Updated masterkey.");
 		}
 		LOG.info("Upgraded {} from version 6 to version 7.", vaultRoot);
-	}
-	
-	private long countFileNames(Path vaultRoot) throws IOException {
-		LongAdder counter = new LongAdder();
-		Path dataDir = vaultRoot.resolve("d");
-		Files.walkFileTree(dataDir, EnumSet.noneOf(FileVisitOption.class), 3, new SimpleFileVisitor<Path>() {
-
-			@Override
-			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-				counter.increment();
-				return FileVisitResult.CONTINUE;
-			}
-		});
-		return counter.sum();
 	}
 
 	private void migrateFileNames(Path vaultRoot, MigrationProgressListener progressListener, long totalFiles) throws IOException {
