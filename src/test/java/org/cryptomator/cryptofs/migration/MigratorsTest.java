@@ -6,6 +6,7 @@
 package org.cryptomator.cryptofs.migration;
 
 import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
+import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener;
 import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.migration.api.NoApplicableMigratorException;
@@ -80,7 +81,7 @@ public class MigratorsTest {
 	public void testMigrateWithoutMigrators() throws IOException {
 		Migrators migrators = new Migrators(Collections.emptyMap(), fsCapabilityChecker);
 		Assertions.assertThrows(NoApplicableMigratorException.class, () -> {
-			migrators.migrate(pathToVault, "masterkey.cryptomator", "secret", (state, progress) -> {});
+			migrators.migrate(pathToVault, "masterkey.cryptomator", "secret", (state, progress) -> {}, event -> MigrationContinuationListener.ContinuationResult.PROCEED);
 		});
 	}
 	
@@ -94,7 +95,7 @@ public class MigratorsTest {
 				put(Migration.ZERO_TO_ONE, migrator);
 			}
 		}, fsCapabilityChecker);
-		migrators.migrate(pathToVault, "masterkey.cryptomator", "secret", listener);
+		migrators.migrate(pathToVault, "masterkey.cryptomator", "secret", listener, event -> MigrationContinuationListener.ContinuationResult.PROCEED);
 		Mockito.verify(migrator).migrate(pathToVault, "masterkey.cryptomator", "secret", listener);
 	}
 
@@ -109,7 +110,7 @@ public class MigratorsTest {
 		}, fsCapabilityChecker);
 		Mockito.doThrow(new UnsupportedVaultFormatException(Integer.MAX_VALUE, 1)).when(migrator).migrate(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
 		Assertions.assertThrows(IllegalStateException.class, () -> {
-			migrators.migrate(pathToVault, "masterkey.cryptomator", "secret", (state, progress) -> {});
+			migrators.migrate(pathToVault, "masterkey.cryptomator", "secret", (state, progress) -> {}, event -> MigrationContinuationListener.ContinuationResult.PROCEED);
 		});
 	}
 

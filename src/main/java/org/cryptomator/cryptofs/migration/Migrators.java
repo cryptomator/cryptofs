@@ -17,6 +17,7 @@ import javax.inject.Inject;
 
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
+import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener;
 import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.migration.api.NoApplicableMigratorException;
@@ -33,7 +34,7 @@ import org.cryptomator.cryptolib.api.UnsupportedVaultFormatException;
  * <pre>
  * <code>
  * if (Migrators.get().{@link #needsMigration(Path, String) needsMigration(pathToVault, masterkeyFileName)}) {
- * 	Migrators.get().{@link #migrate(Path, String, CharSequence, MigrationProgressListener) migrate(pathToVault, masterkeyFileName, passphrase, migrationProgressListener)};
+ * 	Migrators.get().{@link #migrate(Path, String, CharSequence, MigrationProgressListener, MigrationContinuationListener) migrate(pathToVault, masterkeyFileName, passphrase, migrationProgressListener)};
  * }
  * </code>
  * </pre>
@@ -97,7 +98,7 @@ public class Migrators {
 	 * @throws FileSystemCapabilityChecker.MissingCapabilityException If the underlying filesystem lacks features required to store a vault
 	 * @throws IOException if an I/O error occurs migrating the vault
 	 */
-	public void migrate(Path pathToVault, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener) throws NoApplicableMigratorException, InvalidPassphraseException, IOException {
+	public void migrate(Path pathToVault, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws NoApplicableMigratorException, InvalidPassphraseException, IOException {
 		fsCapabilityChecker.assertAllCapabilities(pathToVault);
 		
 		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
@@ -106,7 +107,7 @@ public class Migrators {
 
 		try {
 			Migrator migrator = findApplicableMigrator(keyFile.getVersion()).orElseThrow(NoApplicableMigratorException::new);
-			migrator.migrate(pathToVault, masterkeyFilename, passphrase, progressListener);
+			migrator.migrate(pathToVault, masterkeyFilename, passphrase, progressListener, continuationListener);
 		} catch (UnsupportedVaultFormatException e) {
 			// might be a tampered masterkey file, as this exception is also thrown if the vault version MAC is not authentic.
 			throw new IllegalStateException("Vault version checked beforehand but not supported by migrator.");

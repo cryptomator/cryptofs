@@ -13,6 +13,7 @@ import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
 import org.cryptomator.cryptofs.common.MasterkeyBackupFileHasher;
 import org.cryptomator.cryptofs.migration.Migrators;
+import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener;
 import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
@@ -304,7 +305,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	private void migrateFileSystemIfRequired(CryptoFileSystemUri parsedUri, CryptoFileSystemProperties properties) throws IOException, FileSystemNeedsMigrationException {
 		if (Migrators.get().needsMigration(parsedUri.pathToVault(), properties.masterkeyFilename())) {
 			if (properties.migrateImplicitly()) {
-				Migrators.get().migrate(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase(), (state, progress) -> {});
+				Migrators.get().migrate(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase(), (state, progress) -> {}, event -> MigrationContinuationListener.ContinuationResult.PROCEED);
 			} else {
 				throw new FileSystemNeedsMigrationException(parsedUri.pathToVault());
 			}
