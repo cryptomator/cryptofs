@@ -83,20 +83,7 @@ public class MigratorsTest {
 			migrators.migrate(pathToVault, "masterkey.cryptomator", "secret", (state, progress) -> {});
 		});
 	}
-
-	@Test
-	public void testMigrateWithFailingCapabilitiesCheck() throws IOException {
-		Migrators migrators = new Migrators(Collections.emptyMap(), fsCapabilityChecker);
-
-		Exception expected = new FileSystemCapabilityChecker.MissingCapabilityException(pathToVault, FileSystemCapabilityChecker.Capability.LONG_FILENAMES);
-		Mockito.doThrow(expected).when(fsCapabilityChecker).assertAllCapabilities(pathToVault);
-		
-		Exception thrown = Assertions.assertThrows(FileSystemCapabilityChecker.MissingCapabilityException.class, () -> {
-			migrators.migrate(pathToVault, "masterkey.cryptomator", "secret", (state, progress) -> {});
-		});
-		Assertions.assertEquals(expected, thrown);
-	}
-
+	
 	@Test
 	@SuppressWarnings("deprecation")
 	public void testMigrate() throws NoApplicableMigratorException, InvalidPassphraseException, IOException {
