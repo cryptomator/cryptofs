@@ -81,7 +81,9 @@ public class FileSystemCapabilityChecker {
 	public void assertWriteAccess(Path pathToVault) throws MissingCapabilityException {
 		Path checkDir = pathToVault.resolve("c");
 		try {
-			Files.createDirectory(checkDir);
+			Files.createDirectories(checkDir);
+			Path tmpDir = Files.createTempDirectory(checkDir, "write-access");
+			Files.delete(tmpDir);
 		} catch (IOException e) {
 			throw new MissingCapabilityException(checkDir, Capability.WRITE_ACCESS);
 		} finally {
