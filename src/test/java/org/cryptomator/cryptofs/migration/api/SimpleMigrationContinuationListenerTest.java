@@ -17,7 +17,7 @@ class SimpleMigrationContinuationListenerTest {
 
 		SimpleMigrationContinuationListener inTest = new SimpleMigrationContinuationListener() {
 			@Override
-			void migrationHaltedDueToEvent(ContinuationEvent event) {
+			public void migrationHaltedDueToEvent(ContinuationEvent event) {
 				// receive event on background thread that runs migration:
 				System.out.println("received event on " + Thread.currentThread().getName());
 				
