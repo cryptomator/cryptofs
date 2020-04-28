@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import com.google.common.base.Strings;
+import org.cryptomator.cryptofs.common.Constants;
 
 /**
  * Properties to pass to
@@ -41,6 +42,15 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 * Key identifying the passphrase for an encrypted vault.
 	 */
 	public static final String PROPERTY_PASSPHRASE = "passphrase";
+
+	/**
+	 * Key identifying the pepper used during key derivation.
+	 *
+	 * @since 1.9.8
+	 */
+	public static final String PROPERTY_MAX_PATH_LENGTH = "maxPathLength";
+
+	static final int DEFAULT_MAX_PATH_LENGTH = Constants.MAX_CIPHERTEXT_PATH_LENGTH;
 
 	/**
 	 * Key identifying the pepper used during key derivation.
@@ -94,7 +104,16 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		 * 
 		 * @deprecated Will get removed in version 2.0.0. Use {@link CryptoFileSystemProvider#initialize(Path, String, CharSequence)} explicitly.
 		 */
-		@Deprecated INIT_IMPLICITLY
+		@Deprecated INIT_IMPLICITLY,
+
+		/**
+		 * If present, the maximum ciphertext path length (beginning from the root of the vault directory).
+		 * <p>
+		 * If exceeding the limit during a file operation, an exception is thrown.
+		 * 
+		 * @since 1.9.8
+		 */
+		MAX_PATH_LENGTH,
 	};
 
 	private final Set<Entry<String, Object>> entries;
@@ -104,7 +123,8 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 				entry(PROPERTY_PASSPHRASE, builder.passphrase), //
 				entry(PROPERTY_PEPPER, builder.pepper), //
 				entry(PROPERTY_FILESYSTEM_FLAGS, builder.flags), //
-				entry(PROPERTY_MASTERKEY_FILENAME, builder.masterkeyFilename) //
+				entry(PROPERTY_MASTERKEY_FILENAME, builder.masterkeyFilename), //
+				entry(PROPERTY_MAX_PATH_LENGTH, builder.maxPathLength) //
 		)));
 	}
 
@@ -135,6 +155,10 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	String masterkeyFilename() {
 		return (String) get(PROPERTY_MASTERKEY_FILENAME);
+	}
+
+	int maxPathLength() {
+		return (int) get(PROPERTY_MAX_PATH_LENGTH);
 	}
 
 	@Override
@@ -220,6 +244,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		public byte[] pepper = DEFAULT_PEPPER;
 		private final Set<FileSystemFlags> flags = EnumSet.copyOf(DEFAULT_FILESYSTEM_FLAGS);
 		private String masterkeyFilename = DEFAULT_MASTERKEY_FILENAME;
+		private int maxPathLength = DEFAULT_MAX_PATH_LENGTH;
 
 		private Builder() {
 		}
@@ -229,6 +254,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 			checkedSet(byte[].class, PROPERTY_PEPPER, properties, this::withPepper);
 			checkedSet(String.class, PROPERTY_MASTERKEY_FILENAME, properties, this::withMasterkeyFilename);
 			checkedSet(Set.class, PROPERTY_FILESYSTEM_FLAGS, properties, this::withFlags);
+			checkedSet(Integer.class, PROPERTY_MAX_PATH_LENGTH, properties, this::withMaxPathLength);
 		}
 
 		private <T> void checkedSet(Class<T> type, String key, Map<String, ?> properties, Consumer<T> setter) {
@@ -250,6 +276,18 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		 */
 		public Builder withPassphrase(CharSequence passphrase) {
 			this.passphrase = Normalizer.normalize(passphrase, Form.NFC);
+			return this;
+		}
+
+		/**
+		 * Sets the maximum ciphertext path length for a CryptoFileSystem.
+		 *
+		 * @param maxPathLength The maximum ciphertext path length allowed
+		 * @return this
+		 * @since 1.9.8
+		 */
+		public Builder withMaxPathLength(int maxPathLength) {
+			this.maxPathLength = maxPathLength;
 			return this;
 		}
 

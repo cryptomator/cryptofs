@@ -1,6 +1,5 @@
 package org.cryptomator.cryptofs.common;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.io.MoreFiles;
 import com.google.common.io.RecursiveDeleteOption;
@@ -8,7 +7,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.DirectoryIteratorException;
 import java.nio.file.DirectoryStream;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,6 +17,9 @@ import java.nio.file.Path;
 public class FileSystemCapabilityChecker {
 
 	private static final Logger LOG = LoggerFactory.getLogger(FileSystemCapabilityChecker.class);
+	private static final int MAX_PATH_LEN_REQUIRED = Constants.MAX_CIPHERTEXT_PATH_LENGTH;
+	private static final int MIN_PATH_LEN_REQUIRED = 64;
+	private static final String TMP_FS_CHECK_DIR = "temporary-filesystem-capability-check-dir"; // must have 41 chars!
 
 	public enum Capability {
 		/**
@@ -29,18 +33,6 @@ public class FileSystemCapabilityChecker {
 		 * @since 1.9.3
 		 */
 		WRITE_ACCESS,
-		
-		/**
-		 * File system supports filenames with ≥ 230 chars.
-		 * @since @since 1.9.2
-		 */
-		LONG_FILENAMES,
-
-		/**
-		 * File system supports paths with ≥ 300 chars.
-		 * @since @since 1.9.2
-		 */
-		LONG_PATHS,
 	}
 
 	/**
@@ -54,8 +46,6 @@ public class FileSystemCapabilityChecker {
 	public void assertAllCapabilities(Path pathToVault) throws MissingCapabilityException {
 		assertReadAccess(pathToVault);
 		assertWriteAccess(pathToVault);
-		assertLongFilenameSupport(pathToVault);
-		assertLongFilePathSupport(pathToVault);
 	}
 
 	/**
@@ -81,48 +71,78 @@ public class FileSystemCapabilityChecker {
 	public void assertWriteAccess(Path pathToVault) throws MissingCapabilityException {
 		Path checkDir = pathToVault.resolve("c");
 		try {
-			Files.createDirectory(checkDir);
+			Files.createDirectories(checkDir);
+			Path tmpDir = Files.createTempDirectory(checkDir, "write-access");
+			Files.delete(tmpDir);
 		} catch (IOException e) {
 			throw new MissingCapabilityException(checkDir, Capability.WRITE_ACCESS);
 		} finally {
-			deleteSilently(checkDir);
+			deleteRecursivelySilently(checkDir);
 		}
 	}
-
-	public void assertLongFilenameSupport(Path pathToVault) throws MissingCapabilityException {
-		String longFileName = Strings.repeat("a", 226) + ".c9r";
-		Path checkDir = pathToVault.resolve("c");
-		Path p = checkDir.resolve(longFileName);
+	
+	public int determineSupportedPathLength(Path pathToVault) {
+		if (canHandlePathLength(pathToVault, MAX_PATH_LEN_REQUIRED)) {
+			return MAX_PATH_LEN_REQUIRED;
+		} else {
+			return determineSupportedPathLength(pathToVault, MIN_PATH_LEN_REQUIRED, MAX_PATH_LEN_REQUIRED);
+		}
+	}
+	
+	private int determineSupportedPathLength(Path pathToVault, int lowerBound, int upperBound) {
+		assert lowerBound <= upperBound;
+		int mid = (lowerBound + upperBound) / 2;
+		if (mid == lowerBound) {
+			return mid; // bounds will not shrink any further at this point
+		}
+		if (canHandlePathLength(pathToVault, mid)) {
+			return determineSupportedPathLength(pathToVault, mid, upperBound);
+		} else {
+			return determineSupportedPathLength(pathToVault, lowerBound, mid);
+		}
+	}
+	
+	private boolean canHandlePathLength(Path pathToVault, int pathLength) {
+		assert pathLength > 48;
+		String checkDirStr = "c/" + TMP_FS_CHECK_DIR + String.format("/%03d/", pathLength);
+		assert checkDirStr.length() == 48; // 268 - 220
+		int filenameLength = pathLength - checkDirStr.length();
+		Path checkDir = pathToVault.resolve(checkDirStr);
+		Path checkFile = checkDir.resolve(Strings.repeat("a", filenameLength));
 		try {
-			Files.createDirectories(p);
-		} catch (IOException e) {
-			throw new MissingCapabilityException(p, Capability.LONG_FILENAMES);
+			Files.createDirectories(checkDir);
+			try {
+				Files.createFile(checkFile); // will fail early on "sane" operating systems, if there is a limit
+			} catch (FileAlreadyExistsException e) {
+				// ok
+			}
+			try (DirectoryStream<Path> ds = Files.newDirectoryStream(checkDir)) {
+				ds.iterator().hasNext(); // will fail with DirectoryIteratorException on Windows if path of children too long
+				return true;
+			}
+		} catch (DirectoryIteratorException | IOException e) {
+			return false;
 		} finally {
-			deleteSilently(checkDir);
+			deleteSilently(checkFile); // despite not being able to dirlist, we might still be able to delete this
+			deleteRecursivelySilently(checkDir); // only works if dirlist works, therefore after deleting checkFile
 		}
 	}
-
-	public void assertLongFilePathSupport(Path pathToVault) throws MissingCapabilityException {
-		String longFileName = Strings.repeat("a", 96) + ".c9r";
-		String longPath = Joiner.on('/').join(longFileName, longFileName, longFileName);
-		Path checkDir = pathToVault.resolve("c");
-		Path p = checkDir.resolve(longPath);
+	
+	private void deleteSilently(Path path) {
 		try {
-			Files.createDirectories(p);
+			Files.delete(path);
 		} catch (IOException e) {
-			throw new MissingCapabilityException(p, Capability.LONG_PATHS);
-		} finally {
-			deleteSilently(checkDir);
+			LOG.trace("Failed to delete " + path, e);
 		}
 	}
 
-	private void deleteSilently(Path dir) {
+	private void deleteRecursivelySilently(Path dir) {
 		try {
 			if (Files.exists(dir)) {
 				MoreFiles.deleteRecursively(dir, RecursiveDeleteOption.ALLOW_INSECURE);
 			}
 		} catch (IOException e) {
-			LOG.warn("Failed to clean up " + dir, e);
+			LOG.trace("Failed to clean up " + dir, e);
 		}
 	}
 

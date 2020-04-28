@@ -100,6 +100,7 @@ public class CryptoFileSystemImplTest {
 	private final FinallyUtil finallyUtil = mock(FinallyUtil.class);
 	private final CiphertextDirectoryDeleter ciphertextDirDeleter = mock(CiphertextDirectoryDeleter.class);
 	private final ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
+	private final CryptoFileSystemProperties fileSystemProperties = mock(CryptoFileSystemProperties.class);
 
 	private final CryptoPath root = mock(CryptoPath.class);
 	private final CryptoPath empty = mock(CryptoPath.class);
@@ -110,12 +111,18 @@ public class CryptoFileSystemImplTest {
 	public void setup() {
 		when(cryptoPathFactory.rootFor(any())).thenReturn(root);
 		when(cryptoPathFactory.emptyFor(any())).thenReturn(empty);
+		when(pathToVault.relativize(Mockito.any(Path.class))).then(invocation -> {
+			Path other = invocation.getArgument(0);
+			return other;
+		});
+		when(fileSystemProperties.maxPathLength()).thenReturn(Integer.MAX_VALUE);
 
 		inTest = new CryptoFileSystemImpl(provider, cryptoFileSystems, pathToVault, cryptor,
 				fileStore, stats, cryptoPathMapper, cryptoPathFactory,
 				pathMatcherFactory, directoryStreamFactory, dirIdProvider,
 				fileAttributeProvider, fileAttributeByNameProvider, fileAttributeViewProvider,
-				openCryptoFiles, symlinks, finallyUtil, ciphertextDirDeleter, readonlyFlag, rootDirectoryInitializer);
+				openCryptoFiles, symlinks, finallyUtil, ciphertextDirDeleter, readonlyFlag,
+				fileSystemProperties, rootDirectoryInitializer);
 	}
 
 	@Test

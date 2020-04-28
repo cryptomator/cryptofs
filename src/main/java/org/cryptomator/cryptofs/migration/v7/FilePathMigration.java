@@ -29,7 +29,7 @@ class FilePathMigration {
 	private static final Pattern OLD_CANONICAL_FILENAME_PATTERN = Pattern.compile("(0|1S)?([A-Z2-7]{8})*[A-Z2-7=]{8}");
 	private static final BaseEncoding BASE32 = BaseEncoding.base32();
 	private static final BaseEncoding BASE64 = BaseEncoding.base64Url();
-	private static final int SHORTENING_THRESHOLD = 222; // see calculations in https://github.com/cryptomator/cryptofs/issues/60
+	private static final int SHORTENING_THRESHOLD = 220; // see calculations in https://github.com/cryptomator/cryptofs/issues/60
 	private static final String OLD_DIRECTORY_PREFIX = "0";
 	private static final String OLD_SYMLINK_PREFIX = "1S";
 	private static final String NEW_REGULAR_SUFFIX = ".c9r";
@@ -150,7 +150,6 @@ class FilePathMigration {
 	 * @param attemptSuffix Empty string or anything starting with a non base64 delimiter
 	 * @return The path after successful migration of {@link #oldPath} if migration is successful for the given attemptSuffix
 	 */
-	// visible for testing
 	Path getTargetPath(String attemptSuffix) throws InvalidOldFilenameException {
 		final String canonicalInflatedName = getNewInflatedName();
 		final String canonicalDeflatedName = getNewDeflatedName();

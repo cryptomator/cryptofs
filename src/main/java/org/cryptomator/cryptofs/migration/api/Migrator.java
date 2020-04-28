@@ -41,6 +41,22 @@ public interface Migrator {
 	 * @throws UnsupportedVaultFormatException
 	 * @throws IOException
 	 */
-	void migrate(Path vaultRoot, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException;
+	default void migrate(Path vaultRoot, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException {
+		migrate(vaultRoot, masterkeyFilename, passphrase, progressListener, (event) -> MigrationContinuationListener.ContinuationResult.CANCEL);
+	}
+
+	/**
+	 * Performs the migration this migrator is built for.
+	 *
+	 * @param vaultRoot
+	 * @param masterkeyFilename
+	 * @param passphrase
+	 * @param progressListener
+	 * @param continuationListener
+	 * @throws InvalidPassphraseException
+	 * @throws UnsupportedVaultFormatException
+	 * @throws IOException
+	 */
+	void migrate(Path vaultRoot, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException;
 
 }
