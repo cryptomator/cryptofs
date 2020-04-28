@@ -19,7 +19,7 @@ public abstract class SimpleMigrationContinuationListener implements MigrationCo
 	 * @param event The migration event that occurred
 	 * @apiNote This method is called from the migrator thread
 	 */
-	abstract void migrationHaltedDueToEvent(ContinuationEvent event);
+	public abstract void migrationHaltedDueToEvent(ContinuationEvent event);
 
 	/**
 	 * Continues the migration on its original thread with the desired ContinuationResult.
