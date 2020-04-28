@@ -34,7 +34,7 @@ import org.cryptomator.cryptolib.api.UnsupportedVaultFormatException;
  * <pre>
  * <code>
  * if (Migrators.get().{@link #needsMigration(Path, String) needsMigration(pathToVault, masterkeyFileName)}) {
- * 	Migrators.get().{@link #migrate(Path, String, CharSequence, MigrationProgressListener) migrate(pathToVault, masterkeyFileName, passphrase, migrationProgressListener)};
+ * 	Migrators.get().{@link #migrate(Path, String, CharSequence, MigrationProgressListener, MigrationContinuationListener) migrate(pathToVault, masterkeyFileName, passphrase, progressListener, continuationListener)};
  * }
  * </code>
  * </pre>
