@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.common;
 
+import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.io.MoreFiles;
 import com.google.common.io.RecursiveDeleteOption;
@@ -17,19 +18,18 @@ import java.nio.file.Path;
 public class FileSystemCapabilityChecker {
 
 	private static final Logger LOG = LoggerFactory.getLogger(FileSystemCapabilityChecker.class);
-	private static final int MAX_PATH_LEN_REQUIRED = Constants.MAX_CIPHERTEXT_PATH_LENGTH;
-	private static final int MIN_PATH_LEN_REQUIRED = 64;
-	private static final String TMP_FS_CHECK_DIR = "temporary-filesystem-capability-check-dir"; // must have 41 chars!
 
 	public enum Capability {
 		/**
 		 * File system allows read access
+		 *
 		 * @since 1.9.3
 		 */
 		READ_ACCESS,
 
 		/**
 		 * File system allows write access
+		 *
 		 * @since 1.9.3
 		 */
 		WRITE_ACCESS,
@@ -50,6 +50,7 @@ public class FileSystemCapabilityChecker {
 
 	/**
 	 * Checks whether the underlying filesystem allows reading the given dir.
+	 *
 	 * @param pathToVault Path to a vault's storage location
 	 * @throws MissingCapabilityException if the check fails
 	 * @since 1.9.3
@@ -64,6 +65,7 @@ public class FileSystemCapabilityChecker {
 
 	/**
 	 * Checks whether the underlying filesystem allows writing to the given dir.
+	 *
 	 * @param pathToVault Path to a vault's storage location
 	 * @throws MissingCapabilityException if the check fails
 	 * @since 1.9.3
@@ -80,35 +82,68 @@ public class FileSystemCapabilityChecker {
 			deleteRecursivelySilently(checkDir);
 		}
 	}
-	
-	public int determineSupportedPathLength(Path pathToVault) {
-		if (canHandlePathLength(pathToVault, MAX_PATH_LEN_REQUIRED)) {
-			return MAX_PATH_LEN_REQUIRED;
-		} else {
-			return determineSupportedPathLength(pathToVault, MIN_PATH_LEN_REQUIRED, MAX_PATH_LEN_REQUIRED);
+
+	/**
+	 * Determinse the number of chars a ciphertext filename (including its extension) is allowed to have inside a vault's <code>d/XX/YYYYYYYYYYYYYYYYYYYYYYYYYYYYYY/</code> directory.
+	 * 
+	 * @param pathToVault Path to the vault
+	 * @return Number of chars a .c9r file is allowed to have
+	 * @throws IOException If unable to perform this check
+	 */
+	public int determineSupportedFileNameLength(Path pathToVault) throws IOException {
+		int subPathLength = Constants.MAX_ADDITIONAL_PATH_LENGTH - 2; // subtract "c/"
+		return determineSupportedFileNameLength(pathToVault.resolve("c"), subPathLength, Constants.MIN_CIPHERTEXT_NAME_LENGTH, Constants.MAX_CIPHERTEXT_NAME_LENGTH);
+	}
+
+	/**
+	 * Determines the number of chars a filename is allowed to have inside of subdirectories of <code>dir</code> by running an experiment.
+	 *
+	 * @param dir               Path to a directory where to conduct the experiment (e.g. <code>/path/to/vault/c</code>)
+	 * @param subPathLength     Defines the combined number of chars of the subdirectories inside <code>dir</code>, including slashes but excluding the leading slash. Must be a minimum of 6
+	 * @param minFileNameLength The minimum filename length to check
+	 * @param maxFileNameLength The maximum filename length to check
+	 * @return The supported filename length inside a subdirectory of <code>dir</code> with <code>subPathLength</code> chars
+	 * @throws IOException If unable to perform this check
+	 */
+	public int determineSupportedFileNameLength(Path dir, int subPathLength, int minFileNameLength, int maxFileNameLength) throws IOException {
+		Preconditions.checkArgument(subPathLength >= 6, "subPathLength must be larger than charcount(a/nnn/)");
+		Preconditions.checkArgument(minFileNameLength > 0);
+		Preconditions.checkArgument(maxFileNameLength <= 999);
+
+		String fillerName = Strings.repeat("a", subPathLength - 5);
+		assert fillerName.length() > 0;
+		Path fillerDir = dir.resolve(fillerName);
+		try {
+			// make sure we can create _and_ see directories inside of checkDir:
+			Files.createDirectories(fillerDir.resolve("nnn"));
+			if (!canListDir(fillerDir)) {
+				throw new IOException("Unable to read dir");
+			}
+			// perform actual check:
+			return determineSupportedFileNameLength(fillerDir, minFileNameLength, maxFileNameLength + 1);
+		} finally {
+			deleteRecursivelySilently(fillerDir);
 		}
 	}
-	
-	private int determineSupportedPathLength(Path pathToVault, int lowerBound, int upperBound) {
-		assert lowerBound <= upperBound;
-		int mid = (lowerBound + upperBound) / 2;
-		if (mid == lowerBound) {
+
+	private int determineSupportedFileNameLength(Path p, int lowerBoundIncl, int upperBoundExcl) {
+		assert lowerBoundIncl < upperBoundExcl;
+		int mid = (lowerBoundIncl + upperBoundExcl) / 2;
+		assert mid < upperBoundExcl;
+		if (mid == lowerBoundIncl) {
 			return mid; // bounds will not shrink any further at this point
 		}
-		if (canHandlePathLength(pathToVault, mid)) {
-			return determineSupportedPathLength(pathToVault, mid, upperBound);
+		assert lowerBoundIncl < mid;
+		if (canHandleFileNameLength(p, mid)) {
+			return determineSupportedFileNameLength(p, mid, upperBoundExcl);
 		} else {
-			return determineSupportedPathLength(pathToVault, lowerBound, mid);
+			return determineSupportedFileNameLength(p, lowerBoundIncl, mid);
 		}
 	}
-	
-	private boolean canHandlePathLength(Path pathToVault, int pathLength) {
-		assert pathLength > 48;
-		String checkDirStr = "c/" + TMP_FS_CHECK_DIR + String.format("/%03d/", pathLength);
-		assert checkDirStr.length() == 48; // 268 - 220
-		int filenameLength = pathLength - checkDirStr.length();
-		Path checkDir = pathToVault.resolve(checkDirStr);
-		Path checkFile = checkDir.resolve(Strings.repeat("a", filenameLength));
+
+	private boolean canHandleFileNameLength(Path parent, int nameLength) {
+		Path checkDir = parent.resolve(String.format("%03d", nameLength));
+		Path checkFile = checkDir.resolve(Strings.repeat("a", nameLength));
 		try {
 			Files.createDirectories(checkDir);
 			try {
@@ -116,18 +151,24 @@ public class FileSystemCapabilityChecker {
 			} catch (FileAlreadyExistsException e) {
 				// ok
 			}
-			try (DirectoryStream<Path> ds = Files.newDirectoryStream(checkDir)) {
-				ds.iterator().hasNext(); // will fail with DirectoryIteratorException on Windows if path of children too long
-				return true;
-			}
-		} catch (DirectoryIteratorException | IOException e) {
+			return canListDir(checkDir); // will fail on Windows, if checkFile's name is too long
+		} catch (IOException e) {
 			return false;
 		} finally {
 			deleteSilently(checkFile); // despite not being able to dirlist, we might still be able to delete this
 			deleteRecursivelySilently(checkDir); // only works if dirlist works, therefore after deleting checkFile
 		}
 	}
-	
+
+	private boolean canListDir(Path dir) {
+		try (DirectoryStream<Path> ds = Files.newDirectoryStream(dir)) {
+			ds.iterator().hasNext(); // throws DirectoryIteratorException on Windows if child path too long
+			return true;
+		} catch (DirectoryIteratorException | IOException e) {
+			return false;
+		}
+	}
+
 	private void deleteSilently(Path path) {
 		try {
 			Files.delete(path);

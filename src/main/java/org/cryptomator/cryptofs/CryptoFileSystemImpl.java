@@ -640,9 +640,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 	
 	void assertCiphertextPathLengthMeetsLimitations(Path cdrFilePath) throws FileNameTooLongException {
-		String vaultRelativePath = pathToVault.relativize(cdrFilePath).toString();
-		if (vaultRelativePath.length() > fileSystemProperties.maxPathLength()) {
-			throw new FileNameTooLongException(vaultRelativePath, fileSystemProperties.maxPathLength());
+		Path vaultRelativePath = pathToVault.relativize(cdrFilePath);
+		String fileName = vaultRelativePath.getName(3).toString(); // fourth path element (d/xx/yyyyy/file.c9r/symlink.c9r)
+		String path = vaultRelativePath.toString();
+		if (fileName.length() > fileSystemProperties.maxNameLength() || path.length() > fileSystemProperties.maxPathLength()) {
+			throw new FileNameTooLongException(path, fileSystemProperties.maxPathLength(), fileSystemProperties.maxNameLength());
 		}
 	}
 

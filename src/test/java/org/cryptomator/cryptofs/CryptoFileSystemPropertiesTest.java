@@ -15,10 +15,12 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.DEFAULT_MASTERKEY_FILENAME;
+import static org.cryptomator.cryptofs.CryptoFileSystemProperties.DEFAULT_MAX_NAME_LENGTH;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.DEFAULT_MAX_PATH_LENGTH;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.DEFAULT_PEPPER;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_FILESYSTEM_FLAGS;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_MASTERKEY_FILENAME;
+import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_MAX_NAME_LENGTH;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_MAX_PATH_LENGTH;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_PASSPHRASE;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_PEPPER;
@@ -56,6 +58,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
+						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.INIT_IMPLICITLY, FileSystemFlags.MIGRATE_IMPLICITLY))));
 	}
 
@@ -79,6 +82,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
+						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
 
@@ -104,6 +108,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
+						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
 
@@ -117,7 +122,8 @@ public class CryptoFileSystemPropertiesTest {
 		map.put(PROPERTY_PASSPHRASE, passphrase);
 		map.put(PROPERTY_PEPPER, pepper);
 		map.put(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename);
-		map.put(PROPERTY_MAX_PATH_LENGTH, 255);
+		map.put(PROPERTY_MAX_PATH_LENGTH, 1000);
+		map.put(PROPERTY_MAX_NAME_LENGTH, 255);
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY));
 		CryptoFileSystemProperties inTest = cryptoFileSystemPropertiesFrom(map).build();
 
@@ -125,12 +131,15 @@ public class CryptoFileSystemPropertiesTest {
 		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
 		MatcherAssert.assertThat(inTest.readonly(), is(true));
 		MatcherAssert.assertThat(inTest.initializeImplicitly(), is(false));
+		MatcherAssert.assertThat(inTest.maxPathLength(), is(1000));
+		MatcherAssert.assertThat(inTest.maxNameLength(), is(255));
 		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, pepper), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, 255), //
+						anEntry(PROPERTY_MAX_PATH_LENGTH, 1000), //
+						anEntry(PROPERTY_MAX_NAME_LENGTH, 255), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
 
@@ -157,6 +166,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_PEPPER, pepper), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
+						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
 
@@ -183,6 +193,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_PEPPER, pepper), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
+						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class))));
 	}
 
@@ -243,6 +254,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_PEPPER, pepper), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
+						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.INIT_IMPLICITLY, FileSystemFlags.MIGRATE_IMPLICITLY))));
 	}
 
