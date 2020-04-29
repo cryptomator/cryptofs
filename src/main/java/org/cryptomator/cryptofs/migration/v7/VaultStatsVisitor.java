@@ -1,6 +1,5 @@
 package org.cryptomator.cryptofs.migration.v7;
 
-import org.cryptomator.cryptofs.common.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,14 +11,16 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Optional;
 
 public class VaultStatsVisitor extends SimpleFileVisitor<Path> {
-	
+
 	private static final Logger LOG = LoggerFactory.getLogger(VaultStatsVisitor.class);
 
 	private final Path vaultRoot;
 	private final boolean determineMaxCiphertextPathLength;
 	private long fileCount = 0;
+	private long maxNameLength = 0;
 	private long maxPathLength = 0;
-	private Path longestNewFile = null;
+	private Path pathWithLongestName = null;
+	private Path longestPath = null;
 
 	public VaultStatsVisitor(Path vaultRoot, boolean determineMaxCiphertextPathLength) {
 		this.vaultRoot = vaultRoot;
@@ -30,17 +31,28 @@ public class VaultStatsVisitor extends SimpleFileVisitor<Path> {
 		return fileCount;
 	}
 
-
-	public Path getLongestNewFile() {
-		return longestNewFile;
+	public long getMaxCiphertextNameLength() {
+		if (determineMaxCiphertextPathLength) {
+			return maxNameLength;
+		} else {
+			return 220;
+		}
 	}
 
 	public long getMaxCiphertextPathLength() {
 		if (determineMaxCiphertextPathLength) {
 			return maxPathLength;
 		} else {
-			return Constants.MAX_CIPHERTEXT_PATH_LENGTH;
+			return 268;
 		}
+	}
+
+	public Path getPathWithLongestName() {
+		return pathWithLongestName;
+	}
+
+	public Path getLongestPath() {
+		return longestPath;
 	}
 
 	@Override
@@ -62,10 +74,16 @@ public class VaultStatsVisitor extends SimpleFileVisitor<Path> {
 		try {
 			Path newPath = filePathMigration.getTargetPath("");
 			Path relativeToVaultRoot = vaultRoot.relativize(newPath);
-			int len = relativeToVaultRoot.toString().length();
-			if (len > maxPathLength) {
-				maxPathLength = len;
-				longestNewFile = newPath;
+			int pathLen = relativeToVaultRoot.toString().length();
+			if (pathLen > maxPathLength) {
+				maxPathLength = pathLen;
+				longestPath = newPath;
+			}
+			String name = relativeToVaultRoot.getName(3).toString();
+			int nameLen = name.length();
+			if (nameLen > maxNameLength) {
+				maxNameLength = nameLen;
+				pathWithLongestName = newPath;
 			}
 		} catch (InvalidOldFilenameException e) {
 			LOG.warn("Encountered malformed filename.", e);

@@ -6,6 +6,7 @@ import org.cryptomator.cryptofs.attr.AttributeProvider;
 import org.cryptomator.cryptofs.attr.AttributeViewProvider;
 import org.cryptomator.cryptofs.attr.AttributeViewType;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FinallyUtil;
 import org.cryptomator.cryptofs.common.RunnableThrowingException;
 import org.cryptomator.cryptofs.dir.CiphertextDirectoryDeleter;
@@ -115,7 +116,9 @@ public class CryptoFileSystemImplTest {
 			Path other = invocation.getArgument(0);
 			return other;
 		});
-		when(fileSystemProperties.maxPathLength()).thenReturn(Integer.MAX_VALUE);
+		
+		when(fileSystemProperties.maxPathLength()).thenReturn(Constants.MAX_CIPHERTEXT_PATH_LENGTH);
+		when(fileSystemProperties.maxNameLength()).thenReturn(Constants.MAX_CIPHERTEXT_NAME_LENGTH);
 
 		inTest = new CryptoFileSystemImpl(provider, cryptoFileSystems, pathToVault, cryptor,
 				fileStore, stats, cryptoPathMapper, cryptoPathFactory,
@@ -352,7 +355,7 @@ public class CryptoFileSystemImplTest {
 	public class NewFileChannel {
 
 		private final CryptoPath cleartextPath = mock(CryptoPath.class, "cleartext");
-		private final CryptoPath ciphertextFilePath = mock(CryptoPath.class, "ciphertext");
+		private final CryptoPath ciphertextFilePath = mock(CryptoPath.class, "d/00/00/path.c9r");
 		private final CiphertextFilePath ciphertextPath = mock(CiphertextFilePath.class);
 		private final OpenCryptoFile openCryptoFile = mock(OpenCryptoFile.class);
 		private final FileChannel fileChannel = mock(FileChannel.class);
@@ -363,6 +366,7 @@ public class CryptoFileSystemImplTest {
 			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextPath);
 			when(ciphertextPath.getFilePath()).thenReturn(ciphertextFilePath);
 			when(openCryptoFiles.getOrCreate(ciphertextFilePath)).thenReturn(openCryptoFile);
+			when(ciphertextFilePath.getName(3)).thenReturn(mock(CryptoPath.class, "path.c9r"));
 			when(openCryptoFile.newFileChannel(any())).thenReturn(fileChannel);
 		}
 
@@ -498,6 +502,7 @@ public class CryptoFileSystemImplTest {
 		private final Path ciphertextSourceDirFile = mock(Path.class, "d/00/00/source.c9r/dir.c9r");
 		private final Path ciphertextSourceDir = mock(Path.class, "d/00/SOURCE/");
 		private final Path ciphertextDestinationFile = mock(Path.class, "d/00/00/dest.c9r");
+		private final Path ciphertextDestinationFileName = mock(Path.class, "dest.c9r");
 		private final Path ciphertextDestinationLongNameFile = mock(Path.class, "d/00/00/dest.c9r/name.c9s");
 		private final Path ciphertextDestinationDirFile = mock(Path.class, "d/00/00/dest.c9r/dir.c9r");
 		private final Path ciphertextDestinationDir = mock(Path.class, "d/00/DEST/");
@@ -523,6 +528,8 @@ public class CryptoFileSystemImplTest {
 			when(ciphertextDestinationDirFile.getFileSystem()).thenReturn(physicalFs);
 			when(ciphertextDestinationDir.getFileSystem()).thenReturn(physicalFs);
 			when(physicalFs.provider()).thenReturn(physicalFsProv);
+			when(ciphertextDestinationFile.getName(3)).thenReturn(ciphertextDestinationFileName);
+			when(ciphertextDestinationDirFile.getName(3)).thenReturn(ciphertextDestinationFileName);
 			when(cryptoPathMapper.getCiphertextFilePath(cleartextSource)).thenReturn(ciphertextSource);
 			when(cryptoPathMapper.getCiphertextFilePath(cleartextDestination)).thenReturn(ciphertextDestination);
 			when(cryptoPathMapper.getCiphertextDir(cleartextSource)).thenReturn(new CiphertextDirectory("foo", ciphertextSourceDir));
@@ -1003,6 +1010,7 @@ public class CryptoFileSystemImplTest {
 			when(ciphertextRawPath.getFileSystem()).thenReturn(fileSystem);
 			when(ciphertextDirFile.getFileSystem()).thenReturn(fileSystem);
 			when(ciphertextDirPath.getFileSystem()).thenReturn(fileSystem);
+			when(ciphertextDirFile.getName(3)).thenReturn(mock(Path.class, "path.c9r"));
 			when(provider.newFileChannel(ciphertextDirFile, EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))).thenReturn(channel);
 
 			inTest.createDirectory(path);
@@ -1034,6 +1042,7 @@ public class CryptoFileSystemImplTest {
 			when(ciphertextRawPath.getFileSystem()).thenReturn(fileSystem);
 			when(ciphertextDirFile.getFileSystem()).thenReturn(fileSystem);
 			when(ciphertextDirPath.getFileSystem()).thenReturn(fileSystem);
+			when(ciphertextDirFile.getName(3)).thenReturn(mock(Path.class, "path.c9r"));
 			when(provider.newFileChannel(ciphertextDirFile, EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))).thenReturn(channel);
 
 			// make createDirectory with an FileSystemException during Files.createDirectories(ciphertextDirPath)

@@ -44,13 +44,22 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	public static final String PROPERTY_PASSPHRASE = "passphrase";
 
 	/**
-	 * Key identifying the pepper used during key derivation.
+	 * Maximum ciphertext path length.
 	 *
 	 * @since 1.9.8
 	 */
 	public static final String PROPERTY_MAX_PATH_LENGTH = "maxPathLength";
 
 	static final int DEFAULT_MAX_PATH_LENGTH = Constants.MAX_CIPHERTEXT_PATH_LENGTH;
+
+	/**
+	 * Maximum filename length of .c9r files.
+	 *
+	 * @since 1.9.9
+	 */
+	public static final String PROPERTY_MAX_NAME_LENGTH = "maxNameLength";
+
+	static final int DEFAULT_MAX_NAME_LENGTH = Constants.MAX_CIPHERTEXT_NAME_LENGTH;
 
 	/**
 	 * Key identifying the pepper used during key derivation.
@@ -124,7 +133,8 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 				entry(PROPERTY_PEPPER, builder.pepper), //
 				entry(PROPERTY_FILESYSTEM_FLAGS, builder.flags), //
 				entry(PROPERTY_MASTERKEY_FILENAME, builder.masterkeyFilename), //
-				entry(PROPERTY_MAX_PATH_LENGTH, builder.maxPathLength) //
+				entry(PROPERTY_MAX_PATH_LENGTH, builder.maxPathLength), //
+				entry(PROPERTY_MAX_NAME_LENGTH, builder.maxNameLength) //
 		)));
 	}
 
@@ -159,6 +169,10 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	int maxPathLength() {
 		return (int) get(PROPERTY_MAX_PATH_LENGTH);
+	}
+	
+	int maxNameLength() {
+		return (int) get(PROPERTY_MAX_NAME_LENGTH);
 	}
 
 	@Override
@@ -245,6 +259,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		private final Set<FileSystemFlags> flags = EnumSet.copyOf(DEFAULT_FILESYSTEM_FLAGS);
 		private String masterkeyFilename = DEFAULT_MASTERKEY_FILENAME;
 		private int maxPathLength = DEFAULT_MAX_PATH_LENGTH;
+		private int maxNameLength = DEFAULT_MAX_NAME_LENGTH;
 
 		private Builder() {
 		}
@@ -255,6 +270,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 			checkedSet(String.class, PROPERTY_MASTERKEY_FILENAME, properties, this::withMasterkeyFilename);
 			checkedSet(Set.class, PROPERTY_FILESYSTEM_FLAGS, properties, this::withFlags);
 			checkedSet(Integer.class, PROPERTY_MAX_PATH_LENGTH, properties, this::withMaxPathLength);
+			checkedSet(Integer.class, PROPERTY_MAX_NAME_LENGTH, properties, this::withMaxNameLength);
 		}
 
 		private <T> void checkedSet(Class<T> type, String key, Map<String, ?> properties, Consumer<T> setter) {
@@ -288,6 +304,18 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		 */
 		public Builder withMaxPathLength(int maxPathLength) {
 			this.maxPathLength = maxPathLength;
+			return this;
+		}
+
+		/**
+		 * Sets the maximum ciphertext filename length for a CryptoFileSystem.
+		 *
+		 * @param maxNameLength The maximum ciphertext filename length allowed
+		 * @return this
+		 * @since 1.9.9
+		 */
+		public Builder withMaxNameLength(int maxNameLength) {
+			this.maxNameLength = maxNameLength;
 			return this;
 		}
 
