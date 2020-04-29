@@ -83,6 +83,13 @@ public class FileSystemCapabilityChecker {
 		}
 	}
 
+	/**
+	 * Determinse the number of chars a ciphertext filename (including its extension) is allowed to have inside a vault's <code>d/XX/YYYYYYYYYYYYYYYYYYYYYYYYYYYYYY/</code> directory.
+	 * 
+	 * @param pathToVault Path to the vault
+	 * @return Number of chars a .c9r file is allowed to have
+	 * @throws IOException If unable to perform this check
+	 */
 	public int determineSupportedFileNameLength(Path pathToVault) throws IOException {
 		int subPathLength = Constants.MAX_ADDITIONAL_PATH_LENGTH - 2; // subtract "c/"
 		return determineSupportedFileNameLength(pathToVault.resolve("c"), subPathLength, Constants.MIN_CIPHERTEXT_NAME_LENGTH, Constants.MAX_CIPHERTEXT_NAME_LENGTH);
