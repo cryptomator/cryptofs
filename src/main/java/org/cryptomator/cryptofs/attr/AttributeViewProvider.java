@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import javax.inject.Provider;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.attribute.FileAttributeView;
@@ -24,11 +25,11 @@ public class AttributeViewProvider {
 
 	private static final Logger LOG = LoggerFactory.getLogger(AttributeViewProvider.class);
 
-	private final AttributeViewComponent.Builder attrViewComponentBuilder;
+	private final Provider<AttributeViewComponent.Builder> attrViewComponentBuilderProvider;
 
 	@Inject
-	AttributeViewProvider(AttributeViewComponent.Builder attrViewComponentBuilder) {
-		this.attrViewComponentBuilder = attrViewComponentBuilder;
+	AttributeViewProvider(Provider<AttributeViewComponent.Builder> attrViewComponentBuilderProvider) {
+		this.attrViewComponentBuilderProvider = attrViewComponentBuilderProvider;
 	}
 
 	/**
@@ -38,7 +39,8 @@ public class AttributeViewProvider {
 	 * @see Files#getFileAttributeView(java.nio.file.Path, Class, java.nio.file.LinkOption...)
 	 */
 	public <A extends FileAttributeView> A getAttributeView(CryptoPath cleartextPath, Class<A> type, LinkOption... options) {
-		Optional<FileAttributeView> view = attrViewComponentBuilder //
+		AttributeViewComponent.Builder builder = attrViewComponentBuilderProvider.get();
+		Optional<FileAttributeView> view = builder //
 				.cleartextPath(cleartextPath) //
 				.viewType(type) //
 				.linkOptions(options) //

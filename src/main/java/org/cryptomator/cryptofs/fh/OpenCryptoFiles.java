@@ -8,13 +8,11 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.fh;
 
-import org.cryptomator.cryptofs.CryptoFileSystemComponent;
 import org.cryptomator.cryptofs.CryptoFileSystemScoped;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
-import org.cryptomator.cryptofs.fh.OpenCryptoFile;
-import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
 
 import javax.inject.Inject;
+import javax.inject.Provider;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
@@ -32,12 +30,12 @@ import java.util.concurrent.ConcurrentMap;
 @CryptoFileSystemScoped
 public class OpenCryptoFiles implements Closeable {
 
-	private final OpenCryptoFileComponent.Builder openCryptoFileComponentBuilder;
+	private final Provider<OpenCryptoFileComponent.Builder> openCryptoFileComponentBuilderProvider;
 	private final ConcurrentMap<Path, OpenCryptoFile> openCryptoFiles = new ConcurrentHashMap<>();
 
 	@Inject
-	OpenCryptoFiles(OpenCryptoFileComponent.Builder openCryptoFileComponentBuilder) {
-		this.openCryptoFileComponentBuilder = openCryptoFileComponentBuilder;
+	OpenCryptoFiles(Provider<OpenCryptoFileComponent.Builder> openCryptoFileComponentBuilderProvider) {
+		this.openCryptoFileComponentBuilderProvider = openCryptoFileComponentBuilderProvider;
 	}
 
 	/**
@@ -67,9 +65,10 @@ public class OpenCryptoFiles implements Closeable {
 	}
 
 	private OpenCryptoFile create(Path normalizedPath) {
-		OpenCryptoFileComponent openCryptoFileComponent = openCryptoFileComponentBuilder
-				.path(normalizedPath)
-				.onClose(openCryptoFiles::remove)
+		OpenCryptoFileComponent.Builder builder = openCryptoFileComponentBuilderProvider.get();
+		OpenCryptoFileComponent openCryptoFileComponent = builder //
+				.path(normalizedPath) //
+				.onClose(openCryptoFiles::remove) //
 				.build();
 		return openCryptoFileComponent.openCryptoFile();
 	}

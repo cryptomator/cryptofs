@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.cryptomator</groupId>
 	<artifactId>cryptofs</artifactId>
-	<version>1.9.9</version>
+	<version>1.9.10</version>
 	<name>Cryptomator Crypto Filesystem</name>
 	<description>This library provides the Java filesystem provider used by Cryptomator.</description>
 	<url>https://github.com/cryptomator/cryptofs</url>
@@ -14,7 +14,7 @@
 	</scm>
 
 	<properties>
-		<cryptolib.version>1.3.1</cryptolib.version>
+		<cryptolib.version>1.3.2</cryptolib.version>
 		<dagger.version>2.27</dagger.version>
 		<guava.version>29.0-jre</guava.version>
 		<slf4j.version>1.7.30</slf4j.version>
