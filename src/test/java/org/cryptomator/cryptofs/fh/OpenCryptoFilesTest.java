@@ -1,16 +1,13 @@
 package org.cryptomator.cryptofs.fh;
 
-import org.cryptomator.cryptofs.CryptoFileSystemComponent;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
-import org.cryptomator.cryptofs.fh.OpenCryptoFile;
-import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
-import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
+import javax.inject.Provider;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
@@ -25,6 +22,7 @@ import static org.mockito.Mockito.mock;
 
 public class OpenCryptoFilesTest {
 
+	private final Provider<OpenCryptoFileComponent.Builder> openCryptoFileComponentBuilderProvider = mock(Provider.class);
 	private final OpenCryptoFileComponent.Builder openCryptoFileComponentBuilder = mock(OpenCryptoFileComponent.Builder.class);
 	private final OpenCryptoFile file = mock(OpenCryptoFile.class, "file");
 	private final FileChannel ciphertextFileChannel = Mockito.mock(FileChannel.class);
@@ -36,6 +34,7 @@ public class OpenCryptoFilesTest {
 		OpenCryptoFileComponent subComponent = mock(OpenCryptoFileComponent.class);
 		Mockito.when(subComponent.openCryptoFile()).thenReturn(file);
 
+		Mockito.when(openCryptoFileComponentBuilderProvider.get()).thenReturn(openCryptoFileComponentBuilder);
 		Mockito.when(openCryptoFileComponentBuilder.path(Mockito.any())).thenReturn(openCryptoFileComponentBuilder);
 		Mockito.when(openCryptoFileComponentBuilder.onClose(Mockito.any())).thenReturn(openCryptoFileComponentBuilder);
 		Mockito.when(openCryptoFileComponentBuilder.build()).thenReturn(subComponent);
@@ -45,7 +44,7 @@ public class OpenCryptoFilesTest {
 		closeLockField.setAccessible(true);
 		closeLockField.set(ciphertextFileChannel, new Object());
 
-		inTest = new OpenCryptoFiles(openCryptoFileComponentBuilder);
+		inTest = new OpenCryptoFiles(openCryptoFileComponentBuilderProvider);
 	}
 
 	@Test

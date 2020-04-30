@@ -16,6 +16,7 @@ import org.cryptomator.cryptofs.common.ArrayUtils;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
 
 import javax.inject.Inject;
+import javax.inject.Provider;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -26,13 +27,13 @@ import java.util.Optional;
 @CryptoFileSystemScoped
 public class AttributeProvider {
 
-	private final AttributeComponent.Builder attributeComponentBuilder;
+	private final Provider<AttributeComponent.Builder> attributeComponentBuilderProvider;
 	private final CryptoPathMapper pathMapper;
 	private final Symlinks symlinks;
 
 	@Inject
-	AttributeProvider(AttributeComponent.Builder attributeComponentBuilder, CryptoPathMapper pathMapper, Symlinks symlinks) {
-		this.attributeComponentBuilder = attributeComponentBuilder;
+	AttributeProvider(Provider<AttributeComponent.Builder> attributeComponentBuilderProvider, CryptoPathMapper pathMapper, Symlinks symlinks) {
+		this.attributeComponentBuilderProvider = attributeComponentBuilderProvider;
 		this.pathMapper = pathMapper;
 		this.symlinks = symlinks;
 	}
@@ -45,7 +46,8 @@ public class AttributeProvider {
 		}
 		Path ciphertextPath = getCiphertextPath(cleartextPath, ciphertextFileType);
 		A ciphertextAttrs = Files.readAttributes(ciphertextPath, type);
-		Optional<BasicFileAttributes> cleartextAttrs = attributeComponentBuilder  //
+		AttributeComponent.Builder builder = attributeComponentBuilderProvider.get();
+		Optional<BasicFileAttributes> cleartextAttrs = builder  //
 				.type(type) //
 				.ciphertextFileType(ciphertextFileType) //
 				.ciphertextPath(ciphertextPath) //

@@ -24,7 +24,7 @@ class CryptoFileSystems {
 	private static final Logger LOG = LoggerFactory.getLogger(CryptoFileSystems.class);
 
 	private final ConcurrentMap<Path, CryptoFileSystemImpl> fileSystems = new ConcurrentHashMap<>();
-	private final CryptoFileSystemComponent.Builder cryptoFileSystemComponentBuilder;
+	private final CryptoFileSystemComponent.Builder cryptoFileSystemComponentBuilder; // sharing reusable builder via synchronized
 	private final FileSystemCapabilityChecker capabilityChecker;
 
 	@Inject
@@ -33,7 +33,7 @@ class CryptoFileSystems {
 		this.capabilityChecker = capabilityChecker;
 	}
 
-	public CryptoFileSystemImpl create(CryptoFileSystemProvider provider, Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
+	public synchronized CryptoFileSystemImpl create(CryptoFileSystemProvider provider, Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
 		try {
 			Path normalizedPathToVault = pathToVault.normalize();
 			CryptoFileSystemProperties adjustedProperites = adjustForCapabilities(normalizedPathToVault, properties);

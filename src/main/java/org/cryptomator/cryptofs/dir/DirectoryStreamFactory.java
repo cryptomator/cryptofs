@@ -20,7 +20,7 @@ import java.util.Map;
 public class DirectoryStreamFactory {
 
 	private final CryptoPathMapper cryptoPathMapper;
-	private final DirectoryStreamComponent.Builder directoryStreamComponentBuilder;
+	private final DirectoryStreamComponent.Builder directoryStreamComponentBuilder; // sharing reusable builder via synchronized
 	private final Map<CryptoDirectoryStream, DirectoryStream> streams = new HashMap<>();
 
 	private volatile boolean closed = false;

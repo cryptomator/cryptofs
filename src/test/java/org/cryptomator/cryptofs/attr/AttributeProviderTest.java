@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+import javax.inject.Provider;
 import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.LinkOption;
@@ -32,6 +33,7 @@ import java.util.Optional;
 
 public class AttributeProviderTest {
 
+	private Provider<AttributeComponent.Builder> attributeComponentBuilderProvider;
 	private AttributeComponent.Builder attributeComponentBuilder;
 	private AttributeComponent attributeComponent;
 	private CryptoPathMapper pathMapper;
@@ -45,8 +47,10 @@ public class AttributeProviderTest {
 
 	@BeforeEach
 	public void setup() throws IOException {
+		attributeComponentBuilderProvider = Mockito.mock(Provider.class);
 		attributeComponentBuilder = Mockito.mock(AttributeComponent.Builder.class);
 		attributeComponent = Mockito.mock(AttributeComponent.class);
+		Mockito.when(attributeComponentBuilderProvider.get()).thenReturn(attributeComponentBuilder);
 		Mockito.when(attributeComponentBuilder.ciphertextFileType(Mockito.any())).thenReturn(attributeComponentBuilder);
 		Mockito.when(attributeComponentBuilder.ciphertextPath(Mockito.any())).thenReturn(attributeComponentBuilder);
 		Mockito.when(attributeComponentBuilder.ciphertextAttributes(Mockito.any())).thenReturn(attributeComponentBuilder);
@@ -89,7 +93,7 @@ public class AttributeProviderTest {
 			Mockito.when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
 			Mockito.when(pathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextPath);
 
-			prov = new AttributeProvider(attributeComponentBuilder, pathMapper, symlinks);
+			prov = new AttributeProvider(attributeComponentBuilderProvider, pathMapper, symlinks);
 		}
 
 		@Test
@@ -156,7 +160,7 @@ public class AttributeProviderTest {
 			Mockito.when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.DIRECTORY);
 			Mockito.when(pathMapper.getCiphertextDir(cleartextPath)).thenReturn(new CiphertextDirectory("foo", ciphertextRawPath));
 
-			prov = new AttributeProvider(attributeComponentBuilder, pathMapper, symlinks);
+			prov = new AttributeProvider(attributeComponentBuilderProvider, pathMapper, symlinks);
 		}
 
 		@Test
@@ -183,7 +187,7 @@ public class AttributeProviderTest {
 		public void setup() throws IOException {
 			Mockito.when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.SYMLINK);
 
-			prov = new AttributeProvider(attributeComponentBuilder, pathMapper, symlinks);
+			prov = new AttributeProvider(attributeComponentBuilderProvider, pathMapper, symlinks);
 		}
 
 		@Test
