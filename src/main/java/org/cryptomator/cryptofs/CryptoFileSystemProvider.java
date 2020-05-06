@@ -138,7 +138,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	/**
 	 * Creates a new vault at the given directory path.
 	 *
-	 * @param pathToVault Path to a not yet existing directory
+	 * @param pathToVault Path to an existing directory
 	 * @param masterkeyFilename Name of the masterkey file
 	 * @param passphrase Passphrase that should be used to unlock the vault
 	 * @throws NotDirectoryException If the given path is not an existing directory.
