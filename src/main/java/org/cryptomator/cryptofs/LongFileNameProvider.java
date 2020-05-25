@@ -88,17 +88,19 @@ public class LongFileNameProvider {
 		String shortName = BASE64.encode(hash) + DEFLATED_FILE_SUFFIX;
 		Path c9sPath = c9rPath.resolveSibling(shortName);
 		longNames.put(c9sPath, longFileName);
-		return new DeflatedFileName(c9sPath, longFileName);
+		return new DeflatedFileName(c9sPath, longFileName, readonlyFlag);
 	}
 
-	public class DeflatedFileName {
+	public static class DeflatedFileName {
 
 		public final Path c9sPath;
 		public final String longName;
+		private final ReadonlyFlag readonlyFlag;
 
-		private DeflatedFileName(Path c9sPath, String longName) {
+		DeflatedFileName(Path c9sPath, String longName, ReadonlyFlag readonlyFlag) {
 			this.c9sPath = c9sPath;
 			this.longName = longName;
+			this.readonlyFlag = readonlyFlag;
 		}
 
 		public void persist() {
