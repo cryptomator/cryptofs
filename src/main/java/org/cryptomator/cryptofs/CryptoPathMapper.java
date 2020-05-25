@@ -93,18 +93,20 @@ public class CryptoPathMapper {
 		} else {
 			CiphertextFilePath ciphertextPath = getCiphertextFilePath(cleartextPath);
 			BasicFileAttributes attr = Files.readAttributes(ciphertextPath.getRawPath(), BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-			if (attr.isRegularFile()) {
-				return CiphertextFileType.FILE;
-			} else if (attr.isDirectory()) {
+			if (attr.isDirectory()) {
 				if (Files.exists(ciphertextPath.getDirFilePath(), LinkOption.NOFOLLOW_LINKS)) {
 					return CiphertextFileType.DIRECTORY;
 				} else if (Files.exists(ciphertextPath.getSymlinkFilePath(), LinkOption.NOFOLLOW_LINKS)) {
 					return CiphertextFileType.SYMLINK;
 				} else if (Files.exists(ciphertextPath.getFilePath(), LinkOption.NOFOLLOW_LINKS)) {
 					return CiphertextFileType.FILE;
+				} else {
+					throw new NoSuchFileException(cleartextPath.toString(), null, "Could not determine type of file " + ciphertextPath.getRawPath());
 				}
+			} else {
+				// assume "file" if not a directory (even if it isn't a "regular" file, see issue #81):
+				return CiphertextFileType.FILE;
 			}
-			throw new NoSuchFileException(cleartextPath.toString(), null, "Could not determine type of file " + ciphertextPath.getRawPath());
 		}
 	}
 
