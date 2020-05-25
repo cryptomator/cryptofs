@@ -308,7 +308,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		// atomically check for FileAlreadyExists and create otherwise:
 		Files.createDirectory(ciphertextPath.getRawPath());
 		try (FileChannel channel = FileChannel.open(ciphertextDirFile, EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), attrs)) {
-			channel.write(ByteBuffer.wrap(ciphertextDir.dirId.getBytes(UTF_8)));
+			channel.write(UTF_8.encode(ciphertextDir.dirId));
 		}
 		// create dir if and only if the dirFile has been created right now (not if it has been created before):
 		try {
