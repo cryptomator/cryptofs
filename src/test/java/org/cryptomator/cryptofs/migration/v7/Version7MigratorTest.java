@@ -70,6 +70,21 @@ public class Version7MigratorTest {
 	}
 
 	@Test
+	public void testMigrationFailsIfEncounteringUnsyncediCloudContent() throws IOException {
+		Path dir = dataDir.resolve("AA/BBBBBCCCCCDDDDDEEEEEFFFFFGGGGG");
+		Files.createDirectories(dir);
+		Path fileBeforeMigration = dir.resolve("MZUWYZLOMFWWK===.icloud");
+		Files.createFile(fileBeforeMigration);
+
+		Migrator migrator = new Version7Migrator(cryptorProvider);
+		
+		IOException e = Assertions.assertThrows(PreMigrationVisitor.PreMigrationChecksFailedException.class, () -> {
+			migrator.migrate(vaultRoot, "masterkey.cryptomator", "test");
+		});
+		Assertions.assertTrue(e.getMessage().contains("MZUWYZLOMFWWK===.icloud"));
+	}
+
+	@Test
 	public void testMigrationOfNormalFile() throws IOException {
 		Path dir = dataDir.resolve("AA/BBBBBCCCCCDDDDDEEEEEFFFFFGGGGG");
 		Files.createDirectories(dir);

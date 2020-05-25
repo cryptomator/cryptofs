@@ -9,10 +9,14 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
-public class VaultStatsVisitor extends SimpleFileVisitor<Path> {
+public class PreMigrationVisitor extends SimpleFileVisitor<Path> {
 
-	private static final Logger LOG = LoggerFactory.getLogger(VaultStatsVisitor.class);
+	private static final Logger LOG = LoggerFactory.getLogger(PreMigrationVisitor.class);
+	private static final Pattern[] BLACKLISTED_NAMES = new Pattern[]{
+			Pattern.compile(".*\\.icloud$") // unsynced icloud content. user needs to download vault first.
+	};
 
 	private final Path vaultRoot;
 	private final boolean determineMaxCiphertextPathLength;
@@ -22,7 +26,7 @@ public class VaultStatsVisitor extends SimpleFileVisitor<Path> {
 	private Path pathWithLongestName = null;
 	private Path longestPath = null;
 
-	public VaultStatsVisitor(Path vaultRoot, boolean determineMaxCiphertextPathLength) {
+	public PreMigrationVisitor(Path vaultRoot, boolean determineMaxCiphertextPathLength) {
 		this.vaultRoot = vaultRoot;
 		this.determineMaxCiphertextPathLength = determineMaxCiphertextPathLength;
 	}
@@ -57,6 +61,7 @@ public class VaultStatsVisitor extends SimpleFileVisitor<Path> {
 
 	@Override
 	public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+		assertNotBlacklisted(file.getFileName().toString());
 		fileCount++;
 		if (determineMaxCiphertextPathLength) {
 			try {
@@ -88,6 +93,22 @@ public class VaultStatsVisitor extends SimpleFileVisitor<Path> {
 		} catch (InvalidOldFilenameException e) {
 			LOG.warn("Encountered malformed filename.", e);
 		}
+	}
+
+	private void assertNotBlacklisted(String filename) throws PreMigrationChecksFailedException {
+		for (Pattern p : BLACKLISTED_NAMES) {
+			if (p.matcher(filename).matches()) {
+				throw new PreMigrationChecksFailedException(filename);
+			}
+		}
+	}
+
+	public static class PreMigrationChecksFailedException extends IOException {
+
+		PreMigrationChecksFailedException(String filename) {
+			super("Migration impossible due to file: " + filename);
+		}
+		
 	}
 
 }

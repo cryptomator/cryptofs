@@ -59,16 +59,16 @@ public class Version7Migrator implements Migrator {
 			// check file system capabilities:
 			int filenameLengthLimit = new FileSystemCapabilityChecker().determineSupportedFileNameLength(vaultRoot.resolve("c"), 46, 28, 220);
 			int pathLengthLimit = filenameLengthLimit + 48; // TODO
-			VaultStatsVisitor vaultStats;
+			PreMigrationVisitor preMigrationVisitor;
 			if (filenameLengthLimit >= 220) {
 				LOG.info("Underlying file system meets filename length requirements.");
-				vaultStats = new VaultStatsVisitor(vaultRoot, false);
+				preMigrationVisitor = new PreMigrationVisitor(vaultRoot, false);
 			} else {
 				LOG.warn("Underlying file system only supports names with up to {} chars (required: 220). Asking for user feedback...", filenameLengthLimit);
 				ContinuationResult result = continuationListener.continueMigrationOnEvent(ContinuationEvent.REQUIRES_FULL_VAULT_DIR_SCAN);
 				switch (result) {
 					case PROCEED:
-						vaultStats = new VaultStatsVisitor(vaultRoot, true);
+						preMigrationVisitor = new PreMigrationVisitor(vaultRoot, true);
 						break;
 					case CANCEL:
 						LOG.info("Migration canceled by user.");
@@ -80,22 +80,22 @@ public class Version7Migrator implements Migrator {
 
 			// dry-run to collect stats:
 			Path dataDir = vaultRoot.resolve("d");
-			Files.walkFileTree(dataDir, EnumSet.noneOf(FileVisitOption.class), 3, vaultStats);
+			Files.walkFileTree(dataDir, EnumSet.noneOf(FileVisitOption.class), 3, preMigrationVisitor);
 
 			// fail if ciphertext paths are too long:
-			if (vaultStats.getMaxCiphertextPathLength() > pathLengthLimit) {
-				LOG.error("Migration aborted due to unsupported path length (required {}) of underlying file system (supports {}). Vault is unchanged.", vaultStats.getMaxCiphertextPathLength(), pathLengthLimit);
-				throw new FileNameTooLongException(vaultStats.getLongestPath().toString(), pathLengthLimit, filenameLengthLimit);
+			if (preMigrationVisitor.getMaxCiphertextPathLength() > pathLengthLimit) {
+				LOG.error("Migration aborted due to unsupported path length (required {}) of underlying file system (supports {}). Vault is unchanged.", preMigrationVisitor.getMaxCiphertextPathLength(), pathLengthLimit);
+				throw new FileNameTooLongException(preMigrationVisitor.getLongestPath().toString(), pathLengthLimit, filenameLengthLimit);
 			}
 
 			// fail if ciphertext names are too long:
-			if (vaultStats.getMaxCiphertextNameLength() > filenameLengthLimit) {
-				LOG.error("Migration aborted due to unsupported filename length (required {}) of underlying file system (supports {}). Vault is unchanged.", vaultStats.getMaxCiphertextNameLength(), filenameLengthLimit);
-				throw new FileNameTooLongException(vaultStats.getPathWithLongestName().toString(), pathLengthLimit, filenameLengthLimit);
+			if (preMigrationVisitor.getMaxCiphertextNameLength() > filenameLengthLimit) {
+				LOG.error("Migration aborted due to unsupported filename length (required {}) of underlying file system (supports {}). Vault is unchanged.", preMigrationVisitor.getMaxCiphertextNameLength(), filenameLengthLimit);
+				throw new FileNameTooLongException(preMigrationVisitor.getPathWithLongestName().toString(), pathLengthLimit, filenameLengthLimit);
 			}
 
 			// start migration:
-			long toBeMigrated = vaultStats.getTotalFileCount();
+			long toBeMigrated = preMigrationVisitor.getTotalFileCount();
 			LOG.info("Starting migration of {} files", toBeMigrated);
 			if (toBeMigrated > 0) {
 				migrateFileNames(vaultRoot, progressListener, toBeMigrated);
