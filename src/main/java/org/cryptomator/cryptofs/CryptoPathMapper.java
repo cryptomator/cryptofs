@@ -17,6 +17,8 @@ import com.google.common.io.BaseEncoding;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptolib.api.Cryptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -37,6 +39,7 @@ import static org.cryptomator.cryptofs.common.Constants.DATA_DIR_NAME;
 @CryptoFileSystemScoped
 public class CryptoPathMapper {
 
+	private static final Logger LOG = LoggerFactory.getLogger(CryptoPathMapper.class);
 	private static final int MAX_CACHED_CIPHERTEXT_NAMES = 5000;
 	private static final int MAX_CACHED_DIR_PATHS = 5000;
 	private static final Duration MAX_CACHE_AGE = Duration.ofSeconds(20);
@@ -93,18 +96,21 @@ public class CryptoPathMapper {
 		} else {
 			CiphertextFilePath ciphertextPath = getCiphertextFilePath(cleartextPath);
 			BasicFileAttributes attr = Files.readAttributes(ciphertextPath.getRawPath(), BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-			if (attr.isRegularFile()) {
-				return CiphertextFileType.FILE;
-			} else if (attr.isDirectory()) {
+			if (attr.isDirectory()) {
 				if (Files.exists(ciphertextPath.getDirFilePath(), LinkOption.NOFOLLOW_LINKS)) {
 					return CiphertextFileType.DIRECTORY;
 				} else if (Files.exists(ciphertextPath.getSymlinkFilePath(), LinkOption.NOFOLLOW_LINKS)) {
 					return CiphertextFileType.SYMLINK;
-				} else if (Files.exists(ciphertextPath.getFilePath(), LinkOption.NOFOLLOW_LINKS)) {
+				} else if (ciphertextPath.isShortened() && Files.exists(ciphertextPath.getFilePath(), LinkOption.NOFOLLOW_LINKS)) {
 					return CiphertextFileType.FILE;
+				} else {
+					LOG.warn("Did not find valid content inside of {}", ciphertextPath.getRawPath());
+					throw new NoSuchFileException(cleartextPath.toString(), null, "Could not determine type of file " + ciphertextPath.getRawPath());
 				}
+			} else {
+				// assume "file" if not a directory (even if it isn't a "regular" file, see issue #81):
+				return CiphertextFileType.FILE;
 			}
-			throw new NoSuchFileException(cleartextPath.toString(), null, "Could not determine type of file " + ciphertextPath.getRawPath());
 		}
 	}
 

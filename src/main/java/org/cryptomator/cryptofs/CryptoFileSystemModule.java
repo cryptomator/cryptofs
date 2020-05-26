@@ -16,16 +16,22 @@ import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.KeyFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
 @Module(subcomponents = {AttributeComponent.class, AttributeViewComponent.class, OpenCryptoFileComponent.class, DirectoryStreamComponent.class})
 class CryptoFileSystemModule {
+
+	private static final Logger LOG = LoggerFactory.getLogger(CryptoFileSystemModule.class);
 
 	@Provides
 	@CryptoFileSystemScoped
@@ -40,6 +46,17 @@ class CryptoFileSystemModule {
 			return cryptor;
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
+		}
+	}
+
+	@Provides
+	@CryptoFileSystemScoped
+	public Optional<FileStore> provideNativeFileStore(@PathToVault Path pathToVault) {
+		try {
+			return Optional.of(Files.getFileStore(pathToVault));
+		} catch (IOException e) {
+			LOG.warn("Failed to get file store for " + pathToVault, e);
+			return Optional.empty();
 		}
 	}
 
