@@ -7,6 +7,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Stream;
 
 import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
@@ -119,6 +125,39 @@ public class ChunkDataTest {
 		target.limit(SIZE);
 		target.position(SIZE - offset);
 		MatcherAssert.assertThat(target, contains(repeat(0).times(offset).asByteBuffer()));
+	}
+
+	@Test // https://github.com/cryptomator/cryptofs/issues/85
+	public void testRaceConditionsDuringRead() throws InterruptedException {
+		ByteBuffer src = StandardCharsets.US_ASCII.encode("abcdefg");
+		ChunkData inTest = ChunkData.wrap(src);
+		int attempts = 4000;
+		int threads = 6;
+
+		CountDownLatch cdl = new CountDownLatch(attempts);
+		ExecutorService executor = Executors.newFixedThreadPool(threads);
+		LongAdder successfulTests = new LongAdder();
+
+		for (int i = 0; i < attempts; i++) {
+			int offset = i % 7;
+			char expected = "abcdefg".charAt(offset);
+			executor.execute(() -> {
+				try {
+					ByteBuffer dst = ByteBuffer.allocate(1);
+					inTest.copyDataStartingAt(offset).to(dst);
+					dst.flip();
+					char actual = StandardCharsets.US_ASCII.decode(dst).charAt(0);
+					if (expected == actual) {
+						successfulTests.increment();
+					}
+				} finally {
+					cdl.countDown();
+				}
+			});
+		}
+
+		cdl.await(10, TimeUnit.SECONDS);
+		Assertions.assertEquals(attempts, successfulTests.sum());
 	}
 
 	interface WayToCreateEmptyChunkData {
