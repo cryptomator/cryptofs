@@ -8,10 +8,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Stream;
 
@@ -156,7 +156,7 @@ public class ChunkDataTest {
 			});
 		}
 
-		cdl.await(10, TimeUnit.SECONDS);
+		Assertions.assertTimeoutPreemptively(Duration.ofSeconds(5), () -> cdl.await());
 		Assertions.assertEquals(attempts, successfulTests.sum());
 	}
 
