@@ -36,12 +36,12 @@ class CryptoFileSystems {
 	public synchronized CryptoFileSystemImpl create(CryptoFileSystemProvider provider, Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
 		try {
 			Path normalizedPathToVault = pathToVault.normalize();
-			CryptoFileSystemProperties adjustedProperites = adjustForCapabilities(normalizedPathToVault, properties);
+			CryptoFileSystemProperties adjustedProperties = adjustForCapabilities(normalizedPathToVault, properties);
 			return fileSystems.compute(normalizedPathToVault, (key, value) -> {
 				if (value == null) {
 					return cryptoFileSystemComponentBuilder //
 							.pathToVault(key) //
-							.properties(adjustedProperites) //
+							.properties(adjustedProperties) //
 							.provider(provider) //
 							.build() //
 							.cryptoFileSystem();
