@@ -25,6 +25,7 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.Arrays;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
@@ -42,7 +43,11 @@ class CryptoFileSystemModule {
 			byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
 			Path backupKeyPath = pathToVault.resolve(properties.masterkeyFilename() + MasterkeyBackupFileHasher.generateFileIdSuffix(keyFileContents) + Constants.MASTERKEY_BACKUP_SUFFIX);
 			Cryptor cryptor = cryptorProvider.createFromKeyFile(KeyFile.parse(keyFileContents), properties.passphrase(), properties.pepper(), Constants.VAULT_VERSION);
-			backupMasterkeyFileIfRequired(masterKeyPath, backupKeyPath, readonlyFlag);
+			try {
+				backupMasterkeyFileIfRequired(masterKeyPath, backupKeyPath, readonlyFlag);
+			} catch (IOException e) {
+				bitwiseCompareMasterkeyToExistingBackup(keyFileContents, backupKeyPath);
+			}
 			return cryptor;
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -57,6 +62,13 @@ class CryptoFileSystemModule {
 		} catch (IOException e) {
 			LOG.warn("Failed to get file store for " + pathToVault, e);
 			return Optional.empty();
+		}
+	}
+
+	private void bitwiseCompareMasterkeyToExistingBackup(byte [] keyFileContents, Path backupKeyPath) throws IOException {
+		byte[] backupContents = Files.readAllBytes(backupKeyPath);
+		if (!Arrays.equals(keyFileContents, backupContents)) {
+			throw new IllegalStateException("Backup masterkey file does not match working masterkey file, but cannot be replaced: Storage is read-only.");
 		}
 	}
 
