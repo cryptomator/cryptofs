@@ -10,7 +10,7 @@ import dagger.Provides;
 import org.cryptomator.cryptofs.attr.AttributeComponent;
 import org.cryptomator.cryptofs.attr.AttributeViewComponent;
 import org.cryptomator.cryptofs.common.Constants;
-import org.cryptomator.cryptofs.common.MasterkeyBackupFileHasher;
+import org.cryptomator.cryptofs.common.MasterkeyBackupHelper;
 import org.cryptomator.cryptofs.dir.DirectoryStreamComponent;
 import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -26,8 +26,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-
 @Module(subcomponents = {AttributeComponent.class, AttributeViewComponent.class, OpenCryptoFileComponent.class, DirectoryStreamComponent.class})
 class CryptoFileSystemModule {
 
@@ -40,9 +38,10 @@ class CryptoFileSystemModule {
 			Path masterKeyPath = pathToVault.resolve(properties.masterkeyFilename());
 			assert Files.exists(masterKeyPath); // since 1.3.0 a file system can only be created for existing vaults. initialization is done before.
 			byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
-			Path backupKeyPath = pathToVault.resolve(properties.masterkeyFilename() + MasterkeyBackupFileHasher.generateFileIdSuffix(keyFileContents) + Constants.MASTERKEY_BACKUP_SUFFIX);
 			Cryptor cryptor = cryptorProvider.createFromKeyFile(KeyFile.parse(keyFileContents), properties.passphrase(), properties.pepper(), Constants.VAULT_VERSION);
-			backupMasterkeyFileIfRequired(masterKeyPath, backupKeyPath, readonlyFlag);
+			if (!readonlyFlag.isSet()) {
+				MasterkeyBackupHelper.backupMasterKey(masterKeyPath);
+			}
 			return cryptor;
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
@@ -59,11 +58,4 @@ class CryptoFileSystemModule {
 			return Optional.empty();
 		}
 	}
-
-	private void backupMasterkeyFileIfRequired(Path masterKeyPath, Path backupKeyPath, ReadonlyFlag readonlyFlag) throws IOException {
-		if (!readonlyFlag.isSet()) {
-			Files.copy(masterKeyPath, backupKeyPath, REPLACE_EXISTING);
-		}
-	}
-
 }

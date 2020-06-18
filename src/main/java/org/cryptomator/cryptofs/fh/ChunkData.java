@@ -53,9 +53,10 @@ public class ChunkData {
 		return new CopyWithoutDirection() {
 			@Override
 			public void to(ByteBuffer target) {
-				bytes.limit(min(length, target.remaining() + offset));
-				bytes.position(offset);
-				target.put(bytes);
+				ByteBuffer buf = bytes.asReadOnlyBuffer();
+				buf.limit(min(length, target.remaining() + offset));
+				buf.position(offset);
+				target.put(buf);
 			}
 
 			@Override
@@ -65,11 +66,12 @@ public class ChunkData {
 
 			@Override
 			public void from(ByteSource source) {
+				ByteBuffer buf = bytes.duplicate();
+				buf.limit(buf.capacity());
+				buf.position(offset);
+				source.copyTo(buf);
 				dirty = true;
-				bytes.limit(bytes.capacity());
-				bytes.position(offset);
-				source.copyTo(bytes);
-				length = max(length, bytes.position());
+				length = max(length, buf.position());
 			}
 		};
 	}
