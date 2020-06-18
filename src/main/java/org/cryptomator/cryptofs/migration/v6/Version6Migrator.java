@@ -15,7 +15,7 @@ import java.text.Normalizer.Form;
 
 import javax.inject.Inject;
 
-import org.cryptomator.cryptofs.common.MasterkeyBackupFileHasher;
+import org.cryptomator.cryptofs.common.MasterkeyBackupHelper;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener;
 import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
@@ -48,8 +48,7 @@ public class Version6Migrator implements Migrator {
 		KeyFile keyFile = KeyFile.parse(fileContentsBeforeUpgrade);
 		try (Cryptor cryptor = cryptorProvider.createFromKeyFile(keyFile, passphrase, 5)) {
 			// create backup, as soon as we know the password was correct:
-			Path masterkeyBackupFile = vaultRoot.resolve(masterkeyFilename + MasterkeyBackupFileHasher.generateFileIdSuffix(fileContentsBeforeUpgrade) + Constants.MASTERKEY_BACKUP_SUFFIX);
-			Files.copy(masterkeyFile, masterkeyBackupFile, StandardCopyOption.REPLACE_EXISTING);
+			Path masterkeyBackupFile = MasterkeyBackupHelper.backupMasterKey(masterkeyFile);
 			LOG.info("Backed up masterkey from {} to {}.", masterkeyFile.getFileName(), masterkeyBackupFile.getFileName());
 
 			progressListener.update(MigrationProgressListener.ProgressState.FINALIZING, 0.0);

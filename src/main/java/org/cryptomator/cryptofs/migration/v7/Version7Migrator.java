@@ -9,7 +9,7 @@ import org.cryptomator.cryptofs.FileNameTooLongException;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.DeletingFileVisitor;
 import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
-import org.cryptomator.cryptofs.common.MasterkeyBackupFileHasher;
+import org.cryptomator.cryptofs.common.MasterkeyBackupHelper;
 import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener;
 import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener.ContinuationEvent;
 import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener.ContinuationResult;
@@ -52,8 +52,7 @@ public class Version7Migrator implements Migrator {
 		KeyFile keyFile = KeyFile.parse(fileContentsBeforeUpgrade);
 		try (Cryptor cryptor = cryptorProvider.createFromKeyFile(keyFile, passphrase, 6)) {
 			// create backup, as soon as we know the password was correct:
-			Path masterkeyBackupFile = vaultRoot.resolve(masterkeyFilename + MasterkeyBackupFileHasher.generateFileIdSuffix(fileContentsBeforeUpgrade) + Constants.MASTERKEY_BACKUP_SUFFIX);
-			Files.copy(masterkeyFile, masterkeyBackupFile, StandardCopyOption.REPLACE_EXISTING);
+			Path masterkeyBackupFile = MasterkeyBackupHelper.backupMasterKey(masterkeyFile);
 			LOG.info("Backed up masterkey from {} to {}.", masterkeyFile.getFileName(), masterkeyBackupFile.getFileName());
 			
 			// check file system capabilities:
