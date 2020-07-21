@@ -97,4 +97,54 @@ public class CryptoFileSystemStatsTest {
 		Assertions.assertEquals(2l, inTest.pollChunkCacheMisses());
 	}
 
+	@Test
+	public void testPollTotalBytesRead() {
+		Assertions.assertEquals(0l, inTest.pollTotalBytesRead());
+		inTest.addBytesRead(1l);
+		Assertions.assertEquals(1l, inTest.pollTotalBytesRead());
+		inTest.addBytesRead(5l);
+		Assertions.assertEquals(6l, inTest.pollTotalBytesRead());
+	}
+
+	@Test
+	public void testPollTotalBytesWritten() {
+		Assertions.assertEquals(0l, inTest.pollTotalBytesWritten());
+		inTest.addBytesWritten(1l);
+		Assertions.assertEquals(1l, inTest.pollTotalBytesWritten());
+		inTest.addBytesWritten(5l);
+		Assertions.assertEquals(6l, inTest.pollTotalBytesWritten());
+	}
+
+	@Test
+	public void testPollTotalBytesDecrypted() {
+		Assertions.assertEquals(0l, inTest.pollTotalBytesDecrypted());
+		inTest.addBytesDecrypted(1l);
+		Assertions.assertEquals(1l, inTest.pollTotalBytesDecrypted());
+		inTest.addBytesDecrypted(5l);
+		Assertions.assertEquals(6l, inTest.pollTotalBytesDecrypted());
+	}
+
+	@Test
+	public void testPollTotalBytesEncrypted() {
+		Assertions.assertEquals(0l, inTest.pollTotalBytesEncrypted());
+		inTest.addBytesEncrypted(1l);
+		Assertions.assertEquals(1l, inTest.pollTotalBytesEncrypted());
+		inTest.addBytesEncrypted(5l);
+		Assertions.assertEquals(6l, inTest.pollTotalBytesEncrypted());
+	}
+
+	@Test
+	public void testPollAmountOfFilesRead() {
+		Assertions.assertEquals(0l, inTest.pollAmountOfFilesRead());
+		inTest.incrementFilesRead();
+		Assertions.assertEquals(1l, inTest.pollAmountOfFilesRead());
+	}
+
+	@Test
+	public void testPollAmountOfFilesWritten() {
+		Assertions.assertEquals(0l, inTest.pollAmountOfFilesWritten());
+		inTest.incrementFileWritten();
+		Assertions.assertEquals(1l, inTest.pollAmountOfFilesWritten());
+	}
+
 }

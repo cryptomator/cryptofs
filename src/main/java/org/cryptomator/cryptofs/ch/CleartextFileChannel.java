@@ -111,6 +111,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			read += len;
 		}
 		dst.limit(origLimit);
+		stats.incrementFilesRead();
 		stats.addBytesRead(read);
 		return read;
 	}
@@ -169,6 +170,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		if (options.syncData()) {
 			forceInternal(options.syncDataAndMetadata());
 		}
+		stats.incrementFileWritten();
 		stats.addBytesWritten(written);
 		return written;
 	}
