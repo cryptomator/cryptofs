@@ -135,16 +135,16 @@ public class CryptoFileSystemStatsTest {
 
 	@Test
 	public void testPollAmountOfFilesRead() {
-		Assertions.assertEquals(0l, inTest.pollAmountOfFilesRead());
-		inTest.incrementFilesRead();
-		Assertions.assertEquals(1l, inTest.pollAmountOfFilesRead());
+		Assertions.assertEquals(0l, inTest.pollAmountOfAccessesRead());
+		inTest.incrementAccessesRead();
+		Assertions.assertEquals(1l, inTest.pollAmountOfAccessesRead());
 	}
 
 	@Test
 	public void testPollAmountOfFilesWritten() {
-		Assertions.assertEquals(0l, inTest.pollAmountOfFilesWritten());
-		inTest.incrementFileWritten();
-		Assertions.assertEquals(1l, inTest.pollAmountOfFilesWritten());
+		Assertions.assertEquals(0l, inTest.pollAmountOfAccessesWritten());
+		inTest.incrementAccessesWritten();
+		Assertions.assertEquals(1l, inTest.pollAmountOfAccessesWritten());
 	}
 
 }

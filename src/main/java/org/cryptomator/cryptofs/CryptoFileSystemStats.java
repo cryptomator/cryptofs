@@ -25,8 +25,8 @@ public class CryptoFileSystemStats {
 	private final LongAdder chunkCacheAccesses = new LongAdder();
 	private final LongAdder chunkCacheMisses = new LongAdder();
 	private final LongAdder chunkCacheHits = new LongAdder();
-	private final LongAdder amountOfFilesRead = new LongAdder();
-	private final LongAdder amountOfFilesWritten = new LongAdder();
+	private final LongAdder amountOfAccessesRead = new LongAdder();
+	private final LongAdder amountOfAccessesWritten = new LongAdder();
 
 	@Inject
 	CryptoFileSystemStats() {
@@ -106,21 +106,20 @@ public class CryptoFileSystemStats {
 		chunkCacheHits.decrement();
 	}
 
-	public long pollAmountOfFilesRead() {
-		return amountOfFilesRead.sum();
+	public long pollAmountOfAccessesRead() {
+		return amountOfAccessesRead.sum();
 	}
 
-	public void incrementFilesRead() {
-		amountOfFilesRead.increment();
+	public void incrementAccessesRead() {
+		amountOfAccessesRead.increment();
 	}
 
-	public long pollAmountOfFilesWritten() {
-		return amountOfFilesWritten.sum();
+	public long pollAmountOfAccessesWritten() {
+		return amountOfAccessesWritten.sum();
 	}
 
-	public void incrementFileWritten() {
-		amountOfFilesWritten.increment();
+	public void incrementAccessesWritten() {
+		amountOfAccessesWritten.increment();
 	}
-
 
 }
