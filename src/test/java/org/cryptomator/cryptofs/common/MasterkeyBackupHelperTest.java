@@ -24,11 +24,11 @@ class MasterkeyBackupHelperTest {
 		Path originalFile = tmp.resolve("original");
 		Files.write(originalFile, contents);
 		
-		Path backupFile = MasterkeyBackupHelper.backupMasterKey(originalFile);
+		Path backupFile = MasterkeyBackupHelper.attemptMasterKeyBackup(originalFile);
 		Assertions.assertArrayEquals(contents, Files.readAllBytes(backupFile));
 		
 		Files.setPosixFilePermissions(backupFile, PosixFilePermissions.fromString("r--r--r--"));
-		Path backupFile2 = MasterkeyBackupHelper.backupMasterKey(originalFile);
+		Path backupFile2 = MasterkeyBackupHelper.attemptMasterKeyBackup(originalFile);
 		Assertions.assertEquals(backupFile, backupFile2);
 	}
 
@@ -39,11 +39,11 @@ class MasterkeyBackupHelperTest {
 		Path originalFile = tmp.resolve("original");
 		Files.write(originalFile, contents);
 
-		Path backupFile = MasterkeyBackupHelper.backupMasterKey(originalFile);
+		Path backupFile = MasterkeyBackupHelper.attemptMasterKeyBackup(originalFile);
 		Assertions.assertArrayEquals(contents, Files.readAllBytes(backupFile));
 		
 		Files.getFileAttributeView(backupFile, DosFileAttributeView.class).setReadOnly(true);
-		Path backupFile2 = MasterkeyBackupHelper.backupMasterKey(originalFile);
+		Path backupFile2 = MasterkeyBackupHelper.attemptMasterKeyBackup(originalFile);
 		Assertions.assertEquals(backupFile, backupFile2);
 	}
 

@@ -20,7 +20,7 @@ import java.security.NoSuchAlgorithmException;
  * Utility class for generating a suffix for the backup file to make it unique to its original master key file.
  */
 public final class MasterkeyBackupHelper {
-	
+
 	private static final Logger LOG = LoggerFactory.getLogger(MasterkeyBackupHelper.class);
 
 	/**
@@ -41,11 +41,11 @@ public final class MasterkeyBackupHelper {
 
 	/**
 	 * Do a best-effort attempt to backup the masterkey at the given path. Fail silently if a valid backup already exists.
-	 * 
+	 *
 	 * @param masterKeyPath The masterkey file to backup
 	 * @throws IOException Any non-recoverable I/O exception that occurs during this attempt
 	 */
-	public static Path backupMasterKey(Path masterKeyPath) throws IOException {
+	public static Path attemptMasterKeyBackup(Path masterKeyPath) throws IOException {
 		byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
 		String backupFileName = masterKeyPath.getFileName().toString() + generateFileIdSuffix(keyFileContents) + Constants.MASTERKEY_BACKUP_SUFFIX;
 		Path backupFilePath = masterKeyPath.resolveSibling(backupFileName);
