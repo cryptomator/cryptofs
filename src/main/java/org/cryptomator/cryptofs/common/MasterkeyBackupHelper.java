@@ -40,10 +40,11 @@ public final class MasterkeyBackupHelper {
 	}
 
 	/**
-	 * Do a best-effort attempt to backup the masterkey at the given path. Fail silently if a valid backup already exists.
+	 * Do a best-effort attempt to backup the masterkey at the given path.
+	 * Fails silently if a _valid_ backup already exists and fails with a log entry, if any IO error occurs while creating or reading the backup file.
 	 *
 	 * @param masterKeyPath The masterkey file to backup
-	 * @throws IOException Any non-recoverable I/O exception that occurs during this attempt
+	 * @throws IOException If the masterkey cannot be read.
 	 */
 	public static Path attemptMasterKeyBackup(Path masterKeyPath) throws IOException {
 		byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
