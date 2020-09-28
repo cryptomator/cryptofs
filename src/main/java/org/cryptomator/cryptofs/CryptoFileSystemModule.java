@@ -40,7 +40,7 @@ class CryptoFileSystemModule {
 			byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
 			Cryptor cryptor = cryptorProvider.createFromKeyFile(KeyFile.parse(keyFileContents), properties.passphrase(), properties.pepper(), Constants.VAULT_VERSION);
 			if (!readonlyFlag.isSet()) {
-				MasterkeyBackupHelper.backupMasterKey(masterKeyPath);
+				MasterkeyBackupHelper.attemptMasterKeyBackup(masterKeyPath);
 			}
 			return cryptor;
 		} catch (IOException e) {

@@ -8,7 +8,6 @@ package org.cryptomator.cryptofs.migration.v6;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.text.Normalizer;
 import java.text.Normalizer.Form;
@@ -16,7 +15,6 @@ import java.text.Normalizer.Form;
 import javax.inject.Inject;
 
 import org.cryptomator.cryptofs.common.MasterkeyBackupHelper;
-import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener;
 import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
 import org.cryptomator.cryptofs.migration.api.Migrator;
@@ -48,7 +46,7 @@ public class Version6Migrator implements Migrator {
 		KeyFile keyFile = KeyFile.parse(fileContentsBeforeUpgrade);
 		try (Cryptor cryptor = cryptorProvider.createFromKeyFile(keyFile, passphrase, 5)) {
 			// create backup, as soon as we know the password was correct:
-			Path masterkeyBackupFile = MasterkeyBackupHelper.backupMasterKey(masterkeyFile);
+			Path masterkeyBackupFile = MasterkeyBackupHelper.attemptMasterKeyBackup(masterkeyFile);
 			LOG.info("Backed up masterkey from {} to {}.", masterkeyFile.getFileName(), masterkeyBackupFile.getFileName());
 
 			progressListener.update(MigrationProgressListener.ProgressState.FINALIZING, 0.0);
