@@ -372,6 +372,10 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			FileChannel ch = openCryptoFiles.getOrCreate(ciphertextFilePath).newFileChannel(options); // might throw FileAlreadyExists
 			if (options.writable()) {
 				ciphertextPath.persistLongFileName();
+				stats.incrementAccessesWritten();
+			}
+			if (options.readable()) {
+				stats.incrementAccessesRead();
 			}
 			return ch;
 		}

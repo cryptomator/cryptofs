@@ -18,9 +18,15 @@ public class CryptoFileSystemStats {
 	private final LongAdder bytesWritten = new LongAdder();
 	private final LongAdder bytesDecrypted = new LongAdder();
 	private final LongAdder bytesEncrypted = new LongAdder();
+	private final LongAdder totalBytesRead = new LongAdder();
+	private final LongAdder totalBytesWritten = new LongAdder();
+	private final LongAdder totalBytesDecrypted = new LongAdder();
+	private final LongAdder totalBytesEncrypted = new LongAdder();
 	private final LongAdder chunkCacheAccesses = new LongAdder();
 	private final LongAdder chunkCacheMisses = new LongAdder();
 	private final LongAdder chunkCacheHits = new LongAdder();
+	private final LongAdder amountOfAccessesRead = new LongAdder();
+	private final LongAdder amountOfAccessesWritten = new LongAdder();
 
 	@Inject
 	CryptoFileSystemStats() {
@@ -30,32 +36,52 @@ public class CryptoFileSystemStats {
 		return bytesRead.sumThenReset();
 	}
 
+	public long pollTotalBytesRead() {
+		return totalBytesRead.sum();
+	}
+
 	public void addBytesRead(long numBytes) {
 		bytesRead.add(numBytes);
+		totalBytesRead.add(numBytes);
 	}
 
 	public long pollBytesWritten() {
 		return bytesWritten.sumThenReset();
 	}
 
+	public long pollTotalBytesWritten() {
+		return totalBytesWritten.sum();
+	}
+
 	public void addBytesWritten(long numBytes) {
 		bytesWritten.add(numBytes);
+		totalBytesWritten.add(numBytes);
 	}
 
 	public long pollBytesDecrypted() {
 		return bytesDecrypted.sumThenReset();
 	}
 
+	public long pollTotalBytesDecrypted() {
+		return totalBytesDecrypted.sum();
+	}
+
 	public void addBytesDecrypted(long numBytes) {
 		bytesDecrypted.add(numBytes);
+		totalBytesDecrypted.add(numBytes);
 	}
 
 	public long pollBytesEncrypted() {
 		return bytesEncrypted.sumThenReset();
 	}
 
+	public long pollTotalBytesEncrypted() {
+		return totalBytesEncrypted.sum();
+	}
+
 	public void addBytesEncrypted(long numBytes) {
 		bytesEncrypted.add(numBytes);
+		totalBytesEncrypted.add(numBytes);
 	}
 
 	public long pollChunkCacheAccesses() {
@@ -78,6 +104,22 @@ public class CryptoFileSystemStats {
 	public void addChunkCacheMiss() {
 		chunkCacheMisses.increment();
 		chunkCacheHits.decrement();
+	}
+
+	public long pollAmountOfAccessesRead() {
+		return amountOfAccessesRead.sum();
+	}
+
+	public void incrementAccessesRead() {
+		amountOfAccessesRead.increment();
+	}
+
+	public long pollAmountOfAccessesWritten() {
+		return amountOfAccessesWritten.sum();
+	}
+
+	public void incrementAccessesWritten() {
+		amountOfAccessesWritten.increment();
 	}
 
 }
