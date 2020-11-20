@@ -46,8 +46,8 @@ jobs:
       - name: Upload snapshot artifact cryptofs-${{ env.BUILD_VERSION }}.jar
         uses: actions/upload-artifact@v2
         with:
-          name: cryptofs-${{ env.BUILD_VERSION }}.jar
-          path: target/cryptofs-*.jar
+          name: cryptofs-${{ env.BUILD_VERSION }}
+          path: target/cryptofs-${{ env.BUILD_VERSION }}.jar # what about target/dependency-list.txt?
       - name: Build and deploy to jcenter
         if: startsWith(github.ref, 'refs/tags/')
         run: mvn -B deploy -DskipTests
