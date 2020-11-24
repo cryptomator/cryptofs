@@ -30,6 +30,21 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.EnumSet;
 
+/**
+ * Renames ciphertext names:
+ *
+ * <ul>
+ *     <li>Files: BASE32== -> base64==.c9r</li>
+ *     <li>Dirs: 0BASE32== -> base64==.c9r/dir.c9r</li>
+ *     <li>Symlinks: 1SBASE32== -> base64.c9r/symlink.c9r</li>
+ * </ul>
+ *
+ * Shortened names:
+ * <ul>
+ *     <li>shortened.lng -> shortened.c9s</li>
+ *     <li>m/shortened.lng -> shortened.c9s/contents.c9r</li>
+ * </ul>
+ */
 public class Version7Migrator implements Migrator {
 
 	private static final Logger LOG = LoggerFactory.getLogger(Version7Migrator.class);
@@ -42,7 +57,7 @@ public class Version7Migrator implements Migrator {
 	}
 
 	@Override
-	public void migrate(Path vaultRoot, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException {
+	public void migrate(Path vaultRoot, String vaultConfigFilename, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException {
 		LOG.info("Upgrading {} from version 6 to version 7.", vaultRoot);
 		progressListener.update(MigrationProgressListener.ProgressState.INITIALIZING, 0.0);
 		Path masterkeyFile = vaultRoot.resolve(masterkeyFilename);

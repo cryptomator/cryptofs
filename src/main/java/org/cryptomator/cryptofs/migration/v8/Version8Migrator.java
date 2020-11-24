@@ -30,9 +30,16 @@ import java.text.Normalizer.Form;
 import java.util.Arrays;
 import java.util.UUID;
 
+/**
+ * Splits up <code>masterkey.cryptomator</code>:
+ *
+ * <ul>
+ *     <li><code>vault.cryptomator</code> contains vault version and vault-specific metadata</li>
+ *     <li><code>masterkey.cryptomator</code> contains KDF params and may become obsolete when other key sources are supported</li>
+ * </ul>
+ */
 public class Version8Migrator implements Migrator {
 
-	private static final String CONFIG_FILE_NAME = "vaultconfig.cryptomator";
 	private static final Logger LOG = LoggerFactory.getLogger(Version8Migrator.class);
 
 	private final CryptorProvider cryptorProvider;
@@ -43,11 +50,11 @@ public class Version8Migrator implements Migrator {
 	}
 
 	@Override
-	public void migrate(Path vaultRoot, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException {
+	public void migrate(Path vaultRoot, String vaultConfigFilename, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException {
 		LOG.info("Upgrading {} from version 7 to version 8.", vaultRoot);
 		progressListener.update(MigrationProgressListener.ProgressState.INITIALIZING, 0.0);
 		Path masterkeyFile = vaultRoot.resolve(masterkeyFilename);
-		Path vaultConfigFile = vaultRoot.resolve(CONFIG_FILE_NAME);
+		Path vaultConfigFile = vaultRoot.resolve(vaultConfigFilename);
 		byte[] fileContentsBeforeUpgrade = Files.readAllBytes(masterkeyFile);
 		byte[] rawKey = new byte[0];
 		KeyFile keyFile = KeyFile.parse(fileContentsBeforeUpgrade);

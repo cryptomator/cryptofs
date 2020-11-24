@@ -14,18 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.DEFAULT_MASTERKEY_FILENAME;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.DEFAULT_MAX_NAME_LENGTH;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.DEFAULT_MAX_PATH_LENGTH;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.DEFAULT_PEPPER;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_FILESYSTEM_FLAGS;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_MASTERKEY_FILENAME;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_MAX_NAME_LENGTH;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_MAX_PATH_LENGTH;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_PASSPHRASE;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_PEPPER;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemPropertiesFrom;
+import static org.cryptomator.cryptofs.CryptoFileSystemProperties.*;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.is;
@@ -56,6 +45,7 @@ public class CryptoFileSystemPropertiesTest {
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
+						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
 						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
@@ -80,6 +70,7 @@ public class CryptoFileSystemPropertiesTest {
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
+						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
 						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
@@ -106,6 +97,7 @@ public class CryptoFileSystemPropertiesTest {
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
+						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
 						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
@@ -137,6 +129,7 @@ public class CryptoFileSystemPropertiesTest {
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, pepper), //
+						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, 1000), //
 						anEntry(PROPERTY_MAX_NAME_LENGTH, 255), //
@@ -164,6 +157,7 @@ public class CryptoFileSystemPropertiesTest {
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, pepper), //
+						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
 						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
@@ -191,6 +185,7 @@ public class CryptoFileSystemPropertiesTest {
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, pepper), //
+						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
 						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
@@ -252,6 +247,7 @@ public class CryptoFileSystemPropertiesTest {
 				containsInAnyOrder( //
 						anEntry(PROPERTY_PASSPHRASE, passphrase), //
 						anEntry(PROPERTY_PEPPER, pepper), //
+						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
 						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //

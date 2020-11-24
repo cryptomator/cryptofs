@@ -70,6 +70,16 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	static final byte[] DEFAULT_PEPPER = new byte[0];
 
+
+	/**
+	 * Key identifying the name of the vault config file located inside the vault directory.
+	 *
+	 * @since 2.0.0
+	 */
+	public static final String PROPERTY_VAULTCONFIG_FILENAME = "vaultConfigFilename";
+
+	static final String DEFAULT_VAULTCONFIG_FILENAME = "vault.cryptomator";
+
 	/**
 	 * Key identifying the name of the masterkey file located inside the vault directory.
 	 * 
@@ -132,6 +142,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 				entry(PROPERTY_PASSPHRASE, builder.passphrase), //
 				entry(PROPERTY_PEPPER, builder.pepper), //
 				entry(PROPERTY_FILESYSTEM_FLAGS, builder.flags), //
+				entry(PROPERTY_VAULTCONFIG_FILENAME, builder.vaultConfigFilename), //
 				entry(PROPERTY_MASTERKEY_FILENAME, builder.masterkeyFilename), //
 				entry(PROPERTY_MAX_PATH_LENGTH, builder.maxPathLength), //
 				entry(PROPERTY_MAX_NAME_LENGTH, builder.maxNameLength) //
@@ -161,6 +172,10 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	boolean initializeImplicitly() {
 		return flags().contains(FileSystemFlags.INIT_IMPLICITLY);
+	}
+
+	String vaultConfigFilename() {
+		return (String) get(PROPERTY_VAULTCONFIG_FILENAME);
 	}
 
 	String masterkeyFilename() {
@@ -257,6 +272,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		private CharSequence passphrase;
 		public byte[] pepper = DEFAULT_PEPPER;
 		private final Set<FileSystemFlags> flags = EnumSet.copyOf(DEFAULT_FILESYSTEM_FLAGS);
+		private String vaultConfigFilename = DEFAULT_VAULTCONFIG_FILENAME;
 		private String masterkeyFilename = DEFAULT_MASTERKEY_FILENAME;
 		private int maxPathLength = DEFAULT_MAX_PATH_LENGTH;
 		private int maxNameLength = DEFAULT_MAX_NAME_LENGTH;

@@ -55,7 +55,7 @@ public class Version7MigratorTest {
 		Assertions.assertEquals(6, beforeMigration.getVersion());
 
 		Migrator migrator = new Version7Migrator(cryptorProvider);
-		migrator.migrate(vaultRoot, "masterkey.cryptomator", "test");
+		migrator.migrate(vaultRoot, null, "masterkey.cryptomator", "test");
 
 		KeyFile afterMigration = KeyFile.parse(Files.readAllBytes(masterkeyFile));
 		Assertions.assertEquals(7, afterMigration.getVersion());
@@ -64,7 +64,7 @@ public class Version7MigratorTest {
 	@Test
 	public void testMDirectoryGetsDeleted() throws IOException {
 		Migrator migrator = new Version7Migrator(cryptorProvider);
-		migrator.migrate(vaultRoot, "masterkey.cryptomator", "test");
+		migrator.migrate(vaultRoot, null, "masterkey.cryptomator", "test");
 		
 		Assertions.assertFalse(Files.exists(metaDir));
 	}
@@ -79,7 +79,7 @@ public class Version7MigratorTest {
 		Migrator migrator = new Version7Migrator(cryptorProvider);
 		
 		IOException e = Assertions.assertThrows(PreMigrationVisitor.PreMigrationChecksFailedException.class, () -> {
-			migrator.migrate(vaultRoot, "masterkey.cryptomator", "test");
+			migrator.migrate(vaultRoot, null, "masterkey.cryptomator", "test");
 		});
 		Assertions.assertTrue(e.getMessage().contains("MZUWYZLOMFWWK===.icloud"));
 	}
@@ -93,7 +93,7 @@ public class Version7MigratorTest {
 		Files.createFile(fileBeforeMigration);
 
 		Migrator migrator = new Version7Migrator(cryptorProvider);
-		migrator.migrate(vaultRoot, "masterkey.cryptomator", "test");
+		migrator.migrate(vaultRoot, null, "masterkey.cryptomator", "test");
 
 		Assertions.assertFalse(Files.exists(fileBeforeMigration));
 		Assertions.assertTrue(Files.exists(fileAfterMigration));
@@ -108,7 +108,7 @@ public class Version7MigratorTest {
 		Files.createFile(fileBeforeMigration);
 
 		Migrator migrator = new Version7Migrator(cryptorProvider);
-		migrator.migrate(vaultRoot, "masterkey.cryptomator", "test");
+		migrator.migrate(vaultRoot, null, "masterkey.cryptomator", "test");
 
 		Assertions.assertFalse(Files.exists(fileBeforeMigration));
 		Assertions.assertTrue(Files.exists(fileAfterMigration));
@@ -123,7 +123,7 @@ public class Version7MigratorTest {
 		Files.createFile(fileBeforeMigration);
 
 		Migrator migrator = new Version7Migrator(cryptorProvider);
-		migrator.migrate(vaultRoot, "masterkey.cryptomator", "test");
+		migrator.migrate(vaultRoot, null, "masterkey.cryptomator", "test");
 
 		Assertions.assertFalse(Files.exists(fileBeforeMigration));
 		Assertions.assertTrue(Files.exists(fileAfterMigration));

@@ -34,7 +34,7 @@ public class Version8MigratorTest {
 		fs = Jimfs.newFileSystem(Configuration.unix());
 		pathToVault = fs.getPath("/vaultDir");
 		masterkeyFile = pathToVault.resolve("masterkey.cryptomator");
-		vaultConfigFile = pathToVault.resolve("vaultconfig.cryptomator");
+		vaultConfigFile = pathToVault.resolve("vault.cryptomator");
 		Files.createDirectory(pathToVault);
 	}
 
@@ -51,7 +51,7 @@ public class Version8MigratorTest {
 		Files.write(masterkeyFile, beforeMigration.serialize());
 
 		Migrator migrator = new Version8Migrator(cryptorProvider);
-		migrator.migrate(pathToVault, masterkeyFile.getFileName().toString(), "topsecret");
+		migrator.migrate(pathToVault, "vault.cryptomator", "masterkey.cryptomator", "topsecret");
 
 		KeyFile afterMigration = KeyFile.parse(Files.readAllBytes(masterkeyFile));
 		Assertions.assertEquals(999, afterMigration.getVersion());

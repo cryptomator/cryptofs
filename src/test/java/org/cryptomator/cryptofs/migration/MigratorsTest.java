@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 
 public class MigratorsTest {
 
@@ -79,10 +80,10 @@ public class MigratorsTest {
 	}
 
 	@Test
-	public void testMigrateWithoutMigrators() throws IOException {
+	public void testMigrateWithoutMigrators() {
 		Migrators migrators = new Migrators(Collections.emptyMap(), fsCapabilityChecker);
 		Assertions.assertThrows(NoApplicableMigratorException.class, () -> {
-			migrators.migrate(pathToVault, "masterkey.cryptomator", "secret", (state, progress) -> {}, (event) -> ContinuationResult.CANCEL);
+			migrators.migrate(pathToVault, "vault.cryptomator","masterkey.cryptomator", "secret", (state, progress) -> {}, (event) -> ContinuationResult.CANCEL);
 		});
 	}
 	
@@ -92,27 +93,19 @@ public class MigratorsTest {
 		MigrationProgressListener progressListener = Mockito.mock(MigrationProgressListener.class);
 		MigrationContinuationListener continuationListener = Mockito.mock(MigrationContinuationListener.class);
 		Migrator migrator = Mockito.mock(Migrator.class);
-		Migrators migrators = new Migrators(new HashMap<Migration, Migrator>() {
-			{
-				put(Migration.ZERO_TO_ONE, migrator);
-			}
-		}, fsCapabilityChecker);
-		migrators.migrate(pathToVault, "masterkey.cryptomator", "secret", progressListener, continuationListener);
-		Mockito.verify(migrator).migrate(pathToVault, "masterkey.cryptomator", "secret", progressListener, continuationListener);
+		Migrators migrators = new Migrators(Map.of(Migration.ZERO_TO_ONE, migrator), fsCapabilityChecker);
+		migrators.migrate(pathToVault, "vault.cryptomator", "masterkey.cryptomator", "secret", progressListener, continuationListener);
+		Mockito.verify(migrator).migrate(pathToVault, "vault.cryptomator", "masterkey.cryptomator", "secret", progressListener, continuationListener);
 	}
 
 	@Test
 	@SuppressWarnings("deprecation")
 	public void testMigrateUnsupportedVaultFormat() throws NoApplicableMigratorException, InvalidPassphraseException, IOException {
 		Migrator migrator = Mockito.mock(Migrator.class);
-		Migrators migrators = new Migrators(new HashMap<Migration, Migrator>() {
-			{
-				put(Migration.ZERO_TO_ONE, migrator);
-			}
-		}, fsCapabilityChecker);
-		Mockito.doThrow(new UnsupportedVaultFormatException(Integer.MAX_VALUE, 1)).when(migrator).migrate(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
+		Migrators migrators = new Migrators(Map.of(Migration.ZERO_TO_ONE, migrator), fsCapabilityChecker);
+		Mockito.doThrow(new UnsupportedVaultFormatException(Integer.MAX_VALUE, 1)).when(migrator).migrate(Mockito.any(), Mockito.anyString(), Mockito.anyString(), Mockito.any(), Mockito.any(), Mockito.any());
 		Assertions.assertThrows(IllegalStateException.class, () -> {
-			migrators.migrate(pathToVault, "masterkey.cryptomator", "secret", (state, progress) -> {}, (event) -> ContinuationResult.CANCEL);
+			migrators.migrate(pathToVault, "vault.cryptomator", "masterkey.cryptomator", "secret", (state, progress) -> {}, (event) -> ContinuationResult.CANCEL);
 		});
 	}
 

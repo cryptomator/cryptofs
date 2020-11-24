@@ -305,7 +305,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	private void migrateFileSystemIfRequired(CryptoFileSystemUri parsedUri, CryptoFileSystemProperties properties) throws IOException, FileSystemNeedsMigrationException {
 		if (Migrators.get().needsMigration(parsedUri.pathToVault(), properties.masterkeyFilename())) {
 			if (properties.migrateImplicitly()) {
-				Migrators.get().migrate(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase(), (state, progress) -> {}, (event) -> ContinuationResult.CANCEL);
+				Migrators.get().migrate(parsedUri.pathToVault(), properties.vaultConfigFilename(), properties.masterkeyFilename(), properties.passphrase(), (state, progress) -> {}, (event) -> ContinuationResult.CANCEL);
 			} else {
 				throw new FileSystemNeedsMigrationException(parsedUri.pathToVault());
 			}

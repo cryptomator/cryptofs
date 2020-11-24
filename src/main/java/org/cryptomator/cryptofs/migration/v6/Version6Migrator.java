@@ -26,6 +26,11 @@ import org.cryptomator.cryptolib.api.UnsupportedVaultFormatException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Updates masterkey.cryptomator:
+ *
+ * Version 6 encodes the passphrase in Unicode NFC.
+ */
 public class Version6Migrator implements Migrator {
 
 	private static final Logger LOG = LoggerFactory.getLogger(Version6Migrator.class);
@@ -38,7 +43,7 @@ public class Version6Migrator implements Migrator {
 	}
 
 	@Override
-	public void migrate(Path vaultRoot, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException {
+	public void migrate(Path vaultRoot, String vaultConfigFilename, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException {
 		LOG.info("Upgrading {} from version 5 to version 6.", vaultRoot);
 		progressListener.update(MigrationProgressListener.ProgressState.INITIALIZING, 0.0);
 		Path masterkeyFile = vaultRoot.resolve(masterkeyFilename);

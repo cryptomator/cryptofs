@@ -34,7 +34,7 @@ import org.cryptomator.cryptolib.api.UnsupportedVaultFormatException;
  * <pre>
  * <code>
  * if (Migrators.get().{@link #needsMigration(Path, String) needsMigration(pathToVault, masterkeyFileName)}) {
- * 	Migrators.get().{@link #migrate(Path, String, CharSequence, MigrationProgressListener, MigrationContinuationListener) migrate(pathToVault, masterkeyFileName, passphrase, progressListener, continuationListener)};
+ * 	Migrators.get().{@link #migrate(Path, String, String, CharSequence, MigrationProgressListener, MigrationContinuationListener) migrate(pathToVault, masterkeyFileName, passphrase, progressListener, continuationListener)};
  * }
  * </code>
  * </pre>
@@ -91,7 +91,8 @@ public class Migrators {
 	 * Performs the actual migration. This task may take a while and this method will block.
 	 * 
 	 * @param pathToVault Path to the vault's root
-	 * @param masterkeyFilename Name of the masterkey file located in the vault
+	 * @param vaultConfigFilename Name of the vault config file located inside <code>pathToVault</code>
+	 * @param masterkeyFilename Name of the masterkey file located inside <code>pathToVault</code>
 	 * @param passphrase The passphrase needed to unlock the vault
 	 * @param progressListener Listener that will get notified of progress updates
 	 * @param continuationListener Listener that will get asked if there are events that require feedback
@@ -100,7 +101,7 @@ public class Migrators {
 	 * @throws FileSystemCapabilityChecker.MissingCapabilityException If the underlying filesystem lacks features required to store a vault
 	 * @throws IOException if an I/O error occurs migrating the vault
 	 */
-	public void migrate(Path pathToVault, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws NoApplicableMigratorException, InvalidPassphraseException, IOException {
+	public void migrate(Path pathToVault, String vaultConfigFilename, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws NoApplicableMigratorException, InvalidPassphraseException, IOException {
 		fsCapabilityChecker.assertAllCapabilities(pathToVault);
 		
 		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
@@ -109,7 +110,7 @@ public class Migrators {
 
 		try {
 			Migrator migrator = findApplicableMigrator(keyFile.getVersion()).orElseThrow(NoApplicableMigratorException::new);
-			migrator.migrate(pathToVault, masterkeyFilename, passphrase, progressListener, continuationListener);
+			migrator.migrate(pathToVault, vaultConfigFilename, masterkeyFilename, passphrase, progressListener, continuationListener);
 		} catch (UnsupportedVaultFormatException e) {
 			// might be a tampered masterkey file, as this exception is also thrown if the vault version MAC is not authentic.
 			throw new IllegalStateException("Vault version checked beforehand but not supported by migrator.");

@@ -56,7 +56,7 @@ public class Version6MigratorTest {
 		Path masterkeyBackupFile = pathToVault.resolve("masterkey.cryptomator" + MasterkeyBackupHelper.generateFileIdSuffix(beforeMigration.serialize()) + Constants.MASTERKEY_BACKUP_SUFFIX);
 
 		Migrator migrator = new Version6Migrator(cryptorProvider);
-		migrator.migrate(pathToVault, "masterkey.cryptomator", oldPassword);
+		migrator.migrate(pathToVault, null, "masterkey.cryptomator", oldPassword);
 
 		KeyFile afterMigration = KeyFile.parse(Files.readAllBytes(masterkeyFile));
 		Assertions.assertEquals(6, afterMigration.getVersion());
