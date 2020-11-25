@@ -10,7 +10,7 @@ package org.cryptomator.cryptofs.common;
 
 public final class Constants {
 
-	public static final int VAULT_VERSION = 7;
+	public static final int VAULT_VERSION = 8;
 	public static final String MASTERKEY_BACKUP_SUFFIX = ".bkup";
 	public static final String DATA_DIR_NAME = "d";
 	public static final String ROOT_DIR_ID = "";
@@ -30,5 +30,4 @@ public final class Constants {
 	public static final int MAX_DIR_FILE_LENGTH = 36; // UUIDv4: hex-encoded 16 byte int + 4 hyphens = 36 ASCII chars
 
 	public static final String SEPARATOR = "/";
-
 }

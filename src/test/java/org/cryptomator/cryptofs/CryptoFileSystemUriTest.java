@@ -71,7 +71,8 @@ public class CryptoFileSystemUriTest {
 	public void testCreateWithPathToVaultFromNonDefaultProvider() throws IOException {
 		Path tempDir = createTempDirectory("CryptoFileSystemUrisTest").toAbsolutePath();
 		try {
-			FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(tempDir, cryptoFileSystemProperties().withPassphrase("asd").build());
+			CryptoFileSystemProvider.initialize(tempDir, "vault.cryptomator", "irrelevant", ignored -> new byte[64]);
+			FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(tempDir, cryptoFileSystemProperties().withKeyLoader(ignored -> new byte[64]).build());
 			Path absolutePathToVault = fileSystem.getPath("a").toAbsolutePath();
 
 			URI uri = CryptoFileSystemUri.create(absolutePathToVault, "a", "b");

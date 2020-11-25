@@ -33,23 +33,6 @@ class CryptoFileSystemModule {
 
 	@Provides
 	@CryptoFileSystemScoped
-	public Cryptor provideCryptor(CryptorProvider cryptorProvider, @PathToVault Path pathToVault, CryptoFileSystemProperties properties, ReadonlyFlag readonlyFlag) {
-		try {
-			Path masterKeyPath = pathToVault.resolve(properties.masterkeyFilename());
-			assert Files.exists(masterKeyPath); // since 1.3.0 a file system can only be created for existing vaults. initialization is done before.
-			byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
-			Cryptor cryptor = cryptorProvider.createFromKeyFile(KeyFile.parse(keyFileContents), properties.passphrase(), properties.pepper(), Constants.VAULT_VERSION);
-			if (!readonlyFlag.isSet()) {
-				MasterkeyBackupHelper.attemptMasterKeyBackup(masterKeyPath);
-			}
-			return cryptor;
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
-	}
-
-	@Provides
-	@CryptoFileSystemScoped
 	public Optional<FileStore> provideNativeFileStore(@PathToVault Path pathToVault) {
 		try {
 			return Optional.of(Files.getFileStore(pathToVault));

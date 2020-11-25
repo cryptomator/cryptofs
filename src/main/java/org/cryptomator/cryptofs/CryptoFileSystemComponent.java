@@ -1,14 +1,11 @@
 package org.cryptomator.cryptofs;
 
+import com.auth0.jwt.interfaces.DecodedJWT;
 import dagger.BindsInstance;
 import dagger.Subcomponent;
-import org.cryptomator.cryptofs.attr.AttributeViewComponent;
-import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
-import org.cryptomator.cryptofs.dir.DirectoryStreamComponent;
-import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
+import org.cryptomator.cryptolib.api.Cryptor;
 
 import java.nio.file.Path;
-import java.util.Set;
 
 @CryptoFileSystemScoped
 @Subcomponent(modules = {CryptoFileSystemModule.class})
@@ -18,6 +15,12 @@ public interface CryptoFileSystemComponent {
 
 	@Subcomponent.Builder
 	interface Builder {
+
+		@BindsInstance
+		Builder cryptor(Cryptor cryptor);
+
+		@BindsInstance
+		Builder vaultConfig(VaultConfig vaultConfig);
 
 		@BindsInstance
 		Builder provider(CryptoFileSystemProvider provider);

@@ -56,7 +56,8 @@ public class FileAttributeIntegrationTest {
 		inMemoryFs = Jimfs.newFileSystem();
 		pathToVault = inMemoryFs.getRootDirectories().iterator().next().resolve("vault");
 		Files.createDirectory(pathToVault);
-		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
+		CryptoFileSystemProvider.initialize(pathToVault, "vault.cryptomator", "irrelevant", ignored -> new byte[64]);
+		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withKeyLoader(ignored -> new byte[64]).build());
 	}
 
 	@AfterAll

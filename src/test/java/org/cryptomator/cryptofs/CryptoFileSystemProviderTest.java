@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.net.URI;
@@ -167,7 +168,7 @@ public class CryptoFileSystemProviderTest {
 		Path pathToVault = fs.getPath("/vaultDir");
 
 		Assertions.assertThrows(NotDirectoryException.class, () -> {
-			CryptoFileSystemProvider.initialize(pathToVault, "irrelevant.txt", "asd");
+			CryptoFileSystemProvider.initialize(pathToVault, "irrelevant.txt", "irrelevant", ignored -> new byte[0]);
 		});
 	}
 
@@ -175,63 +176,28 @@ public class CryptoFileSystemProviderTest {
 	public void testInitialize() throws IOException {
 		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
 		Path pathToVault = fs.getPath("/vaultDir");
-		Path masterkeyFile = pathToVault.resolve("masterkey.cryptomator");
+		Path vaultConfigFile = pathToVault.resolve("vault.cryptomator");
 		Path dataDir = pathToVault.resolve("d");
 
 		Files.createDirectory(pathToVault);
-		CryptoFileSystemProvider.initialize(pathToVault, "masterkey.cryptomator", "asd");
+		CryptoFileSystemProvider.initialize(pathToVault, "vault.cryptomator", "MASTERKEY_FILE", ignored -> new byte[64]);
 
 		Assertions.assertTrue(Files.isDirectory(dataDir));
-		Assertions.assertTrue(Files.isRegularFile(masterkeyFile));
+		Assertions.assertTrue(Files.isRegularFile(vaultConfigFile));
 	}
 
 	@Test
-	public void testNoImplicitInitialization() throws IOException {
-		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
-		Path pathToVault = fs.getPath("/vaultDir");
-		Path masterkeyFile = pathToVault.resolve("masterkey.cryptomator");
-		Path dataDir = pathToVault.resolve("d");
-
-		Files.createDirectory(pathToVault);
+	public void testNewFileSystem() throws IOException {
+		Path pathToVault = Path.of("/vaultDir");
 		URI uri = CryptoFileSystemUri.create(pathToVault);
-
 		CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
 				.withFlags() //
-				.withMasterkeyFilename("masterkey.cryptomator") //
-				.withPassphrase("asd") //
+				.withKeyLoader(ignored -> new byte[64]) //
 				.build();
 
-		NoSuchFileException e = Assertions.assertThrows(NoSuchFileException.class, () -> {
-			inTest.newFileSystem(uri, properties);
-		});
-		MatcherAssert.assertThat(e.getMessage(), containsString("Vault not initialized"));
-		Assertions.assertTrue(Files.notExists(dataDir));
-		Assertions.assertTrue(Files.notExists(masterkeyFile));
-	}
+		inTest.newFileSystem(uri, properties);
 
-	@Test
-	@SuppressWarnings("deprecation")
-	public void testImplicitInitialization() throws IOException {
-		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
-		Path pathToVault = fs.getPath("/vaultDir");
-		Path masterkeyFile = pathToVault.resolve("masterkey.cryptomator");
-		Path dataDir = pathToVault.resolve("d");
-
-		Files.createDirectory(pathToVault);
-		URI uri = CryptoFileSystemUri.create(pathToVault);
-
-		CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
-				.withFlags(FileSystemFlags.INIT_IMPLICITLY) //
-				.withMasterkeyFilename("masterkey.cryptomator") //
-				.withPassphrase("asd") //
-				.build();
-		when(fileSystems.create(eq(inTest), eq(pathToVault), eq(properties))).thenReturn(cryptoFileSystem);
-		FileSystem result = inTest.newFileSystem(uri, properties);
-		verify(fileSystems).create(eq(inTest), eq(pathToVault), eq(properties));
-
-		Assertions.assertSame(cryptoFileSystem, result);
-		Assertions.assertTrue(Files.isDirectory(dataDir));
-		Assertions.assertTrue(Files.isRegularFile(masterkeyFile));
+		Mockito.verify(fileSystems).create(Mockito.same(inTest), Mockito.eq(pathToVault), Mockito.eq(properties));
 	}
 
 	@Test
@@ -274,58 +240,6 @@ public class CryptoFileSystemProviderTest {
 		Files.write(masterkeyFile, new byte[0]);
 
 		Assertions.assertFalse(containsVault(pathToVault, masterkeyFilename));
-	}
-
-	@Test
-	public void testVaultWithChangedPassphraseCanBeOpenedWithNewPassphrase() throws IOException {
-		String oldPassphrase = "oldPassphrase838283";
-		String newPassphrase = "newPassphrase954810921";
-		String masterkeyFilename = "masterkey.foo.baz";
-		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
-		Path pathToVault = fs.getPath("/vaultDir");
-		Files.createDirectory(pathToVault);
-		newFileSystem( //
-				pathToVault, //
-				cryptoFileSystemProperties() //
-						.withMasterkeyFilename(masterkeyFilename) //
-						.withPassphrase(oldPassphrase) //
-						.build()).close();
-
-		CryptoFileSystemProvider.changePassphrase(pathToVault, masterkeyFilename, oldPassphrase, newPassphrase);
-
-		newFileSystem( //
-				pathToVault, //
-				cryptoFileSystemProperties() //
-						.withMasterkeyFilename(masterkeyFilename) //
-						.withPassphrase(newPassphrase) //
-						.build()).close();
-	}
-
-	@Test
-	public void testVaultWithChangedPassphraseCanNotBeOpenedWithOldPassphrase() throws IOException {
-		String oldPassphrase = "oldPassphrase838283";
-		String newPassphrase = "newPassphrase954810921";
-		String masterkeyFilename = "masterkey.foo.baz";
-		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
-		Path pathToVault = fs.getPath("/vaultDir");
-		Files.createDirectory(pathToVault);
-		newFileSystem( //
-				pathToVault, //
-				cryptoFileSystemProperties() //
-						.withMasterkeyFilename(masterkeyFilename) //
-						.withPassphrase(oldPassphrase) //
-						.build()).close();
-
-		CryptoFileSystemProvider.changePassphrase(pathToVault, masterkeyFilename, oldPassphrase, newPassphrase);
-
-		Assertions.assertThrows(InvalidPassphraseException.class, () -> {
-			newFileSystem( //
-					pathToVault, //
-					cryptoFileSystemProperties() //
-							.withMasterkeyFilename(masterkeyFilename) //
-							.withPassphrase(oldPassphrase) //
-							.build());
-		});
 	}
 
 	@Test

@@ -7,6 +7,8 @@ import com.google.common.io.RecursiveDeleteOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.io.IOException;
 import java.nio.file.DirectoryIteratorException;
 import java.nio.file.DirectoryStream;
@@ -15,6 +17,7 @@ import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+@Singleton
 public class FileSystemCapabilityChecker {
 
 	private static final Logger LOG = LoggerFactory.getLogger(FileSystemCapabilityChecker.class);
@@ -33,6 +36,10 @@ public class FileSystemCapabilityChecker {
 		 * @since 1.9.3
 		 */
 		WRITE_ACCESS,
+	}
+
+	@Inject
+	public FileSystemCapabilityChecker() {
 	}
 
 	/**
@@ -85,7 +92,7 @@ public class FileSystemCapabilityChecker {
 
 	/**
 	 * Determinse the number of chars a ciphertext filename (including its extension) is allowed to have inside a vault's <code>d/XX/YYYYYYYYYYYYYYYYYYYYYYYYYYYYYY/</code> directory.
-	 * 
+	 *
 	 * @param pathToVault Path to the vault
 	 * @return Number of chars a .c9r file is allowed to have
 	 * @throws IOException If unable to perform this check

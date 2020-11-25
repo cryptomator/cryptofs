@@ -26,7 +26,8 @@ public class ReadmeCodeSamplesTest {
 
 	@Test
 	public void testReadmeCodeSampleUsingFileSystemConstructionMethodA(@TempDir Path storageLocation) throws IOException {
-		FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(storageLocation, CryptoFileSystemProperties.cryptoFileSystemProperties().withPassphrase("password").build());
+		CryptoFileSystemProvider.initialize(storageLocation, "vault.cryptomator", "irrelevant", ignored -> new byte[64]);
+		FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(storageLocation, CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(ignored -> new byte[64]).build());
 
 		runCodeSample(fileSystem);
 	}
@@ -34,7 +35,8 @@ public class ReadmeCodeSamplesTest {
 	@Test
 	public void testReadmeCodeSampleUsingFileSystemConstructionMethodB(@TempDir Path storageLocation) throws IOException {
 		URI uri = CryptoFileSystemUri.create(storageLocation);
-		FileSystem fileSystem = FileSystems.newFileSystem(uri, CryptoFileSystemProperties.cryptoFileSystemProperties().withPassphrase("password").build());
+		CryptoFileSystemProvider.initialize(storageLocation, "vault.cryptomator", "irrelevant", ignored -> new byte[64]);
+		FileSystem fileSystem = FileSystems.newFileSystem(uri, CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(ignored -> new byte[64]).build());
 
 		runCodeSample(fileSystem);
 	}

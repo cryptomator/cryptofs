@@ -16,12 +16,4 @@ interface CryptoFileSystemProviderComponent {
 
 	CopyOperation copyOperation();
 
-	@Component.Builder
-	interface Builder {
-		@BindsInstance
-		Builder cryptorProvider(CryptorProvider cryptorProvider);
-
-		CryptoFileSystemProviderComponent build();
-	}
-
 }

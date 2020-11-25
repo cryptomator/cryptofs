@@ -25,8 +25,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.text.Normalizer;
-import java.text.Normalizer.Form;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -71,7 +69,7 @@ public class Version8Migrator implements Migrator {
 					.withKeyId("MASTERKEY_FILE") //
 					.withClaim("format", 8) //
 					.withClaim("ciphermode", "SIV_CTRMAC") //
-					.withClaim("maxFileNameLen", 220) //
+					.withClaim("maxFilenameLen", 220) //
 					.sign(algorithm);
 			Files.writeString(vaultConfigFile, config, StandardCharsets.US_ASCII, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
 			LOG.info("Wrote vault config to {}.", vaultConfigFile);
