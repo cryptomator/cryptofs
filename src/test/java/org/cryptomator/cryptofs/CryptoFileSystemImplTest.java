@@ -26,10 +26,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.channels.spi.AbstractInterruptibleChannel;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.AccessMode;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -699,9 +697,6 @@ public class CryptoFileSystemImplTest {
 				when(cryptoPathMapper.getCiphertextDir(cleartextTargetParent)).thenReturn(new CiphertextDirectory("41", ciphertextTargetParent));
 				when(cryptoPathMapper.getCiphertextDir(cleartextDestination)).thenReturn(new CiphertextDirectory("42", ciphertextDestinationDir));
 				when(physicalFsProv.newFileChannel(Mockito.same(ciphertextDestinationDirFile), Mockito.anySet(), Mockito.any())).thenReturn(ciphertextTargetDirFileChannel);
-				Field closeLockField = AbstractInterruptibleChannel.class.getDeclaredField("closeLock");
-				closeLockField.setAccessible(true);
-				closeLockField.set(ciphertextTargetDirFileChannel, new Object());
 			}
 
 			@Test

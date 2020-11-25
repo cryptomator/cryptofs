@@ -9,10 +9,8 @@ import org.mockito.Mockito;
 
 import javax.inject.Provider;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.channels.spi.AbstractInterruptibleChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
@@ -40,9 +38,6 @@ public class OpenCryptoFilesTest {
 		Mockito.when(openCryptoFileComponentBuilder.build()).thenReturn(subComponent);
 
 		Mockito.when(file.newFileChannel(Mockito.any())).thenReturn(ciphertextFileChannel);
-		Field closeLockField = AbstractInterruptibleChannel.class.getDeclaredField("closeLock");
-		closeLockField.setAccessible(true);
-		closeLockField.set(ciphertextFileChannel, new Object());
 
 		inTest = new OpenCryptoFiles(openCryptoFileComponentBuilderProvider);
 	}

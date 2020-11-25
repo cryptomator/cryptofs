@@ -7,10 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.channels.spi.AbstractInterruptibleChannel;
 import java.nio.file.FileSystem;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -62,10 +60,10 @@ public class DirectoryIdLoaderTest {
 	}
 
 	@Test
-	public void testDirectoryIdIsReadFromExistingFile() throws IOException, ReflectiveOperationException {
+	public void testDirectoryIdIsReadFromExistingFile() throws IOException {
 		String expectedId = "asdüßT°z¬╚‗";
 		byte[] expectedIdBytes = expectedId.getBytes(UTF_8);
-		FileChannel channel = createFileChannelMock();
+		FileChannel channel = Mockito.mock(FileChannel.class);
 		when(provider.newFileChannel(eq(dirFilePath), any())).thenReturn(channel);
 		when(channel.size()).thenReturn((long) expectedIdBytes.length);
 		when(channel.read(any(ByteBuffer.class))).then(invocation -> {
@@ -80,8 +78,8 @@ public class DirectoryIdLoaderTest {
 	}
 
 	@Test
-	public void testIOExceptionWhenExistingFileIsEmpty() throws IOException, ReflectiveOperationException {
-		FileChannel channel = createFileChannelMock();
+	public void testIOExceptionWhenExistingFileIsEmpty() throws IOException {
+		FileChannel channel = Mockito.mock(FileChannel.class);
 		when(provider.newFileChannel(eq(dirFilePath), any())).thenReturn(channel);
 		when(channel.size()).thenReturn(0l);
 
@@ -92,8 +90,8 @@ public class DirectoryIdLoaderTest {
 	}
 
 	@Test
-	public void testIOExceptionWhenExistingFileIsTooLarge() throws IOException, ReflectiveOperationException {
-		FileChannel channel = createFileChannelMock();
+	public void testIOExceptionWhenExistingFileIsTooLarge() throws IOException {
+		FileChannel channel = Mockito.mock(FileChannel.class);
 		when(provider.newFileChannel(eq(dirFilePath), any())).thenReturn(channel);
 		when(channel.size()).thenReturn((long) Integer.MAX_VALUE);
 
@@ -101,28 +99,6 @@ public class DirectoryIdLoaderTest {
 			inTest.load(dirFilePath);
 		});
 		MatcherAssert.assertThat(e.getMessage(), containsString("Unexpectedly large directory file"));
-	}
-
-	private FileChannel createFileChannelMock() throws ReflectiveOperationException {
-		FileChannel channel = Mockito.mock(FileChannel.class);
-		try {
-			Field channelOpenField = AbstractInterruptibleChannel.class.getDeclaredField("open");
-			channelOpenField.setAccessible(true);
-			channelOpenField.set(channel, true);
-		} catch (NoSuchFieldException e) {
-			// field only declared in jdk8
-		}
-		try {
-			Field channelClosedField = AbstractInterruptibleChannel.class.getDeclaredField("closed");
-			channelClosedField.setAccessible(true);
-			channelClosedField.set(channel, false);
-		} catch (NoSuchFieldException e) {
-			// field only declared in jdk 9
-		}
-		Field channelCloseLockField = AbstractInterruptibleChannel.class.getDeclaredField("closeLock");
-		channelCloseLockField.setAccessible(true);
-		channelCloseLockField.set(channel, new Object());
-		return channel;
 	}
 
 }
