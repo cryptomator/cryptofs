@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs;
 
 import com.google.common.base.Strings;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptolib.api.MasterkeyLoader;
 
 import java.net.URI;
 import java.nio.file.FileSystems;
@@ -59,7 +60,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 */
 	public static final String PROPERTY_KEYLOADER = "keyLoader";
 
-	static final KeyLoader DEFAULT_KEYLOADER = null;
+	static final MasterkeyLoader DEFAULT_KEYLOADER = null;
 
 
 	/**
@@ -118,8 +119,8 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		);
 	}
 
-	KeyLoader keyLoader() {
-		return (KeyLoader) get(PROPERTY_KEYLOADER);
+	MasterkeyLoader keyLoader() {
+		return (MasterkeyLoader) get(PROPERTY_KEYLOADER);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -195,7 +196,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 */
 	public static class Builder {
 
-		private KeyLoader keyLoader = DEFAULT_KEYLOADER;
+		private MasterkeyLoader keyLoader = DEFAULT_KEYLOADER;
 		private final Set<FileSystemFlags> flags = EnumSet.copyOf(DEFAULT_FILESYSTEM_FLAGS);
 		private String vaultConfigFilename = DEFAULT_VAULTCONFIG_FILENAME;
 		private String masterkeyFilename = DEFAULT_MASTERKEY_FILENAME;
@@ -206,7 +207,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		}
 
 		private Builder(Map<String, ?> properties) {
-			checkedSet(KeyLoader.class, PROPERTY_KEYLOADER, properties, this::withKeyLoader);
+			checkedSet(MasterkeyLoader.class, PROPERTY_KEYLOADER, properties, this::withKeyLoader);
 			checkedSet(String.class, PROPERTY_VAULTCONFIG_FILENAME, properties, this::withVaultConfigFilename);
 			checkedSet(String.class, PROPERTY_MASTERKEY_FILENAME, properties, this::withMasterkeyFilename);
 			checkedSet(Set.class, PROPERTY_FILESYSTEM_FLAGS, properties, this::withFlags);
@@ -257,7 +258,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		 * @return this
 		 * @since 2.0.0
 		 */
-		public Builder withKeyLoader(KeyLoader keyLoader) {
+		public Builder withKeyLoader(MasterkeyLoader keyLoader) {
 			this.keyLoader = keyLoader;
 			return this;
 		}

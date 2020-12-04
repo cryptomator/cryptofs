@@ -10,6 +10,9 @@ package org.cryptomator.cryptofs.attr;
 
 import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.CryptoFileSystemProvider;
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.api.MasterkeyLoader;
+import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -52,12 +55,13 @@ public class FileAttributeIntegrationTest {
 	private static FileSystem fileSystem;
 
 	@BeforeAll
-	public static void setupClass() throws IOException {
+	public static void setupClass() throws IOException, MasterkeyLoadingFailedException {
 		inMemoryFs = Jimfs.newFileSystem();
 		pathToVault = inMemoryFs.getRootDirectories().iterator().next().resolve("vault");
 		Files.createDirectory(pathToVault);
-		CryptoFileSystemProvider.initialize(pathToVault, "vault.cryptomator", "irrelevant", ignored -> new byte[64]);
-		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withKeyLoader(ignored -> new byte[64]).build());
+		MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
+		CryptoFileSystemProvider.initialize(pathToVault, "vault.cryptomator", "irrelevant", keyLoader);
+		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withKeyLoader(keyLoader).build());
 	}
 
 	@AfterAll

@@ -5,10 +5,6 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.migration;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
 import dagger.MapKey;
 import dagger.Module;
 import dagger.Provides;
@@ -17,7 +13,14 @@ import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.migration.v6.Version6Migrator;
 import org.cryptomator.cryptofs.migration.v7.Version7Migrator;
+import org.cryptomator.cryptofs.migration.v8.Version8Migrator;
+import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.CryptorProvider;
+
+import java.lang.annotation.Documented;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
+import java.security.SecureRandom;
 
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
@@ -25,17 +28,11 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Module
 class MigrationModule {
 
-	private final CryptorProvider version1Cryptor;
-
-	MigrationModule(CryptorProvider version1Cryptor) {
-		this.version1Cryptor = version1Cryptor;
-	}
-
 	@Provides
-	CryptorProvider provideVersion1CryptorProvider() {
-		return version1Cryptor;
+	CryptorProvider provideVersion1CryptorProvider(SecureRandom csprng) {
+		return Cryptors.version1(csprng);
 	}
-	
+
 	@Provides
 	FileSystemCapabilityChecker provideFileSystemCapabilityChecker() {
 		return new FileSystemCapabilityChecker();
@@ -52,6 +49,13 @@ class MigrationModule {
 	@IntoMap
 	@MigratorKey(Migration.SIX_TO_SEVEN)
 	Migrator provideVersion7Migrator(Version7Migrator migrator) {
+		return migrator;
+	}
+
+	@Provides
+	@IntoMap
+	@MigratorKey(Migration.SEVEN_TO_EIGHT)
+	Migrator provideVersion8Migrator(Version8Migrator migrator) {
 		return migrator;
 	}
 

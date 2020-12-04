@@ -11,11 +11,9 @@ import org.cryptomator.cryptofs.common.MasterkeyBackupHelper;
 import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener;
 import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
 import org.cryptomator.cryptofs.migration.api.Migrator;
-import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.CryptorProvider;
-import org.cryptomator.cryptolib.api.InvalidPassphraseException;
-import org.cryptomator.cryptolib.api.KeyFile;
-import org.cryptomator.cryptolib.api.UnsupportedVaultFormatException;
+import org.cryptomator.cryptolib.api.CryptoException;
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.common.MasterkeyFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +23,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -40,29 +40,28 @@ public class Version8Migrator implements Migrator {
 
 	private static final Logger LOG = LoggerFactory.getLogger(Version8Migrator.class);
 
-	private final CryptorProvider cryptorProvider;
+	private final SecureRandom csprng;
 
 	@Inject
-	public Version8Migrator(CryptorProvider cryptorProvider) {
-		this.cryptorProvider = cryptorProvider;
+	public Version8Migrator(SecureRandom csprng) {
+		this.csprng = csprng;
 	}
 
 	@Override
-	public void migrate(Path vaultRoot, String vaultConfigFilename, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException {
+	public void migrate(Path vaultRoot, String vaultConfigFilename, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws CryptoException, IOException {
 		LOG.info("Upgrading {} from version 7 to version 8.", vaultRoot);
 		progressListener.update(MigrationProgressListener.ProgressState.INITIALIZING, 0.0);
 		Path masterkeyFile = vaultRoot.resolve(masterkeyFilename);
 		Path vaultConfigFile = vaultRoot.resolve(vaultConfigFilename);
-		byte[] fileContentsBeforeUpgrade = Files.readAllBytes(masterkeyFile);
 		byte[] rawKey = new byte[0];
-		KeyFile keyFile = KeyFile.parse(fileContentsBeforeUpgrade);
-		try (Cryptor cryptor = cryptorProvider.createFromKeyFile(keyFile, passphrase, 7)) {
+		MasterkeyFile keyFile = MasterkeyFile.withContentFromFile(masterkeyFile);
+		try (Masterkey masterkey = keyFile.unlock(passphrase, new byte[0], Optional.of(7)).loadKeyAndClose()) {
 			// create backup, as soon as we know the password was correct:
 			Path masterkeyBackupFile = MasterkeyBackupHelper.attemptMasterKeyBackup(masterkeyFile);
 			LOG.info("Backed up masterkey from {} to {}.", masterkeyFile.getFileName(), masterkeyBackupFile.getFileName());
 
 			// create vaultconfig.cryptomator
-			rawKey = cryptor.getRawKey();
+			rawKey = masterkey.getEncoded();
 			Algorithm algorithm = Algorithm.HMAC256(rawKey);
 			var config = JWT.create() //
 					.withJWTId(UUID.randomUUID().toString()) //
@@ -77,7 +76,7 @@ public class Version8Migrator implements Migrator {
 			progressListener.update(MigrationProgressListener.ProgressState.FINALIZING, 0.0);
 
 			// rewrite masterkey file with normalized passphrase:
-			byte[] fileContentsAfterUpgrade = cryptor.writeKeysToMasterkeyFile(passphrase, 999).serialize();
+			byte[] fileContentsAfterUpgrade = MasterkeyFile.lock(masterkey, passphrase, new byte[0], 999, csprng);
 			Files.write(masterkeyFile, fileContentsAfterUpgrade, StandardOpenOption.TRUNCATE_EXISTING);
 			LOG.info("Updated masterkey.");
 		} finally {

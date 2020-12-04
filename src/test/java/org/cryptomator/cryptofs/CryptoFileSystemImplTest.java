@@ -72,6 +72,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
@@ -548,7 +549,7 @@ public class CryptoFileSystemImplTest {
 				inTest.move(cleartextSource, cleartextSource);
 
 				verify(readonlyFlag).assertWritable();
-				verifyZeroInteractions(cleartextSource);
+				verifyNoInteractions(cleartextSource);
 			}
 
 			@Test
@@ -704,7 +705,7 @@ public class CryptoFileSystemImplTest {
 				inTest.copy(cleartextSource, cleartextSource);
 
 				verify(readonlyFlag).assertWritable();
-				verifyZeroInteractions(cleartextSource);
+				verifyNoInteractions(cleartextSource);
 			}
 
 			@Test

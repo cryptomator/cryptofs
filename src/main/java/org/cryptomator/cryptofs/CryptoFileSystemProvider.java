@@ -11,6 +11,9 @@ package org.cryptomator.cryptofs;
 import org.cryptomator.cryptofs.ch.AsyncDelegatingFileChannel;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.api.MasterkeyLoader;
+import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 
 import java.io.IOException;
 import java.net.URI;
@@ -120,16 +123,17 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @param keyId               The ID of the key to associate with this vault
 	 * @param keyLoader           A key loader providing the masterkey for this new vault
 	 * @throws NotDirectoryException                                  If the given path is not an existing directory.
-	 * @throws FileSystemCapabilityChecker.MissingCapabilityException If the underlying filesystem lacks features required to store a vault
 	 * @throws IOException                                            If the vault structure could not be initialized due to I/O errors
+	 * @throws MasterkeyLoadingFailedException
 	 * @since 2.0.0
 	 */
-	public static void initialize(Path pathToVault, String vaultConfigFilename, String keyId, KeyLoader keyLoader) throws NotDirectoryException, IOException {
+	public static void initialize(Path pathToVault, String vaultConfigFilename, String keyId, MasterkeyLoader keyLoader) throws NotDirectoryException, IOException, MasterkeyLoadingFailedException {
 		if (!Files.isDirectory(pathToVault)) {
 			throw new NotDirectoryException(pathToVault.toString());
 		}
-		byte[] rawKey = keyLoader.loadKey(keyId);
-		try {
+		byte[] rawKey = new byte[0];
+		try (Masterkey key = keyLoader.loadKey(keyId)) {
+			rawKey = key.getEncoded();
 			// save vault config:
 			Path vaultConfigPath = pathToVault.resolve(vaultConfigFilename);
 			var config = VaultConfig.createNew().cipherMode(VaultCipherMode.SIV_CTRMAC).maxFilenameLength(Constants.MAX_CIPHERTEXT_NAME_LENGTH).build();
@@ -175,7 +179,11 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	public CryptoFileSystem newFileSystem(URI uri, Map<String, ?> rawProperties) throws IOException {
 		CryptoFileSystemUri parsedUri = CryptoFileSystemUri.parse(uri);
 		CryptoFileSystemProperties properties = CryptoFileSystemProperties.wrap(rawProperties);
-		return fileSystems.create(this, parsedUri.pathToVault(), properties);
+		try {
+			return fileSystems.create(this, parsedUri.pathToVault(), properties);
+		} catch (MasterkeyLoadingFailedException e) {
+			throw new IOException("Used invalid key to init filesystem.", e);
+		}
 	}
 
 	@Override

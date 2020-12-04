@@ -4,6 +4,9 @@ import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.api.MasterkeyLoader;
+import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -36,9 +39,10 @@ public class CryptoFileSystemsTest {
 	private final CryptoFileSystemProperties properties = mock(CryptoFileSystemProperties.class);
 	private final CryptoFileSystemComponent cryptoFileSystemComponent = mock(CryptoFileSystemComponent.class);
 	private final CryptoFileSystemImpl cryptoFileSystem = mock(CryptoFileSystemImpl.class);
-	private final VaultConfig.VaultConfigLoader configLoader = mock(VaultConfig.VaultConfigLoader.class);
+	private final VaultConfig.UnverifiedVaultConfig configLoader = mock(VaultConfig.UnverifiedVaultConfig.class);
+	private final MasterkeyLoader keyLoader = mock(MasterkeyLoader.class);
+	private final Masterkey masterkey = mock(Masterkey.class);
 	private final byte[] rawKey = new byte[64];
-	private final KeyLoader keyLoader = mock(KeyLoader.class);
 	private final VaultConfig vaultConfig = mock(VaultConfig.class);
 	private final VaultCipherMode cipherMode = mock(VaultCipherMode.class);
 	private final SecureRandom csprng = Mockito.mock(SecureRandom.class);
@@ -53,7 +57,7 @@ public class CryptoFileSystemsTest {
 	private final CryptoFileSystems inTest = new CryptoFileSystems(cryptoFileSystemComponentBuilder, capabilityChecker, csprng);
 
 	@BeforeEach
-	public void setup() throws IOException {
+	public void setup() throws IOException, MasterkeyLoadingFailedException {
 		filesClass = Mockito.mockStatic(Files.class);
 		vaultConficClass = Mockito.mockStatic(VaultConfig.class);
 
@@ -65,11 +69,12 @@ public class CryptoFileSystemsTest {
 		vaultConficClass.when(() -> VaultConfig.decode("jwt-vault-config")).thenReturn(configLoader);
 		when(VaultConfig.decode("jwt-vault-config")).thenReturn(configLoader);
 		when(configLoader.getKeyId()).thenReturn("key-id");
-		when(keyLoader.loadKey("key-id")).thenReturn(rawKey);
-		when(configLoader.load(rawKey, Constants.VAULT_VERSION)).thenReturn(vaultConfig);
+		when(keyLoader.loadKey("key-id")).thenReturn(masterkey);
+		when(masterkey.getEncoded()).thenReturn(rawKey);
+		when(configLoader.verify(rawKey, Constants.VAULT_VERSION)).thenReturn(vaultConfig);
 		when(vaultConfig.getCiphermode()).thenReturn(cipherMode);
 		when(cipherMode.getCryptorProvider(csprng)).thenReturn(cryptorProvider);
-		when(cryptorProvider.createFromRawKey(rawKey)).thenReturn(cryptor);
+		when(cryptorProvider.withKey(masterkey)).thenReturn(cryptor);
 		when(cryptoFileSystemComponentBuilder.cryptor(any())).thenReturn(cryptoFileSystemComponentBuilder);
 		when(cryptoFileSystemComponentBuilder.vaultConfig(any())).thenReturn(cryptoFileSystemComponentBuilder);
 		when(cryptoFileSystemComponentBuilder.pathToVault(any())).thenReturn(cryptoFileSystemComponentBuilder);
@@ -91,7 +96,7 @@ public class CryptoFileSystemsTest {
 	}
 
 	@Test
-	public void testContainsReturnsTrueForContainedFileSystem() throws IOException {
+	public void testContainsReturnsTrueForContainedFileSystem() throws IOException, MasterkeyLoadingFailedException {
 		CryptoFileSystemImpl impl = inTest.create(provider, pathToVault, properties);
 
 		Assertions.assertSame(cryptoFileSystem, impl);
@@ -105,7 +110,7 @@ public class CryptoFileSystemsTest {
 	}
 
 	@Test
-	public void testCreateThrowsFileSystemAlreadyExistsExceptionIfInvokedWithSamePathTwice() throws IOException {
+	public void testCreateThrowsFileSystemAlreadyExistsExceptionIfInvokedWithSamePathTwice() throws IOException, MasterkeyLoadingFailedException {
 		inTest.create(provider, pathToVault, properties);
 
 		Assertions.assertThrows(FileSystemAlreadyExistsException.class, () -> {
@@ -114,7 +119,7 @@ public class CryptoFileSystemsTest {
 	}
 
 	@Test
-	public void testCreateDoesNotThrowFileSystemAlreadyExistsExceptionIfFileSystemIsRemovedBefore() throws IOException {
+	public void testCreateDoesNotThrowFileSystemAlreadyExistsExceptionIfFileSystemIsRemovedBefore() throws IOException, MasterkeyLoadingFailedException {
 		CryptoFileSystemImpl fileSystem1 = inTest.create(provider, pathToVault, properties);
 		Assertions.assertTrue(inTest.contains(fileSystem1));
 		inTest.remove(fileSystem1);
@@ -125,7 +130,7 @@ public class CryptoFileSystemsTest {
 	}
 
 	@Test
-	public void testGetReturnsFileSystemForPathIfItExists() throws IOException {
+	public void testGetReturnsFileSystemForPathIfItExists() throws IOException, MasterkeyLoadingFailedException {
 		CryptoFileSystemImpl fileSystem = inTest.create(provider, pathToVault, properties);
 
 		Assertions.assertTrue(inTest.contains(fileSystem));

@@ -6,6 +6,9 @@ import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.Verification;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.api.MasterkeyLoader;
+import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -21,27 +24,29 @@ public class VaultConfigTest {
 	@Test
 	public void testLoadMalformedToken() {
 		Assertions.assertThrows(VaultConfigLoadException.class, () -> {
-			VaultConfig.load("hello world", ignored -> new byte[64], 42);
+			VaultConfig.load("hello world", ignored -> null, 42);
 		});
 	}
 
 	@Nested
 	public class WithValidToken {
 
-		private byte[] key = new byte[64];
+		private byte[] rawKey = new byte[64];
+		private Masterkey key = Mockito.mock(Masterkey.class);
 		private VaultConfig originalConfig;
 		private String token;
 
 
 		@BeforeEach
 		public void setup() {
-			Arrays.fill(key, (byte) 0x55);
+			Arrays.fill(rawKey, (byte) 0x55);
+			Mockito.when(key.getEncoded()).thenReturn(rawKey);
 			originalConfig = VaultConfig.createNew().cipherMode(VaultCipherMode.SIV_CTRMAC).maxFilenameLength(220).build();
-			token = originalConfig.toToken("TEST_KEY", key);
+			token = originalConfig.toToken("TEST_KEY", rawKey);
 		}
 
 		@Test
-		public void testSuccessfulLoad() throws VaultConfigLoadException, KeyLoadingFailedException {
+		public void testSuccessfulLoad() throws VaultConfigLoadException, MasterkeyLoadingFailedException {
 			var loaded = VaultConfig.load(token, ignored -> key, originalConfig.getVaultVersion());
 
 			Assertions.assertEquals(originalConfig.getId(), loaded.getId());
@@ -53,7 +58,8 @@ public class VaultConfigTest {
 		@ParameterizedTest
 		@ValueSource(ints = {0, 1, 2, 3, 10, 20, 30, 63})
 		public void testLoadWithInvalidKey(int pos) {
-			key[pos] = (byte) 0x77;
+			rawKey[pos] = (byte) 0x77;
+			Mockito.when(key.getEncoded()).thenReturn(rawKey);
 
 			Assertions.assertThrows(VaultKeyInvalidException.class, () -> {
 				VaultConfig.load(token, ignored -> key, originalConfig.getVaultVersion());
@@ -73,19 +79,21 @@ public class VaultConfigTest {
 	}
 
 	@Test
-	public void testLoadExisting() throws KeyLoadingFailedException, VaultConfigLoadException {
+	public void testLoadExisting() throws VaultConfigLoadException, MasterkeyLoadingFailedException {
 		var decodedJwt = Mockito.mock(DecodedJWT.class);
 		var formatClaim = Mockito.mock(Claim.class);
 		var ciphermodeClaim = Mockito.mock(Claim.class);
 		var maxFilenameLenClaim = Mockito.mock(Claim.class);
-		var keyLoader = Mockito.mock(KeyLoader.class);
+		var keyLoader = Mockito.mock(MasterkeyLoader.class);
+		var key = Mockito.mock(Masterkey.class);
 		var verification = Mockito.mock(Verification.class);
 		var verifier = Mockito.mock(JWTVerifier.class);
 		Mockito.when(decodedJwt.getKeyId()).thenReturn("key-id");
 		Mockito.when(decodedJwt.getClaim("format")).thenReturn(formatClaim);
 		Mockito.when(decodedJwt.getClaim("ciphermode")).thenReturn(ciphermodeClaim);
 		Mockito.when(decodedJwt.getClaim("maxFilenameLen")).thenReturn(maxFilenameLenClaim);
-		Mockito.when(keyLoader.loadKey("key-id")).thenReturn(new byte[64]);
+		Mockito.when(keyLoader.loadKey("key-id")).thenReturn(key);
+		Mockito.when(key.getEncoded()).thenReturn(new byte[64]);
 		Mockito.when(verification.withClaim("format", 42)).thenReturn(verification);
 		Mockito.when(verification.build()).thenReturn(verifier);
 		Mockito.when(verifier.verify(decodedJwt)).thenReturn(decodedJwt);

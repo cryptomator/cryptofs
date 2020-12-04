@@ -1,5 +1,7 @@
 package org.cryptomator.cryptofs.fh;
 
+import com.google.common.base.Throwables;
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -21,7 +23,7 @@ public class ChunkCache {
 	private final ChunkLoader chunkLoader;
 	private final ChunkSaver chunkSaver;
 	private final CryptoFileSystemStats stats;
-	private final LoadingCache<Long, ChunkData> chunks;
+	private final Cache<Long, ChunkData> chunks;
 
 	@Inject
 	public ChunkCache(ChunkLoader chunkLoader, ChunkSaver chunkSaver, CryptoFileSystemStats stats) {
@@ -31,15 +33,16 @@ public class ChunkCache {
 		this.chunks = CacheBuilder.newBuilder() //
 				.maximumSize(MAX_CACHED_CLEARTEXT_CHUNKS) //
 				.removalListener(this::removeChunk) //
-				.build(CacheLoader.from(this::loadChunk));
+				.build();
 	}
 
-	private ChunkData loadChunk(Long chunkIndex) {
+	private ChunkData loadChunk(long chunkIndex) throws IOException {
+		stats.addChunkCacheMiss();
 		try {
-			stats.addChunkCacheMiss();
 			return chunkLoader.load(chunkIndex);
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
+		} catch (AuthenticationFailedException e) {
+			// TODO provide means to pass an AuthenticationFailedException handler using an OpenOption
+			throw new IOException("Unauthentic ciphertext in chunk " + chunkIndex, e);
 		}
 	}
 
@@ -54,20 +57,10 @@ public class ChunkCache {
 	public ChunkData get(long chunkIndex) throws IOException {
 		try {
 			stats.addChunkCacheAccess();
-			return chunks.get(chunkIndex);
+			return chunks.get(chunkIndex, () -> loadChunk(chunkIndex));
 		} catch (ExecutionException e) {
-			assert e.getCause() != null; // no exception in ChunkLoader -> no executionException during chunk loading ;-)
+			assert e.getCause() instanceof IOException; // the only checked exception thrown by #loadChunk(long)
 			throw (IOException) e.getCause();
-		} catch (UncheckedExecutionException e) {
-			if (e.getCause() instanceof UncheckedIOException) {
-				UncheckedIOException uioe = (UncheckedIOException) e.getCause();
-				throw uioe.getCause();
-			} else if (e.getCause() instanceof AuthenticationFailedException) {
-				// TODO provide means to pass an AuthenticationFailedException handler using an OpenOption
-				throw new IOException(e.getCause());
-			} else {
-				throw e;
-			}
 		}
 	}
 

@@ -8,6 +8,7 @@ package org.cryptomator.cryptofs.migration.api;
 import java.io.IOException;
 import java.nio.file.Path;
 
+import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.InvalidPassphraseException;
 import org.cryptomator.cryptolib.api.UnsupportedVaultFormatException;
 
@@ -25,9 +26,10 @@ public interface Migrator {
 	 * @param passphrase
 	 * @throws InvalidPassphraseException
 	 * @throws UnsupportedVaultFormatException
+	 * @throws CryptoException
 	 * @throws IOException
 	 */
-	default void migrate(Path vaultRoot, String vaultConfigFilename, String masterkeyFilename, CharSequence passphrase) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException {
+	default void migrate(Path vaultRoot, String vaultConfigFilename, String masterkeyFilename, CharSequence passphrase) throws InvalidPassphraseException, UnsupportedVaultFormatException, CryptoException, IOException {
 		migrate(vaultRoot, vaultConfigFilename, masterkeyFilename, passphrase, (state, progress) -> {});
 	}
 
@@ -41,9 +43,10 @@ public interface Migrator {
 	 * @param progressListener 
 	 * @throws InvalidPassphraseException
 	 * @throws UnsupportedVaultFormatException
+	 * @throws CryptoException
 	 * @throws IOException
 	 */
-	default void migrate(Path vaultRoot, String vaultConfigFilename, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException {
+	default void migrate(Path vaultRoot, String vaultConfigFilename, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, CryptoException, IOException {
 		migrate(vaultRoot, vaultConfigFilename, masterkeyFilename, passphrase, progressListener, (event) -> MigrationContinuationListener.ContinuationResult.CANCEL);
 	}
 
@@ -58,8 +61,9 @@ public interface Migrator {
 	 * @param continuationListener
 	 * @throws InvalidPassphraseException
 	 * @throws UnsupportedVaultFormatException
+	 * @throws CryptoException
 	 * @throws IOException
 	 */
-	void migrate(Path vaultRoot, String vaultConfigFilename, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException;
+	void migrate(Path vaultRoot, String vaultConfigFilename, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, CryptoException, IOException;
 
 }

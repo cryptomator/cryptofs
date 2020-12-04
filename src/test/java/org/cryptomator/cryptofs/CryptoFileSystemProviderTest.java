@@ -2,9 +2,10 @@ package org.cryptomator.cryptofs;
 
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
-import org.cryptomator.cryptofs.CryptoFileSystemProperties.FileSystemFlags;
 import org.cryptomator.cryptofs.ch.AsyncDelegatingFileChannel;
-import org.cryptomator.cryptolib.api.InvalidPassphraseException;
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.api.MasterkeyLoader;
+import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,7 +27,6 @@ import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.NotDirectoryException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -46,17 +46,15 @@ import static java.nio.file.StandardOpenOption.APPEND;
 import static java.util.Arrays.asList;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.cryptomator.cryptofs.CryptoFileSystemProvider.containsVault;
-import static org.cryptomator.cryptofs.CryptoFileSystemProvider.newFileSystem;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.instanceOf;
-import static org.hamcrest.Matchers.is;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class CryptoFileSystemProviderTest {
 
+	private final MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
 	private final CryptoFileSystems fileSystems = mock(CryptoFileSystems.class);
 
 	private final CryptoPath cryptoPath = mock(CryptoPath.class);
@@ -168,31 +166,31 @@ public class CryptoFileSystemProviderTest {
 		Path pathToVault = fs.getPath("/vaultDir");
 
 		Assertions.assertThrows(NotDirectoryException.class, () -> {
-			CryptoFileSystemProvider.initialize(pathToVault, "irrelevant.txt", "irrelevant", ignored -> new byte[0]);
+			CryptoFileSystemProvider.initialize(pathToVault, "irrelevant.txt", "irrelevant", keyLoader);
 		});
 	}
 
 	@Test
-	public void testInitialize() throws IOException {
+	public void testInitialize() throws IOException, MasterkeyLoadingFailedException {
 		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
 		Path pathToVault = fs.getPath("/vaultDir");
 		Path vaultConfigFile = pathToVault.resolve("vault.cryptomator");
 		Path dataDir = pathToVault.resolve("d");
 
 		Files.createDirectory(pathToVault);
-		CryptoFileSystemProvider.initialize(pathToVault, "vault.cryptomator", "MASTERKEY_FILE", ignored -> new byte[64]);
+		CryptoFileSystemProvider.initialize(pathToVault, "vault.cryptomator", "MASTERKEY_FILE", keyLoader);
 
 		Assertions.assertTrue(Files.isDirectory(dataDir));
 		Assertions.assertTrue(Files.isRegularFile(vaultConfigFile));
 	}
 
 	@Test
-	public void testNewFileSystem() throws IOException {
+	public void testNewFileSystem() throws IOException, MasterkeyLoadingFailedException {
 		Path pathToVault = Path.of("/vaultDir");
 		URI uri = CryptoFileSystemUri.create(pathToVault);
 		CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
 				.withFlags() //
-				.withKeyLoader(ignored -> new byte[64]) //
+				.withKeyLoader(keyLoader) //
 				.build();
 
 		inTest.newFileSystem(uri, properties);
@@ -284,7 +282,7 @@ public class CryptoFileSystemProviderTest {
 		when(cryptoFileSystem.newFileChannel(cryptoPath, options)).thenReturn(channel);
 
 		AsynchronousFileChannel result = inTest.newAsynchronousFileChannel(cryptoPath, options, executor);
-		
+
 		MatcherAssert.assertThat(result, instanceOf(AsyncDelegatingFileChannel.class));
 	}
 
@@ -405,7 +403,7 @@ public class CryptoFileSystemProviderTest {
 	}
 
 	@Test
-	public void testGetFileStoreDelegatesToFileSystem() throws IOException {
+	public void testGetFileStoreDelegatesToFileSystem() {
 		CryptoFileStore fileStore = mock(CryptoFileStore.class);
 		when(cryptoFileSystem.getFileStore()).thenReturn(fileStore);
 

@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.CryptoFileSystemProperties.FileSystemFlags;
+import org.cryptomator.cryptolib.api.MasterkeyLoader;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
@@ -22,7 +23,7 @@ import static org.hamcrest.Matchers.is;
 
 public class CryptoFileSystemPropertiesTest {
 
-	private final KeyLoader keyLoader = Mockito.mock(KeyLoader.class);
+	private final MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
 
 	@Test
 	public void testSetNoPassphrase() {

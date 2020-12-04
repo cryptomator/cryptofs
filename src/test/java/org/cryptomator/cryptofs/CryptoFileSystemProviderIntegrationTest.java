@@ -12,7 +12,9 @@ import com.google.common.io.MoreFiles;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
-import org.cryptomator.cryptolib.api.InvalidPassphraseException;
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.api.MasterkeyLoader;
+import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterAll;
@@ -73,14 +75,15 @@ public class CryptoFileSystemProviderIntegrationTest {
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 	class WithLimitedPaths {
 
-		private KeyLoader keyLoader = ignored -> new byte[64];
+		private byte[] rawKey = new byte[64];
+		private MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(rawKey);
 		private CryptoFileSystem fs;
 		private Path shortFilePath;
 		private Path shortSymlinkPath;
 		private Path shortDirPath;
 
 		@BeforeAll
-		public void setup(@TempDir Path tmpDir) throws IOException {
+		public void setup(@TempDir Path tmpDir) throws IOException, MasterkeyLoadingFailedException {
 			CryptoFileSystemProvider.initialize(tmpDir, "vault.cryptomator", "MASTERKEY_FILE", keyLoader);
 			CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
 					.withFlags() //
@@ -90,7 +93,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 					.build();
 			fs = CryptoFileSystemProvider.newFileSystem(tmpDir, properties);
 		}
-		
+
 		@BeforeEach
 		public void setupEach() throws IOException {
 			shortFilePath = fs.getPath("/short-enough.txt");
@@ -100,7 +103,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Files.createDirectory(shortDirPath);
 			Files.createSymbolicLink(shortSymlinkPath, shortFilePath);
 		}
-		
+
 		@AfterEach
 		public void tearDownEach() throws IOException {
 			Files.deleteIfExists(shortFilePath);
@@ -160,7 +163,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Assertions.assertTrue(Files.exists(src));
 			Assertions.assertTrue(Files.notExists(dst));
 		}
-		
+
 	}
 
 	@Nested
@@ -169,8 +172,8 @@ public class CryptoFileSystemProviderIntegrationTest {
 	class InMemory {
 
 		private FileSystem tmpFs;
-		private KeyLoader keyLoader1;
-		private KeyLoader keyLoader2;
+		private MasterkeyLoader keyLoader1;
+		private MasterkeyLoader keyLoader2;
 		private Path pathToVault1;
 		private Path pathToVault2;
 		private Path vaultConfigFile1;
@@ -185,8 +188,8 @@ public class CryptoFileSystemProviderIntegrationTest {
 			byte[] key2 = new byte[64];
 			Arrays.fill(key1, (byte) 0x55);
 			Arrays.fill(key2, (byte) 0x77);
-			keyLoader1 = ignored -> Arrays.copyOf(key1, 64);
-			keyLoader2 = ignored -> Arrays.copyOf(key2, 64);
+			keyLoader1 = ignored -> Masterkey.createFromRaw(key1);
+			keyLoader2 = ignored -> Masterkey.createFromRaw(key2);
 			pathToVault1 = tmpFs.getPath("/vaultDir1");
 			pathToVault2 = tmpFs.getPath("/vaultDir2");
 			Files.createDirectory(pathToVault1);
@@ -520,10 +523,10 @@ public class CryptoFileSystemProviderIntegrationTest {
 		private FileSystem fs;
 
 		@BeforeAll
-		public void setup(@TempDir Path tmpDir) throws IOException {
+		public void setup(@TempDir Path tmpDir) throws IOException, MasterkeyLoadingFailedException {
 			Path pathToVault = tmpDir.resolve("vaultDir1");
 			Files.createDirectories(pathToVault);
-			KeyLoader keyLoader = ignored -> new byte[64];
+			MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
 			CryptoFileSystemProvider.initialize(pathToVault, "vault.cryptomator", "MASTERKEY_FILE", keyLoader);
 			fs = CryptoFileSystemProvider.newFileSystem(pathToVault, cryptoFileSystemProperties().withKeyLoader(keyLoader).build());
 		}
@@ -610,10 +613,10 @@ public class CryptoFileSystemProviderIntegrationTest {
 		private FileSystem fs;
 
 		@BeforeAll
-		public void setup(@TempDir Path tmpDir) throws IOException {
+		public void setup(@TempDir Path tmpDir) throws IOException, MasterkeyLoadingFailedException {
 			Path pathToVault = tmpDir.resolve("vaultDir1");
 			Files.createDirectories(pathToVault);
-			KeyLoader keyLoader = ignored -> new byte[64];
+			MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
 			CryptoFileSystemProvider.initialize(pathToVault, "vault.cryptomator", "MASTERKEY_FILE", keyLoader);
 			fs = CryptoFileSystemProvider.newFileSystem(pathToVault, cryptoFileSystemProperties().withKeyLoader(keyLoader).build());
 		}

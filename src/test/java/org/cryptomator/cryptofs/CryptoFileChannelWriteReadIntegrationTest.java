@@ -9,6 +9,9 @@
 package org.cryptomator.cryptofs;
 
 import com.google.common.jimfs.Jimfs;
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.api.MasterkeyLoader;
+import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -60,7 +63,8 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 
 		@BeforeAll
 		public void setupClass(@TempDir Path tmpDir) throws IOException {
-			fileSystem = new CryptoFileSystemProvider().newFileSystem(create(tmpDir), cryptoFileSystemProperties().withKeyLoader(ignored -> new byte[64]).build());
+			MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
+			fileSystem = new CryptoFileSystemProvider().newFileSystem(create(tmpDir), cryptoFileSystemProperties().withKeyLoader(keyLoader).build());
 		}
 
 		// tests https://github.com/cryptomator/cryptofs/issues/69
@@ -127,12 +131,13 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		private Path file;
 
 		@BeforeAll
-		public void beforeAll() throws IOException {
+		public void beforeAll() throws IOException, MasterkeyLoadingFailedException {
 			inMemoryFs = Jimfs.newFileSystem();
 			Path vaultPath = inMemoryFs.getPath("vault");
 			Files.createDirectories(vaultPath);
-			CryptoFileSystemProvider.initialize(vaultPath, "vault.cryptomator", "MASTERKEY_FILE", ignored -> new byte[64]);
-			fileSystem = new CryptoFileSystemProvider().newFileSystem(vaultPath, cryptoFileSystemProperties().withKeyLoader(ignored -> new byte[64]).withFlags().build());
+			MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
+			CryptoFileSystemProvider.initialize(vaultPath, "vault.cryptomator", "MASTERKEY_FILE", keyLoader);
+			fileSystem = new CryptoFileSystemProvider().newFileSystem(vaultPath, cryptoFileSystemProperties().withKeyLoader(keyLoader).withFlags().build());
 			file = fileSystem.getPath("/test.txt");
 		}
 

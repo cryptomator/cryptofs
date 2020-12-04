@@ -3,6 +3,8 @@ package org.cryptomator.cryptofs;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
 import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +28,7 @@ import static java.lang.String.format;
 
 @Singleton
 class CryptoFileSystems {
-	
+
 	private static final Logger LOG = LoggerFactory.getLogger(CryptoFileSystems.class);
 
 	private final ConcurrentMap<Path, CryptoFileSystemImpl> fileSystems = new ConcurrentHashMap<>();
@@ -41,18 +43,19 @@ class CryptoFileSystems {
 		this.csprng = csprng;
 	}
 
-	public CryptoFileSystemImpl create(CryptoFileSystemProvider provider, Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
+	public CryptoFileSystemImpl create(CryptoFileSystemProvider provider, Path pathToVault, CryptoFileSystemProperties properties) throws IOException, MasterkeyLoadingFailedException {
 		Path normalizedPathToVault = pathToVault.normalize();
 		var token = readVaultConfigFile(normalizedPathToVault, properties);
 
 		var configLoader = VaultConfig.decode(token);
-		byte[] rawKey = properties.keyLoader().loadKey(configLoader.getKeyId());
-		try {
-			var config = configLoader.load(rawKey, Constants.VAULT_VERSION);
+		byte[] rawKey = new byte[0];
+		try (Masterkey key = properties.keyLoader().loadKey(configLoader.getKeyId())) {
+			rawKey = key.getEncoded();
+			var config = configLoader.verify(rawKey, Constants.VAULT_VERSION);
 			var adjustedProperties = adjustForCapabilities(pathToVault, properties);
-			return fileSystems.compute(normalizedPathToVault, (key, value) -> {
-				if (value == null) {
-					return create(provider, normalizedPathToVault, adjustedProperties, rawKey, config);
+			return fileSystems.compute(normalizedPathToVault, (path, fs) -> {
+				if (fs == null) {
+					return create(provider, normalizedPathToVault, adjustedProperties, key, config);
 				} else {
 					throw new FileSystemAlreadyExistsException();
 				}
@@ -63,8 +66,8 @@ class CryptoFileSystems {
 	}
 
 	// synchronized access to non-threadsafe cryptoFileSystemComponentBuilder required
-	private synchronized CryptoFileSystemImpl create(CryptoFileSystemProvider provider, Path pathToVault, CryptoFileSystemProperties properties, byte[] rawKey, VaultConfig config) {
-		Cryptor cryptor = config.getCiphermode().getCryptorProvider(csprng).createFromRawKey(rawKey);
+	private synchronized CryptoFileSystemImpl create(CryptoFileSystemProvider provider, Path pathToVault, CryptoFileSystemProperties properties, Masterkey masterkey, VaultConfig config) {
+		Cryptor cryptor = config.getCiphermode().getCryptorProvider(csprng).withKey(masterkey);
 		return cryptoFileSystemComponentBuilder //
 				.cryptor(cryptor) //
 				.vaultConfig(config) //
@@ -77,10 +80,11 @@ class CryptoFileSystems {
 
 	/**
 	 * Attempts to read a vault config file
+	 *
 	 * @param pathToVault path to the vault's root
-	 * @param properties properties used when attempting to construct a fs for this vault
+	 * @param properties  properties used when attempting to construct a fs for this vault
 	 * @return The contents of the file decoded in ASCII
-	 * @throws IOException If the file could not be read
+	 * @throws IOException                       If the file could not be read
 	 * @throws FileSystemNeedsMigrationException If the file doesn't exists, but a legacy masterkey file was found instead
 	 */
 	private String readVaultConfigFile(Path pathToVault, CryptoFileSystemProperties properties) throws IOException, FileSystemNeedsMigrationException {
@@ -97,7 +101,7 @@ class CryptoFileSystems {
 			}
 		}
 	}
-	
+
 	private CryptoFileSystemProperties adjustForCapabilities(Path pathToVault, CryptoFileSystemProperties originalProperties) throws FileSystemCapabilityChecker.MissingCapabilityException {
 		if (!originalProperties.readonly()) {
 			try {

@@ -9,18 +9,12 @@ import dagger.Module;
 import dagger.Provides;
 import org.cryptomator.cryptofs.attr.AttributeComponent;
 import org.cryptomator.cryptofs.attr.AttributeViewComponent;
-import org.cryptomator.cryptofs.common.Constants;
-import org.cryptomator.cryptofs.common.MasterkeyBackupHelper;
 import org.cryptomator.cryptofs.dir.DirectoryStreamComponent;
 import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
-import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.CryptorProvider;
-import org.cryptomator.cryptolib.api.KeyFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;

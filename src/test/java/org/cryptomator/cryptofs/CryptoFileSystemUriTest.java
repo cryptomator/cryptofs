@@ -1,6 +1,9 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.common.DeletingFileVisitor;
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.api.MasterkeyLoader;
+import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -68,11 +71,12 @@ public class CryptoFileSystemUriTest {
 	}
 
 	@Test
-	public void testCreateWithPathToVaultFromNonDefaultProvider() throws IOException {
+	public void testCreateWithPathToVaultFromNonDefaultProvider() throws IOException, MasterkeyLoadingFailedException {
 		Path tempDir = createTempDirectory("CryptoFileSystemUrisTest").toAbsolutePath();
 		try {
-			CryptoFileSystemProvider.initialize(tempDir, "vault.cryptomator", "irrelevant", ignored -> new byte[64]);
-			FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(tempDir, cryptoFileSystemProperties().withKeyLoader(ignored -> new byte[64]).build());
+			MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
+			CryptoFileSystemProvider.initialize(tempDir, "vault.cryptomator", "irrelevant", keyLoader);
+			FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(tempDir, cryptoFileSystemProperties().withKeyLoader(keyLoader).build());
 			Path absolutePathToVault = fileSystem.getPath("a").toAbsolutePath();
 
 			URI uri = CryptoFileSystemUri.create(absolutePathToVault, "a", "b");
