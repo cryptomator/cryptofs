@@ -118,25 +118,25 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	/**
 	 * Creates a new vault at the given directory path.
 	 *
-	 * @param pathToVault         Path to an existing directory
-	 * @param vaultConfigFilename Name of the vault config file
-	 * @param keyId               The ID of the key to associate with this vault
-	 * @param keyLoader           A key loader providing the masterkey for this new vault
-	 * @throws NotDirectoryException                                  If the given path is not an existing directory.
-	 * @throws IOException                                            If the vault structure could not be initialized due to I/O errors
-	 * @throws MasterkeyLoadingFailedException
+	 * @param pathToVault Path to an existing directory
+	 * @param properties  Parameters to use when writing the vault configuration
+	 * @param keyId       ID of the master key to use for this vault
+	 * @throws NotDirectoryException           If the given path is not an existing directory.
+	 * @throws IOException                     If the vault structure could not be initialized due to I/O errors
+	 * @throws MasterkeyLoadingFailedException If thrown by the supplied keyLoader
 	 * @since 2.0.0
 	 */
-	public static void initialize(Path pathToVault, String vaultConfigFilename, String keyId, MasterkeyLoader keyLoader) throws NotDirectoryException, IOException, MasterkeyLoadingFailedException {
+	public static void initialize(Path pathToVault, CryptoFileSystemProperties properties, String keyId) throws NotDirectoryException, IOException, MasterkeyLoadingFailedException {
 		if (!Files.isDirectory(pathToVault)) {
 			throw new NotDirectoryException(pathToVault.toString());
 		}
 		byte[] rawKey = new byte[0];
-		try (Masterkey key = keyLoader.loadKey(keyId)) {
+		try (Masterkey key = properties.keyLoader().loadKey(keyId)) {
 			rawKey = key.getEncoded();
 			// save vault config:
-			Path vaultConfigPath = pathToVault.resolve(vaultConfigFilename);
-			var config = VaultConfig.createNew().cipherMode(VaultCipherMode.SIV_CTRMAC).maxFilenameLength(Constants.MAX_CIPHERTEXT_NAME_LENGTH).build();
+			Path vaultConfigPath = pathToVault.resolve(properties.vaultConfigFilename());
+			// TODO move ciphermode to properties
+			var config = VaultConfig.createNew().cipherMode(VaultCipherMode.SIV_CTRMAC).maxFilenameLength(properties.maxNameLength()).build();
 			var token = config.toToken(keyId, rawKey);
 			Files.writeString(vaultConfigPath, token, StandardCharsets.US_ASCII, WRITE, CREATE_NEW);
 			// create "d" dir:
@@ -145,7 +145,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		} finally {
 			Arrays.fill(rawKey, (byte) 0x00);
 		}
-		assert containsVault(pathToVault, vaultConfigFilename);
+		assert containsVault(pathToVault, properties.vaultConfigFilename());
 	}
 
 	/**

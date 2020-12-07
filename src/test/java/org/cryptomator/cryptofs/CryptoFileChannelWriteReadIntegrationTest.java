@@ -136,8 +136,9 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			Path vaultPath = inMemoryFs.getPath("vault");
 			Files.createDirectories(vaultPath);
 			MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
-			CryptoFileSystemProvider.initialize(vaultPath, "vault.cryptomator", "MASTERKEY_FILE", keyLoader);
-			fileSystem = new CryptoFileSystemProvider().newFileSystem(vaultPath, cryptoFileSystemProperties().withKeyLoader(keyLoader).withFlags().build());
+			var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+			CryptoFileSystemProvider.initialize(vaultPath, properties, "MASTERKEY_FILE");
+			fileSystem = new CryptoFileSystemProvider().newFileSystem(vaultPath, properties);
 			file = fileSystem.getPath("/test.txt");
 		}
 

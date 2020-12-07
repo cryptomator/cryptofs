@@ -16,7 +16,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import static java.nio.file.Files.createTempDirectory;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 
 public class CryptoFileSystemUriTest {
 
@@ -75,8 +74,9 @@ public class CryptoFileSystemUriTest {
 		Path tempDir = createTempDirectory("CryptoFileSystemUrisTest").toAbsolutePath();
 		try {
 			MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
-			CryptoFileSystemProvider.initialize(tempDir, "vault.cryptomator", "irrelevant", keyLoader);
-			FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(tempDir, cryptoFileSystemProperties().withKeyLoader(keyLoader).build());
+			CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+			CryptoFileSystemProvider.initialize(tempDir, properties, "irrelevant");
+			FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(tempDir, properties);
 			Path absolutePathToVault = fileSystem.getPath("a").toAbsolutePath();
 
 			URI uri = CryptoFileSystemUri.create(absolutePathToVault, "a", "b");

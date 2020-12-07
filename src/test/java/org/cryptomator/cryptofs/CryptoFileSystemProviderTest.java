@@ -164,9 +164,10 @@ public class CryptoFileSystemProviderTest {
 	public void testInitializeFailWithNotDirectoryException() {
 		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
 		Path pathToVault = fs.getPath("/vaultDir");
+		var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
 
 		Assertions.assertThrows(NotDirectoryException.class, () -> {
-			CryptoFileSystemProvider.initialize(pathToVault, "irrelevant.txt", "irrelevant", keyLoader);
+			CryptoFileSystemProvider.initialize(pathToVault, properties, "irrelevant");
 		});
 	}
 
@@ -176,9 +177,10 @@ public class CryptoFileSystemProviderTest {
 		Path pathToVault = fs.getPath("/vaultDir");
 		Path vaultConfigFile = pathToVault.resolve("vault.cryptomator");
 		Path dataDir = pathToVault.resolve("d");
+		var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
 
 		Files.createDirectory(pathToVault);
-		CryptoFileSystemProvider.initialize(pathToVault, "vault.cryptomator", "MASTERKEY_FILE", keyLoader);
+		CryptoFileSystemProvider.initialize(pathToVault, properties, "MASTERKEY_FILE");
 
 		Assertions.assertTrue(Files.isDirectory(dataDir));
 		Assertions.assertTrue(Files.isRegularFile(vaultConfigFile));

@@ -30,8 +30,9 @@ public class ReadmeCodeSamplesTest {
 	@Test
 	public void testReadmeCodeSampleUsingFileSystemConstructionMethodA(@TempDir Path storageLocation) throws IOException, MasterkeyLoadingFailedException {
 		MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
-		CryptoFileSystemProvider.initialize(storageLocation, "vault.cryptomator", "irrelevant", keyLoader);
-		FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(storageLocation, CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build());
+		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+		CryptoFileSystemProvider.initialize(storageLocation, properties, "irrelevant");
+		FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(storageLocation, properties);
 
 		runCodeSample(fileSystem);
 	}
@@ -40,8 +41,9 @@ public class ReadmeCodeSamplesTest {
 	public void testReadmeCodeSampleUsingFileSystemConstructionMethodB(@TempDir Path storageLocation) throws IOException, MasterkeyLoadingFailedException {
 		URI uri = CryptoFileSystemUri.create(storageLocation);
 		MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
-		CryptoFileSystemProvider.initialize(storageLocation, "vault.cryptomator", "irrelevant", keyLoader);
-		FileSystem fileSystem = FileSystems.newFileSystem(uri, CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build());
+		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+		CryptoFileSystemProvider.initialize(storageLocation, properties, "irrelevant");
+		FileSystem fileSystem = FileSystems.newFileSystem(uri, properties);
 
 		runCodeSample(fileSystem);
 	}

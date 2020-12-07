@@ -9,6 +9,7 @@
 package org.cryptomator.cryptofs.attr;
 
 import com.google.common.jimfs.Jimfs;
+import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptofs.CryptoFileSystemProvider;
 import org.cryptomator.cryptolib.api.Masterkey;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
@@ -42,7 +43,6 @@ import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
 import static java.lang.System.currentTimeMillis;
 import static java.nio.file.Files.readAttributes;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.greaterThan;
@@ -60,8 +60,9 @@ public class FileAttributeIntegrationTest {
 		pathToVault = inMemoryFs.getRootDirectories().iterator().next().resolve("vault");
 		Files.createDirectory(pathToVault);
 		MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
-		CryptoFileSystemProvider.initialize(pathToVault, "vault.cryptomator", "irrelevant", keyLoader);
-		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withKeyLoader(keyLoader).build());
+		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+		CryptoFileSystemProvider.initialize(pathToVault, properties, "irrelevant");
+		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), properties);
 	}
 
 	@AfterAll

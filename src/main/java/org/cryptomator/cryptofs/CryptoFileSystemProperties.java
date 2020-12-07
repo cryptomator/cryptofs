@@ -95,15 +95,6 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		 * If present, the vault is opened in read-only mode.
 		 */
 		READONLY,
-
-		/**
-		 * If present, the maximum ciphertext path length (beginning from the root of the vault directory).
-		 * <p>
-		 * If exceeding the limit during a file operation, an exception is thrown.
-		 *
-		 * @since 1.9.8
-		 */
-		MAX_PATH_LENGTH,
 	}
 
 	private final Set<Entry<String, Object>> entries;

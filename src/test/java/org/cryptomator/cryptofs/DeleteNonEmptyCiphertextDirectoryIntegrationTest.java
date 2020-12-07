@@ -26,14 +26,11 @@ import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
-import static org.cryptomator.cryptofs.common.Constants.MAX_CIPHERTEXT_NAME_LENGTH;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
+import static org.cryptomator.cryptofs.common.Constants.MAX_CIPHERTEXT_NAME_LENGTH;
 
 /**
  * Regression tests https://github.com/cryptomator/cryptofs/issues/17.
@@ -48,8 +45,9 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 		pathToVault = tmpDir.resolve("vault");
 		Files.createDirectory(pathToVault);
 		MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
-		CryptoFileSystemProvider.initialize(pathToVault, "vault.cryptomator", "irrelevant", keyLoader);
-		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withKeyLoader(keyLoader).build());
+		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+		CryptoFileSystemProvider.initialize(pathToVault, properties, "irrelevant");
+		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), properties);
 	}
 
 	@Test
@@ -58,7 +56,7 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 		Files.createDirectory(cleartextDirectory);
 
 		Path ciphertextDirectory = firstEmptyCiphertextDirectory();
-		createFile(ciphertextDirectory, "foo01234.txt", new byte[] {65});
+		createFile(ciphertextDirectory, "foo01234.txt", new byte[]{65});
 
 		Files.delete(cleartextDirectory);
 	}
@@ -77,9 +75,9 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 		// .... text.data
 		Path foo0123 = createFolder(ciphertextDirectory, "foo0123");
 		Path foobar = createFolder(foo0123, "foobar");
-		createFile(foo0123, "test.txt", new byte[] {65});
-		createFile(foo0123, "text.data", new byte[] {65});
-		createFile(foobar, "test.baz", new byte[] {65});
+		createFile(foo0123, "test.txt", new byte[]{65});
+		createFile(foo0123, "text.data", new byte[]{65});
+		createFile(foobar, "test.baz", new byte[]{65});
 
 		Files.delete(cleartextDirectory);
 	}
@@ -92,7 +90,7 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 
 		Path ciphertextDirectory = firstEmptyCiphertextDirectory();
 		Path longNameDir = createFolder(ciphertextDirectory, "HHEZJURE.c9s");
-		createFile(longNameDir, Constants.CONTENTS_FILE_NAME, new byte[] {65});
+		createFile(longNameDir, Constants.CONTENTS_FILE_NAME, new byte[]{65});
 
 		Files.delete(cleartextDirectory);
 	}
@@ -106,7 +104,7 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 		Path ciphertextDirectory = firstEmptyCiphertextDirectory();
 		Path longNameDir = createFolder(ciphertextDirectory, "HHEZJURE.c9s");
 		createFile(longNameDir, Constants.INFLATED_FILE_NAME, "HHEZJUREHHEZJUREHHEZJURE".getBytes());
-		createFile(longNameDir, Constants.CONTENTS_FILE_NAME, new byte[] {65});
+		createFile(longNameDir, Constants.CONTENTS_FILE_NAME, new byte[]{65});
 
 		Files.delete(cleartextDirectory);
 	}
@@ -115,7 +113,7 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 	public void testDeleteNonEmptyDir() throws IOException {
 		Path cleartextDirectory = fileSystem.getPath("/d");
 		Files.createDirectory(cleartextDirectory);
-		createFile(cleartextDirectory, "test", new byte[] {65});
+		createFile(cleartextDirectory, "test", new byte[]{65});
 
 		Assertions.assertThrows(DirectoryNotEmptyException.class, () -> {
 			Files.delete(cleartextDirectory);

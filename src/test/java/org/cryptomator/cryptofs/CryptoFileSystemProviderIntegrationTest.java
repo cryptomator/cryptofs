@@ -84,13 +84,13 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 		@BeforeAll
 		public void setup(@TempDir Path tmpDir) throws IOException, MasterkeyLoadingFailedException {
-			CryptoFileSystemProvider.initialize(tmpDir, "vault.cryptomator", "MASTERKEY_FILE", keyLoader);
 			CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
 					.withFlags() //
 					.withMasterkeyFilename("masterkey.cryptomator") //
 					.withKeyLoader(keyLoader) //
 					.withMaxPathLength(100)
 					.build();
+			CryptoFileSystemProvider.initialize(tmpDir, properties, "MASTERKEY_FILE");
 			fs = CryptoFileSystemProvider.newFileSystem(tmpDir, properties);
 		}
 
@@ -209,11 +209,13 @@ public class CryptoFileSystemProviderIntegrationTest {
 		public void initializeVaults() {
 			Assertions.assertAll(
 					() -> {
-						CryptoFileSystemProvider.initialize(pathToVault1, "vault.cryptomator", "MASTERKEY_FILE", keyLoader1);
+						var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader1).build();
+						CryptoFileSystemProvider.initialize(pathToVault1, properties, "MASTERKEY_FILE");
 						Assertions.assertTrue(Files.isDirectory(pathToVault1.resolve("d")));
 						Assertions.assertTrue(Files.isRegularFile(vaultConfigFile1));
 					}, () -> {
-						CryptoFileSystemProvider.initialize(pathToVault2, "vault.cryptomator", "MASTERKEY_FILE", keyLoader2);
+						var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader2).build();
+						CryptoFileSystemProvider.initialize(pathToVault2, properties, "MASTERKEY_FILE");
 						Assertions.assertTrue(Files.isDirectory(pathToVault2.resolve("d")));
 						Assertions.assertTrue(Files.isRegularFile(vaultConfigFile2));
 					});
@@ -527,8 +529,9 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Path pathToVault = tmpDir.resolve("vaultDir1");
 			Files.createDirectories(pathToVault);
 			MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
-			CryptoFileSystemProvider.initialize(pathToVault, "vault.cryptomator", "MASTERKEY_FILE", keyLoader);
-			fs = CryptoFileSystemProvider.newFileSystem(pathToVault, cryptoFileSystemProperties().withKeyLoader(keyLoader).build());
+			var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+			CryptoFileSystemProvider.initialize(pathToVault, properties, "MASTERKEY_FILE");
+			fs = CryptoFileSystemProvider.newFileSystem(pathToVault, properties);
 		}
 
 		@Nested
@@ -617,8 +620,9 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Path pathToVault = tmpDir.resolve("vaultDir1");
 			Files.createDirectories(pathToVault);
 			MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
-			CryptoFileSystemProvider.initialize(pathToVault, "vault.cryptomator", "MASTERKEY_FILE", keyLoader);
-			fs = CryptoFileSystemProvider.newFileSystem(pathToVault, cryptoFileSystemProperties().withKeyLoader(keyLoader).build());
+			var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+			CryptoFileSystemProvider.initialize(pathToVault, properties, "MASTERKEY_FILE");
+			fs = CryptoFileSystemProvider.newFileSystem(pathToVault, properties);
 		}
 
 		@Test

@@ -23,7 +23,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.UserPrincipal;
 
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 
 public class RealFileSystemIntegrationTest {
@@ -36,8 +35,9 @@ public class RealFileSystemIntegrationTest {
 		pathToVault = tmpDir.resolve("vault");
 		Files.createDirectory(pathToVault);
 		MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
-		CryptoFileSystemProvider.initialize(pathToVault, "vault.cryptomator", "irrelevant", keyLoader);
-		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withKeyLoader(keyLoader).build());
+		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+		CryptoFileSystemProvider.initialize(pathToVault, properties, "irrelevant");
+		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), properties);
 	}
 
 	@Test
