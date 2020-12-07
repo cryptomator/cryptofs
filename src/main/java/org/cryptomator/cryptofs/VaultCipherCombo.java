@@ -1,13 +1,15 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptolib.Cryptors;
-import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 
 import java.security.SecureRandom;
 import java.util.function.Function;
 
-public enum VaultCipherMode {
+/**
+ * A combination of different ciphers and/or cipher modes in a Cryptomator vault.
+ */
+public enum VaultCipherCombo {
 	/**
 	 * AES-SIV for file name encryption
 	 * AES-CTR + HMAC for content encryption
@@ -23,7 +25,7 @@ public enum VaultCipherMode {
 
 	private final Function<SecureRandom, CryptorProvider> cryptorProvider;
 
-	VaultCipherMode(Function<SecureRandom, CryptorProvider> cryptorProvider) {
+	VaultCipherCombo(Function<SecureRandom, CryptorProvider> cryptorProvider) {
 		this.cryptorProvider = cryptorProvider;
 	}
 

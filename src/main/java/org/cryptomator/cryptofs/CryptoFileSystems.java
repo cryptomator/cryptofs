@@ -67,7 +67,7 @@ class CryptoFileSystems {
 
 	// synchronized access to non-threadsafe cryptoFileSystemComponentBuilder required
 	private synchronized CryptoFileSystemImpl create(CryptoFileSystemProvider provider, Path pathToVault, CryptoFileSystemProperties properties, Masterkey masterkey, VaultConfig config) {
-		Cryptor cryptor = config.getCiphermode().getCryptorProvider(csprng).withKey(masterkey);
+		Cryptor cryptor = config.getCipherCombo().getCryptorProvider(csprng).withKey(masterkey);
 		return cryptoFileSystemComponentBuilder //
 				.cryptor(cryptor) //
 				.vaultConfig(config) //

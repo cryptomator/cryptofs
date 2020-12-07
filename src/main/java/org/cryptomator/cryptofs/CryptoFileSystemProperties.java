@@ -62,7 +62,6 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	static final MasterkeyLoader DEFAULT_KEYLOADER = null;
 
-
 	/**
 	 * Key identifying the name of the vault config file located inside the vault directory.
 	 *
@@ -96,6 +95,15 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		 */
 		READONLY,
 	}
+	/**
+	 * Key identifying the combination of ciphers to use in a vault. Only meaningful during vault initialization.
+	 *
+	 * @since 2.0.0
+	 */
+	public static final String PROPERTY_CIPHER_COMBO = "cipherCombo";
+
+	// TODO: change to SIV_GCM with issue 94
+	static final VaultCipherCombo DEFAULT_CIPHER_COMBO = VaultCipherCombo.SIV_CTRMAC;
 
 	private final Set<Entry<String, Object>> entries;
 
@@ -106,12 +114,17 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 				Map.entry(PROPERTY_VAULTCONFIG_FILENAME, builder.vaultConfigFilename), //
 				Map.entry(PROPERTY_MASTERKEY_FILENAME, builder.masterkeyFilename), //
 				Map.entry(PROPERTY_MAX_PATH_LENGTH, builder.maxPathLength), //
-				Map.entry(PROPERTY_MAX_NAME_LENGTH, builder.maxNameLength) //
+				Map.entry(PROPERTY_MAX_NAME_LENGTH, builder.maxNameLength), //
+				Map.entry(PROPERTY_CIPHER_COMBO, builder.cipherCombo) //
 		);
 	}
 
 	MasterkeyLoader keyLoader() {
 		return (MasterkeyLoader) get(PROPERTY_KEYLOADER);
+	}
+
+	public VaultCipherCombo cipherCombo() {
+		return (VaultCipherCombo) get(PROPERTY_CIPHER_COMBO);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -187,6 +200,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 */
 	public static class Builder {
 
+		public VaultCipherCombo cipherCombo = DEFAULT_CIPHER_COMBO;
 		private MasterkeyLoader keyLoader = DEFAULT_KEYLOADER;
 		private final Set<FileSystemFlags> flags = EnumSet.copyOf(DEFAULT_FILESYSTEM_FLAGS);
 		private String vaultConfigFilename = DEFAULT_VAULTCONFIG_FILENAME;
@@ -204,6 +218,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 			checkedSet(Set.class, PROPERTY_FILESYSTEM_FLAGS, properties, this::withFlags);
 			checkedSet(Integer.class, PROPERTY_MAX_PATH_LENGTH, properties, this::withMaxPathLength);
 			checkedSet(Integer.class, PROPERTY_MAX_NAME_LENGTH, properties, this::withMaxNameLength);
+			checkedSet(VaultCipherCombo.class, PROPERTY_CIPHER_COMBO, properties, this::withCipherCombo);
 		}
 
 		private <T> void checkedSet(Class<T> type, String key, Map<String, ?> properties, Consumer<T> setter) {
@@ -239,6 +254,19 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		 */
 		public Builder withMaxNameLength(int maxNameLength) {
 			this.maxNameLength = maxNameLength;
+			return this;
+		}
+
+
+		/**
+		 * Sets the cipher combo used during vault initialization.
+		 *
+		 * @param cipherCombo The cipher combo
+		 * @return this
+		 * @since 2.0.0
+		 */
+		public Builder withCipherCombo(VaultCipherCombo cipherCombo) {
+			this.cipherCombo = cipherCombo;
 			return this;
 		}
 

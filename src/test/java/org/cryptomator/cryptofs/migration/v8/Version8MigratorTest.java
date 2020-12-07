@@ -65,7 +65,7 @@ public class Version8MigratorTest {
 		Assertions.assertNotNull(token.getId());
 		Assertions.assertEquals("MASTERKEY_FILE", token.getKeyId());
 		Assertions.assertEquals(8, token.getClaim("format").asInt());
-		Assertions.assertEquals("SIV_CTRMAC", token.getClaim("ciphermode").asString());
+		Assertions.assertEquals("SIV_CTRMAC", token.getClaim("cipherCombo").asString());
 		Assertions.assertEquals(220, token.getClaim("maxFilenameLen").asInt());
 	}
 

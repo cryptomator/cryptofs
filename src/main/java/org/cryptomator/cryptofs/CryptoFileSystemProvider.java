@@ -12,7 +12,6 @@ import org.cryptomator.cryptofs.ch.AsyncDelegatingFileChannel;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
 import org.cryptomator.cryptolib.api.Masterkey;
-import org.cryptomator.cryptolib.api.MasterkeyLoader;
 import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 
 import java.io.IOException;
@@ -135,8 +134,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 			rawKey = key.getEncoded();
 			// save vault config:
 			Path vaultConfigPath = pathToVault.resolve(properties.vaultConfigFilename());
-			// TODO move ciphermode to properties
-			var config = VaultConfig.createNew().cipherMode(VaultCipherMode.SIV_CTRMAC).maxFilenameLength(properties.maxNameLength()).build();
+			var config = VaultConfig.createNew().cipherCombo(properties.cipherCombo()).maxFilenameLength(properties.maxNameLength()).build();
 			var token = config.toToken(keyId, rawKey);
 			Files.writeString(vaultConfigPath, token, StandardCharsets.US_ASCII, WRITE, CREATE_NEW);
 			// create "d" dir:

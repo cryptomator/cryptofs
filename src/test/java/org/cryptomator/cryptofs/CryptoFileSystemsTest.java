@@ -44,7 +44,7 @@ public class CryptoFileSystemsTest {
 	private final Masterkey masterkey = mock(Masterkey.class);
 	private final byte[] rawKey = new byte[64];
 	private final VaultConfig vaultConfig = mock(VaultConfig.class);
-	private final VaultCipherMode cipherMode = mock(VaultCipherMode.class);
+	private final VaultCipherCombo cipherCombo = mock(VaultCipherCombo.class);
 	private final SecureRandom csprng = Mockito.mock(SecureRandom.class);
 	private final CryptorProvider cryptorProvider = mock(CryptorProvider.class);
 	private final Cryptor cryptor = mock(Cryptor.class);
@@ -72,8 +72,8 @@ public class CryptoFileSystemsTest {
 		when(keyLoader.loadKey("key-id")).thenReturn(masterkey);
 		when(masterkey.getEncoded()).thenReturn(rawKey);
 		when(configLoader.verify(rawKey, Constants.VAULT_VERSION)).thenReturn(vaultConfig);
-		when(vaultConfig.getCiphermode()).thenReturn(cipherMode);
-		when(cipherMode.getCryptorProvider(csprng)).thenReturn(cryptorProvider);
+		when(vaultConfig.getCipherCombo()).thenReturn(cipherCombo);
+		when(cipherCombo.getCryptorProvider(csprng)).thenReturn(cryptorProvider);
 		when(cryptorProvider.withKey(masterkey)).thenReturn(cryptor);
 		when(cryptoFileSystemComponentBuilder.cryptor(any())).thenReturn(cryptoFileSystemComponentBuilder);
 		when(cryptoFileSystemComponentBuilder.vaultConfig(any())).thenReturn(cryptoFileSystemComponentBuilder);

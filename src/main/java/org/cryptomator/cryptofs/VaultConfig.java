@@ -30,25 +30,25 @@ import java.util.UUID;
 public class VaultConfig {
 
 	private static final String JSON_KEY_VAULTVERSION = "format";
-	private static final String JSON_KEY_CIPHERCONFIG = "ciphermode";
+	private static final String JSON_KEY_CIPHERCONFIG = "cipherCombo";
 	private static final String JSON_KEY_MAXFILENAMELEN = "maxFilenameLen";
 
 	private final String id;
 	private final int vaultVersion;
-	private final VaultCipherMode ciphermode;
+	private final VaultCipherCombo cipherCombo;
 	private final int maxFilenameLength;
 
 	private VaultConfig(DecodedJWT verifiedConfig) {
 		this.id = verifiedConfig.getId();
 		this.vaultVersion = verifiedConfig.getClaim(JSON_KEY_VAULTVERSION).asInt();
-		this.ciphermode = VaultCipherMode.valueOf(verifiedConfig.getClaim(JSON_KEY_CIPHERCONFIG).asString());
+		this.cipherCombo = VaultCipherCombo.valueOf(verifiedConfig.getClaim(JSON_KEY_CIPHERCONFIG).asString());
 		this.maxFilenameLength = verifiedConfig.getClaim(JSON_KEY_MAXFILENAMELEN).asInt();
 	}
 
 	private VaultConfig(VaultConfigBuilder builder) {
 		this.id = builder.id;
 		this.vaultVersion = builder.vaultVersion;
-		this.ciphermode = builder.ciphermode;
+		this.cipherCombo = builder.cipherCombo;
 		this.maxFilenameLength = builder.maxFilenameLength;
 	}
 
@@ -60,8 +60,8 @@ public class VaultConfig {
 		return vaultVersion;
 	}
 
-	public VaultCipherMode getCiphermode() {
-		return ciphermode;
+	public VaultCipherCombo getCipherCombo() {
+		return cipherCombo;
 	}
 
 	public int getMaxFilenameLength() {
@@ -73,7 +73,7 @@ public class VaultConfig {
 				.withKeyId(keyId) //
 				.withJWTId(id) //
 				.withClaim(JSON_KEY_VAULTVERSION, vaultVersion) //
-				.withClaim(JSON_KEY_CIPHERCONFIG, ciphermode.name()) //
+				.withClaim(JSON_KEY_CIPHERCONFIG, cipherCombo.name()) //
 				.withClaim(JSON_KEY_MAXFILENAMELEN, maxFilenameLength) //
 				.sign(Algorithm.HMAC256(rawKey));
 	}
@@ -176,11 +176,11 @@ public class VaultConfig {
 
 		private final String id = UUID.randomUUID().toString();
 		private final int vaultVersion = Constants.VAULT_VERSION;
-		private VaultCipherMode ciphermode;
+		private VaultCipherCombo cipherCombo;
 		private int maxFilenameLength;
 
-		public VaultConfigBuilder cipherMode(VaultCipherMode ciphermode) {
-			this.ciphermode = ciphermode;
+		public VaultConfigBuilder cipherCombo(VaultCipherCombo cipherCombo) {
+			this.cipherCombo = cipherCombo;
 			return this;
 		}
 

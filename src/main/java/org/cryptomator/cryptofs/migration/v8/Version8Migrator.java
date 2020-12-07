@@ -67,7 +67,7 @@ public class Version8Migrator implements Migrator {
 					.withJWTId(UUID.randomUUID().toString()) //
 					.withKeyId("MASTERKEY_FILE") //
 					.withClaim("format", 8) //
-					.withClaim("ciphermode", "SIV_CTRMAC") //
+					.withClaim("cipherCombo", "SIV_CTRMAC") //
 					.withClaim("maxFilenameLen", 220) //
 					.sign(algorithm);
 			Files.writeString(vaultConfigFile, config, StandardCharsets.US_ASCII, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);

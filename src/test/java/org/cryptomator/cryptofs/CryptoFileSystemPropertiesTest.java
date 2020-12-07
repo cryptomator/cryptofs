@@ -49,6 +49,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
 						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
+						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
 
@@ -71,6 +72,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
 						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
+						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
 
@@ -97,6 +99,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, 1000), //
 						anEntry(PROPERTY_MAX_NAME_LENGTH, 255), //
+						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
 
@@ -119,6 +122,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
 						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
+						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
 
@@ -141,6 +145,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
 						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
+						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class))));
 	}
 
@@ -193,6 +198,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
 						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
 						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
+						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class))
 				)
 		);
