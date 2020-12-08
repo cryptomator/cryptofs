@@ -225,8 +225,8 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@Order(2)
 		@DisplayName("get filesystem with incorrect credentials")
 		public void testGetFsWithWrongCredentials() {
-			Assumptions.assumeTrue(CryptoFileSystemProvider.containsVault(pathToVault1, "vault.cryptomator"));
-			Assumptions.assumeTrue(CryptoFileSystemProvider.containsVault(pathToVault2, "vault.cryptomator"));
+			Assumptions.assumeTrue(CryptoFileSystemProvider.containsVault(pathToVault1, "vault.cryptomator", "masterkey.cryptomator"));
+			Assumptions.assumeTrue(CryptoFileSystemProvider.containsVault(pathToVault2, "vault.cryptomator", "masterkey.cryptomator"));
 			Assertions.assertAll(
 					() -> {
 						URI fsUri = CryptoFileSystemUri.create(pathToVault1);

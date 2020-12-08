@@ -143,7 +143,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		} finally {
 			Arrays.fill(rawKey, (byte) 0x00);
 		}
-		assert containsVault(pathToVault, properties.vaultConfigFilename());
+		assert containsVault(pathToVault, properties.vaultConfigFilename(), properties.masterkeyFilename());
 	}
 
 	/**
@@ -151,13 +151,15 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 *
 	 * @param pathToVault         A directory path
 	 * @param vaultConfigFilename Name of the vault config file
+	 * @param masterkeyFilename   Name of the masterkey file
 	 * @return <code>true</code> if the directory seems to contain a vault.
 	 * @since 2.0.0
 	 */
-	public static boolean containsVault(Path pathToVault, String vaultConfigFilename) {
+	public static boolean containsVault(Path pathToVault, String vaultConfigFilename, String masterkeyFilename) {
 		Path vaultConfigPath = pathToVault.resolve(vaultConfigFilename);
+		Path masterkeyPath = pathToVault.resolve(masterkeyFilename);
 		Path dataDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME);
-		return Files.isReadable(vaultConfigPath) && Files.isDirectory(dataDirPath);
+		return (Files.isReadable(vaultConfigPath) || Files.isReadable(masterkeyPath)) && Files.isDirectory(dataDirPath);
 	}
 
 	/**

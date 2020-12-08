@@ -201,9 +201,26 @@ public class CryptoFileSystemProviderTest {
 	}
 
 	@Test
+	public void testContainsVaultReturnsTrueIfDirectoryContainsVaultConfigFileAndDataDir() throws IOException {
+		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
+
+		String vaultConfigFilename = "vaultconfig.foo.baz";
+		String masterkeyFilename = "masterkey.foo.baz";
+		Path pathToVault = fs.getPath("/vaultDir");
+
+		Path vaultConfigFile = pathToVault.resolve(vaultConfigFilename);
+		Path dataDir = pathToVault.resolve("d");
+		Files.createDirectories(dataDir);
+		Files.write(vaultConfigFile, new byte[0]);
+
+		Assertions.assertTrue(containsVault(pathToVault, vaultConfigFilename, masterkeyFilename));
+	}
+
+	@Test
 	public void testContainsVaultReturnsTrueIfDirectoryContainsMasterkeyFileAndDataDir() throws IOException {
 		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
 
+		String vaultConfigFilename = "vaultconfig.foo.baz";
 		String masterkeyFilename = "masterkey.foo.baz";
 		Path pathToVault = fs.getPath("/vaultDir");
 
@@ -212,34 +229,38 @@ public class CryptoFileSystemProviderTest {
 		Files.createDirectories(dataDir);
 		Files.write(masterkeyFile, new byte[0]);
 
-		Assertions.assertTrue(containsVault(pathToVault, masterkeyFilename));
+		Assertions.assertTrue(containsVault(pathToVault, vaultConfigFilename, masterkeyFilename));
 	}
 
 	@Test
-	public void testContainsVaultReturnsFalseIfDirectoryContainsNoMasterkeyFileButDataDir() throws IOException {
+	public void testContainsVaultReturnsFalseIfDirectoryContainsOnlyDataDir() throws IOException {
 		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
 
+		String vaultConfigFilename = "vaultconfig.foo.baz";
 		String masterkeyFilename = "masterkey.foo.baz";
 		Path pathToVault = fs.getPath("/vaultDir");
 
 		Path dataDir = pathToVault.resolve("d");
 		Files.createDirectories(dataDir);
 
-		Assertions.assertFalse(containsVault(pathToVault, masterkeyFilename));
+		Assertions.assertFalse(containsVault(pathToVault, vaultConfigFilename, masterkeyFilename));
 	}
 
 	@Test
-	public void testContainsVaultReturnsFalseIfDirectoryContainsMasterkeyFileButNoDataDir() throws IOException {
+	public void testContainsVaultReturnsFalseIfDirectoryContainsNoDataDir() throws IOException {
 		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
 
+		String vaultConfigFilename = "vaultconfig.foo.baz";
 		String masterkeyFilename = "masterkey.foo.baz";
 		Path pathToVault = fs.getPath("/vaultDir");
 
+		Path vaultConfigFile = pathToVault.resolve(vaultConfigFilename);
 		Path masterkeyFile = pathToVault.resolve(masterkeyFilename);
 		Files.createDirectories(pathToVault);
+		Files.write(vaultConfigFile, new byte[0]);
 		Files.write(masterkeyFile, new byte[0]);
 
-		Assertions.assertFalse(containsVault(pathToVault, masterkeyFilename));
+		Assertions.assertFalse(containsVault(pathToVault, vaultConfigFilename, masterkeyFilename));
 	}
 
 	@Test
