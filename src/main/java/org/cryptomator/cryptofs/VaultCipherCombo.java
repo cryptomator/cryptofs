@@ -14,14 +14,13 @@ public enum VaultCipherCombo {
 	 * AES-SIV for file name encryption
 	 * AES-CTR + HMAC for content encryption
 	 */
-	SIV_CTRMAC(Cryptors::version1);
+	SIV_CTRMAC(Cryptors::version1),
 
-// TODO enable eventually (issue 94):
-//	/**
-//	 * AES-SIV for file name encryption
-//	 * AES-GCM for content encryption
-//	 */
-//	SIV_GCM(Cryptors::version2);
+	/**
+	 * AES-SIV for file name encryption
+	 * AES-GCM for content encryption
+	 */
+	SIV_GCM(Cryptors::version2);
 
 	private final Function<SecureRandom, CryptorProvider> cryptorProvider;
 

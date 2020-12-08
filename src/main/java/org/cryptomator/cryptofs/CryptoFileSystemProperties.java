@@ -102,8 +102,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 */
 	public static final String PROPERTY_CIPHER_COMBO = "cipherCombo";
 
-	// TODO: change to SIV_GCM with issue 94
-	static final VaultCipherCombo DEFAULT_CIPHER_COMBO = VaultCipherCombo.SIV_CTRMAC;
+	static final VaultCipherCombo DEFAULT_CIPHER_COMBO = VaultCipherCombo.SIV_GCM;
 
 	private final Set<Entry<String, Object>> entries;
 
