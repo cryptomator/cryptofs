@@ -69,6 +69,7 @@ public class CryptoFileSystemUri {
 	 * 
 	 * @param pathToVault path to the vault
 	 * @param pathComponentsInsideVault path components to node inside the vault
+	 * @return An URI pointing to the root of the CryptoFileSystem
 	 */
 	public static URI create(Path pathToVault, String... pathComponentsInsideVault) {
 		try {
