@@ -4,19 +4,22 @@ import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.mocks.NullSecureRandom;
-import org.cryptomator.cryptolib.Cryptors;
-import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.CryptorProvider;
-import org.cryptomator.cryptolib.api.KeyFile;
+import org.cryptomator.cryptolib.api.CryptoException;
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.common.MasterkeyFile;
+import org.hamcrest.CoreMatchers;
+import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.SecureRandom;
 
 public class Version7MigratorTest {
 
@@ -25,11 +28,10 @@ public class Version7MigratorTest {
 	private Path dataDir;
 	private Path metaDir;
 	private Path masterkeyFile;
-	private CryptorProvider cryptorProvider;
+	private SecureRandom csprng = NullSecureRandom.INSTANCE;
 
 	@BeforeEach
 	public void setup() throws IOException {
-		cryptorProvider = Cryptors.version1(NullSecureRandom.INSTANCE);
 		fs = Jimfs.newFileSystem(Configuration.unix());
 		vaultRoot = fs.getPath("/vaultDir");
 		dataDir = vaultRoot.resolve("d");
@@ -38,10 +40,10 @@ public class Version7MigratorTest {
 		Files.createDirectory(vaultRoot);
 		Files.createDirectory(dataDir);
 		Files.createDirectory(metaDir);
-		try (Cryptor cryptor = cryptorProvider.createNew()) {
-			KeyFile keyFile = cryptor.writeKeysToMasterkeyFile("test", 6);
-			Files.write(masterkeyFile, keyFile.serialize());
-		}
+
+		Masterkey masterkey = Masterkey.createNew(csprng);
+		byte[] unmigrated = MasterkeyFile.lock(masterkey, "test", new byte[0], 6, csprng);
+		Files.write(masterkeyFile, unmigrated);
 	}
 
 	@AfterEach
@@ -50,22 +52,19 @@ public class Version7MigratorTest {
 	}
 
 	@Test
-	public void testKeyfileGetsUpdates() throws IOException {
-		KeyFile beforeMigration = KeyFile.parse(Files.readAllBytes(masterkeyFile));
-		Assertions.assertEquals(6, beforeMigration.getVersion());
+	public void testKeyfileGetsUpdates() throws CryptoException, IOException {
+		Migrator migrator = new Version7Migrator(csprng);
+		migrator.migrate(vaultRoot, null, "masterkey.cryptomator", "test");
 
-		Migrator migrator = new Version7Migrator(cryptorProvider);
-		migrator.migrate(vaultRoot, "masterkey.cryptomator", "test");
-
-		KeyFile afterMigration = KeyFile.parse(Files.readAllBytes(masterkeyFile));
-		Assertions.assertEquals(7, afterMigration.getVersion());
+		String migrated = Files.readString(masterkeyFile, StandardCharsets.UTF_8);
+		MatcherAssert.assertThat(migrated, CoreMatchers.containsString("\"version\": 7"));
 	}
 
 	@Test
-	public void testMDirectoryGetsDeleted() throws IOException {
-		Migrator migrator = new Version7Migrator(cryptorProvider);
-		migrator.migrate(vaultRoot, "masterkey.cryptomator", "test");
-		
+	public void testMDirectoryGetsDeleted() throws CryptoException, IOException {
+		Migrator migrator = new Version7Migrator(csprng);
+		migrator.migrate(vaultRoot, null, "masterkey.cryptomator", "test");
+
 		Assertions.assertFalse(Files.exists(metaDir));
 	}
 
@@ -76,54 +75,54 @@ public class Version7MigratorTest {
 		Path fileBeforeMigration = dir.resolve("MZUWYZLOMFWWK===.icloud");
 		Files.createFile(fileBeforeMigration);
 
-		Migrator migrator = new Version7Migrator(cryptorProvider);
-		
+		Migrator migrator = new Version7Migrator(csprng);
+
 		IOException e = Assertions.assertThrows(PreMigrationVisitor.PreMigrationChecksFailedException.class, () -> {
-			migrator.migrate(vaultRoot, "masterkey.cryptomator", "test");
+			migrator.migrate(vaultRoot, null, "masterkey.cryptomator", "test");
 		});
 		Assertions.assertTrue(e.getMessage().contains("MZUWYZLOMFWWK===.icloud"));
 	}
 
 	@Test
-	public void testMigrationOfNormalFile() throws IOException {
+	public void testMigrationOfNormalFile() throws CryptoException, IOException {
 		Path dir = dataDir.resolve("AA/BBBBBCCCCCDDDDDEEEEEFFFFFGGGGG");
 		Files.createDirectories(dir);
 		Path fileBeforeMigration = dir.resolve("MZUWYZLOMFWWK===");
 		Path fileAfterMigration = dir.resolve("ZmlsZW5hbWU=.c9r");
 		Files.createFile(fileBeforeMigration);
 
-		Migrator migrator = new Version7Migrator(cryptorProvider);
-		migrator.migrate(vaultRoot, "masterkey.cryptomator", "test");
+		Migrator migrator = new Version7Migrator(csprng);
+		migrator.migrate(vaultRoot, null, "masterkey.cryptomator", "test");
 
 		Assertions.assertFalse(Files.exists(fileBeforeMigration));
 		Assertions.assertTrue(Files.exists(fileAfterMigration));
 	}
 
 	@Test
-	public void testMigrationOfNormalDirectory() throws IOException {
+	public void testMigrationOfNormalDirectory() throws CryptoException, IOException {
 		Path dir = dataDir.resolve("AA/BBBBBCCCCCDDDDDEEEEEFFFFFGGGGG");
 		Files.createDirectories(dir);
 		Path fileBeforeMigration = dir.resolve("0MZUWYZLOMFWWK===");
 		Path fileAfterMigration = dir.resolve("ZmlsZW5hbWU=.c9r/dir.c9r");
 		Files.createFile(fileBeforeMigration);
 
-		Migrator migrator = new Version7Migrator(cryptorProvider);
-		migrator.migrate(vaultRoot, "masterkey.cryptomator", "test");
+		Migrator migrator = new Version7Migrator(csprng);
+		migrator.migrate(vaultRoot, null, "masterkey.cryptomator", "test");
 
 		Assertions.assertFalse(Files.exists(fileBeforeMigration));
 		Assertions.assertTrue(Files.exists(fileAfterMigration));
 	}
 
 	@Test
-	public void testMigrationOfNormalSymlink() throws IOException {
+	public void testMigrationOfNormalSymlink() throws CryptoException, IOException {
 		Path dir = dataDir.resolve("AA/BBBBBCCCCCDDDDDEEEEEFFFFFGGGGG");
 		Files.createDirectories(dir);
 		Path fileBeforeMigration = dir.resolve("1SMZUWYZLOMFWWK===");
 		Path fileAfterMigration = dir.resolve("ZmlsZW5hbWU=.c9r/symlink.c9r");
 		Files.createFile(fileBeforeMigration);
 
-		Migrator migrator = new Version7Migrator(cryptorProvider);
-		migrator.migrate(vaultRoot, "masterkey.cryptomator", "test");
+		Migrator migrator = new Version7Migrator(csprng);
+		migrator.migrate(vaultRoot, null, "masterkey.cryptomator", "test");
 
 		Assertions.assertFalse(Files.exists(fileBeforeMigration));
 		Assertions.assertTrue(Files.exists(fileAfterMigration));

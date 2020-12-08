@@ -18,6 +18,7 @@ import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.hamcrest.MockitoHamcrest.argThat;
@@ -87,8 +88,8 @@ public class ChunkSaverTest {
 
 		inTest.save(chunkIndex, chunkData);
 
-		verifyZeroInteractions(chunkIO);
-		verifyZeroInteractions(stats);
+		verifyNoInteractions(chunkIO);
+		verifyNoInteractions(stats);
 	}
 
 	@Test

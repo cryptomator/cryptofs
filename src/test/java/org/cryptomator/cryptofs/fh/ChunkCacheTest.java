@@ -2,16 +2,12 @@ package org.cryptomator.cryptofs.fh;
 
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
-import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
-import java.util.List;
 
-import static java.util.Arrays.asList;
-import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -26,7 +22,7 @@ public class ChunkCacheTest {
 	private final ChunkCache inTest = new ChunkCache(chunkLoader, chunkSaver, stats);
 
 	@Test
-	public void testGetInvokesLoaderIfEntryNotInCache() throws IOException {
+	public void testGetInvokesLoaderIfEntryNotInCache() throws IOException, AuthenticationFailedException {
 		long index = 42L;
 		ChunkData data = mock(ChunkData.class);
 		when(chunkLoader.load(index)).thenReturn(data);
@@ -36,7 +32,7 @@ public class ChunkCacheTest {
 	}
 
 	@Test
-	public void testGetDoesNotInvokeLoaderIfEntryInCacheFromPreviousGet() throws IOException {
+	public void testGetDoesNotInvokeLoaderIfEntryInCacheFromPreviousGet() throws IOException, AuthenticationFailedException {
 		long index = 42L;
 		ChunkData data = mock(ChunkData.class);
 		when(chunkLoader.load(index)).thenReturn(data);
@@ -58,7 +54,7 @@ public class ChunkCacheTest {
 	}
 
 	@Test
-	public void testGetInvokesSaverIfMaxEntriesInCacheAreReachedAndAnEntryNotInCacheIsRequested() throws IOException {
+	public void testGetInvokesSaverIfMaxEntriesInCacheAreReachedAndAnEntryNotInCacheIsRequested() throws IOException, AuthenticationFailedException {
 		long firstIndex = 42L;
 		long indexNotInCache = 40L;
 		ChunkData firstData = mock(ChunkData.class);
@@ -108,7 +104,7 @@ public class ChunkCacheTest {
 	}
 
 	@Test
-	public void testGetRethrowsAuthenticationFailedExceptionFromLoader() throws IOException {
+	public void testGetRethrowsAuthenticationFailedExceptionFromLoader() throws IOException, AuthenticationFailedException {
 		long index = 42L;
 		AuthenticationFailedException authenticationFailedException = new AuthenticationFailedException("Foo");
 		when(chunkLoader.load(index)).thenThrow(authenticationFailedException);
@@ -120,7 +116,7 @@ public class ChunkCacheTest {
 	}
 
 	@Test
-	public void testGetThrowsUncheckedExceptionFromLoader() throws IOException {
+	public void testGetThrowsUncheckedExceptionFromLoader() throws IOException, AuthenticationFailedException {
 		long index = 42L;
 		RuntimeException uncheckedException = new RuntimeException();
 		when(chunkLoader.load(index)).thenThrow(uncheckedException);
@@ -132,7 +128,7 @@ public class ChunkCacheTest {
 	}
 
 	@Test
-	public void testInvalidateAllInvokesSaverForAllEntriesInCache() throws IOException {
+	public void testInvalidateAllInvokesSaverForAllEntriesInCache() throws IOException, AuthenticationFailedException {
 		long index = 42L;
 		long index2 = 43L;
 		ChunkData data = mock(ChunkData.class);
@@ -148,16 +144,7 @@ public class ChunkCacheTest {
 	}
 
 	@Test
-	@SuppressWarnings("unchecked")
-	public void testLoaderThrowsOnlyIOException() throws NoSuchMethodException {
-		List<Class<?>> exceptionsThrownByLoader = asList(ChunkLoader.class.getMethod("load", Long.class).getExceptionTypes());
-
-		// INFO: when adding exception types here add a corresponding test like testGetRethrowsIOExceptionFromLoader
-		MatcherAssert.assertThat(exceptionsThrownByLoader, containsInAnyOrder(IOException.class));
-	}
-
-	@Test
-	public void testGetRethrowsIOExceptionFromLoader() throws IOException {
+	public void testGetRethrowsIOExceptionFromLoader() throws IOException, AuthenticationFailedException {
 		long index = 42L;
 		IOException ioException = new IOException();
 		when(chunkLoader.load(index)).thenThrow(ioException);

@@ -9,6 +9,9 @@
 package org.cryptomator.cryptofs;
 
 import com.google.common.jimfs.Jimfs;
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.api.MasterkeyLoader;
+import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -60,7 +63,8 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 
 		@BeforeAll
 		public void setupClass(@TempDir Path tmpDir) throws IOException {
-			fileSystem = new CryptoFileSystemProvider().newFileSystem(create(tmpDir), cryptoFileSystemProperties().withPassphrase("asd").build());
+			MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
+			fileSystem = new CryptoFileSystemProvider().newFileSystem(create(tmpDir), cryptoFileSystemProperties().withKeyLoader(keyLoader).build());
 		}
 
 		// tests https://github.com/cryptomator/cryptofs/issues/69
@@ -89,21 +93,21 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 
 			try (FileChannel ch = FileChannel.open(file, CREATE_NEW, WRITE)) {
 				t1 = Files.getLastModifiedTime(file).toInstant().truncatedTo(ChronoUnit.MILLIS);
-				Thread.currentThread().sleep(50);
+				Thread.sleep(50);
 
 				ch.write(data);
 				ch.force(true);
-				Thread.currentThread().sleep(50);
+				Thread.sleep(50);
 				t2 = Files.getLastModifiedTime(file).toInstant().truncatedTo(ChronoUnit.MILLIS);
 
 				Files.setLastModifiedTime(file, FileTime.from(t0));
 				ch.force(true);
-				Thread.currentThread().sleep(50);
+				Thread.sleep(50);
 				t3 = Files.getLastModifiedTime(file).toInstant().truncatedTo(ChronoUnit.MILLIS);
 
 				ch.write(data);
 				ch.force(true);
-				Thread.currentThread().sleep(1000);
+				Thread.sleep(1000);
 				t4 = Files.getLastModifiedTime(file).toInstant().truncatedTo(ChronoUnit.SECONDS);
 
 			}
@@ -127,12 +131,14 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		private Path file;
 
 		@BeforeAll
-		public void beforeAll() throws IOException {
+		public void beforeAll() throws IOException, MasterkeyLoadingFailedException {
 			inMemoryFs = Jimfs.newFileSystem();
 			Path vaultPath = inMemoryFs.getPath("vault");
 			Files.createDirectories(vaultPath);
-			CryptoFileSystemProvider.initialize(vaultPath, "masterkey.cryptomator", "asd");
-			fileSystem = new CryptoFileSystemProvider().newFileSystem(vaultPath, cryptoFileSystemProperties().withPassphrase("asd").withFlags().build());
+			MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
+			var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+			CryptoFileSystemProvider.initialize(vaultPath, properties, "MASTERKEY_FILE");
+			fileSystem = new CryptoFileSystemProvider().newFileSystem(vaultPath, properties);
 			file = fileSystem.getPath("/test.txt");
 		}
 

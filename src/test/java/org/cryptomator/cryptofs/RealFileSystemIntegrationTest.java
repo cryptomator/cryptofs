@@ -8,6 +8,9 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.api.MasterkeyLoader;
+import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -20,7 +23,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.UserPrincipal;
 
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 
 public class RealFileSystemIntegrationTest {
@@ -29,10 +31,13 @@ public class RealFileSystemIntegrationTest {
 	private static FileSystem fileSystem;
 
 	@BeforeAll
-	public static void setupClass(@TempDir Path tmpDir) throws IOException {
+	public static void setupClass(@TempDir Path tmpDir) throws IOException, MasterkeyLoadingFailedException {
 		pathToVault = tmpDir.resolve("vault");
 		Files.createDirectory(pathToVault);
-		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
+		MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
+		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+		CryptoFileSystemProvider.initialize(pathToVault, properties, "irrelevant");
+		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), properties);
 	}
 
 	@Test

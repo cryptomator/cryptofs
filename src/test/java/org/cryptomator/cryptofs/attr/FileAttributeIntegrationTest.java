@@ -9,7 +9,11 @@
 package org.cryptomator.cryptofs.attr;
 
 import com.google.common.jimfs.Jimfs;
+import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptofs.CryptoFileSystemProvider;
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.api.MasterkeyLoader;
+import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -39,7 +43,6 @@ import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
 import static java.lang.System.currentTimeMillis;
 import static java.nio.file.Files.readAttributes;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.greaterThan;
@@ -52,11 +55,14 @@ public class FileAttributeIntegrationTest {
 	private static FileSystem fileSystem;
 
 	@BeforeAll
-	public static void setupClass() throws IOException {
+	public static void setupClass() throws IOException, MasterkeyLoadingFailedException {
 		inMemoryFs = Jimfs.newFileSystem();
 		pathToVault = inMemoryFs.getRootDirectories().iterator().next().resolve("vault");
 		Files.createDirectory(pathToVault);
-		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
+		MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
+		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+		CryptoFileSystemProvider.initialize(pathToVault, properties, "irrelevant");
+		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), properties);
 	}
 
 	@AfterAll

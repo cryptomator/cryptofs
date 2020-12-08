@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.fh;
 
+import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
@@ -51,7 +52,7 @@ class FileHeaderHolderTest {
 		private FileChannel channel = Mockito.mock(FileChannel.class);
 
 		@BeforeEach
-		public void setup() throws IOException {
+		public void setup() throws IOException, AuthenticationFailedException {
 			byte[] headerBytes = "leHeader".getBytes(StandardCharsets.US_ASCII);
 			when(fileHeaderCryptor.headerSize()).thenReturn(headerBytes.length);
 			when(channel.read(Mockito.any(ByteBuffer.class), Mockito.eq(0l))).thenAnswer(invocation -> {
@@ -65,7 +66,7 @@ class FileHeaderHolderTest {
 
 		@Test
 		@DisplayName("load")
-		public void testLoadExisting() throws IOException {
+		public void testLoadExisting() throws IOException, AuthenticationFailedException {
 			FileHeader loadedHeader1 = inTest.loadExisting(channel);
 			FileHeader loadedHeader2 = inTest.get();
 			FileHeader loadedHeader3 = inTest.get();
@@ -90,7 +91,7 @@ class FileHeaderHolderTest {
 		}
 
 		@AfterEach
-		public void tearDown() {
+		public void tearDown() throws AuthenticationFailedException {
 			verify(fileHeaderCryptor, Mockito.never()).decryptHeader(Mockito.any());
 		}
 

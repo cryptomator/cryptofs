@@ -8,6 +8,9 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.api.MasterkeyLoader;
+import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -25,16 +28,22 @@ import java.util.stream.Stream;
 public class ReadmeCodeSamplesTest {
 
 	@Test
-	public void testReadmeCodeSampleUsingFileSystemConstructionMethodA(@TempDir Path storageLocation) throws IOException {
-		FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(storageLocation, CryptoFileSystemProperties.cryptoFileSystemProperties().withPassphrase("password").build());
+	public void testReadmeCodeSampleUsingFileSystemConstructionMethodA(@TempDir Path storageLocation) throws IOException, MasterkeyLoadingFailedException {
+		MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
+		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+		CryptoFileSystemProvider.initialize(storageLocation, properties, "irrelevant");
+		FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(storageLocation, properties);
 
 		runCodeSample(fileSystem);
 	}
 
 	@Test
-	public void testReadmeCodeSampleUsingFileSystemConstructionMethodB(@TempDir Path storageLocation) throws IOException {
+	public void testReadmeCodeSampleUsingFileSystemConstructionMethodB(@TempDir Path storageLocation) throws IOException, MasterkeyLoadingFailedException {
 		URI uri = CryptoFileSystemUri.create(storageLocation);
-		FileSystem fileSystem = FileSystems.newFileSystem(uri, CryptoFileSystemProperties.cryptoFileSystemProperties().withPassphrase("password").build());
+		MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
+		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+		CryptoFileSystemProvider.initialize(storageLocation, properties, "irrelevant");
+		FileSystem fileSystem = FileSystems.newFileSystem(uri, properties);
 
 		runCodeSample(fileSystem);
 	}

@@ -35,6 +35,7 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.lessThan;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
@@ -268,7 +269,7 @@ public class CryptoPathTest {
 		Path normalizedAndAbsolute = new CryptoPath(fileSystem, symlinks, asList("a", "b"), true);
 
 		Assertions.assertEquals(normalizedAndAbsolute, inTest.toRealPath(LinkOption.NOFOLLOW_LINKS));
-		verifyZeroInteractions(symlinks);
+		verifyNoInteractions(symlinks);
 	}
 
 	@Test
