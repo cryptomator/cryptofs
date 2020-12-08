@@ -50,7 +50,7 @@ jobs:
           path: target/cryptofs-${{ env.BUILD_VERSION }}.jar # what about target/dependency-list.txt?
       - name: Build and deploy to jcenter
         if: startsWith(github.ref, 'refs/tags/')
-        run: mvn -B deploy -DskipTests
+        run: mvn -B deploy -DskipTests -Prelease
         env:
           BINTRAY_USERNAME: cryptobot
           BINTRAY_API_KEY: ${{ secrets.BINTRAY_API_KEY }}
