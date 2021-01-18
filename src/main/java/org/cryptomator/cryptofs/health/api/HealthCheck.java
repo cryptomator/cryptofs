@@ -1,19 +1,12 @@
 package org.cryptomator.cryptofs.health.api;
 
-import org.cryptomator.cryptolib.api.MasterkeyLoader;
+import org.cryptomator.cryptofs.VaultConfig;
+import org.cryptomator.cryptolib.api.Masterkey;
 
 import java.nio.file.Path;
 import java.util.Collection;
 
 public interface HealthCheck {
-
-	/**
-	 * Tests whether this health check can be run on a vault structure with the given version.
-	 *
-	 * @param vaultVersion The vault's alleged version
-	 * @return <code>true</code> if this health check can be run
-	 */
-	boolean isApplicable(int vaultVersion);
 
 	/**
 	 * @return A unique name for this check (that might be used as a translation key)
@@ -26,9 +19,10 @@ public interface HealthCheck {
 	 * Checks the vault at the given path.
 	 *
 	 * @param pathToVault Path to the vault's root directory
-	 * @param keyLoader   A key loader capable of providing the key associated with this vault
+	 * @param config The parsed and verified vault config
+	 * @param masterkey The masterkey
 	 * @return Diagnostic results
 	 */
-	Collection<DiagnosticResult> check(Path pathToVault, MasterkeyLoader keyLoader);
+	Collection<DiagnosticResult> check(Path pathToVault, VaultConfig config, Masterkey masterkey);
 
 }
