@@ -72,7 +72,6 @@ import static java.nio.file.StandardOpenOption.WRITE;
  * <p>
  * Afterwards you can use the created {@code FileSystem} to create paths, do directory listings, create files and so on.
  * <p>
- * <p>
  * To create a new FileSystem from a URI using {@link FileSystems#newFileSystem(URI, Map)} you may have a look at {@link CryptoFileSystemUri}.
  *
  * @see CryptoFileSystemUri

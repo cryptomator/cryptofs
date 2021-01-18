@@ -34,15 +34,15 @@ import java.util.Optional;
  * Renames ciphertext names:
  *
  * <ul>
- *     <li>Files: BASE32== -> base64==.c9r</li>
- *     <li>Dirs: 0BASE32== -> base64==.c9r/dir.c9r</li>
- *     <li>Symlinks: 1SBASE32== -> base64.c9r/symlink.c9r</li>
+ *     <li>Files: BASE32== → base64==.c9r</li>
+ *     <li>Dirs: 0BASE32== → base64==.c9r/dir.c9r</li>
+ *     <li>Symlinks: 1SBASE32== → base64.c9r/symlink.c9r</li>
  * </ul>
  * <p>
  * Shortened names:
  * <ul>
- *     <li>shortened.lng -> shortened.c9s</li>
- *     <li>m/shortened.lng -> shortened.c9s/contents.c9r</li>
+ *     <li>shortened.lng → shortened.c9s</li>
+ *     <li>m/shortened.lng → shortened.c9s/contents.c9r</li>
  * </ul>
  */
 public class Version7Migrator implements Migrator {
