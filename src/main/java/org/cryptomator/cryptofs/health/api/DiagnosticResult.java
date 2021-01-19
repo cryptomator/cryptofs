@@ -2,7 +2,7 @@ package org.cryptomator.cryptofs.health.api;
 
 public class DiagnosticResult {
 
-	enum Severity {
+	public enum Severity {
 		/**
 		 * No complains
 		 */
@@ -25,9 +25,11 @@ public class DiagnosticResult {
 	}
 
 	private final Severity severity;
+	private final String message;
 
-	protected DiagnosticResult(Severity severity) {
+	protected DiagnosticResult(Severity severity, String message) {
 		this.severity = severity;
+		this.message = message;
 	}
 
 	public void fix() {
