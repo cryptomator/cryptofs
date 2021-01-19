@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs.health.api;
 
 import org.cryptomator.cryptofs.VaultConfig;
+import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
 
 import java.nio.file.Path;
@@ -21,8 +22,9 @@ public interface HealthCheck {
 	 * @param pathToVault Path to the vault's root directory
 	 * @param config The parsed and verified vault config
 	 * @param masterkey The masterkey
+	 * @param cryptor A cryptor initialized for this vault
 	 * @return Diagnostic results
 	 */
-	Collection<DiagnosticResult> check(Path pathToVault, VaultConfig config, Masterkey masterkey);
+	Collection<DiagnosticResult> check(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor);
 
 }

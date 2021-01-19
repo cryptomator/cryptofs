@@ -1,17 +1,17 @@
 package org.cryptomator.cryptofs;
 
+import com.google.common.cache.CacheLoader;
+
+import javax.inject.Inject;
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.io.InputStream;
+import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.UUID;
-
-import javax.inject.Inject;
-
-import com.google.common.cache.CacheLoader;
 
 @CryptoFileSystemScoped
 class DirectoryIdLoader extends CacheLoader<Path, String> {
@@ -24,7 +24,8 @@ class DirectoryIdLoader extends CacheLoader<Path, String> {
 
 	@Override
 	public String load(Path dirFilePath) throws IOException {
-		try (FileChannel ch = FileChannel.open(dirFilePath, StandardOpenOption.READ)) {
+		try (FileChannel ch = FileChannel.open(dirFilePath, StandardOpenOption.READ);
+			 InputStream in = Channels.newInputStream(ch)) {
 			long size = ch.size();
 			if (size == 0) {
 				throw new IOException("Invalid, empty directory file: " + dirFilePath);
@@ -32,11 +33,9 @@ class DirectoryIdLoader extends CacheLoader<Path, String> {
 				throw new IOException("Unexpectedly large directory file: " + dirFilePath);
 			} else {
 				assert size <= MAX_DIR_ID_LENGTH; // thus int
-				ByteBuffer buffer = ByteBuffer.allocate((int) size);
-				int read = ch.read(buffer);
-				assert read == size;
-				buffer.flip();
-				return StandardCharsets.UTF_8.decode(buffer).toString();
+				byte[] bytes = in.readNBytes((int) size);
+				assert bytes.length == size;
+				return new String(bytes, StandardCharsets.UTF_8);
 			}
 		} catch (NoSuchFileException e) {
 			return UUID.randomUUID().toString();

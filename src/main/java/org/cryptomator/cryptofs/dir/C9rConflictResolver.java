@@ -151,6 +151,7 @@ class C9rConflictResolver {
 		if (!Files.isDirectory(conflictingPath.getParent()) || !Files.isDirectory(canonicalPath.getParent())) {
 			return false;
 		}
+		// TODO replace by Files.mismatch() when using JDK > 12
 		try (ReadableByteChannel in1 = Files.newByteChannel(conflictingPath, StandardOpenOption.READ); //
 			 ReadableByteChannel in2 = Files.newByteChannel(canonicalPath, StandardOpenOption.READ)) {
 			ByteBuffer buf1 = ByteBuffer.allocate(numBytesToCompare);
