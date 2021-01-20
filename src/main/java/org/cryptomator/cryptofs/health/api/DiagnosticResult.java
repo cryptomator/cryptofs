@@ -1,6 +1,6 @@
 package org.cryptomator.cryptofs.health.api;
 
-public class DiagnosticResult {
+public abstract class DiagnosticResult {
 
 	public enum Severity {
 		/**
@@ -25,11 +25,17 @@ public class DiagnosticResult {
 	}
 
 	private final Severity severity;
-	private final String message;
 
-	protected DiagnosticResult(Severity severity, String message) {
+	protected DiagnosticResult(Severity severity) {
 		this.severity = severity;
-		this.message = message;
+	}
+
+	/**
+	 * @return A short, human-readable summary of the result.
+	 */
+	@Override
+	public String toString() {
+		return getClass().getName() + ": " + severity.name();
 	}
 
 	public void fix() {

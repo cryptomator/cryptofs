@@ -3,8 +3,7 @@ package org.cryptomator.cryptofs.health;
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.health.api.HealthCheck;
-import org.cryptomator.cryptofs.health.orphandirs.OrphanDirCheck;
-import org.cryptomator.cryptolib.Cryptors;
+import org.cryptomator.cryptofs.health.dirid.DirIdCheck;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
 import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 import org.cryptomator.cryptolib.api.UnsupportedVaultFormatException;
@@ -20,7 +19,7 @@ import java.util.List;
 
 public class HealthChecks {
 
-	public static final Collection<HealthCheck> ALL_CHECKS = List.of(new OrphanDirCheck());
+	public static final Collection<HealthCheck> ALL_CHECKS = List.of(new DirIdCheck());
 	private static final SecureRandom CSPRNG = new SecureRandom();
 
 	public static void run(Path pathToVault, String vaultConfigFileName, MasterkeyLoader masterkeyLoader, Collection<HealthCheck> checksToRun) throws IOException, UnsupportedVaultFormatException, MasterkeyLoadingFailedException {

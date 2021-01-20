@@ -1,4 +1,4 @@
-package org.cryptomator.cryptofs.health.orphandirs;
+package org.cryptomator.cryptofs.health.dirid;
 
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.common.Constants;
@@ -19,23 +19,25 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-public class OrphanDirCheck implements HealthCheck {
+public class DirIdCheck implements HealthCheck {
 
-	private static final Logger LOG = LoggerFactory.getLogger(OrphanDirCheck.class);
+	private static final Logger LOG = LoggerFactory.getLogger(DirIdCheck.class);
 	private static final int MAX_TRAVERSAL_DEPTH = 4; // d/2/30/Fo0==.c9r/dir.c9r
 	private static final Path DIR_FILE_NAME = Path.of(Constants.DIR_FILE_NAME);
 
 	@Override
 	public Collection<DiagnosticResult> check(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
-		var result = new ArrayList<DiagnosticResult>();
+		List<DiagnosticResult> results = new ArrayList<>();
 
 		// scan vault structure:
-		Path dataDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME);
-		var dirVisitor = new DirVisitor(dataDirPath);
+		var dataDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME);
+		var dirVisitor = new DirVisitor(dataDirPath, results);
 		try {
 			Files.walkFileTree(dataDirPath, Set.of(), MAX_TRAVERSAL_DEPTH, dirVisitor);
 		} catch (IOException e) {
@@ -44,36 +46,44 @@ public class OrphanDirCheck implements HealthCheck {
 		}
 
 		// remove matching pairs:
-		int healthyDirs = 0;
-		var iter = dirVisitor.dirIds.iterator();
+		var iter = dirVisitor.dirIds.entrySet().iterator();
 		while (iter.hasNext()) {
-			var dirId = iter.next();
+			var entry = iter.next();
+			var dirId = entry.getKey();
+			var dirIdFile = entry.getValue();
 			var hashedDirId = cryptor.fileNameCryptor().hashDirectoryId(dirId);
 			var expectedDir = Path.of(hashedDirId.substring(0, 2), hashedDirId.substring(2));
 			boolean foundDir = dirVisitor.secondLevelDirs.remove(expectedDir);
 			if (foundDir) {
-				healthyDirs++;
 				iter.remove();
-				// TODO: result.add(GOOD)
+				results.add(new HealthyDir(dirId, dirIdFile, expectedDir));
 			}
 		}
 
-		// TODO: result.add(WARN) for each remaining:
-		// dirVisitor.dirIds contains dirIds with missing dirs (can be deleted)
-		// dirVisitor.secondLevelDirs contains orphan dirs (can be moved to L+F)
-		LOG.info("Ran OrphanDirCheck on {}. Found {} dirs, {} dead dirs, {} orphan dirs.", pathToVault, healthyDirs, dirVisitor.dirIds.size(), dirVisitor.secondLevelDirs.size());
-		return result;
+		// remaining dirIds (i.e. missing dirs):
+		dirVisitor.dirIds.forEach((dirId, dirIdFile) -> {
+			results.add(new MissingDirectory(dirId, dirIdFile));
+		});
+
+		// remaining folders (i.e. missing dir.c9r files):
+		dirVisitor.secondLevelDirs.forEach(dir -> {
+			results.add(new OrphanDir(dir));
+		});
+
+		return results;
 	}
 
 	private static class DirVisitor extends SimpleFileVisitor<Path> {
 
 		private final Path dataDirPath;
-		public final Set<String> dirIds = new HashSet<>(); // contents of all found dir.c9r files
+		private final List<DiagnosticResult> results;
+		public final Map<String, Path> dirIds = new HashMap<>(); // contents of all found dir.c9r files
 		public final Set<Path> secondLevelDirs = new HashSet<>(); // all d/2/30 dirs
 
-		public DirVisitor(Path dataDirPath) {
+		public DirVisitor(Path dataDirPath, List<DiagnosticResult> results) {
 			this.dataDirPath = dataDirPath;
-			this.dirIds.add(""); // we always have the "empty string" dir id for the root dir
+			this.results = results;
+			this.dirIds.put("", null); // we always have the "empty string" dir id for the root dir
 		}
 
 		@Override
@@ -86,15 +96,18 @@ public class OrphanDirCheck implements HealthCheck {
 
 		private FileVisitResult visitDirFile(Path file, BasicFileAttributes attrs) throws IOException {
 			assert DIR_FILE_NAME.equals(file.getFileName());
-			if (attrs.size() > Constants.MAX_DIR_FILE_LENGTH) { // TODO: add separate dir.c9r plausibility check? or add diagnostic result?
+			if (attrs.size() > Constants.MAX_DIR_FILE_LENGTH) {
 				LOG.warn("Encountered dir.c9r file of size {}", attrs.size());
+				results.add(new ObeseDirFile(file, attrs.size()));
 			} else {
 				byte[] bytes = Files.readAllBytes(file);
 				String dirId = new String(bytes, StandardCharsets.UTF_8);
-				boolean added = dirIds.add(dirId);
-				if (!added) {
-					// TODO: how to handle this case? add diagnostic result?
-					LOG.warn("duplicate dir id");
+				if (dirIds.containsKey(dirId)) {
+					var otherFile = dirIds.get(dirId);
+					LOG.warn("Same directory ID used by {} and {}", file, otherFile);
+					results.add(new DirIdCollision(dirId, file, otherFile));
+				} else {
+					dirIds.put(dirId, file);
 				}
 			}
 			return FileVisitResult.SKIP_SIBLINGS;
