@@ -6,6 +6,7 @@ import org.cryptomator.cryptolib.api.MasterkeyLoader;
 import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.net.URI;
@@ -73,9 +74,11 @@ public class CryptoFileSystemUriTest {
 	public void testCreateWithPathToVaultFromNonDefaultProvider() throws IOException, MasterkeyLoadingFailedException {
 		Path tempDir = createTempDirectory("CryptoFileSystemUrisTest").toAbsolutePath();
 		try {
-			MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
-			CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
-			CryptoFileSystemProvider.initialize(tempDir, properties, "irrelevant");
+			MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
+			Mockito.when(keyLoader.supportsScheme("test")).thenReturn(true);
+			Mockito.when(keyLoader.loadKey(Mockito.any())).thenReturn(Masterkey.createFromRaw(new byte[64]));
+			CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoaders(keyLoader).build();
+			CryptoFileSystemProvider.initialize(tempDir, properties, URI.create("test:key"));
 			FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(tempDir, properties);
 			Path absolutePathToVault = fileSystem.getPath("a").toAbsolutePath();
 

@@ -16,6 +16,7 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystemAlreadyExistsException;
 import java.nio.file.FileSystemNotFoundException;
@@ -64,12 +65,12 @@ public class CryptoFileSystemsTest {
 		when(pathToVault.normalize()).thenReturn(normalizedPathToVault);
 		when(normalizedPathToVault.resolve("vault.cryptomator")).thenReturn(configFilePath);
 		when(properties.vaultConfigFilename()).thenReturn("vault.cryptomator");
-		when(properties.keyLoader()).thenReturn(keyLoader);
+		when(properties.keyLoader(Mockito.any())).thenReturn(keyLoader);
 		filesClass.when(() -> Files.readString(configFilePath, StandardCharsets.US_ASCII)).thenReturn("jwt-vault-config");
 		vaultConficClass.when(() -> VaultConfig.decode("jwt-vault-config")).thenReturn(configLoader);
 		when(VaultConfig.decode("jwt-vault-config")).thenReturn(configLoader);
-		when(configLoader.getKeyId()).thenReturn("key-id");
-		when(keyLoader.loadKey("key-id")).thenReturn(masterkey);
+		when(configLoader.getKeyId()).thenReturn(URI.create("test:key"));
+		when(keyLoader.loadKey(Mockito.any())).thenReturn(masterkey);
 		when(masterkey.getEncoded()).thenReturn(rawKey);
 		when(configLoader.verify(rawKey, Constants.VAULT_VERSION)).thenReturn(vaultConfig);
 		when(vaultConfig.getCipherCombo()).thenReturn(cipherCombo);

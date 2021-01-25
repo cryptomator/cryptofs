@@ -48,8 +48,9 @@ class CryptoFileSystems {
 		var token = readVaultConfigFile(normalizedPathToVault, properties);
 
 		var configLoader = VaultConfig.decode(token);
+		var keyId = configLoader.getKeyId();
 		byte[] rawKey = new byte[0];
-		try (Masterkey key = properties.keyLoader().loadKey(configLoader.getKeyId())) {
+		try (Masterkey key = properties.keyLoader(keyId.getScheme()).loadKey(keyId)) {
 			rawKey = key.getEncoded();
 			var config = configLoader.verify(rawKey, Constants.VAULT_VERSION);
 			var adjustedProperties = adjustForCapabilities(pathToVault, properties);

@@ -15,8 +15,10 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -34,9 +36,11 @@ public class RealFileSystemIntegrationTest {
 	public static void setupClass(@TempDir Path tmpDir) throws IOException, MasterkeyLoadingFailedException {
 		pathToVault = tmpDir.resolve("vault");
 		Files.createDirectory(pathToVault);
-		MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
-		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
-		CryptoFileSystemProvider.initialize(pathToVault, properties, "irrelevant");
+		MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
+		Mockito.when(keyLoader.supportsScheme("test")).thenReturn(true);
+		Mockito.when(keyLoader.loadKey(Mockito.any())).thenReturn(Masterkey.createFromRaw(new byte[64]));
+		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoaders(keyLoader).build();
+		CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"));
 		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), properties);
 	}
 
