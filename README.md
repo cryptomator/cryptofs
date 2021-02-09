@@ -1,6 +1,6 @@
 ![cryptomator](cryptomator.png)
 
-[![Build Status](https://travis-ci.org/cryptomator/cryptofs.svg?branch=develop)](https://travis-ci.org/cryptomator/cryptofs)
+[![Build](https://github.com/cryptomator/cryptofs/workflows/Build/badge.svg)](https://github.com/cryptomator/cryptofs/actions?query=workflow%3ABuild)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/7248ca7d466843f785f79f33374302c2)](https://www.codacy.com/app/cryptomator/cryptofs)
 [![Codacy Badge](https://api.codacy.com/project/badge/Coverage/7248ca7d466843f785f79f33374302c2)](https://www.codacy.com/app/cryptomator/cryptofs?utm_source=github.com&utm_medium=referral&utm_content=cryptomator/cryptofs&utm_campaign=Badge_Coverage)
 [![Known Vulnerabilities](https://snyk.io/test/github/cryptomator/cryptofs/badge.svg)](https://snyk.io/test/github/cryptomator/cryptofs)
@@ -27,8 +27,6 @@ For more information on the security details, visit [cryptomator.org](https://cr
 | 1u1-22-002 | This issue is related to [siv-mode](https://github.com/cryptomator/siv-mode/). |
 
 ## Usage
-
-CryptoFS depends on Java 8 JRE/JDK. In addition, the JCE unlimited strength policy files (needed for 256-bit keys) must be installed.
 
 ### Vault Initialization
 
@@ -89,13 +87,13 @@ try (FileSystem fileSystem = ...) { // see above
 }
 ```
 
-For more details on how to use the constructed `FileSystem`, you may consult the [javadocs of the `java.nio.file` package](http://docs.oracle.com/javase/8/docs/api/java/nio/file/package-summary.html).
+For more details on how to use the constructed `FileSystem`, you may consult the [javadocs of the `java.nio.file` package](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/nio/file/package-summary.html).
 
 ## Building
 
 ### Dependencies
 
-* Java 8 + JCE unlimited strength policy files (needed for 256-bit keys)
+* Java 11
 * Maven 3
 
 ### Run Maven
