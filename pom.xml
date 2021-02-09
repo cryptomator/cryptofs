@@ -17,14 +17,14 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
 		<!-- dependencies -->
-		<cryptolib.version>1.4.0</cryptolib.version>
+		<cryptolib.version>1.4.1</cryptolib.version>
 		<dagger.version>2.29.1</dagger.version>
 		<guava.version>30.0-jre</guava.version>
 		<slf4j.version>1.7.30</slf4j.version>
 
 		<!-- test dependencies -->
-		<junit.jupiter.version>5.7.0</junit.jupiter.version>
-		<mockito.version>3.6.0</mockito.version>
+		<junit.jupiter.version>5.6.2</junit.jupiter.version>
+		<mockito.version>3.3.3</mockito.version>
 		<hamcrest.version>2.2</hamcrest.version>
 	</properties>
 
@@ -52,14 +52,6 @@
 			<organizationUrl>https://cryptomator.org</organizationUrl>
 		</developer>
 	</developers>
-
-	<repositories>
-		<repository>
-			<id>bintray</id>
-			<name>bintray</name>
-			<url>https://jcenter.bintray.com</url>
-		</repository>
-	</repositories>
 
 	<dependencies>
 		<dependency>
@@ -124,10 +116,31 @@
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
+				<version>3.0.0-M3</version>
+				<executions>
+					<execution>
+						<id>enforce-java</id>
+						<goals>
+							<goal>enforce</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<requireJavaVersion>
+									<message>You need at least JDK 11.0.3 to build this project.</message>
+									<version>[11.0.3,)</version>
+								</requireJavaVersion>
+							</rules>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.1</version>
 				<configuration>
-					<release>11</release>
+					<release>8</release>
 					<showWarnings>true</showWarnings>
 					<annotationProcessorPaths>
 						<path>
@@ -143,6 +156,77 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>2.22.2</version>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>3.2.0</version>
+				<configuration>
+					<archive>
+						<manifestEntries>
+							<Automatic-Module-Name>org.cryptomator.cryptofs</Automatic-Module-Name>
+						</manifestEntries>
+					</archive>
+				</configuration>
+			</plugin>
+			<plugin>
+				<artifactId>maven-source-plugin</artifactId>
+				<version>3.2.1</version>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals>
+							<goal>jar-no-fork</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<version>3.2.0</version>
+				<executions>
+					<execution>
+						<id>attach-javadocs</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<tags>
+						<!-- workaround for "unknown tag: implNote", see https://blog.codefx.org/java/new-javadoc-tags/#Maven  -->
+						<tag>
+							<name>apiNote</name>
+							<placement>a</placement>
+							<head>API Note:</head>
+						</tag>
+						<tag>
+							<name>implSpec</name>
+							<placement>a</placement>
+							<head>Implementation Requirements:</head>
+						</tag>
+						<tag>
+							<name>implNote</name>
+							<placement>a</placement>
+							<head>Implementation Note:</head>
+						</tag>
+						<tag><name>param</name></tag>
+						<tag><name>return</name></tag>
+						<tag><name>throws</name></tag>
+						<tag><name>since</name></tag>
+						<tag><name>version</name></tag>
+						<tag><name>serialData</name></tag>
+						<tag><name>see</name></tag>
+					</tags>
+					<!-- Used for javax.annotation.Generated in dagger-generated code. Can be removed when using JDK 11+ -->
+					<additionalDependencies>
+						<additionalDependency>
+							<groupId>javax.annotation</groupId>
+							<artifactId>jsr250-api</artifactId>
+							<version>1.0</version>
+						</additionalDependency>
+					</additionalDependencies>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 
@@ -154,7 +238,7 @@
 					<plugin>
 						<groupId>org.owasp</groupId>
 						<artifactId>dependency-check-maven</artifactId>
-						<version>6.0.3</version>
+						<version>6.1.0</version>
 						<configuration>
 							<cveValidForHours>24</cveValidForHours>
 							<failBuildOnCVSS>0</failBuildOnCVSS>
@@ -202,92 +286,67 @@
 		</profile>
 
 		<profile>
-			<id>release</id>
-			<distributionManagement>
-				<repository>
-					<id>bintray-jcenter</id>
-					<url>https://api.bintray.com/maven/cryptomator/maven/cryptofs/;publish=1</url>
-				</repository>
-			</distributionManagement>
+			<id>sign</id>
 			<build>
 				<plugins>
 					<plugin>
-						<artifactId>maven-source-plugin</artifactId>
-						<version>3.2.1</version>
+						<artifactId>maven-gpg-plugin</artifactId>
+						<version>1.6</version>
 						<executions>
 							<execution>
-								<id>attach-sources</id>
+								<id>sign-artifacts</id>
+								<phase>verify</phase>
 								<goals>
-									<goal>jar-no-fork</goal>
-								</goals>
-							</execution>
-						</executions>
-					</plugin>
-					<plugin>
-						<artifactId>maven-javadoc-plugin</artifactId>
-						<version>3.2.0</version>
-						<executions>
-							<execution>
-								<id>attach-javadocs</id>
-								<goals>
-									<goal>jar</goal>
-								</goals>
-							</execution>
-						</executions>
-						<configuration>
-							<tags>
-								<!-- workaround for "unknown tag: implNote", see https://blog.codefx.org/java/new-javadoc-tags/#Maven  -->
-								<tag>
-									<name>apiNote</name>
-									<placement>a</placement>
-									<head>API Note:</head>
-								</tag>
-								<tag>
-									<name>implSpec</name>
-									<placement>a</placement>
-									<head>Implementation Requirements:</head>
-								</tag>
-								<tag>
-									<name>implNote</name>
-									<placement>a</placement>
-									<head>Implementation Note:</head>
-								</tag>
-								<tag><name>param</name></tag>
-								<tag><name>return</name></tag>
-								<tag><name>throws</name></tag>
-								<tag><name>since</name></tag>
-								<tag><name>version</name></tag>
-								<tag><name>serialData</name></tag>
-								<tag><name>see</name></tag>
-							</tags>
-							<additionalDependencies>
-								<additionalDependency>
-									<groupId>javax.annotation</groupId>
-									<artifactId>jsr250-api</artifactId>
-									<version>1.0</version>
-								</additionalDependency>
-							</additionalDependencies>
-						</configuration>
-					</plugin>
-					<plugin>
-						<artifactId>maven-dependency-plugin</artifactId>
-						<version>3.1.2</version>
-						<executions>
-							<execution>
-								<id>generate-dependency-list</id>
-								<phase>prepare-package</phase>
-								<goals>
-									<goal>list</goal>
+									<goal>sign</goal>
 								</goals>
 								<configuration>
-									<includeScope>runtime</includeScope>
-									<outputFile>${project.build.directory}/dependency-list.txt</outputFile>
+									<gpgArguments>
+										<arg>--pinentry-mode</arg>
+										<arg>loopback</arg>
+									</gpgArguments>
 								</configuration>
 							</execution>
 						</executions>
 					</plugin>
 				</plugins>
 			</build>
+		</profile>
+
+		<profile>
+			<id>deploy-central</id>
+			<distributionManagement>
+				<repository>
+					<id>ossrh</id>
+					<name>Maven Central</name>
+					<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+				</repository>
+			</distributionManagement>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.sonatype.plugins</groupId>
+						<artifactId>nexus-staging-maven-plugin</artifactId>
+						<version>1.6.8</version>
+						<extensions>true</extensions>
+						<configuration>
+							<serverId>ossrh</serverId>
+							<nexusUrl>https://oss.sonatype.org/</nexusUrl>
+							<autoReleaseAfterClose>true</autoReleaseAfterClose>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+
+		<profile>
+			<id>deploy-github</id>
+			<distributionManagement>
+				<repository>
+					<id>github</id>
+					<name>GitHub Packages</name>
+					<url>https://maven.pkg.github.com/cryptomator/cryptofs</url>
+				</repository>
+			</distributionManagement>
 		</profile>
 	</profiles>
 </project>
