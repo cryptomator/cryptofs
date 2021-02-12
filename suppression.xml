@@ -6,9 +6,4 @@
 		<gav>org.slf4j:slf4j-api:1.7.25</gav>
 		<cve>CVE-2018-8088</cve>
 	</suppress>
-	<suppress>
-		<notes><![CDATA[ Upstream fix backported from 2.11.0 to 2.10.5.1, see https://github.com/FasterXML/jackson-databind/issues/2589#issuecomment-714833837. ]]></notes>
-		<gav>com.fasterxml.jackson.core:jackson-databind:2.10.5.1</gav>
-		<cve>CVE-2020-25649</cve>
-	</suppress>
 </suppressions>
