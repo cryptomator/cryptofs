@@ -61,7 +61,7 @@ public class Version8MigratorTest {
 		Assertions.assertTrue(Files.exists(vaultConfigFile));
 		DecodedJWT token = JWT.decode(Files.readString(vaultConfigFile));
 		Assertions.assertNotNull(token.getId());
-		Assertions.assertEquals("MASTERKEY_FILE", token.getKeyId());
+		Assertions.assertEquals("masterkeyfile:masterkey.cryptomator", token.getKeyId());
 		Assertions.assertEquals(8, token.getClaim("format").asInt());
 		Assertions.assertEquals("SIV_CTRMAC", token.getClaim("cipherCombo").asString());
 		Assertions.assertEquals(220, token.getClaim("maxFilenameLen").asInt());
