@@ -64,7 +64,7 @@ public class Version8Migrator implements Migrator {
 			Algorithm algorithm = Algorithm.HMAC256(rawKey);
 			var config = JWT.create() //
 					.withJWTId(UUID.randomUUID().toString()) //
-					.withKeyId("MASTERKEY_FILE") //
+					.withKeyId("masterkeyfile:masterkey.cryptomator") //
 					.withClaim("format", 8) //
 					.withClaim("cipherCombo", "SIV_CTRMAC") //
 					.withClaim("maxFilenameLen", 220) //
