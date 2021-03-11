@@ -629,6 +629,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Path pathToVault = tmpDir.resolve("vaultDir1");
 			Files.createDirectories(pathToVault);
 			MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
+			Mockito.when(keyLoader.supportsScheme("test")).thenReturn(true);
 			Mockito.when(keyLoader.loadKey(Mockito.any())).thenReturn(Masterkey.createFromRaw(new byte[64]));
 			var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoaders(keyLoader).build();
 			CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"));

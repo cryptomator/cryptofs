@@ -66,8 +66,11 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		@BeforeAll
 		public void setupClass(@TempDir Path tmpDir) throws IOException, MasterkeyLoadingFailedException {
 			MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
+			Mockito.when(keyLoader.supportsScheme(Mockito.any())).thenReturn(true);
 			Mockito.when(keyLoader.loadKey(Mockito.any())).thenReturn(Masterkey.createFromRaw(new byte[64]));
-			fileSystem = new CryptoFileSystemProvider().newFileSystem(create(tmpDir), cryptoFileSystemProperties().withKeyLoaders(keyLoader).build());
+			CryptoFileSystemProperties properties = cryptoFileSystemProperties().withKeyLoaders(keyLoader).build();
+			CryptoFileSystemProvider.initialize(tmpDir, properties, URI.create("test:key"));
+			fileSystem = CryptoFileSystemProvider.newFileSystem(tmpDir, properties);
 		}
 
 		// tests https://github.com/cryptomator/cryptofs/issues/69

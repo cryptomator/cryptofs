@@ -200,7 +200,7 @@ public class CryptoFileSystemProviderTest {
 
 		inTest.newFileSystem(uri, properties);
 
-		Mockito.verify(fileSystems).create(Mockito.same(inTest), Mockito.eq(pathToVault), Mockito.eq(properties));
+		Mockito.verify(fileSystems).create(Mockito.same(inTest), Mockito.eq(pathToVault.toAbsolutePath()), Mockito.eq(properties));
 	}
 
 	@Test
