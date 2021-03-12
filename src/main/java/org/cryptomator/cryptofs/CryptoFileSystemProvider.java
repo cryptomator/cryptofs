@@ -149,7 +149,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 			var token = config.toToken(keyId.toString(), rawKey);
 			Files.writeString(vaultConfigPath, token, StandardCharsets.US_ASCII, WRITE, CREATE_NEW);
 			// create "d" dir and root:
-			Cryptor cryptor = config.getCipherCombo().getCryptorProvider(new SecureRandom()).withKey(key); //TODO: show we create a secure random instance like in CryptoFileSystemProviderComponent?
+			Cryptor cryptor = config.getCipherCombo().getCryptorProvider(strongSecureRandom()).withKey(key);
 			String dirHash = cryptor.fileNameCryptor().hashDirectoryId(Constants.ROOT_DIR_ID);
 			Path vaultCipherRootPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(dirHash.substring(0, 2)).resolve(dirHash.substring(2));
 			Files.createDirectories(vaultCipherRootPath);
