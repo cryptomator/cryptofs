@@ -4,6 +4,7 @@ import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
+import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
 import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
@@ -35,6 +36,9 @@ public class CryptoFileSystemsTest {
 	private final Path pathToVault = mock(Path.class, "vaultPath");
 	private final Path normalizedPathToVault = mock(Path.class, "normalizedVaultPath");
 	private final Path configFilePath = mock(Path.class, "normalizedVaultPath/vault.cryptomator");
+	private final Path dataDirPath = mock(Path.class, "normalizedVaultPath/d");
+	private final Path preContenRootPath = mock(Path.class, "normalizedVaultPath/d/AB");
+	private final Path contenRootPath = mock(Path.class, "normalizedVaultPath/d/AB/CDEFGHIJKLMNOP");
 	private final FileSystemCapabilityChecker capabilityChecker = mock(FileSystemCapabilityChecker.class);
 	private final CryptoFileSystemProvider provider = mock(CryptoFileSystemProvider.class);
 	private final CryptoFileSystemProperties properties = mock(CryptoFileSystemProperties.class);
@@ -49,6 +53,7 @@ public class CryptoFileSystemsTest {
 	private final SecureRandom csprng = Mockito.mock(SecureRandom.class);
 	private final CryptorProvider cryptorProvider = mock(CryptorProvider.class);
 	private final Cryptor cryptor = mock(Cryptor.class);
+	private final FileNameCryptor fileNameCryptor = mock(FileNameCryptor.class);
 	private final CryptoFileSystemComponent.Builder cryptoFileSystemComponentBuilder = mock(CryptoFileSystemComponent.Builder.class);
 
 
@@ -76,6 +81,12 @@ public class CryptoFileSystemsTest {
 		when(vaultConfig.getCipherCombo()).thenReturn(cipherCombo);
 		when(cipherCombo.getCryptorProvider(csprng)).thenReturn(cryptorProvider);
 		when(cryptorProvider.withKey(masterkey)).thenReturn(cryptor);
+		when(cryptor.fileNameCryptor()).thenReturn(fileNameCryptor);
+		when(fileNameCryptor.hashDirectoryId("")).thenReturn("ABCDEFGHIJKLMNOP");
+		when(pathToVault.resolve(Constants.DATA_DIR_NAME)).thenReturn(dataDirPath);
+		when(dataDirPath.resolve("AB")).thenReturn(preContenRootPath);
+		when(preContenRootPath.resolve("CDEFGHIJKLMNOP")).thenReturn(contenRootPath);
+		filesClass.when(() -> Files.exists(contenRootPath)).thenReturn(true);
 		when(cryptoFileSystemComponentBuilder.cryptor(any())).thenReturn(cryptoFileSystemComponentBuilder);
 		when(cryptoFileSystemComponentBuilder.vaultConfig(any())).thenReturn(cryptoFileSystemComponentBuilder);
 		when(cryptoFileSystemComponentBuilder.pathToVault(any())).thenReturn(cryptoFileSystemComponentBuilder);
@@ -128,6 +139,12 @@ public class CryptoFileSystemsTest {
 
 		CryptoFileSystemImpl fileSystem2 = inTest.create(provider, pathToVault, properties);
 		Assertions.assertTrue(inTest.contains(fileSystem2));
+	}
+
+	@Test
+	public void testCreateThrowsIOExceptionIfContentRootExistenceCheckFails() {
+		filesClass.when(() -> Files.exists(contenRootPath)).thenReturn(false);
+		Assertions.assertThrows(IOException.class, () -> inTest.create(provider, pathToVault, properties));
 	}
 
 	@Test

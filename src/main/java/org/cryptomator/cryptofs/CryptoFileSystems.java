@@ -54,9 +54,11 @@ class CryptoFileSystems {
 			rawKey = key.getEncoded();
 			var config = configLoader.verify(rawKey, Constants.VAULT_VERSION);
 			var adjustedProperties = adjustForCapabilities(pathToVault, properties);
+			Cryptor cryptor = config.getCipherCombo().getCryptorProvider(csprng).withKey(key);
+			checkVaultRootExistence(pathToVault, cryptor);
 			return fileSystems.compute(normalizedPathToVault, (path, fs) -> {
 				if (fs == null) {
-					return create(provider, normalizedPathToVault, adjustedProperties, key, config);
+					return create(provider, normalizedPathToVault, adjustedProperties, cryptor, config);
 				} else {
 					throw new FileSystemAlreadyExistsException();
 				}
@@ -66,9 +68,22 @@ class CryptoFileSystems {
 		}
 	}
 
+	/**
+	 * Checks if the vault has a content root folder. If not, an exception is raised.
+	 * @param pathToVault Path to the vault root
+	 * @param cryptor Cryptor object initialized with the correct masterkey
+	 * @throws ContentRootMissingException If the existence of encrypted vault content root cannot be ensured
+	 */
+	private void checkVaultRootExistence(Path pathToVault, Cryptor cryptor) throws ContentRootMissingException {
+		String dirHash = cryptor.fileNameCryptor().hashDirectoryId(Constants.ROOT_DIR_ID);
+		Path vaultCipherRootPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(dirHash.substring(0, 2)).resolve(dirHash.substring(2));
+		if(! Files.exists(vaultCipherRootPath)){
+			throw new ContentRootMissingException("The encrypted root directory of the vault "+pathToVault+" is missing.");
+		}
+	}
+
 	// synchronized access to non-threadsafe cryptoFileSystemComponentBuilder required
-	private synchronized CryptoFileSystemImpl create(CryptoFileSystemProvider provider, Path pathToVault, CryptoFileSystemProperties properties, Masterkey masterkey, VaultConfig config) {
-		Cryptor cryptor = config.getCipherCombo().getCryptorProvider(csprng).withKey(masterkey);
+	private synchronized CryptoFileSystemImpl create(CryptoFileSystemProvider provider, Path pathToVault, CryptoFileSystemProperties properties, Cryptor cryptor, VaultConfig config) {
 		return cryptoFileSystemComponentBuilder //
 				.cryptor(cryptor) //
 				.vaultConfig(config) //
@@ -83,9 +98,9 @@ class CryptoFileSystems {
 	 * Attempts to read a vault config file
 	 *
 	 * @param pathToVault path to the vault's root
-	 * @param properties  properties used when attempting to construct a fs for this vault
+	 * @param properties properties used when attempting to construct a fs for this vault
 	 * @return The contents of the file decoded in ASCII
-	 * @throws IOException                       If the file could not be read
+	 * @throws IOException If the file could not be read
 	 * @throws FileSystemNeedsMigrationException If the file doesn't exists, but a legacy masterkey file was found instead
 	 */
 	private String readVaultConfigFile(Path pathToVault, CryptoFileSystemProperties properties) throws IOException, FileSystemNeedsMigrationException {
