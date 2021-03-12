@@ -95,7 +95,6 @@ public class CryptoFileSystemImplTest {
 	private final PathMatcherFactory pathMatcherFactory = mock(PathMatcherFactory.class);
 	private final CryptoPathFactory cryptoPathFactory = mock(CryptoPathFactory.class);
 	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
-	private final RootDirectoryInitializer rootDirectoryInitializer = mock(RootDirectoryInitializer.class);
 	private final DirectoryStreamFactory directoryStreamFactory = mock(DirectoryStreamFactory.class);
 	private final FinallyUtil finallyUtil = mock(FinallyUtil.class);
 	private final CiphertextDirectoryDeleter ciphertextDirDeleter = mock(CiphertextDirectoryDeleter.class);
@@ -124,7 +123,7 @@ public class CryptoFileSystemImplTest {
 				pathMatcherFactory, directoryStreamFactory, dirIdProvider,
 				fileAttributeProvider, fileAttributeByNameProvider, fileAttributeViewProvider,
 				openCryptoFiles, symlinks, finallyUtil, ciphertextDirDeleter, readonlyFlag,
-				fileSystemProperties, rootDirectoryInitializer);
+				fileSystemProperties);
 	}
 
 	@Test
