@@ -37,6 +37,7 @@ import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Stream;
@@ -187,6 +188,14 @@ public class CryptoFileSystemProviderTest {
 
 		Assertions.assertTrue(Files.isDirectory(dataDir));
 		Assertions.assertTrue(Files.isRegularFile(vaultConfigFile));
+
+		Optional<Path> preRootDir = Files.list(dataDir).findFirst();
+		Assertions.assertTrue(preRootDir.isPresent());
+		Assertions.assertTrue(Files.isDirectory(preRootDir.get()));
+
+		Optional<Path> rootDir = Files.list(preRootDir.get()).findFirst();
+		Assertions.assertTrue(rootDir.isPresent());
+		Assertions.assertTrue(Files.isDirectory(rootDir.get()));
 	}
 
 	@Test
