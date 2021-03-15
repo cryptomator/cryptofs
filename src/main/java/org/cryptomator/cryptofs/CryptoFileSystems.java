@@ -64,7 +64,7 @@ class CryptoFileSystems {
 						throw new FileSystemAlreadyExistsException();
 					}
 				});
-			} catch (Exception e){ //on any exception, close the cryptor
+			} catch (Exception e) { //on any exception, destroy the cryptor
 				cryptor.destroy();
 				throw e;
 			}
