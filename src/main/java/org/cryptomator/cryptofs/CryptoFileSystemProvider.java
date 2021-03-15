@@ -141,15 +141,15 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 			throw new NotDirectoryException(pathToVault.toString());
 		}
 		byte[] rawKey = new byte[0];
-		try (Masterkey key = properties.keyLoader(keyId.getScheme()).loadKey(keyId)) {
+		var config = VaultConfig.createNew().cipherCombo(properties.cipherCombo()).maxFilenameLength(properties.maxNameLength()).build();
+		try (Masterkey key = properties.keyLoader(keyId.getScheme()).loadKey(keyId);
+			 Cryptor cryptor = config.getCipherCombo().getCryptorProvider(strongSecureRandom()).withKey(key)) {
 			rawKey = key.getEncoded();
 			// save vault config:
 			Path vaultConfigPath = pathToVault.resolve(properties.vaultConfigFilename());
-			var config = VaultConfig.createNew().cipherCombo(properties.cipherCombo()).maxFilenameLength(properties.maxNameLength()).build();
 			var token = config.toToken(keyId.toString(), rawKey);
 			Files.writeString(vaultConfigPath, token, StandardCharsets.US_ASCII, WRITE, CREATE_NEW);
 			// create "d" dir and root:
-			Cryptor cryptor = config.getCipherCombo().getCryptorProvider(strongSecureRandom()).withKey(key);
 			String dirHash = cryptor.fileNameCryptor().hashDirectoryId(Constants.ROOT_DIR_ID);
 			Path vaultCipherRootPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(dirHash.substring(0, 2)).resolve(dirHash.substring(2));
 			Files.createDirectories(vaultCipherRootPath);
