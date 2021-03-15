@@ -54,15 +54,20 @@ class CryptoFileSystems {
 			rawKey = key.getEncoded();
 			var config = configLoader.verify(rawKey, Constants.VAULT_VERSION);
 			var adjustedProperties = adjustForCapabilities(pathToVault, properties);
-			Cryptor cryptor = config.getCipherCombo().getCryptorProvider(csprng).withKey(key);
-			checkVaultRootExistence(pathToVault, cryptor);
-			return fileSystems.compute(normalizedPathToVault, (path, fs) -> {
-				if (fs == null) {
-					return create(provider, normalizedPathToVault, adjustedProperties, cryptor, config);
-				} else {
-					throw new FileSystemAlreadyExistsException();
-				}
-			});
+			var cryptor = config.getCipherCombo().getCryptorProvider(csprng).withKey(key);
+			try {
+				checkVaultRootExistence(pathToVault, cryptor);
+				return fileSystems.compute(normalizedPathToVault, (path, fs) -> {
+					if (fs == null) {
+						return create(provider, normalizedPathToVault, adjustedProperties, cryptor, config);
+					} else {
+						throw new FileSystemAlreadyExistsException();
+					}
+				});
+			} catch (Exception e){ //on any exception, close the cryptor
+				cryptor.destroy();
+				throw e;
+			}
 		} finally {
 			Arrays.fill(rawKey, (byte) 0x00);
 		}
