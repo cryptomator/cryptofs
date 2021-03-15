@@ -77,8 +77,8 @@ class CryptoFileSystems {
 	private void checkVaultRootExistence(Path pathToVault, Cryptor cryptor) throws ContentRootMissingException {
 		String dirHash = cryptor.fileNameCryptor().hashDirectoryId(Constants.ROOT_DIR_ID);
 		Path vaultCipherRootPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(dirHash.substring(0, 2)).resolve(dirHash.substring(2));
-		if(! Files.exists(vaultCipherRootPath)){
-			throw new ContentRootMissingException("The encrypted root directory of the vault "+pathToVault+" is missing.");
+		if (!Files.exists(vaultCipherRootPath)) {
+			throw new ContentRootMissingException("The encrypted root directory of the vault " + pathToVault + " is missing.");
 		}
 	}
 
