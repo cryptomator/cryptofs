@@ -47,6 +47,7 @@ public class CryptoFileSystemsTest {
 	private final VaultConfig.UnverifiedVaultConfig configLoader = mock(VaultConfig.UnverifiedVaultConfig.class);
 	private final MasterkeyLoader keyLoader = mock(MasterkeyLoader.class);
 	private final Masterkey masterkey = mock(Masterkey.class);
+	private final Masterkey clonedMasterkey = Mockito.mock(Masterkey.class);
 	private final byte[] rawKey = new byte[64];
 	private final VaultConfig vaultConfig = mock(VaultConfig.class);
 	private final VaultCipherCombo cipherCombo = mock(VaultCipherCombo.class);
@@ -80,6 +81,8 @@ public class CryptoFileSystemsTest {
 		when(keyLoader.loadKey(Mockito.any())).thenReturn(masterkey);
 		when(masterkey.getEncoded()).thenReturn(rawKey);
 		when(configLoader.verify(rawKey, Constants.VAULT_VERSION)).thenReturn(vaultConfig);
+		masterkeyClass.when(() -> Masterkey.createFromRaw(rawKey)).thenReturn(clonedMasterkey);
+		when(cryptorProvider.withKey(clonedMasterkey)).thenReturn(cryptor);
 		when(vaultConfig.getCipherCombo()).thenReturn(cipherCombo);
 		when(cipherCombo.getCryptorProvider(csprng)).thenReturn(cryptorProvider);
 		when(cryptorProvider.withKey(masterkey)).thenReturn(cryptor);
@@ -146,10 +149,7 @@ public class CryptoFileSystemsTest {
 
 	@Test
 	public void testCreateThrowsIOExceptionIfContentRootExistenceCheckFails() {
-		Masterkey clonedMasterkey = Mockito.mock(Masterkey.class, "clonedMasterkey");
 		filesClass.when(() -> Files.exists(contenRootPath)).thenReturn(false);
-		masterkeyClass.when(() -> Masterkey.createFromRaw(Mockito.any())).thenReturn(clonedMasterkey);
-		when(cryptorProvider.withKey(clonedMasterkey)).thenReturn(cryptor);
 
 		Assertions.assertThrows(IOException.class, () -> inTest.create(provider, pathToVault, properties));
 	}
