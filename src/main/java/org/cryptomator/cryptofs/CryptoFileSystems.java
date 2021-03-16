@@ -54,7 +54,8 @@ class CryptoFileSystems {
 			rawKey = key.getEncoded();
 			var config = configLoader.verify(rawKey, Constants.VAULT_VERSION);
 			var adjustedProperties = adjustForCapabilities(pathToVault, properties);
-			var cryptor = config.getCipherCombo().getCryptorProvider(csprng).withKey(key);
+			var keyCopy = Masterkey.createFromRaw(key.getEncoded()); // TODO replace with key.clone() eventually
+			var cryptor = config.getCipherCombo().getCryptorProvider(csprng).withKey(keyCopy);
 			try {
 				checkVaultRootExistence(pathToVault, cryptor);
 				return fileSystems.compute(normalizedPathToVault, (path, fs) -> {
