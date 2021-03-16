@@ -41,7 +41,7 @@ public class Version7MigratorTest {
 		Files.createDirectory(dataDir);
 		Files.createDirectory(metaDir);
 
-		Masterkey masterkey = Masterkey.createNew(csprng);
+		Masterkey masterkey = Masterkey.generate(csprng);
 		MasterkeyFileAccess masterkeyFileAccess = new MasterkeyFileAccess(new byte[0], csprng);
 		masterkeyFileAccess.persist(masterkey, masterkeyFile, "test", 6);
 	}

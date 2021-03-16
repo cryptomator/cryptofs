@@ -60,7 +60,6 @@ public class CryptoFileSystemsTest {
 
 	private MockedStatic<VaultConfig> vaultConficClass;
 	private MockedStatic<Files> filesClass;
-	private MockedStatic<Masterkey> masterkeyClass;
 
 	private final CryptoFileSystems inTest = new CryptoFileSystems(cryptoFileSystemComponentBuilder, capabilityChecker, csprng);
 
@@ -68,7 +67,6 @@ public class CryptoFileSystemsTest {
 	public void setup() throws IOException, MasterkeyLoadingFailedException {
 		vaultConficClass = Mockito.mockStatic(VaultConfig.class);
 		filesClass = Mockito.mockStatic(Files.class);
-		masterkeyClass = Mockito.mockStatic(Masterkey.class);
 
 		when(pathToVault.normalize()).thenReturn(normalizedPathToVault);
 		when(normalizedPathToVault.resolve("vault.cryptomator")).thenReturn(configFilePath);
@@ -80,8 +78,8 @@ public class CryptoFileSystemsTest {
 		when(configLoader.getKeyId()).thenReturn(URI.create("test:key"));
 		when(keyLoader.loadKey(Mockito.any())).thenReturn(masterkey);
 		when(masterkey.getEncoded()).thenReturn(rawKey);
+		when(masterkey.clone()).thenReturn(clonedMasterkey);
 		when(configLoader.verify(rawKey, Constants.VAULT_VERSION)).thenReturn(vaultConfig);
-		masterkeyClass.when(() -> Masterkey.createFromRaw(rawKey)).thenReturn(clonedMasterkey);
 		when(cryptorProvider.withKey(clonedMasterkey)).thenReturn(cryptor);
 		when(vaultConfig.getCipherCombo()).thenReturn(cipherCombo);
 		when(cipherCombo.getCryptorProvider(csprng)).thenReturn(cryptorProvider);
@@ -105,7 +103,6 @@ public class CryptoFileSystemsTest {
 	public void tearDown() {
 		vaultConficClass.close();
 		filesClass.close();
-		masterkeyClass.close();
 	}
 
 	@Test

@@ -49,13 +49,10 @@ class CryptoFileSystems {
 
 		var configLoader = VaultConfig.decode(token);
 		var keyId = configLoader.getKeyId();
-		byte[] rawKey = new byte[0];
 		try (Masterkey key = properties.keyLoader(keyId.getScheme()).loadKey(keyId)) {
-			rawKey = key.getEncoded();
-			var config = configLoader.verify(rawKey, Constants.VAULT_VERSION);
+			var config = configLoader.verify(key.getEncoded(), Constants.VAULT_VERSION);
 			var adjustedProperties = adjustForCapabilities(pathToVault, properties);
-			var keyCopy = Masterkey.createFromRaw(key.getEncoded()); // TODO replace with key.clone() eventually
-			var cryptor = config.getCipherCombo().getCryptorProvider(csprng).withKey(keyCopy);
+			var cryptor = config.getCipherCombo().getCryptorProvider(csprng).withKey(key.clone());
 			try {
 				checkVaultRootExistence(pathToVault, cryptor);
 				return fileSystems.compute(normalizedPathToVault, (path, fs) -> {
@@ -69,8 +66,6 @@ class CryptoFileSystems {
 				cryptor.destroy();
 				throw e;
 			}
-		} finally {
-			Arrays.fill(rawKey, (byte) 0x00);
 		}
 	}
 

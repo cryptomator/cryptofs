@@ -52,7 +52,7 @@ public class Version6MigratorTest {
 		String newPassword = Normalizer.normalize("ä", Form.NFC);
 		Assertions.assertNotEquals(oldPassword, newPassword);
 
-		Masterkey masterkey = Masterkey.createNew(csprng);
+		Masterkey masterkey = Masterkey.generate(csprng);
 		MasterkeyFileAccess masterkeyFileAccess = new MasterkeyFileAccess(new byte[0], csprng);
 		masterkeyFileAccess.persist(masterkey, masterkeyFile, oldPassword, 5);
 		byte[] beforeMigration = Files.readAllBytes(masterkeyFile);

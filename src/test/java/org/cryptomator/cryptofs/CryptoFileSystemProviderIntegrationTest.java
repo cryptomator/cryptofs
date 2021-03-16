@@ -76,7 +76,6 @@ public class CryptoFileSystemProviderIntegrationTest {
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 	class WithLimitedPaths {
 
-		private byte[] rawKey = new byte[64];
 		private MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
 		private CryptoFileSystem fs;
 		private Path shortFilePath;
@@ -86,7 +85,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@BeforeAll
 		public void setup(@TempDir Path tmpDir) throws IOException, MasterkeyLoadingFailedException {
 			Mockito.when(keyLoader.supportsScheme("test")).thenReturn(true);
-			Mockito.when(keyLoader.loadKey(Mockito.any())).thenReturn(Masterkey.createFromRaw(rawKey));
+			Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
 			CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
 					.withFlags() //
 					.withMasterkeyFilename("masterkey.cryptomator") //
@@ -195,8 +194,8 @@ public class CryptoFileSystemProviderIntegrationTest {
 			keyLoader2 = Mockito.mock(MasterkeyLoader.class);
 			Mockito.when(keyLoader1.supportsScheme("test")).thenReturn(true);
 			Mockito.when(keyLoader2.supportsScheme("test")).thenReturn(true);
-			Mockito.when(keyLoader1.loadKey(Mockito.any())).thenReturn(Masterkey.createFromRaw(key1));
-			Mockito.when(keyLoader2.loadKey(Mockito.any())).thenReturn(Masterkey.createFromRaw(key2));
+			Mockito.when(keyLoader1.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(key1));
+			Mockito.when(keyLoader2.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(key2));
 			pathToVault1 = tmpFs.getPath("/vaultDir1");
 			pathToVault2 = tmpFs.getPath("/vaultDir2");
 			Files.createDirectory(pathToVault1);
@@ -537,7 +536,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Files.createDirectories(pathToVault);
 			MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
 			Mockito.when(keyLoader.supportsScheme("test")).thenReturn(true);
-			Mockito.when(keyLoader.loadKey(Mockito.any())).thenReturn(Masterkey.createFromRaw(new byte[64]));
+			Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
 			var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoaders(keyLoader).build();
 			CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"));
 			fs = CryptoFileSystemProvider.newFileSystem(pathToVault, properties);
@@ -630,7 +629,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Files.createDirectories(pathToVault);
 			MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
 			Mockito.when(keyLoader.supportsScheme("test")).thenReturn(true);
-			Mockito.when(keyLoader.loadKey(Mockito.any())).thenReturn(Masterkey.createFromRaw(new byte[64]));
+			Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
 			var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoaders(keyLoader).build();
 			CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"));
 			fs = CryptoFileSystemProvider.newFileSystem(pathToVault, properties);

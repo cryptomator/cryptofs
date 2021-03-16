@@ -115,7 +115,7 @@ public class CryptoFileSystemProviderTest {
 	@SuppressWarnings("deprecation")
 	public void setup() throws MasterkeyLoadingFailedException {
 		Mockito.when(keyLoader.supportsScheme("test")).thenReturn(true);
-		when(keyLoader.loadKey(Mockito.any())).thenReturn(Masterkey.createFromRaw(new byte[64]));
+		when(keyLoader.loadKey(Mockito.any())).thenReturn(new Masterkey(new byte[64]));
 
 		CryptoFileSystemProviderComponent component = mock(CryptoFileSystemProviderComponent.class);
 		when(component.fileSystems()).thenReturn(fileSystems);

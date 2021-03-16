@@ -48,7 +48,7 @@ public class Version8MigratorTest {
 
 	@Test
 	public void testMigrate() throws CryptoException, IOException {
-		Masterkey masterkey = Masterkey.createNew(csprng);
+		Masterkey masterkey = Masterkey.generate(csprng);
 		MasterkeyFileAccess masterkeyFileAccess = new MasterkeyFileAccess(new byte[0], csprng);
 		masterkeyFileAccess.persist(masterkey, masterkeyFile, "topsecret", 7);
 		Assumptions.assumeFalse(Files.exists(vaultConfigFile));

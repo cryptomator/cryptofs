@@ -67,7 +67,7 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		public void setupClass(@TempDir Path tmpDir) throws IOException, MasterkeyLoadingFailedException {
 			MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
 			Mockito.when(keyLoader.supportsScheme(Mockito.any())).thenReturn(true);
-			Mockito.when(keyLoader.loadKey(Mockito.any())).thenReturn(Masterkey.createFromRaw(new byte[64]));
+			Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
 			CryptoFileSystemProperties properties = cryptoFileSystemProperties().withKeyLoaders(keyLoader).build();
 			CryptoFileSystemProvider.initialize(tmpDir, properties, URI.create("test:key"));
 			fileSystem = CryptoFileSystemProvider.newFileSystem(tmpDir, properties);
@@ -143,7 +143,7 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			Files.createDirectories(vaultPath);
 			MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
 			Mockito.when(keyLoader.supportsScheme("test")).thenReturn(true);
-			Mockito.when(keyLoader.loadKey(Mockito.any())).thenReturn(Masterkey.createFromRaw(new byte[64]));
+			Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
 			var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoaders(keyLoader).build();
 			CryptoFileSystemProvider.initialize(vaultPath, properties, URI.create("test:key"));
 			fileSystem = new CryptoFileSystemProvider().newFileSystem(vaultPath, properties);

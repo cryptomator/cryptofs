@@ -48,7 +48,7 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 		Files.createDirectory(pathToVault);
 		MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
 		Mockito.when(keyLoader.supportsScheme("test")).thenReturn(true);
-		Mockito.when(keyLoader.loadKey(Mockito.any())).thenReturn(Masterkey.createFromRaw(new byte[64]));
+		Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
 		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoaders(keyLoader).build();
 		CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"));
 		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), properties);
