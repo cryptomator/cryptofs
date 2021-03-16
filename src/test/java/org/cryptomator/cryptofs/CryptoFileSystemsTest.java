@@ -59,13 +59,15 @@ public class CryptoFileSystemsTest {
 
 	private MockedStatic<VaultConfig> vaultConficClass;
 	private MockedStatic<Files> filesClass;
+	private MockedStatic<Masterkey> masterkeyClass;
 
 	private final CryptoFileSystems inTest = new CryptoFileSystems(cryptoFileSystemComponentBuilder, capabilityChecker, csprng);
 
 	@BeforeEach
 	public void setup() throws IOException, MasterkeyLoadingFailedException {
-		filesClass = Mockito.mockStatic(Files.class);
 		vaultConficClass = Mockito.mockStatic(VaultConfig.class);
+		filesClass = Mockito.mockStatic(Files.class);
+		masterkeyClass = Mockito.mockStatic(Masterkey.class);
 
 		when(pathToVault.normalize()).thenReturn(normalizedPathToVault);
 		when(normalizedPathToVault.resolve("vault.cryptomator")).thenReturn(configFilePath);
@@ -100,6 +102,7 @@ public class CryptoFileSystemsTest {
 	public void tearDown() {
 		vaultConficClass.close();
 		filesClass.close();
+		masterkeyClass.close();
 	}
 
 	@Test
@@ -143,7 +146,11 @@ public class CryptoFileSystemsTest {
 
 	@Test
 	public void testCreateThrowsIOExceptionIfContentRootExistenceCheckFails() {
+		Masterkey clonedMasterkey = Mockito.mock(Masterkey.class, "clonedMasterkey");
 		filesClass.when(() -> Files.exists(contenRootPath)).thenReturn(false);
+		masterkeyClass.when(() -> Masterkey.createFromRaw(Mockito.any())).thenReturn(clonedMasterkey);
+		when(cryptorProvider.withKey(clonedMasterkey)).thenReturn(cryptor);
+
 		Assertions.assertThrows(IOException.class, () -> inTest.create(provider, pathToVault, properties));
 	}
 
