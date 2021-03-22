@@ -7,21 +7,25 @@ import java.nio.file.Path;
 /**
  * The directory id is used more than once.
  */
-public class DirIdCollision extends DiagnosticResult {
+public class DirIdCollision implements DiagnosticResult {
 
 	private final String dirId;
 	private final Path file;
 	private final Path otherFile;
 
-	public DirIdCollision(String dirId, Path file, Path otherFile) {
-		super(Severity.CRITICAL);
+	DirIdCollision(String dirId, Path file, Path otherFile) {
 		this.dirId = dirId;
 		this.file = file;
 		this.otherFile = otherFile;
 	}
 
 	@Override
-	public String toString() {
+	public Severity getServerity() {
+		return Severity.CRITICAL;
+	}
+
+	@Override
+	public String description() {
 		return String.format("Directory ID reused: %s found in %s and %s", dirId, file, otherFile);
 	}
 }

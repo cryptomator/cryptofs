@@ -8,19 +8,23 @@ import java.nio.file.Path;
 /**
  * The dir.c9r file's size is too large.
  */
-public class ObeseDirFile extends DiagnosticResult {
+public class ObeseDirFile implements DiagnosticResult {
 
 	private final Path dirFile;
 	private final long size;
 
-	protected ObeseDirFile(Path dirFile, long size) {
-		super(Severity.WARN);
+	ObeseDirFile(Path dirFile, long size) {
 		this.dirFile = dirFile;
 		this.size = size;
 	}
 
 	@Override
-	public String toString() {
+	public Severity getServerity() {
+		return Severity.WARN;
+	}
+
+	@Override
+	public String description() {
 		return String.format("Unexpected file size of %s: %d should be ≤ %d", dirFile, size, Constants.MAX_DIR_FILE_LENGTH);
 	}
 

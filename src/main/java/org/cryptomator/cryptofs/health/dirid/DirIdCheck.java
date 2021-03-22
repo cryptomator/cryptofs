@@ -25,6 +25,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Reads all dir.c9r files and checks if the corresponding dir exists.
+ */
 public class DirIdCheck implements HealthCheck {
 
 	private static final Logger LOG = LoggerFactory.getLogger(DirIdCheck.class);
@@ -73,7 +76,8 @@ public class DirIdCheck implements HealthCheck {
 		return results;
 	}
 
-	private static class DirVisitor extends SimpleFileVisitor<Path> {
+	// visible for testing
+	static class DirVisitor extends SimpleFileVisitor<Path> {
 
 		private final Path dataDirPath;
 		private final List<DiagnosticResult> results;

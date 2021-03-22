@@ -1,8 +1,14 @@
 package org.cryptomator.cryptofs.health.api;
 
-public abstract class DiagnosticResult {
+import org.cryptomator.cryptofs.VaultConfig;
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.Masterkey;
 
-	public enum Severity {
+import java.nio.file.Path;
+
+public interface DiagnosticResult {
+
+	enum Severity {
 		/**
 		 * No complains
 		 */
@@ -24,22 +30,15 @@ public abstract class DiagnosticResult {
 		CRITICAL;
 	}
 
-	private final Severity severity;
-
-	protected DiagnosticResult(Severity severity) {
-		this.severity = severity;
-	}
+	Severity getServerity();
 
 	/**
 	 * @return A short, human-readable summary of the result.
 	 */
-	@Override
-	public String toString() {
-		return getClass().getName() + ": " + severity.name();
-	}
+	String description();
 
-	public void fix() {
-		// TODO API not yet defined
+	default void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
+		throw new UnsupportedOperationException("Preliminary API not yet implemented");
 	}
 
 }
