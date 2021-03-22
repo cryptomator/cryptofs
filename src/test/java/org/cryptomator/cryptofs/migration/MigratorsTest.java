@@ -9,13 +9,12 @@ import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
 import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener;
-import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener.ContinuationResult;
 import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.migration.api.NoApplicableMigratorException;
 import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.UnsupportedVaultFormatException;
-import org.cryptomator.cryptolib.common.MasterkeyFile;
+import org.cryptomator.cryptolib.common.MasterkeyFileAccess;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterEach;
@@ -29,8 +28,6 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -164,28 +161,24 @@ public class MigratorsTest {
 	@Nested
 	public class WithExistingMasterkeyFile {
 
-		private MockedStatic<MasterkeyFile> masterkeyFileClass;
-		private MasterkeyFile masterkeyFile;
+		private MockedStatic<MasterkeyFileAccess> masterkeyFileAccessClass;
 
 		@BeforeEach
 		public void setup() {
 			Assumptions.assumeFalse(Files.exists(vaultConfigPath));
-			masterkeyFileClass = Mockito.mockStatic(MasterkeyFile.class);
-			masterkeyFile = Mockito.mock(MasterkeyFile.class);
-
+			masterkeyFileAccessClass = Mockito.mockStatic(MasterkeyFileAccess.class);
 			filesClass.when(() -> Files.exists(masterkeyPath)).thenReturn(true);
-			masterkeyFileClass.when(() -> MasterkeyFile.withContentFromFile(masterkeyPath)).thenReturn(masterkeyFile);
 		}
 
 		@AfterEach
 		public void tearDown() {
-			masterkeyFileClass.close();
+			masterkeyFileAccessClass.close();
 		}
 
 		@Test
 		@DisplayName("needs migration if vault version < Constants.VAULT_VERSION")
 		public void testNeedsMigration() throws IOException {
-			Mockito.when(masterkeyFile.allegedVaultVersion()).thenReturn(Constants.VAULT_VERSION - 1);
+			masterkeyFileAccessClass.when(() -> MasterkeyFileAccess.readAllegedVaultVersion(Mockito.any())).thenReturn(Constants.VAULT_VERSION - 1);
 			Migrators migrators = new Migrators(Collections.emptyMap(), fsCapabilityChecker);
 
 			boolean result = migrators.needsMigration(pathToVault, "vault.cryptomator", "masterkey.cryptomator");
@@ -196,7 +189,7 @@ public class MigratorsTest {
 		@Test
 		@DisplayName("needs no migration if vault version >= Constants.VAULT_VERSION")
 		public void testNeedsNoMigration() throws IOException {
-			Mockito.when(masterkeyFile.allegedVaultVersion()).thenReturn(Constants.VAULT_VERSION);
+			masterkeyFileAccessClass.when(() -> MasterkeyFileAccess.readAllegedVaultVersion(Mockito.any())).thenReturn(Constants.VAULT_VERSION);
 			Migrators migrators = new Migrators(Collections.emptyMap(), fsCapabilityChecker);
 
 			boolean result = migrators.needsMigration(pathToVault, "vault.cryptomator", "masterkey.cryptomator");
@@ -207,7 +200,7 @@ public class MigratorsTest {
 		@Test
 		@DisplayName("throws NoApplicableMigratorException if no migrator was found")
 		public void testMigrateWithoutMigrators() {
-			Mockito.when(masterkeyFile.allegedVaultVersion()).thenReturn(42);
+			masterkeyFileAccessClass.when(() -> MasterkeyFileAccess.readAllegedVaultVersion(Mockito.any())).thenReturn(1337);
 
 			Migrators migrators = new Migrators(Collections.emptyMap(), fsCapabilityChecker);
 			Assertions.assertThrows(NoApplicableMigratorException.class, () -> {
@@ -222,7 +215,7 @@ public class MigratorsTest {
 			MigrationProgressListener progressListener = Mockito.mock(MigrationProgressListener.class);
 			MigrationContinuationListener continuationListener = Mockito.mock(MigrationContinuationListener.class);
 			Migrator migrator = Mockito.mock(Migrator.class);
-			Mockito.when(masterkeyFile.allegedVaultVersion()).thenReturn(0);
+			masterkeyFileAccessClass.when(() -> MasterkeyFileAccess.readAllegedVaultVersion(Mockito.any())).thenReturn(0);
 			Migrators migrators = new Migrators(Map.of(Migration.ZERO_TO_ONE, migrator), fsCapabilityChecker);
 
 			migrators.migrate(pathToVault, "vault.cryptomator", "masterkey.cryptomator", "secret", progressListener, continuationListener);
@@ -236,7 +229,7 @@ public class MigratorsTest {
 		public void testMigrateUnsupportedVaultFormat() throws NoApplicableMigratorException, CryptoException, IOException {
 			Migrator migrator = Mockito.mock(Migrator.class);
 			Migrators migrators = new Migrators(Map.of(Migration.ZERO_TO_ONE, migrator), fsCapabilityChecker);
-			Mockito.when(masterkeyFile.allegedVaultVersion()).thenReturn(0);
+			masterkeyFileAccessClass.when(() -> MasterkeyFileAccess.readAllegedVaultVersion(Mockito.any())).thenReturn(0);
 			Mockito.doThrow(new UnsupportedVaultFormatException(Integer.MAX_VALUE, 1)).when(migrator).migrate(Mockito.any(), Mockito.anyString(), Mockito.anyString(), Mockito.any(), Mockito.any(), Mockito.any());
 
 			Assertions.assertThrows(IllegalStateException.class, () -> {

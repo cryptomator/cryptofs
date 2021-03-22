@@ -8,7 +8,7 @@ import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.mocks.NullSecureRandom;
 import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.Masterkey;
-import org.cryptomator.cryptolib.common.MasterkeyFile;
+import org.cryptomator.cryptolib.common.MasterkeyFileAccess;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterEach;
@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
@@ -25,7 +24,6 @@ import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.text.Normalizer;
 import java.text.Normalizer.Form;
-import java.util.Optional;
 
 public class Version6MigratorTest {
 
@@ -54,8 +52,10 @@ public class Version6MigratorTest {
 		String newPassword = Normalizer.normalize("ä", Form.NFC);
 		Assertions.assertNotEquals(oldPassword, newPassword);
 
-		Masterkey masterkey = Masterkey.createNew(csprng);
-		byte[] beforeMigration = MasterkeyFile.lock(masterkey, oldPassword, new byte[0], 5, csprng);
+		Masterkey masterkey = Masterkey.generate(csprng);
+		MasterkeyFileAccess masterkeyFileAccess = new MasterkeyFileAccess(new byte[0], csprng);
+		masterkeyFileAccess.persist(masterkey, masterkeyFile, oldPassword, 5);
+		byte[] beforeMigration = Files.readAllBytes(masterkeyFile);
 
 		Files.write(masterkeyFile, beforeMigration);
 		Path masterkeyBackupFile = pathToVault.resolve("masterkey.cryptomator" + MasterkeyBackupHelper.generateFileIdSuffix(beforeMigration) + Constants.MASTERKEY_BACKUP_SUFFIX);
@@ -67,8 +67,8 @@ public class Version6MigratorTest {
 		String afterMigrationJson = new String(afterMigration, StandardCharsets.UTF_8);
 		MatcherAssert.assertThat(afterMigrationJson, CoreMatchers.containsString("\"version\": 6"));
 
-		try (var keyLoader = MasterkeyFile.withContent(new ByteArrayInputStream(afterMigration)).unlock(newPassword, new byte[0], Optional.of(6))) {
-			Assertions.assertNotNull(keyLoader);
+		try (var key = masterkeyFileAccess.load(masterkeyFile, newPassword)) {
+			Assertions.assertNotNull(key);
 		}
 
 		Assertions.assertTrue(Files.exists(masterkeyBackupFile));

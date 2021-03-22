@@ -11,7 +11,7 @@ import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.Masterkey;
-import org.cryptomator.cryptolib.common.MasterkeyFile;
+import org.cryptomator.cryptolib.common.MasterkeyFileAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,11 +19,9 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.security.SecureRandom;
 import java.text.Normalizer;
 import java.text.Normalizer.Form;
-import java.util.Optional;
 
 /**
  * Updates masterkey.cryptomator:
@@ -47,8 +45,8 @@ public class Version6Migrator implements Migrator {
 		progressListener.update(MigrationProgressListener.ProgressState.INITIALIZING, 0.0);
 		Path masterkeyFile = vaultRoot.resolve(masterkeyFilename);
 		byte[] fileContentsBeforeUpgrade = Files.readAllBytes(masterkeyFile);
-		MasterkeyFile keyFile = MasterkeyFile.withContentFromFile(masterkeyFile);
-		try (Masterkey masterkey = keyFile.unlock(passphrase, new byte[0], Optional.of(5)).loadKeyAndClose()) {
+		MasterkeyFileAccess masterkeyFileAccess = new MasterkeyFileAccess(new byte[0], csprng);
+		try (Masterkey masterkey = masterkeyFileAccess.load(masterkeyFile, passphrase)) {
 			// create backup, as soon as we know the password was correct:
 			Path masterkeyBackupFile = MasterkeyBackupHelper.attemptMasterKeyBackup(masterkeyFile);
 			LOG.info("Backed up masterkey from {} to {}.", masterkeyFile.getFileName(), masterkeyBackupFile.getFileName());
@@ -56,8 +54,7 @@ public class Version6Migrator implements Migrator {
 			progressListener.update(MigrationProgressListener.ProgressState.FINALIZING, 0.0);
 			
 			// rewrite masterkey file with normalized passphrase:
-			byte[] fileContentsAfterUpgrade = MasterkeyFile.lock(masterkey, Normalizer.normalize(passphrase, Form.NFC), new byte[0], 6, csprng);
-			Files.write(masterkeyFile, fileContentsAfterUpgrade, StandardOpenOption.TRUNCATE_EXISTING);
+			masterkeyFileAccess.persist(masterkey, masterkeyFile, Normalizer.normalize(passphrase, Form.NFC), 6);
 			LOG.info("Updated masterkey.");
 		}
 		LOG.info("Upgraded {} from version 5 to version 6.", vaultRoot);

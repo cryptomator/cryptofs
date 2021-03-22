@@ -13,7 +13,7 @@ import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.Masterkey;
-import org.cryptomator.cryptolib.common.MasterkeyFile;
+import org.cryptomator.cryptolib.common.MasterkeyFileAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +25,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.SecureRandom;
 import java.util.Arrays;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -54,8 +53,8 @@ public class Version8Migrator implements Migrator {
 		Path masterkeyFile = vaultRoot.resolve(masterkeyFilename);
 		Path vaultConfigFile = vaultRoot.resolve(vaultConfigFilename);
 		byte[] rawKey = new byte[0];
-		MasterkeyFile keyFile = MasterkeyFile.withContentFromFile(masterkeyFile);
-		try (Masterkey masterkey = keyFile.unlock(passphrase, new byte[0], Optional.of(7)).loadKeyAndClose()) {
+		MasterkeyFileAccess masterkeyFileAccess = new MasterkeyFileAccess(new byte[0], csprng);
+		try (Masterkey masterkey = masterkeyFileAccess.load(masterkeyFile, passphrase)) {
 			// create backup, as soon as we know the password was correct:
 			Path masterkeyBackupFile = MasterkeyBackupHelper.attemptMasterKeyBackup(masterkeyFile);
 			LOG.info("Backed up masterkey from {} to {}.", masterkeyFile.getFileName(), masterkeyBackupFile.getFileName());
@@ -65,7 +64,7 @@ public class Version8Migrator implements Migrator {
 			Algorithm algorithm = Algorithm.HMAC256(rawKey);
 			var config = JWT.create() //
 					.withJWTId(UUID.randomUUID().toString()) //
-					.withKeyId("MASTERKEY_FILE") //
+					.withKeyId("masterkeyfile:masterkey.cryptomator") //
 					.withClaim("format", 8) //
 					.withClaim("cipherCombo", "SIV_CTRMAC") //
 					.withClaim("maxFilenameLen", 220) //
@@ -76,8 +75,7 @@ public class Version8Migrator implements Migrator {
 			progressListener.update(MigrationProgressListener.ProgressState.FINALIZING, 0.0);
 
 			// rewrite masterkey file with normalized passphrase:
-			byte[] fileContentsAfterUpgrade = MasterkeyFile.lock(masterkey, passphrase, new byte[0], 999, csprng);
-			Files.write(masterkeyFile, fileContentsAfterUpgrade, StandardOpenOption.TRUNCATE_EXISTING);
+			masterkeyFileAccess.persist(masterkey, masterkeyFile, passphrase, 999);
 			LOG.info("Updated masterkey.");
 		} finally {
 			Arrays.fill(rawKey, (byte) 0x00);

@@ -37,6 +37,7 @@ import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Stream;
@@ -54,7 +55,7 @@ import static org.mockito.Mockito.when;
 
 public class CryptoFileSystemProviderTest {
 
-	private final MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
+	private final MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
 	private final CryptoFileSystems fileSystems = mock(CryptoFileSystems.class);
 
 	private final CryptoPath cryptoPath = mock(CryptoPath.class);
@@ -112,7 +113,10 @@ public class CryptoFileSystemProviderTest {
 
 	@BeforeEach
 	@SuppressWarnings("deprecation")
-	public void setup() {
+	public void setup() throws MasterkeyLoadingFailedException {
+		Mockito.when(keyLoader.supportsScheme("test")).thenReturn(true);
+		when(keyLoader.loadKey(Mockito.any())).thenReturn(new Masterkey(new byte[64]));
+
 		CryptoFileSystemProviderComponent component = mock(CryptoFileSystemProviderComponent.class);
 		when(component.fileSystems()).thenReturn(fileSystems);
 		when(component.copyOperation()).thenReturn(copyOperation);
@@ -164,10 +168,10 @@ public class CryptoFileSystemProviderTest {
 	public void testInitializeFailWithNotDirectoryException() {
 		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
 		Path pathToVault = fs.getPath("/vaultDir");
-		var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+		var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoaders(keyLoader).build();
 
 		Assertions.assertThrows(NotDirectoryException.class, () -> {
-			CryptoFileSystemProvider.initialize(pathToVault, properties, "irrelevant");
+			CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"));
 		});
 	}
 
@@ -177,13 +181,21 @@ public class CryptoFileSystemProviderTest {
 		Path pathToVault = fs.getPath("/vaultDir");
 		Path vaultConfigFile = pathToVault.resolve("vault.cryptomator");
 		Path dataDir = pathToVault.resolve("d");
-		var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+		var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoaders(keyLoader).build();
 
 		Files.createDirectory(pathToVault);
-		CryptoFileSystemProvider.initialize(pathToVault, properties, "MASTERKEY_FILE");
+		CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"));
 
 		Assertions.assertTrue(Files.isDirectory(dataDir));
 		Assertions.assertTrue(Files.isRegularFile(vaultConfigFile));
+
+		Optional<Path> preRootDir = Files.list(dataDir).findFirst();
+		Assertions.assertTrue(preRootDir.isPresent());
+		Assertions.assertTrue(Files.isDirectory(preRootDir.get()));
+
+		Optional<Path> rootDir = Files.list(preRootDir.get()).findFirst();
+		Assertions.assertTrue(rootDir.isPresent());
+		Assertions.assertTrue(Files.isDirectory(rootDir.get()));
 	}
 
 	@Test
@@ -192,12 +204,12 @@ public class CryptoFileSystemProviderTest {
 		URI uri = CryptoFileSystemUri.create(pathToVault);
 		CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
 				.withFlags() //
-				.withKeyLoader(keyLoader) //
+				.withKeyLoaders(keyLoader) //
 				.build();
 
 		inTest.newFileSystem(uri, properties);
 
-		Mockito.verify(fileSystems).create(Mockito.same(inTest), Mockito.eq(pathToVault), Mockito.eq(properties));
+		Mockito.verify(fileSystems).create(Mockito.same(inTest), Mockito.eq(pathToVault.toAbsolutePath()), Mockito.eq(properties));
 	}
 
 	@Test

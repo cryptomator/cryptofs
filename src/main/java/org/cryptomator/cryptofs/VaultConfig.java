@@ -12,6 +12,7 @@ import org.cryptomator.cryptolib.api.Masterkey;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
 import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 
+import java.net.URI;
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -134,8 +135,8 @@ public class VaultConfig {
 		/**
 		 * @return The ID of the key required to {@link #verify(byte[], int) load} this config
 		 */
-		public String getKeyId() {
-			return unverifiedConfig.getKeyId();
+		public URI getKeyId() {
+			return URI.create(unverifiedConfig.getKeyId());
 		}
 
 		/**

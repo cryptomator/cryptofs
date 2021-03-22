@@ -2,9 +2,9 @@ package org.cryptomator.cryptofs;
 
 import dagger.BindsInstance;
 import dagger.Component;
-import org.cryptomator.cryptolib.api.CryptorProvider;
 
 import javax.inject.Singleton;
+import java.security.SecureRandom;
 
 @Singleton
 @Component(modules = {CryptoFileSystemProviderModule.class})
@@ -15,5 +15,13 @@ interface CryptoFileSystemProviderComponent {
 	MoveOperation moveOperation();
 
 	CopyOperation copyOperation();
+
+	@Component.Builder
+	interface Builder {
+		@BindsInstance
+		Builder csprng(SecureRandom csprng);
+
+		CryptoFileSystemProviderComponent build();
+	}
 
 }

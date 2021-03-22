@@ -6,11 +6,9 @@ import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.mocks.NullSecureRandom;
-import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.CryptoException;
-import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.Masterkey;
-import org.cryptomator.cryptolib.common.MasterkeyFile;
+import org.cryptomator.cryptolib.common.MasterkeyFileAccess;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterEach;
@@ -50,10 +48,10 @@ public class Version8MigratorTest {
 
 	@Test
 	public void testMigrate() throws CryptoException, IOException {
-		Masterkey masterkey = Masterkey.createNew(csprng);
-		byte[] unmigrated = MasterkeyFile.lock(masterkey, "topsecret", new byte[0], 7, csprng);
+		Masterkey masterkey = Masterkey.generate(csprng);
+		MasterkeyFileAccess masterkeyFileAccess = new MasterkeyFileAccess(new byte[0], csprng);
+		masterkeyFileAccess.persist(masterkey, masterkeyFile, "topsecret", 7);
 		Assumptions.assumeFalse(Files.exists(vaultConfigFile));
-		Files.write(masterkeyFile, unmigrated);
 
 		Migrator migrator = new Version8Migrator(csprng);
 		migrator.migrate(pathToVault, "vault.cryptomator", "masterkey.cryptomator", "topsecret");
@@ -63,7 +61,7 @@ public class Version8MigratorTest {
 		Assertions.assertTrue(Files.exists(vaultConfigFile));
 		DecodedJWT token = JWT.decode(Files.readString(vaultConfigFile));
 		Assertions.assertNotNull(token.getId());
-		Assertions.assertEquals("MASTERKEY_FILE", token.getKeyId());
+		Assertions.assertEquals("masterkeyfile:masterkey.cryptomator", token.getKeyId());
 		Assertions.assertEquals(8, token.getClaim("format").asInt());
 		Assertions.assertEquals("SIV_CTRMAC", token.getClaim("cipherCombo").asString());
 		Assertions.assertEquals(220, token.getClaim("maxFilenameLen").asInt());

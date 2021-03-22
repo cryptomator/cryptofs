@@ -105,7 +105,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 								PathMatcherFactory pathMatcherFactory, DirectoryStreamFactory directoryStreamFactory, DirectoryIdProvider dirIdProvider,
 								AttributeProvider fileAttributeProvider, AttributeByNameProvider fileAttributeByNameProvider, AttributeViewProvider fileAttributeViewProvider,
 								OpenCryptoFiles openCryptoFiles, Symlinks symlinks, FinallyUtil finallyUtil, CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag,
-								CryptoFileSystemProperties fileSystemProperties, RootDirectoryInitializer rootDirectoryInitializer) {
+								CryptoFileSystemProperties fileSystemProperties) {
 		this.provider = provider;
 		this.cryptoFileSystems = cryptoFileSystems;
 		this.pathToVault = pathToVault;
@@ -129,8 +129,6 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 		this.rootPath = cryptoPathFactory.rootFor(this);
 		this.emptyPath = cryptoPathFactory.emptyFor(this);
-
-		rootDirectoryInitializer.initialize(rootPath);
 	}
 
 	@Override
