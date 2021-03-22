@@ -62,16 +62,11 @@ public class AttributeProvider {
 	}
 
 	private Path getCiphertextPath(CryptoPath path, CiphertextFileType type) throws IOException {
-		switch (type) {
-			case SYMLINK:
-				return pathMapper.getCiphertextFilePath(path).getSymlinkFilePath();
-			case DIRECTORY:
-				return pathMapper.getCiphertextDir(path).path;
-			case FILE:
-				return pathMapper.getCiphertextFilePath(path).getFilePath();
-			default:
-				throw new UnsupportedOperationException("Unhandled node type " + type);
-		}
+		return switch (type) {
+			case SYMLINK -> pathMapper.getCiphertextFilePath(path).getSymlinkFilePath();
+			case DIRECTORY -> pathMapper.getCiphertextDir(path).path;
+			case FILE -> pathMapper.getCiphertextFilePath(path).getFilePath();
+		};
 	}
 
 }
