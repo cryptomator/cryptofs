@@ -198,8 +198,7 @@ public class CryptoPathMapper {
 		public boolean equals(Object obj) {
 			if (obj == this) {
 				return true;
-			} else if (obj instanceof CiphertextDirectory) {
-				CiphertextDirectory other = (CiphertextDirectory) obj;
+			} else if (obj instanceof CiphertextDirectory other) {
 				return this.dirId.equals(other.dirId) && this.path.equals(other.path);
 			} else {
 				return false;
@@ -225,8 +224,7 @@ public class CryptoPathMapper {
 		public boolean equals(Object obj) {
 			if (obj == this) {
 				return true;
-			} else if (obj instanceof DirIdAndName) {
-				DirIdAndName other = (DirIdAndName) obj;
+			} else if (obj instanceof DirIdAndName other) {
 				return this.dirId.equals(other.dirId) && this.name.equals(other.name);
 			} else {
 				return false;

@@ -197,12 +197,11 @@ public class FileAttributeIntegrationTest {
 	}
 
 	private static Matcher<FileTime> isAfter(FileTime previousFileTime) {
-		return new BaseMatcher<FileTime>() {
+		return new BaseMatcher<>() {
 			@Override
 			public boolean matches(Object item) {
-				if (item instanceof FileTime) {
-					FileTime subject = (FileTime) item;
-					return subject.compareTo(previousFileTime) > 0;
+				if (item instanceof FileTime ft) {
+					return ft.compareTo(previousFileTime) > 0;
 				} else {
 					return false;
 				}

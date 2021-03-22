@@ -45,13 +45,8 @@ public class CiphertextDirectoryDeleter {
 			 * case 2 is true.
 			 */
 			switch (deleteNonCiphertextFiles(ciphertextDir, cleartextDir)) {
-			case NO_FILES_DELETED:
-				throw e;
-			case SOME_FILES_DELETED:
-				Files.delete(ciphertextDir);
-				break;
-			default:
-				throw new IllegalStateException("Unexpected enum constant");
+				case NO_FILES_DELETED -> throw e;
+				case SOME_FILES_DELETED-> Files.delete(ciphertextDir);
 			}
 		}
 	}

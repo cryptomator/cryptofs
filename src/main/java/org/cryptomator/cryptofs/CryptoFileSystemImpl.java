@@ -21,12 +21,9 @@ import org.cryptomator.cryptofs.dir.CiphertextDirectoryDeleter;
 import org.cryptomator.cryptofs.dir.DirectoryStreamFactory;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptolib.api.Cryptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.AccessMode;
@@ -38,7 +35,6 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileStore;
-import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
@@ -267,16 +263,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	private boolean hasAccess(Set<PosixFilePermission> permissions, AccessMode accessMode) {
-		switch (accessMode) {
-			case READ:
-				return permissions.contains(PosixFilePermission.OWNER_READ);
-			case WRITE:
-				return permissions.contains(PosixFilePermission.OWNER_WRITE);
-			case EXECUTE:
-				return permissions.contains(PosixFilePermission.OWNER_EXECUTE);
-			default:
-				throw new UnsupportedOperationException("AccessMode " + accessMode + " not supported.");
-		}
+		return switch (accessMode) {
+			case READ -> permissions.contains(PosixFilePermission.OWNER_READ);
+			case WRITE -> permissions.contains(PosixFilePermission.OWNER_WRITE);
+			case EXECUTE -> permissions.contains(PosixFilePermission.OWNER_EXECUTE);
+		};
 	}
 
 	boolean isHidden(CryptoPath cleartextPath) throws IOException {
@@ -340,22 +331,23 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 				throw e;
 			}
 		}
-		switch (ciphertextFileType) {
-			case SYMLINK:
-				if (options.noFollowLinks()) {
-					throw new UnsupportedOperationException("Unsupported OpenOption LinkOption.NOFOLLOW_LINKS. Can not create file channel for symbolic link.");
-				} else {
-					CryptoPath resolvedPath = symlinks.resolveRecursively(cleartextPath);
-					return newFileChannel(resolvedPath, options, attrs);
-				}
-			case FILE:
-				return newFileChannel(cleartextPath, options, attrs);
-			default:
-				throw new UnsupportedOperationException("Can not create file channel for " + ciphertextFileType.name());
+		return switch (ciphertextFileType) {
+			case SYMLINK -> newFileChannelFromSymlink(cleartextPath, options, attrs);
+			case FILE -> newFileChannelFromFile(cleartextPath, options, attrs);
+			case DIRECTORY -> throw new UnsupportedOperationException("Can not create file channel for " + ciphertextFileType.name());
+		};
+	}
+
+	private FileChannel newFileChannelFromSymlink(CryptoPath cleartextPath, EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
+		if (options.noFollowLinks()) {
+			throw new UnsupportedOperationException("Unsupported OpenOption LinkOption.NOFOLLOW_LINKS. Can not create file channel for symbolic link.");
+		} else {
+			CryptoPath resolvedPath = symlinks.resolveRecursively(cleartextPath);
+			return newFileChannelFromFile(resolvedPath, options, attrs);
 		}
 	}
 
-	private FileChannel newFileChannel(CryptoPath cleartextFilePath, EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
+	private FileChannel newFileChannelFromFile(CryptoPath cleartextFilePath, EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
 		CiphertextFilePath ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextFilePath);
 		Path ciphertextFilePath = ciphertextPath.getFilePath();
 		assertCiphertextPathLengthMeetsLimitations(ciphertextFilePath);
@@ -384,12 +376,8 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		CiphertextFileType ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextPath);
 		CiphertextFilePath ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextPath);
 		switch (ciphertextFileType) {
-			case DIRECTORY:
-				deleteDirectory(cleartextPath, ciphertextPath);
-				return;
-			default:
-				Files.walkFileTree(ciphertextPath.getRawPath(), DeletingFileVisitor.INSTANCE);
-				return;
+			case DIRECTORY -> deleteDirectory(cleartextPath, ciphertextPath);
+			case FILE, SYMLINK -> Files.walkFileTree(ciphertextPath.getRawPath(), DeletingFileVisitor.INSTANCE);
 		}
 	}
 
@@ -420,17 +408,9 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			cryptoPathMapper.assertNonExisting(cleartextTarget);
 		}
 		switch (ciphertextFileType) {
-			case SYMLINK:
-				copySymlink(cleartextSource, cleartextTarget, options);
-				return;
-			case FILE:
-				copyFile(cleartextSource, cleartextTarget, options);
-				return;
-			case DIRECTORY:
-				copyDirectory(cleartextSource, cleartextTarget, options);
-				return;
-			default:
-				throw new UnsupportedOperationException("Unhandled node type " + ciphertextFileType);
+			case SYMLINK -> copySymlink(cleartextSource, cleartextTarget, options);
+			case FILE -> copyFile(cleartextSource, cleartextTarget, options);
+			case DIRECTORY -> copyDirectory(cleartextSource, cleartextTarget, options);
 		}
 	}
 
@@ -526,17 +506,9 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			cryptoPathMapper.assertNonExisting(cleartextTarget);
 		}
 		switch (ciphertextFileType) {
-			case SYMLINK:
-				moveSymlink(cleartextSource, cleartextTarget, options);
-				return;
-			case FILE:
-				moveFile(cleartextSource, cleartextTarget, options);
-				return;
-			case DIRECTORY:
-				moveDirectory(cleartextSource, cleartextTarget, options);
-				return;
-			default:
-				throw new UnsupportedOperationException("Unhandled node type " + ciphertextFileType);
+			case SYMLINK -> moveSymlink(cleartextSource, cleartextTarget, options);
+			case FILE -> moveFile(cleartextSource, cleartextTarget, options);
+			case DIRECTORY -> moveDirectory(cleartextSource, cleartextTarget, options);
 		}
 	}
 

@@ -37,17 +37,10 @@ class CryptoBasicFileAttributes implements BasicFileAttributes {
 	@Inject
 	public CryptoBasicFileAttributes(BasicFileAttributes delegate, CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile) {
 		this.ciphertextFileType = ciphertextFileType;
-		switch (ciphertextFileType) {
-			case SYMLINK:
-			case DIRECTORY:
-				this.size = delegate.size();
-				break;
-			case FILE:
-				this.size = getPlaintextFileSize(ciphertextPath, delegate.size(), openCryptoFile, cryptor);
-				break;
-			default:
-				throw new IllegalArgumentException("Unsupported ciphertext file type: " + ciphertextFileType);
-		}
+		this.size = switch (ciphertextFileType) {
+			case SYMLINK, DIRECTORY -> delegate.size();
+			case FILE -> getPlaintextFileSize(ciphertextPath, delegate.size(), openCryptoFile, cryptor);
+		};
 		this.lastModifiedTime =  openCryptoFile.map(OpenCryptoFile::getLastModifiedTime).orElseGet(delegate::lastModifiedTime);
 		this.lastAccessTime = openCryptoFile.map(openFile -> FileTime.from(Instant.now())).orElseGet(delegate::lastAccessTime);
 		this.creationTime = delegate.creationTime();
