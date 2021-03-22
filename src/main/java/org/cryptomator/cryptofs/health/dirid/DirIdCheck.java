@@ -32,7 +32,6 @@ public class DirIdCheck implements HealthCheck {
 
 	private static final Logger LOG = LoggerFactory.getLogger(DirIdCheck.class);
 	private static final int MAX_TRAVERSAL_DEPTH = 4; // d/2/30/Fo0==.c9r/dir.c9r
-	private static final Path DIR_FILE_NAME = Path.of(Constants.DIR_FILE_NAME);
 
 	@Override
 	public Collection<DiagnosticResult> check(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
@@ -92,14 +91,14 @@ public class DirIdCheck implements HealthCheck {
 
 		@Override
 		public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-			if (DIR_FILE_NAME.equals(file.getFileName())) {
+			if (Constants.DIR_FILE_NAME.equals(file.getFileName().toString())) {
 				return visitDirFile(file, attrs);
 			}
 			return FileVisitResult.CONTINUE;
 		}
 
 		private FileVisitResult visitDirFile(Path file, BasicFileAttributes attrs) throws IOException {
-			assert DIR_FILE_NAME.equals(file.getFileName());
+			assert Constants.DIR_FILE_NAME.equals(file.getFileName().toString());
 			if (attrs.size() > Constants.MAX_DIR_FILE_LENGTH) {
 				LOG.warn("Encountered dir.c9r file of size {}", attrs.size());
 				results.add(new ObeseDirFile(file, attrs.size()));
