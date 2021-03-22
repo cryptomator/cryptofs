@@ -202,8 +202,8 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 * @throws IllegalArgumentException if a value in the {@code Map} does not have the expected type or if a required value is missing
 	 */
 	public static CryptoFileSystemProperties wrap(Map<String, ?> properties) {
-		if (properties instanceof CryptoFileSystemProperties) {
-			return (CryptoFileSystemProperties) properties;
+		if (properties instanceof CryptoFileSystemProperties p) {
+			return p;
 		} else {
 			try {
 				return cryptoFileSystemPropertiesFrom(properties).build();

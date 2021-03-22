@@ -47,8 +47,7 @@ public class CiphertextFilePath {
 
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof CiphertextFilePath) {
-			CiphertextFilePath other = (CiphertextFilePath) obj;
+		if (obj instanceof CiphertextFilePath other) {
 			return this.path.equals(other.path) && this.deflatedFileName.equals(other.deflatedFileName);
 		} else {
 			return false;

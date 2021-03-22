@@ -247,10 +247,9 @@ public class CryptoFileSystemPropertiesTest {
 				return Objects.equals(key, itemKey);
 			}
 
-			@SuppressWarnings("rawtypes")
 			private boolean valueMatches(V itemValue) {
-				if (value instanceof Collection && itemValue instanceof Collection) {
-					return valuesMatch((Collection) value, (Collection) itemValue);
+				if (value instanceof Collection v && itemValue instanceof Collection c) {
+					return valuesMatch(v, c);
 				} else {
 					return Objects.equals(value, itemValue);
 				}
