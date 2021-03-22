@@ -23,7 +23,7 @@ public class MissingDirectory implements DiagnosticResult {
 	}
 
 	@Override
-	public String description() {
+	public String toString() {
 		return String.format("dir.c9r file (%s) points to non-existing directory.", file);
 	}
 

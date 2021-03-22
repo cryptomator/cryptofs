@@ -35,7 +35,8 @@ public interface DiagnosticResult {
 	/**
 	 * @return A short, human-readable summary of the result.
 	 */
-	String description();
+	@Override
+	String toString();
 
 	default void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
 		throw new UnsupportedOperationException("Preliminary API not yet implemented");

@@ -25,7 +25,7 @@ public class HealthyDir implements DiagnosticResult {
 	}
 
 	@Override
-	public String description() {
+	public String toString() {
 		return String.format("Good directory %s (%s) -> %s", dirIdFile, dirId, dir);
 	}
 }

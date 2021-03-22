@@ -25,7 +25,7 @@ public class DirIdCollision implements DiagnosticResult {
 	}
 
 	@Override
-	public String description() {
+	public String toString() {
 		return String.format("Directory ID reused: %s found in %s and %s", dirId, file, otherFile);
 	}
 }

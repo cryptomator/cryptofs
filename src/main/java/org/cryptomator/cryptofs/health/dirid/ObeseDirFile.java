@@ -24,7 +24,7 @@ public class ObeseDirFile implements DiagnosticResult {
 	}
 
 	@Override
-	public String description() {
+	public String toString() {
 		return String.format("Unexpected file size of %s: %d should be ≤ %d", dirFile, size, Constants.MAX_DIR_FILE_LENGTH);
 	}
 

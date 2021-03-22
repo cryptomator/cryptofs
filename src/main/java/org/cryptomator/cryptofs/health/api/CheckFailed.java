@@ -14,7 +14,7 @@ public class CheckFailed implements DiagnosticResult {
 	}
 
 	@Override
-	public String description() {
+	public String toString() {
 		return String.format("Check failed: %s", message);
 	}
 }

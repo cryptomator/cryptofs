@@ -21,7 +21,7 @@ public class OrphanDir implements DiagnosticResult {
 	}
 
 	@Override
-	public String description() {
+	public String toString() {
 		return String.format("Orphan directory: %s", dir);
 	}
 
