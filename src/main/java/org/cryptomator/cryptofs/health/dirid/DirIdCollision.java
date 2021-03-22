@@ -9,9 +9,9 @@ import java.nio.file.Path;
  */
 public class DirIdCollision implements DiagnosticResult {
 
-	private final String dirId;
-	private final Path file;
-	private final Path otherFile;
+	final String dirId;
+	final Path file;
+	final Path otherFile;
 
 	DirIdCollision(String dirId, Path file, Path otherFile) {
 		this.dirId = dirId;

@@ -9,8 +9,8 @@ import java.nio.file.Path;
  */
 public class MissingDirectory implements DiagnosticResult {
 
-	private final String dirId;
-	private final Path file;
+	final String dirId;
+	final Path file;
 
 	MissingDirectory(String dirId, Path file) {
 		this.dirId = dirId;

@@ -10,8 +10,8 @@ import java.nio.file.Path;
  */
 public class ObeseDirFile implements DiagnosticResult {
 
-	private final Path dirFile;
-	private final long size;
+	final Path dirFile;
+	final long size;
 
 	ObeseDirFile(Path dirFile, long size) {
 		this.dirFile = dirFile;

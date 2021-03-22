@@ -9,7 +9,7 @@ import java.nio.file.Path;
  */
 public class OrphanDir implements DiagnosticResult {
 
-	private final Path dir;
+	final Path dir;
 
 	OrphanDir(Path dir) {
 		this.dir = dir;

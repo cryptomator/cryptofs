@@ -9,9 +9,9 @@ import java.nio.file.Path;
  */
 public class HealthyDir implements DiagnosticResult {
 
-	private final String dirId;
-	private final Path dirIdFile;
-	private final Path dir;
+	final String dirId;
+	final Path dirIdFile;
+	final Path dir;
 
 	HealthyDir(String dirId, Path dirIdFile, Path dir) {
 		this.dirId = dirId;
