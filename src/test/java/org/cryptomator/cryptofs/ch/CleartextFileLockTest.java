@@ -21,7 +21,8 @@ public class CleartextFileLockTest {
 
 	@BeforeEach
 	public void setup() {
-		channel = Mockito.spy(new DummyFileChannel());
+		channel = Mockito.mock(FileChannel.class);
+		Mockito.when(channel.isOpen()).thenReturn(true);
 	}
 
 	@Nested
@@ -99,7 +100,7 @@ public class CleartextFileLockTest {
 
 			@BeforeEach
 			public void setup() throws IOException {
-				channel.close();
+				Mockito.when(channel.isOpen()).thenReturn(false);
 			}
 
 			@Test
@@ -187,7 +188,7 @@ public class CleartextFileLockTest {
 
 			@BeforeEach
 			public void setup() throws IOException {
-				channel.close();
+				Mockito.when(channel.isOpen()).thenReturn(false);
 			}
 
 			@Test
