@@ -2,6 +2,7 @@ package org.cryptomator.cryptofs.health;
 
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 import org.cryptomator.cryptofs.health.api.HealthCheck;
 import org.cryptomator.cryptofs.health.dirid.DirIdCheck;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
@@ -22,7 +23,7 @@ public class HealthChecks {
 	public static final Collection<HealthCheck> ALL_CHECKS = List.of(new DirIdCheck());
 	private static final SecureRandom CSPRNG = new SecureRandom();
 
-	public static void run(Path pathToVault, String vaultConfigFileName, MasterkeyLoader masterkeyLoader, Collection<HealthCheck> checksToRun) throws IOException, UnsupportedVaultFormatException, MasterkeyLoadingFailedException {
+	public static Collection<DiagnosticResult> run(Path pathToVault, String vaultConfigFileName, MasterkeyLoader masterkeyLoader, Collection<HealthCheck> checksToRun) throws IOException, UnsupportedVaultFormatException, MasterkeyLoadingFailedException {
 		var vaultConfigPath = pathToVault.resolve(vaultConfigFileName);
 		var token = Files.readString(vaultConfigPath, StandardCharsets.US_ASCII);
 		var unverifiedCfg = VaultConfig.decode(token);
@@ -34,7 +35,7 @@ public class HealthChecks {
 			rawKey = masterkey.getEncoded();
 			var cfg = unverifiedCfg.verify(rawKey, Constants.VAULT_VERSION);
 			var cryptor = cfg.getCipherCombo().getCryptorProvider(CSPRNG).withKey(masterkey);
-			checksToRun.forEach(check -> check.check(pathToVault, cfg, masterkey, cryptor)); // TODO collect result
+			return checksToRun.stream().flatMap(check -> check.check(pathToVault, cfg, masterkey, cryptor).stream()).toList();
 		} finally {
 			Arrays.fill(rawKey, (byte) 0x00);
 		}
