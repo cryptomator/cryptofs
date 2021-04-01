@@ -6,6 +6,7 @@ import org.cryptomator.cryptolib.api.Masterkey;
 
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.ServiceLoader;
 
 public interface HealthCheck {
 
@@ -26,5 +27,9 @@ public interface HealthCheck {
 	 * @return Diagnostic results
 	 */
 	Collection<DiagnosticResult> check(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor);
+
+	static Collection<HealthCheck> allChecks() {
+		return ServiceLoader.load(HealthCheck.class).stream().map(ServiceLoader.Provider::get).toList();
+	}
 
 }
