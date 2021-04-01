@@ -30,8 +30,9 @@ jobs:
       - name: Enforce project version ${{ github.event.inputs.tag }}
         run: mvn versions:set -B -DnewVersion=${{ github.event.inputs.tag }}
       - name: Deploy
-        run: mvn deploy -B -DskipTests -Psign,deploy-central --no-transfer-progress --add-opens=java.base/java.util=ALL-UNNAMED
+        run: mvn deploy -B -DskipTests -Psign,deploy-central --no-transfer-progress
         env:
+          MAVEN_OPTS: --add-opens=java.base/java.util=ALL-UNNAMED
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.RELEASES_GPG_PASSPHRASE }}
