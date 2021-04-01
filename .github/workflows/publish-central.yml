@@ -36,6 +36,7 @@ jobs:
             --add-opens=java.base/java.util=ALL-UNNAMED
             --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
             --add-opens=java.base/java.text=ALL-UNNAMED
+            --add-opens=java.desktop/java.awt.font=ALL-UNNAMED
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.RELEASES_GPG_PASSPHRASE }}
