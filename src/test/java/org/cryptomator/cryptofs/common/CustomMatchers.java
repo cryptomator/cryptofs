@@ -7,12 +7,12 @@ import java.util.function.Predicate;
 
 public class CustomMatchers {
 
-	public static <T> BaseMatcher<T> matching(Class<T> clazz, Predicate<T> predicate, String description) {
+	public static <T, S extends T> BaseMatcher<T> matching(Class<S> clazz, Predicate<S> predicate, String description) {
 		return new BaseMatcher<>() {
 			@Override
 			public boolean matches(Object actual) {
 				if (clazz.isInstance(actual)) {
-					return predicate.test((T) actual);
+					return predicate.test((S) actual);
 				} else {
 					return false;
 				}

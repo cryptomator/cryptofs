@@ -2,6 +2,7 @@ package org.cryptomator.cryptofs.health.dirid;
 
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.health.api.AbstractHealthCheck;
 import org.cryptomator.cryptofs.health.api.CheckFailed;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 import org.cryptomator.cryptofs.health.api.HealthCheck;
@@ -23,28 +24,33 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * Reads all dir.c9r files and checks if the corresponding dir exists.
  */
-public class DirIdCheck implements HealthCheck {
+public class DirIdCheck extends AbstractHealthCheck {
 
 	private static final Logger LOG = LoggerFactory.getLogger(DirIdCheck.class);
 	private static final int MAX_TRAVERSAL_DEPTH = 4; // d/2/30/Fo0==.c9r/dir.c9r
 
 	@Override
-	public Collection<DiagnosticResult> check(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
-		List<DiagnosticResult> results = new ArrayList<>();
-
+	protected void check(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor, Consumer<DiagnosticResult> resultCollector) {
 		// scan vault structure:
 		var dataDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME);
-		var dirVisitor = new DirVisitor(dataDirPath, results);
+		var dirVisitor = new DirVisitor(dataDirPath, resultCollector);
 		try {
 			Files.walkFileTree(dataDirPath, Set.of(), MAX_TRAVERSAL_DEPTH, dirVisitor);
 		} catch (IOException e) {
 			LOG.error("Traversal of data dir failed.", e);
-			return List.of(new CheckFailed("Traversal of data dir failed. See log for details."));
+			resultCollector.accept(new CheckFailed("Traversal of data dir failed. See log for details."));
+			return;
 		}
 
 		// remove matching pairs:
@@ -58,34 +64,32 @@ public class DirIdCheck implements HealthCheck {
 			boolean foundDir = dirVisitor.secondLevelDirs.remove(expectedDir);
 			if (foundDir) {
 				iter.remove();
-				results.add(new HealthyDir(dirId, dirIdFile, expectedDir));
+				resultCollector.accept(new HealthyDir(dirId, dirIdFile, expectedDir));
 			}
 		}
 
 		// remaining dirIds (i.e. missing dirs):
 		dirVisitor.dirIds.forEach((dirId, dirIdFile) -> {
-			results.add(new MissingDirectory(dirId, dirIdFile));
+			resultCollector.accept(new MissingDirectory(dirId, dirIdFile));
 		});
 
 		// remaining folders (i.e. missing dir.c9r files):
 		dirVisitor.secondLevelDirs.forEach(dir -> {
-			results.add(new OrphanDir(dir));
+			resultCollector.accept(new OrphanDir(dir));
 		});
-
-		return results;
 	}
 
 	// visible for testing
 	static class DirVisitor extends SimpleFileVisitor<Path> {
 
 		private final Path dataDirPath;
-		private final List<DiagnosticResult> results;
+		private final Consumer<DiagnosticResult> resultCollector;
 		public final Map<String, Path> dirIds = new HashMap<>(); // contents of all found dir.c9r files
 		public final Set<Path> secondLevelDirs = new HashSet<>(); // all d/2/30 dirs
 
-		public DirVisitor(Path dataDirPath, List<DiagnosticResult> results) {
+		public DirVisitor(Path dataDirPath, Consumer<DiagnosticResult> resultCollector) {
 			this.dataDirPath = dataDirPath;
-			this.results = results;
+			this.resultCollector = resultCollector;
 			this.dirIds.put("", null); // we always have the "empty string" dir id for the root dir
 		}
 
@@ -101,14 +105,14 @@ public class DirIdCheck implements HealthCheck {
 			assert Constants.DIR_FILE_NAME.equals(file.getFileName().toString());
 			if (attrs.size() > Constants.MAX_DIR_FILE_LENGTH) {
 				LOG.warn("Encountered dir.c9r file of size {}", attrs.size());
-				results.add(new ObeseDirFile(file, attrs.size()));
+				resultCollector.accept(new ObeseDirFile(file, attrs.size()));
 			} else {
 				byte[] bytes = Files.readAllBytes(file);
 				String dirId = new String(bytes, StandardCharsets.UTF_8);
 				if (dirIds.containsKey(dirId)) {
 					var otherFile = dirIds.get(dirId);
 					LOG.warn("Same directory ID used by {} and {}", file, otherFile);
-					results.add(new DirIdCollision(dirId, file, otherFile));
+					resultCollector.accept(new DirIdCollision(dirId, file, otherFile));
 				} else {
 					dirIds.put(dirId, file);
 				}

@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -23,9 +24,8 @@ import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public class DirIdCheckTest {
@@ -66,13 +66,13 @@ public class DirIdCheckTest {
 	@DisplayName("DirVisitor")
 	class Visitor {
 
-		private List<DiagnosticResult> results;
+		private Consumer<DiagnosticResult> resultsCollector;
 		private DirIdCheck.DirVisitor visitor;
 
 		@BeforeEach
 		public void setup() {
-			results = new ArrayList<>();
-			visitor = new DirIdCheck.DirVisitor(dataRoot, results);
+			resultsCollector = Mockito.mock(Consumer.class);
+			visitor = new DirIdCheck.DirVisitor(dataRoot, resultsCollector);
 		}
 
 		@Test
@@ -104,7 +104,10 @@ public class DirIdCheckTest {
 			Files.walkFileTree(dataRoot, Set.of(), 4, visitor);
 
 			Predicate<DirIdCollision> expectedCollision = dirIdCollision -> "CCcccc".equals(dirIdCollision.dirId);
-			MatcherAssert.assertThat(results, Matchers.hasItem(CustomMatchers.matching(DirIdCollision.class, expectedCollision, "Directory ID reused: CCcccc")));
+
+			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
+			Mockito.verify(resultsCollector, Mockito.atLeastOnce()).accept(resultCaptor.capture());
+			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(DirIdCollision.class, expectedCollision, "Directory ID reused: CCcccc")));
 		}
 
 		@Test
@@ -113,7 +116,9 @@ public class DirIdCheckTest {
 			Files.walkFileTree(dataRoot, Set.of(), 4, visitor);
 
 			Predicate<ObeseDirFile> expectedObeseFile = obeseDirFile -> "/d/BB/bbbb/bar=.c9r/dir.c9r".equals(obeseDirFile.dirFile.toString());
-			MatcherAssert.assertThat(results, Matchers.hasItem(CustomMatchers.matching(ObeseDirFile.class, expectedObeseFile, "Obese dir file: /d/BB/bbbb/bar=.c9r/dir.c9r")));
+			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
+			Mockito.verify(resultsCollector, Mockito.atLeastOnce()).accept(resultCaptor.capture());
+			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(ObeseDirFile.class, expectedObeseFile, "Obese dir file: /d/BB/bbbb/bar=.c9r/dir.c9r")));
 		}
 
 	}
