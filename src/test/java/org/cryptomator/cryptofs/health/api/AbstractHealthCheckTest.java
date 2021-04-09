@@ -69,7 +69,7 @@ class AbstractHealthCheckTest {
 
 	@Test
 	@DisplayName("health check can be cancelled")
-	public void testCancel() throws InterruptedException {
+	public void testCancel() {
 		Path pathToVault = Mockito.mock(Path.class);
 		VaultConfig config = Mockito.mock(VaultConfig.class);
 		Masterkey masterkey = Mockito.mock(Masterkey.class);
@@ -87,11 +87,13 @@ class AbstractHealthCheckTest {
 
 		var stream = check.check(pathToVault, config, masterkey, cryptor);
 
-		stream.forEach(result -> {
-			if (result == result1) {
-				check.cancel();
-			}
-			Assertions.assertNotEquals(result2, result);
+		Assertions.assertTimeoutPreemptively(Duration.ofSeconds(1), () -> {
+			stream.forEach(result -> {
+				if (result == result1) {
+					check.cancel();
+				}
+				Assertions.assertNotEquals(result2, result);
+			});
 		});
 	}
 
