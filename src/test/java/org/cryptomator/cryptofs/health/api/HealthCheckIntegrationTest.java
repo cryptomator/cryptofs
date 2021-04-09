@@ -12,8 +12,9 @@ import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Scanner;
+import java.util.concurrent.Executors;
 
-class HealthChecksTest {
+class HealthCheckIntegrationTest {
 
 	@Test
 	public void testGetAll() {
@@ -38,11 +39,13 @@ class HealthChecksTest {
 			try (var masterkey = masterkeyFileAccess.load(masterkeyFile, pw)) {
 				var verifiedCfg = unverifiedCfg.verify(masterkey.getEncoded(), unverifiedCfg.allegedVaultVersion());
 				var cryptor = verifiedCfg.getCipherCombo().getCryptorProvider(SecureRandom.getInstanceStrong()).withKey(masterkey);
+				var executor = Executors.newSingleThreadExecutor();
 				HealthCheck.allChecks().forEach(check -> {
 					System.out.println("Running " + check.identifier());
-					var results = check.check(p, verifiedCfg, masterkey, cryptor);
+					var results = check.check(p, verifiedCfg, masterkey, cryptor, executor);
 					results.forEach(System.out::println);
 				});
+				executor.shutdown();
 			}
 		}
 	}
