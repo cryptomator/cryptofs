@@ -28,19 +28,6 @@ public interface HealthCheck {
 	 * @param config The parsed and verified vault config
 	 * @param masterkey The masterkey
 	 * @param cryptor A cryptor initialized for this vault
-	 * @return Diagnostic results
-	 */
-	default Stream<DiagnosticResult> check(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
-		return check(pathToVault, config, masterkey, cryptor, ForkJoinPool.commonPool());
-	}
-
-	/**
-	 * Checks the vault at the given path.
-	 *
-	 * @param pathToVault Path to the vault's root directory
-	 * @param config The parsed and verified vault config
-	 * @param masterkey The masterkey
-	 * @param cryptor A cryptor initialized for this vault
 	 * @param executor An executor service to run the health check
 	 * @return Diagnostic results
 	 */
