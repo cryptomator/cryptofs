@@ -17,9 +17,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
-class AbstractHealthCheckTest {
+class HealthCheckTest {
 
 	private Path pathToVault = Mockito.mock(Path.class);
 	private VaultConfig config = Mockito.mock(VaultConfig.class);
@@ -42,12 +41,9 @@ class AbstractHealthCheckTest {
 	public void testConsumeStream() {
 		DiagnosticResult result1 = Mockito.mock(DiagnosticResult.class, "result1");
 		DiagnosticResult result2 = Mockito.mock(DiagnosticResult.class, "result2");
-		AbstractHealthCheck check = new AbstractHealthCheck() {
-			@Override
-			protected void check(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor, Consumer<DiagnosticResult> resultCollector) {
-				resultCollector.accept(result1);
-				resultCollector.accept(result2);
-			}
+		HealthCheck check = (pathToVault, config, masterkey, cryptor, resultCollector) -> {
+			resultCollector.accept(result1);
+			resultCollector.accept(result2);
 		};
 
 		var stream = check.check(pathToVault, config, masterkey, cryptor, executor);
@@ -63,13 +59,10 @@ class AbstractHealthCheckTest {
 		DiagnosticResult result1 = Mockito.mock(DiagnosticResult.class, "result1");
 		CountDownLatch cdl1 = new CountDownLatch(1);
 		CountDownLatch cdl2 = new CountDownLatch(1);
-		AbstractHealthCheck check = new AbstractHealthCheck() {
-			@Override
-			protected void check(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor, Consumer<DiagnosticResult> resultCollector) {
-				cdl1.countDown();
-				resultCollector.accept(result1);
-				cdl2.countDown();
-			}
+		HealthCheck check = (pathToVault, config, masterkey, cryptor, resultCollector) -> {
+			cdl1.countDown();
+			resultCollector.accept(result1);
+			cdl2.countDown();
 		};
 
 		check.check(pathToVault, config, masterkey, cryptor, executor);
@@ -79,35 +72,31 @@ class AbstractHealthCheckTest {
 	}
 
 	@RepeatedTest(100)
-	@DisplayName("health check can be cancelled")
-	public void testCancel() {
+	@DisplayName("closing stream cancels health check")
+	public void testClose() {
 		DiagnosticResult result1 = Mockito.mock(DiagnosticResult.class, "result1");
 		DiagnosticResult result2 = Mockito.mock(DiagnosticResult.class, "result2");
 		CountDownLatch cdl1 = new CountDownLatch(1);
-		AbstractHealthCheck check = new AbstractHealthCheck() {
-			@Override
-			protected void check(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor, Consumer<DiagnosticResult> resultCollector) {
+		CountDownLatch cdl2 = new CountDownLatch(1);
+		CountDownLatch cdl3 = new CountDownLatch(1);
+		HealthCheck check = (pathToVault, config, masterkey, cryptor, resultCollector) -> {
+			try {
+				cdl1.countDown(); // job started
 				resultCollector.accept(result1);
-				try {
-					cdl1.await();
-				} catch (InterruptedException e) {
-					// expected, as cancel() interrupts the check worker
-				}
 				resultCollector.accept(result2);
+				cdl2.countDown(); // job not finished
+			} finally {
+				cdl3.countDown(); // control
 			}
 		};
 
-		var stream = check.check(pathToVault, config, masterkey, cryptor, executor);
 
 		Assertions.assertTimeoutPreemptively(Duration.ofSeconds(1), () -> {
-			var results = stream.peek(result -> {
-				if (result == result1) {
-					// cancel check after first result
-					check.cancel();
-					cdl1.countDown();
-				}
-			}).toArray(DiagnosticResult[]::new);
-			Assertions.assertArrayEquals(new DiagnosticResult[]{result1}, results);
+			try (var stream = check.check(pathToVault, config, masterkey, cryptor, executor)) {
+				cdl1.await();
+			}
+			cdl3.await();
+			Assertions.assertEquals(1, cdl2.getCount());
 		});
 	}
 
