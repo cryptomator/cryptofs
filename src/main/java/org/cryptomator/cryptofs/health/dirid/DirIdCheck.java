@@ -2,7 +2,6 @@ package org.cryptomator.cryptofs.health.dirid;
 
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.common.Constants;
-import org.cryptomator.cryptofs.health.api.AbstractHealthCheck;
 import org.cryptomator.cryptofs.health.api.CheckFailed;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 import org.cryptomator.cryptofs.health.api.HealthCheck;
@@ -18,30 +17,22 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
-import java.util.Spliterator;
-import java.util.Spliterators;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
  * Reads all dir.c9r files and checks if the corresponding dir exists.
  */
-public class DirIdCheck extends AbstractHealthCheck {
+public class DirIdCheck implements HealthCheck {
 
 	private static final Logger LOG = LoggerFactory.getLogger(DirIdCheck.class);
 	private static final int MAX_TRAVERSAL_DEPTH = 4; // d/2/30/Fo0==.c9r/dir.c9r
 
 	@Override
-	protected void check(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor, Consumer<DiagnosticResult> resultCollector) {
+	public void check(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor, Consumer<DiagnosticResult> resultCollector) {
 		// scan vault structure:
 		var dataDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME);
 		var dirVisitor = new DirVisitor(dataDirPath, resultCollector);
