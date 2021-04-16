@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.dir;
 
+import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.junit.jupiter.api.Assertions;
@@ -7,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
@@ -20,14 +22,17 @@ class C9rConflictResolverTest {
 
 	private Cryptor cryptor;
 	private FileNameCryptor fileNameCryptor;
+	private CryptoFileSystemProperties fileSystemProperties;
 	private C9rConflictResolver conflictResolver;
 
 	@BeforeEach
 	public void setup() {
 		cryptor = Mockito.mock(Cryptor.class);
 		fileNameCryptor = Mockito.mock(FileNameCryptor.class);
+		fileSystemProperties = Mockito.mock(CryptoFileSystemProperties.class);
 		Mockito.when(cryptor.fileNameCryptor()).thenReturn(fileNameCryptor);
-		conflictResolver = new C9rConflictResolver(cryptor, "foo");
+		Mockito.when(fileSystemProperties.maxNameLength()).thenReturn(220);
+		conflictResolver = new C9rConflictResolver(cryptor, "foo", fileSystemProperties);
 	}
 	
 	@Test
@@ -124,6 +129,13 @@ class C9rConflictResolverTest {
 		Assertions.assertEquals("foo.c9r", resolved.fullCiphertextFileName);
 		Assertions.assertTrue(Files.exists(resolved.ciphertextPath));
 		Assertions.assertFalse(Files.exists(unresolved.ciphertextPath));
+	}
+
+	@ParameterizedTest
+	@CsvSource({"220, 146", "219, 143", "218, 143", "217, 143", "216, 143", "215, 140"})
+	public void testCalcMaxCleartextNameLength(int input, int expectedResult) {
+		int result = conflictResolver.calcMaxCleartextNameLength(input);
+		Assertions.assertEquals(expectedResult, result);
 	}
 
 }
