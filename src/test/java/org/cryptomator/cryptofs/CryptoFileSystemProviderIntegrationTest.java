@@ -90,7 +90,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 					.withFlags() //
 					.withMasterkeyFilename("masterkey.cryptomator") //
 					.withKeyLoaders(keyLoader) //
-					.withMaxPathLength(100)
+					.withMaxCleartextNameLength(50)
 					.build();
 			CryptoFileSystemProvider.initialize(tmpDir, properties, URI.create("test:key"));
 			fs = CryptoFileSystemProvider.newFileSystem(tmpDir, properties);
@@ -116,7 +116,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@DisplayName("expect create file to fail with FileNameTooLongException")
 		@Test
 		public void testCreateFileExceedingPathLengthLimit() {
-			Path p = fs.getPath("/this-should-result-in-ciphertext-path-longer-than-100");
+			Path p = fs.getPath("/this-cleartext-filename-is-longer-than-50-characters");
 			Assertions.assertThrows(FileNameTooLongException.class, () -> {
 				Files.createFile(p);
 			});
@@ -125,7 +125,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@DisplayName("expect create directory to fail with FileNameTooLongException")
 		@Test
 		public void testCreateDirExceedingPathLengthLimit() {
-			Path p = fs.getPath("/this-should-result-in-ciphertext-path-longer-than-100");
+			Path p = fs.getPath("/this-cleartext-filename-is-longer-than-50-characters");
 			Assertions.assertThrows(FileNameTooLongException.class, () -> {
 				Files.createDirectory(p);
 			});
@@ -134,18 +134,18 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@DisplayName("expect create symlink to fail with FileNameTooLongException")
 		@Test
 		public void testCreateSymlinkExceedingPathLengthLimit() {
-			Path p = fs.getPath("/this-should-result-in-ciphertext-path-longer-than-100");
+			Path p = fs.getPath("/this-cleartext-filename-is-longer-than-50-characters");
 			Assertions.assertThrows(FileNameTooLongException.class, () -> {
 				Files.createSymbolicLink(p, shortFilePath);
 			});
 		}
 
 		@DisplayName("expect move to fail with FileNameTooLongException")
-		@ParameterizedTest(name = "move {0} -> this-should-result-in-ciphertext-path-longer-than-100")
+		@ParameterizedTest(name = "move {0} -> this-cleartext-filename-is-longer-than-50-characters")
 		@ValueSource(strings = {"/short-enough.txt", "/short-enough-dir", "/symlink.txt"})
 		public void testMoveExceedingPathLengthLimit(String path) {
 			Path src = fs.getPath(path);
-			Path dst = fs.getPath("/this-should-result-in-ciphertext-path-longer-than-100");
+			Path dst = fs.getPath("/this-cleartext-filename-is-longer-than-50-characters");
 			Assertions.assertThrows(FileNameTooLongException.class, () -> {
 				Files.move(src, dst);
 			});
@@ -154,11 +154,11 @@ public class CryptoFileSystemProviderIntegrationTest {
 		}
 
 		@DisplayName("expect copy to fail with FileNameTooLongException")
-		@ParameterizedTest(name = "copy {0} -> this-should-result-in-ciphertext-path-longer-than-100")
+		@ParameterizedTest(name = "copy {0} -> this-cleartext-filename-is-longer-than-50-characters")
 		@ValueSource(strings = {"/short-enough.txt", "/short-enough-dir", "/symlink.txt"})
 		public void testCopyExceedingPathLengthLimit(String path) {
 			Path src = fs.getPath(path);
-			Path dst = fs.getPath("/this-should-result-in-ciphertext-path-longer-than-100");
+			Path dst = fs.getPath("/this-cleartext-filename-is-longer-than-50-characters");
 			Assertions.assertThrows(FileNameTooLongException.class, () -> {
 				Files.copy(src, dst, LinkOption.NOFOLLOW_LINKS);
 			});

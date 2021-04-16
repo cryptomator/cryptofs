@@ -99,7 +99,7 @@ class C9rConflictResolver {
 	private Node renameConflictingFile(Path canonicalPath, Path conflictingPath, String cleartext) throws IOException {
 		assert Files.exists(canonicalPath);
 		final int beginOfFileExtension = cleartext.lastIndexOf('.');
-		final int maxCiphertextNameLength = vaultConfig.getMaxFilenameLength();
+		final int maxCiphertextNameLength = vaultConfig.getShorteningThreshold();
 		final int maxCleartextNameLength = calcMaxCleartextNameLength(maxCiphertextNameLength);
 		final String fileExtension = (beginOfFileExtension > 0) ? cleartext.substring(beginOfFileExtension) : "";
 		final String basename = (beginOfFileExtension > 0) ? cleartext.substring(0, beginOfFileExtension) : cleartext;

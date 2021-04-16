@@ -1,6 +1,5 @@
 package org.cryptomator.cryptofs.dir;
 
-import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
@@ -32,7 +31,7 @@ class C9rConflictResolverTest {
 		fileNameCryptor = Mockito.mock(FileNameCryptor.class);
 		vaultConfig = Mockito.mock(VaultConfig.class);
 		Mockito.when(cryptor.fileNameCryptor()).thenReturn(fileNameCryptor);
-		Mockito.when(vaultConfig.getMaxFilenameLength()).thenReturn(220);
+		Mockito.when(vaultConfig.getShorteningThreshold()).thenReturn(220);
 		conflictResolver = new C9rConflictResolver(cryptor, "foo", vaultConfig);
 	}
 	

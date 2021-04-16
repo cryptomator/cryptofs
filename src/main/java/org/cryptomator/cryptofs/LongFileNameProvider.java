@@ -36,7 +36,8 @@ import static org.cryptomator.cryptofs.common.Constants.INFLATED_FILE_NAME;
 @CryptoFileSystemScoped
 public class LongFileNameProvider {
 
-	private static final int MAX_FILENAME_BUFFER_SIZE = 10 * 1024; // no sane person gives a file a 10kb long name.
+	public static final int MAX_FILENAME_BUFFER_SIZE = 10 * 1024; // no sane person gives a file a 10kb long name.
+
 	private static final BaseEncoding BASE64 = BaseEncoding.base64Url();
 	private static final Duration MAX_CACHE_AGE = Duration.ofMinutes(1);
 

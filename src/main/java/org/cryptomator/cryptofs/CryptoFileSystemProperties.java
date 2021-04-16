@@ -38,22 +38,13 @@ import static java.util.Arrays.asList;
 public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	/**
-	 * Maximum ciphertext path length.
+	 * Maximum cleartext filename length.
 	 *
-	 * @since 1.9.8
+	 * @since 2.0.0
 	 */
-	public static final String PROPERTY_MAX_PATH_LENGTH = "maxPathLength";
+	public static final String PROPERTY_MAX_CLEARTEXT_NAME_LENGTH = "maxCleartextNameLength";
 
-	static final int DEFAULT_MAX_PATH_LENGTH = Constants.MAX_CIPHERTEXT_PATH_LENGTH;
-
-	/**
-	 * Maximum filename length of .c9r files.
-	 *
-	 * @since 1.9.9
-	 */
-	public static final String PROPERTY_MAX_NAME_LENGTH = "maxNameLength";
-
-	static final int DEFAULT_MAX_NAME_LENGTH = Constants.MAX_CIPHERTEXT_NAME_LENGTH;
+	static final int DEFAULT_MAX_CLEARTEXT_NAME_LENGTH = LongFileNameProvider.MAX_FILENAME_BUFFER_SIZE;
 
 	/**
 	 * Key identifying the key loader used during initialization.
@@ -115,8 +106,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 				Map.entry(PROPERTY_FILESYSTEM_FLAGS, builder.flags), //
 				Map.entry(PROPERTY_VAULTCONFIG_FILENAME, builder.vaultConfigFilename), //
 				Map.entry(PROPERTY_MASTERKEY_FILENAME, builder.masterkeyFilename), //
-				Map.entry(PROPERTY_MAX_PATH_LENGTH, builder.maxPathLength), //
-				Map.entry(PROPERTY_MAX_NAME_LENGTH, builder.maxNameLength), //
+				Map.entry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, builder.maxCleartextNameLength), //
 				Map.entry(PROPERTY_CIPHER_COMBO, builder.cipherCombo) //
 		);
 	}
@@ -162,12 +152,8 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		return (String) get(PROPERTY_MASTERKEY_FILENAME);
 	}
 
-	public int maxPathLength() {
-		return (int) get(PROPERTY_MAX_PATH_LENGTH);
-	}
-	
-	public int maxNameLength() {
-		return (int) get(PROPERTY_MAX_NAME_LENGTH);
+	public int maxCleartextNameLength() {
+		return (int) get(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH);
 	}
 
 	@Override
@@ -223,8 +209,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		private final Set<FileSystemFlags> flags = EnumSet.copyOf(DEFAULT_FILESYSTEM_FLAGS);
 		private String vaultConfigFilename = DEFAULT_VAULTCONFIG_FILENAME;
 		private String masterkeyFilename = DEFAULT_MASTERKEY_FILENAME;
-		private int maxPathLength = DEFAULT_MAX_PATH_LENGTH;
-		private int maxNameLength = DEFAULT_MAX_NAME_LENGTH;
+		private int maxCleartextNameLength = DEFAULT_MAX_CLEARTEXT_NAME_LENGTH;
 
 		private Builder() {
 		}
@@ -234,8 +219,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 			checkedSet(String.class, PROPERTY_VAULTCONFIG_FILENAME, properties, this::withVaultConfigFilename);
 			checkedSet(String.class, PROPERTY_MASTERKEY_FILENAME, properties, this::withMasterkeyFilename);
 			checkedSet(Set.class, PROPERTY_FILESYSTEM_FLAGS, properties, this::withFlags);
-			checkedSet(Integer.class, PROPERTY_MAX_PATH_LENGTH, properties, this::withMaxPathLength);
-			checkedSet(Integer.class, PROPERTY_MAX_NAME_LENGTH, properties, this::withMaxNameLength);
+			checkedSet(Integer.class, PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, properties, this::withMaxCleartextNameLength);
 			checkedSet(VaultCipherCombo.class, PROPERTY_CIPHER_COMBO, properties, this::withCipherCombo);
 		}
 
@@ -250,28 +234,15 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 			}
 		}
 
-
-		/**
-		 * Sets the maximum ciphertext path length for a CryptoFileSystem.
-		 *
-		 * @param maxPathLength The maximum ciphertext path length allowed
-		 * @return this
-		 * @since 1.9.8
-		 */
-		public Builder withMaxPathLength(int maxPathLength) {
-			this.maxPathLength = maxPathLength;
-			return this;
-		}
-
 		/**
 		 * Sets the maximum ciphertext filename length for a CryptoFileSystem.
 		 *
-		 * @param maxNameLength The maximum ciphertext filename length allowed
+		 * @param maxCleartextNameLength The maximum ciphertext filename length allowed
 		 * @return this
-		 * @since 1.9.9
+		 * @since 2.0.0
 		 */
-		public Builder withMaxNameLength(int maxNameLength) {
-			this.maxNameLength = maxNameLength;
+		public Builder withMaxCleartextNameLength(int maxCleartextNameLength) {
+			this.maxCleartextNameLength = maxCleartextNameLength;
 			return this;
 		}
 

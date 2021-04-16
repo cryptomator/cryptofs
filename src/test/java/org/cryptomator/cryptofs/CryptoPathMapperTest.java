@@ -46,7 +46,7 @@ public class CryptoPathMapperTest {
 		CryptoPath empty = cryptoPathFactory.emptyFor(fileSystem);
 		Mockito.when(cryptor.fileNameCryptor()).thenReturn(fileNameCryptor);
 		Mockito.when(pathToVault.resolve("d")).thenReturn(dataRoot);
-		Mockito.when(vaultConfig.getMaxFilenameLength()).thenReturn(220);
+		Mockito.when(vaultConfig.getShorteningThreshold()).thenReturn(220);
 		Mockito.when(fileSystem.getPath(ArgumentMatchers.anyString(), ArgumentMatchers.any())).thenAnswer(invocation -> {
 			String first = invocation.getArgument(0);
 			if (invocation.getArguments().length == 1) {

@@ -94,13 +94,13 @@ public class Version7Migrator implements Migrator {
 			// fail if ciphertext paths are too long:
 			if (preMigrationVisitor.getMaxCiphertextPathLength() > pathLengthLimit) {
 				LOG.error("Migration aborted due to unsupported path length (required {}) of underlying file system (supports {}). Vault is unchanged.", preMigrationVisitor.getMaxCiphertextPathLength(), pathLengthLimit);
-				throw new FileNameTooLongException(preMigrationVisitor.getLongestPath().toString(), pathLengthLimit, filenameLengthLimit);
+				throw new FileNameTooLongException(preMigrationVisitor.getLongestPath().toString(), filenameLengthLimit);
 			}
 
 			// fail if ciphertext names are too long:
 			if (preMigrationVisitor.getMaxCiphertextNameLength() > filenameLengthLimit) {
 				LOG.error("Migration aborted due to unsupported filename length (required {}) of underlying file system (supports {}). Vault is unchanged.", preMigrationVisitor.getMaxCiphertextNameLength(), filenameLengthLimit);
-				throw new FileNameTooLongException(preMigrationVisitor.getPathWithLongestName().toString(), pathLengthLimit, filenameLengthLimit);
+				throw new FileNameTooLongException(preMigrationVisitor.getPathWithLongestName().toString(), filenameLengthLimit);
 			}
 
 			// start migration:

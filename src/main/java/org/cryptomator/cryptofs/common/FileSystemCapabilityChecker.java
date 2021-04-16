@@ -21,6 +21,9 @@ import java.nio.file.Path;
 public class FileSystemCapabilityChecker {
 
 	private static final Logger LOG = LoggerFactory.getLogger(FileSystemCapabilityChecker.class);
+	private static final int MAX_CIPHERTEXT_NAME_LENGTH = 220; // inclusive. calculations done in https://github.com/cryptomator/cryptofs/issues/60#issuecomment-523238303
+	private static final int MIN_CIPHERTEXT_NAME_LENGTH = 28; // base64(iv).c9r
+	private static final int MAX_ADDITIONAL_PATH_LENGTH = 48; // beginning at d/... see https://github.com/cryptomator/cryptofs/issues/77
 
 	public enum Capability {
 		/**
@@ -98,8 +101,8 @@ public class FileSystemCapabilityChecker {
 	 * @throws IOException If unable to perform this check
 	 */
 	public int determineSupportedFileNameLength(Path pathToVault) throws IOException {
-		int subPathLength = Constants.MAX_ADDITIONAL_PATH_LENGTH - 2; // subtract "c/"
-		return determineSupportedFileNameLength(pathToVault.resolve("c"), subPathLength, Constants.MIN_CIPHERTEXT_NAME_LENGTH, Constants.MAX_CIPHERTEXT_NAME_LENGTH);
+		int subPathLength = MAX_ADDITIONAL_PATH_LENGTH - 2; // subtract "c/"
+		return determineSupportedFileNameLength(pathToVault.resolve("c"), subPathLength, MIN_CIPHERTEXT_NAME_LENGTH, MAX_CIPHERTEXT_NAME_LENGTH);
 	}
 
 	/**
