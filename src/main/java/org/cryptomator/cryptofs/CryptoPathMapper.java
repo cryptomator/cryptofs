@@ -129,7 +129,7 @@ public class CryptoPathMapper {
 	public CiphertextFilePath getCiphertextFilePath(Path parentCiphertextDir, String parentDirId, String cleartextName) {
 		String ciphertextName = ciphertextNames.getUnchecked(new DirIdAndName(parentDirId, cleartextName));
 		Path c9rPath = parentCiphertextDir.resolve(ciphertextName);
-		if (ciphertextName.length() > vaultConfig.getMaxFilenameLength()) {
+		if (ciphertextName.length() > vaultConfig.getShorteningThreshold()) {
 			LongFileNameProvider.DeflatedFileName deflatedFileName = longFileNameProvider.deflate(c9rPath);
 			return new CiphertextFilePath(deflatedFileName.c9sPath, Optional.of(deflatedFileName));
 		} else {

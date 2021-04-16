@@ -47,7 +47,7 @@ public class VaultConfigTest {
 
 		@BeforeEach
 		public void setup() throws MasterkeyLoadingFailedException {
-			originalConfig = VaultConfig.createNew().cipherCombo(VaultCipherCombo.SIV_CTRMAC).maxFilenameLength(220).build();
+			originalConfig = VaultConfig.createNew().cipherCombo(VaultCipherCombo.SIV_CTRMAC).shorteningThreshold(220).build();
 			token = originalConfig.toToken("TEST_KEY", rawKey);
 		}
 
@@ -58,7 +58,7 @@ public class VaultConfigTest {
 			Assertions.assertEquals(originalConfig.getId(), loaded.getId());
 			Assertions.assertEquals(originalConfig.getVaultVersion(), loaded.getVaultVersion());
 			Assertions.assertEquals(originalConfig.getCipherCombo(), loaded.getCipherCombo());
-			Assertions.assertEquals(originalConfig.getMaxFilenameLength(), loaded.getMaxFilenameLength());
+			Assertions.assertEquals(originalConfig.getShorteningThreshold(), loaded.getShorteningThreshold());
 		}
 
 		@ParameterizedTest
@@ -76,12 +76,12 @@ public class VaultConfigTest {
 
 	@Test
 	public void testCreateNew() {
-		var config = VaultConfig.createNew().cipherCombo(VaultCipherCombo.SIV_CTRMAC).maxFilenameLength(220).build();
+		var config = VaultConfig.createNew().cipherCombo(VaultCipherCombo.SIV_CTRMAC).shorteningThreshold(220).build();
 
 		Assertions.assertNotNull(config.getId());
 		Assertions.assertEquals(Constants.VAULT_VERSION, config.getVaultVersion());
 		Assertions.assertEquals(VaultCipherCombo.SIV_CTRMAC, config.getCipherCombo());
-		Assertions.assertEquals(220, config.getMaxFilenameLength());
+		Assertions.assertEquals(220, config.getShorteningThreshold());
 	}
 
 	@Test
@@ -96,7 +96,7 @@ public class VaultConfigTest {
 		Mockito.when(decodedJwt.getKeyId()).thenReturn("test:key");
 		Mockito.when(decodedJwt.getClaim("format")).thenReturn(formatClaim);
 		Mockito.when(decodedJwt.getClaim("cipherCombo")).thenReturn(cipherComboClaim);
-		Mockito.when(decodedJwt.getClaim("maxFilenameLen")).thenReturn(maxFilenameLenClaim);
+		Mockito.when(decodedJwt.getClaim("shorteningThreshold")).thenReturn(maxFilenameLenClaim);
 		Mockito.when(key.getEncoded()).thenReturn(new byte[64]);
 		Mockito.when(verification.withClaim("format", 42)).thenReturn(verification);
 		Mockito.when(verification.build()).thenReturn(verifier);

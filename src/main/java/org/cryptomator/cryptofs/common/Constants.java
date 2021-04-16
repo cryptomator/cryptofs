@@ -24,6 +24,7 @@ public final class Constants {
 	public static final String CONTENTS_FILE_NAME = "contents.c9r";
 	public static final String INFLATED_FILE_NAME = "name.c9s";
 
+	public static final int DEFAULT_SHORTENING_THRESHOLD = 220;
 	public static final int MAX_CIPHERTEXT_NAME_LENGTH = 220; // inclusive. calculations done in https://github.com/cryptomator/cryptofs/issues/60#issuecomment-523238303
 	public static final int MIN_CIPHERTEXT_NAME_LENGTH = 28; // base64(iv).c9r
 	public static final int MAX_ADDITIONAL_PATH_LENGTH = 48; // beginning at d/... see https://github.com/cryptomator/cryptofs/issues/77
