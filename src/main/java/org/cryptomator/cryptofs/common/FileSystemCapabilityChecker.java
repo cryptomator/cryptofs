@@ -93,6 +93,14 @@ public class FileSystemCapabilityChecker {
 		}
 	}
 
+	public int determineSupportedCleartextFileNameLength(Path pathToVault) throws IOException {
+		int maxCiphertextLen = determineSupportedCiphertextFileNameLength(pathToVault);
+		assert maxCiphertextLen >= MIN_CIPHERTEXT_NAME_LENGTH;
+		// math explained in https://github.com/cryptomator/cryptofs/issues/60#issuecomment-523238303;
+		// subtract 4 for file extension, base64-decode, subtract 16 for IV
+		return (maxCiphertextLen - 4) / 4 * 3 - 16;
+	}
+
 	/**
 	 * Determinse the number of chars a ciphertext filename (including its extension) is allowed to have inside a vault's <code>d/XX/YYYYYYYYYYYYYYYYYYYYYYYYYYYYYY/</code> directory.
 	 *
@@ -100,9 +108,9 @@ public class FileSystemCapabilityChecker {
 	 * @return Number of chars a .c9r file is allowed to have
 	 * @throws IOException If unable to perform this check
 	 */
-	public int determineSupportedFileNameLength(Path pathToVault) throws IOException {
+	public int determineSupportedCiphertextFileNameLength(Path pathToVault) throws IOException {
 		int subPathLength = MAX_ADDITIONAL_PATH_LENGTH - 2; // subtract "c/"
-		return determineSupportedFileNameLength(pathToVault.resolve("c"), subPathLength, MIN_CIPHERTEXT_NAME_LENGTH, MAX_CIPHERTEXT_NAME_LENGTH);
+		return determineSupportedCiphertextFileNameLength(pathToVault.resolve("c"), subPathLength, MIN_CIPHERTEXT_NAME_LENGTH, MAX_CIPHERTEXT_NAME_LENGTH);
 	}
 
 	/**
@@ -115,7 +123,7 @@ public class FileSystemCapabilityChecker {
 	 * @return The supported filename length inside a subdirectory of <code>dir</code> with <code>subPathLength</code> chars
 	 * @throws IOException If unable to perform this check
 	 */
-	public int determineSupportedFileNameLength(Path dir, int subPathLength, int minFileNameLength, int maxFileNameLength) throws IOException {
+	public int determineSupportedCiphertextFileNameLength(Path dir, int subPathLength, int minFileNameLength, int maxFileNameLength) throws IOException {
 		Preconditions.checkArgument(subPathLength >= 6, "subPathLength must be larger than charcount(a/nnn/)");
 		Preconditions.checkArgument(minFileNameLength > 0);
 		Preconditions.checkArgument(maxFileNameLength <= 999);
@@ -130,13 +138,13 @@ public class FileSystemCapabilityChecker {
 				throw new IOException("Unable to read dir");
 			}
 			// perform actual check:
-			return determineSupportedFileNameLength(fillerDir, minFileNameLength, maxFileNameLength + 1);
+			return determineSupportedCiphertextFileNameLength(fillerDir, minFileNameLength, maxFileNameLength + 1);
 		} finally {
 			deleteRecursivelySilently(fillerDir);
 		}
 	}
 
-	private int determineSupportedFileNameLength(Path p, int lowerBoundIncl, int upperBoundExcl) {
+	private int determineSupportedCiphertextFileNameLength(Path p, int lowerBoundIncl, int upperBoundExcl) {
 		assert lowerBoundIncl < upperBoundExcl;
 		int mid = (lowerBoundIncl + upperBoundExcl) / 2;
 		assert mid < upperBoundExcl;
@@ -145,9 +153,9 @@ public class FileSystemCapabilityChecker {
 		}
 		assert lowerBoundIncl < mid;
 		if (canHandleFileNameLength(p, mid)) {
-			return determineSupportedFileNameLength(p, mid, upperBoundExcl);
+			return determineSupportedCiphertextFileNameLength(p, mid, upperBoundExcl);
 		} else {
-			return determineSupportedFileNameLength(p, lowerBoundIncl, mid);
+			return determineSupportedCiphertextFileNameLength(p, lowerBoundIncl, mid);
 		}
 	}
 

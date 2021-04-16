@@ -6,7 +6,7 @@ import java.nio.file.Path;
 /**
  * Indicates that an operation failed, as it would result in a ciphertext path that is too long for the underlying file system.
  *
- * @see org.cryptomator.cryptofs.common.FileSystemCapabilityChecker#determineSupportedFileNameLength(Path) 
+ * @see org.cryptomator.cryptofs.common.FileSystemCapabilityChecker#determineSupportedCleartextFileNameLength(Path)
  * @since 2.0.0
  */
 public class FileNameTooLongException extends FileSystemException {
