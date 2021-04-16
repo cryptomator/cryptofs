@@ -4,6 +4,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.io.BaseEncoding;
 import com.google.common.io.MoreFiles;
 import com.google.common.io.RecursiveDeleteOption;
+import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
@@ -23,8 +24,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.stream.Stream;
 
 import static org.cryptomator.cryptofs.common.Constants.DIR_FILE_NAME;
-import static org.cryptomator.cryptofs.common.Constants.MAX_CIPHERTEXT_NAME_LENGTH;
-import static org.cryptomator.cryptofs.common.Constants.MAX_CLEARTEXT_NAME_LENGTH;
 import static org.cryptomator.cryptofs.common.Constants.MAX_DIR_FILE_LENGTH;
 import static org.cryptomator.cryptofs.common.Constants.MAX_SYMLINK_LENGTH;
 import static org.cryptomator.cryptofs.common.Constants.SYMLINK_FILE_NAME;
@@ -36,11 +35,13 @@ class C9rConflictResolver {
 
 	private final Cryptor cryptor;
 	private final byte[] dirId;
+	private final VaultConfig vaultConfig;
 
 	@Inject
-	public C9rConflictResolver(Cryptor cryptor, @Named("dirId") String dirId) {
+	public C9rConflictResolver(Cryptor cryptor, @Named("dirId") String dirId, VaultConfig vaultConfig) {
 		this.cryptor = cryptor;
 		this.dirId = dirId.getBytes(StandardCharsets.US_ASCII);
+		this.vaultConfig = vaultConfig;
 	}
 
 	public Stream<Node> process(Node node) {
@@ -79,6 +80,13 @@ class C9rConflictResolver {
 		}
 	}
 
+	// visible for testing
+	int calcMaxCleartextNameLength(int maxCiphertextNameLength) {
+		// math explained in https://github.com/cryptomator/cryptofs/issues/60#issuecomment-523238303;
+		// subtract 4 for file extension, base64-decode, subtract 16 for IV
+		return (maxCiphertextNameLength - 4) / 4 * 3 - 16;
+	}
+
 	/**
 	 * Resolves a conflict by renaming the conflicting file.
 	 *
@@ -91,9 +99,11 @@ class C9rConflictResolver {
 	private Node renameConflictingFile(Path canonicalPath, Path conflictingPath, String cleartext) throws IOException {
 		assert Files.exists(canonicalPath);
 		final int beginOfFileExtension = cleartext.lastIndexOf('.');
+		final int maxCiphertextNameLength = vaultConfig.getMaxFilenameLength();
+		final int maxCleartextNameLength = calcMaxCleartextNameLength(maxCiphertextNameLength);
 		final String fileExtension = (beginOfFileExtension > 0) ? cleartext.substring(beginOfFileExtension) : "";
 		final String basename = (beginOfFileExtension > 0) ? cleartext.substring(0, beginOfFileExtension) : cleartext;
-		final String lengthRestrictedBasename = basename.substring(0, Math.min(basename.length(), MAX_CLEARTEXT_NAME_LENGTH - fileExtension.length() - 5)); // 5 chars for conflict suffix " (42)"
+		final String lengthRestrictedBasename = basename.substring(0, Math.min(basename.length(), maxCleartextNameLength - fileExtension.length() - 5)); // 5 chars for conflict suffix " (42)"
 		String alternativeCleartext;
 		String alternativeCiphertext;
 		String alternativeCiphertextName;
@@ -105,7 +115,7 @@ class C9rConflictResolver {
 			alternativeCiphertextName = alternativeCiphertext + Constants.CRYPTOMATOR_FILE_SUFFIX;
 			alternativePath = canonicalPath.resolveSibling(alternativeCiphertextName);
 		} while (Files.exists(alternativePath));
-		assert alternativeCiphertextName.length() <= MAX_CIPHERTEXT_NAME_LENGTH;
+		assert alternativeCiphertextName.length() <= maxCiphertextNameLength;
 		LOG.info("Moving conflicting file {} to {}", conflictingPath, alternativePath);
 		Files.move(conflictingPath, alternativePath, StandardCopyOption.ATOMIC_MOVE);
 		Node node = new Node(alternativePath);

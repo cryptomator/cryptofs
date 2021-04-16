@@ -162,11 +162,11 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		return (String) get(PROPERTY_MASTERKEY_FILENAME);
 	}
 
-	int maxPathLength() {
+	public int maxPathLength() {
 		return (int) get(PROPERTY_MAX_PATH_LENGTH);
 	}
-
-	int maxNameLength() {
+	
+	public int maxNameLength() {
 		return (int) get(PROPERTY_MAX_NAME_LENGTH);
 	}
 
