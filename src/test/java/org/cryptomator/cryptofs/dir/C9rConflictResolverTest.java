@@ -31,7 +31,7 @@ class C9rConflictResolverTest {
 		fileNameCryptor = Mockito.mock(FileNameCryptor.class);
 		vaultConfig = Mockito.mock(VaultConfig.class);
 		Mockito.when(cryptor.fileNameCryptor()).thenReturn(fileNameCryptor);
-		Mockito.when(vaultConfig.getShorteningThreshold()).thenReturn(220);
+		Mockito.when(vaultConfig.getShorteningThreshold()).thenReturn(44); // results in max cleartext size = 14
 		conflictResolver = new C9rConflictResolver(cryptor, "foo", vaultConfig);
 	}
 	
@@ -73,6 +73,25 @@ class C9rConflictResolverTest {
 		Assertions.assertNotEquals(unresolved, resolved);
 		Assertions.assertEquals("baz.c9r", resolved.fullCiphertextFileName);
 		Assertions.assertEquals("bar (1).txt", resolved.cleartextName);
+		Assertions.assertTrue(Files.exists(resolved.ciphertextPath));
+		Assertions.assertFalse(Files.exists(unresolved.ciphertextPath));
+	}
+
+	@Test
+	public void testResolveConflictingFileByChoosingNewLengthLimitedName(@TempDir Path dir) throws IOException {
+		Files.createFile(dir.resolve("foo (1).c9r"));
+		Files.createFile(dir.resolve("foo.c9r"));
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn("baz");
+		Node unresolved = new Node(dir.resolve("foo (1).c9r"));
+		unresolved.cleartextName = "hello world.txt";
+		unresolved.extractedCiphertext = "foo";
+
+		Stream<Node> result = conflictResolver.process(unresolved);
+		Node resolved = result.findAny().get();
+
+		Assertions.assertNotEquals(unresolved, resolved);
+		Assertions.assertEquals("baz.c9r", resolved.fullCiphertextFileName);
+		Assertions.assertEquals("hello (1).txt", resolved.cleartextName);
 		Assertions.assertTrue(Files.exists(resolved.ciphertextPath));
 		Assertions.assertFalse(Files.exists(unresolved.ciphertextPath));
 	}
@@ -129,13 +148,6 @@ class C9rConflictResolverTest {
 		Assertions.assertEquals("foo.c9r", resolved.fullCiphertextFileName);
 		Assertions.assertTrue(Files.exists(resolved.ciphertextPath));
 		Assertions.assertFalse(Files.exists(unresolved.ciphertextPath));
-	}
-
-	@ParameterizedTest
-	@CsvSource({"220, 146", "219, 143", "218, 143", "217, 143", "216, 143", "215, 140"})
-	public void testCalcMaxCleartextNameLength(int input, int expectedResult) {
-		int result = conflictResolver.calcMaxCleartextNameLength(input);
-		Assertions.assertEquals(expectedResult, result);
 	}
 
 }

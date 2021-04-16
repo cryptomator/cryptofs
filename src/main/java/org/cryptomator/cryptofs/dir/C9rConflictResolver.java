@@ -35,13 +35,15 @@ class C9rConflictResolver {
 
 	private final Cryptor cryptor;
 	private final byte[] dirId;
-	private final VaultConfig vaultConfig;
+	private final int maxC9rFileNameLength;
+	private final int maxCleartextFileNameLength;
 
 	@Inject
 	public C9rConflictResolver(Cryptor cryptor, @Named("dirId") String dirId, VaultConfig vaultConfig) {
 		this.cryptor = cryptor;
 		this.dirId = dirId.getBytes(StandardCharsets.US_ASCII);
-		this.vaultConfig = vaultConfig;
+		this.maxC9rFileNameLength = vaultConfig.getShorteningThreshold();
+		this.maxCleartextFileNameLength = (maxC9rFileNameLength - 4) / 4 * 3 - 16; // math from FileSystemCapabilityChecker.determineSupportedCleartextFileNameLength()
 	}
 
 	public Stream<Node> process(Node node) {
@@ -80,13 +82,6 @@ class C9rConflictResolver {
 		}
 	}
 
-	// visible for testing
-	int calcMaxCleartextNameLength(int maxCiphertextNameLength) {
-		// math explained in https://github.com/cryptomator/cryptofs/issues/60#issuecomment-523238303;
-		// subtract 4 for file extension, base64-decode, subtract 16 for IV
-		return (maxCiphertextNameLength - 4) / 4 * 3 - 16;
-	}
-
 	/**
 	 * Resolves a conflict by renaming the conflicting file.
 	 *
@@ -99,11 +94,9 @@ class C9rConflictResolver {
 	private Node renameConflictingFile(Path canonicalPath, Path conflictingPath, String cleartext) throws IOException {
 		assert Files.exists(canonicalPath);
 		final int beginOfFileExtension = cleartext.lastIndexOf('.');
-		final int maxCiphertextNameLength = vaultConfig.getShorteningThreshold();
-		final int maxCleartextNameLength = calcMaxCleartextNameLength(maxCiphertextNameLength);
 		final String fileExtension = (beginOfFileExtension > 0) ? cleartext.substring(beginOfFileExtension) : "";
 		final String basename = (beginOfFileExtension > 0) ? cleartext.substring(0, beginOfFileExtension) : cleartext;
-		final String lengthRestrictedBasename = basename.substring(0, Math.min(basename.length(), maxCleartextNameLength - fileExtension.length() - 5)); // 5 chars for conflict suffix " (42)"
+		final String lengthRestrictedBasename = basename.substring(0, Math.min(basename.length(), maxCleartextFileNameLength - fileExtension.length() - 5)); // 5 chars for conflict suffix " (42)"
 		String alternativeCleartext;
 		String alternativeCiphertext;
 		String alternativeCiphertextName;
@@ -115,7 +108,7 @@ class C9rConflictResolver {
 			alternativeCiphertextName = alternativeCiphertext + Constants.CRYPTOMATOR_FILE_SUFFIX;
 			alternativePath = canonicalPath.resolveSibling(alternativeCiphertextName);
 		} while (Files.exists(alternativePath));
-		assert alternativeCiphertextName.length() <= maxCiphertextNameLength;
+		assert alternativeCiphertextName.length() <= maxC9rFileNameLength;
 		LOG.info("Moving conflicting file {} to {}", conflictingPath, alternativePath);
 		Files.move(conflictingPath, alternativePath, StandardCopyOption.ATOMIC_MOVE);
 		Node node = new Node(alternativePath);
