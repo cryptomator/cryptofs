@@ -140,10 +140,17 @@ public class VaultConfig {
 		}
 
 		/**
-		 * @return The unverified vault version (JWT signature not verified)
+		 * @return The unverified vault version (signature not verified)
 		 */
 		public int allegedVaultVersion() {
 			return unverifiedConfig.getClaim(JSON_KEY_VAULTVERSION).asInt();
+		}
+
+		/**
+		 * @return The unverified shortening threshold (signature not verified)
+		 */
+		public int allegedShorteningThreshold() {
+			return unverifiedConfig.getClaim(JSON_KEY_SHORTENING_THRESHOLD).asInt();
 		}
 
 		/**
