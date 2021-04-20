@@ -348,7 +348,9 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	private FileChannel newFileChannelFromFile(CryptoPath cleartextFilePath, EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
-		assertCleartextNameLengthAllowed(cleartextFilePath);
+		if (options.create() || options.createNew()) {
+			assertCleartextNameLengthAllowed(cleartextFilePath);
+		}
 		CiphertextFilePath ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextFilePath);
 		Path ciphertextFilePath = ciphertextPath.getFilePath();
 		if (options.createNew() && openCryptoFiles.get(ciphertextFilePath).isPresent()) {

@@ -152,7 +152,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		return (String) get(PROPERTY_MASTERKEY_FILENAME);
 	}
 
-	public int maxCleartextNameLength() {
+	int maxCleartextNameLength() {
 		return (int) get(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH);
 	}
 
@@ -235,9 +235,11 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		}
 
 		/**
-		 * Sets the maximum ciphertext filename length for a CryptoFileSystem.
+		 * Sets the maximum cleartext filename length for a CryptoFileSystem. This value is checked during write
+		 * operations. Read access to nodes with longer names should be unaffected. Setting this value to {@code 0} or
+		 * a negative value effectively disables write access.
 		 *
-		 * @param maxCleartextNameLength The maximum ciphertext filename length allowed
+		 * @param maxCleartextNameLength The maximum cleartext filename length allowed
 		 * @return this
 		 * @since 2.0.0
 		 */

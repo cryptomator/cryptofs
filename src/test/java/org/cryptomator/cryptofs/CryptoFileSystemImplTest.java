@@ -19,6 +19,7 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -365,6 +366,50 @@ public class CryptoFileSystemImplTest {
 			when(openCryptoFiles.getOrCreate(ciphertextFilePath)).thenReturn(openCryptoFile);
 			when(ciphertextFilePath.getName(3)).thenReturn(mock(CryptoPath.class, "path.c9r"));
 			when(openCryptoFile.newFileChannel(any())).thenReturn(fileChannel);
+		}
+
+		@Nested
+		public class LimitedCleartextNameLength {
+
+			@BeforeEach
+			public void setup() throws IOException {
+				Assumptions.assumeTrue(cleartextPath.getFileName().toString().length() == 9);
+			}
+
+			@Test
+			@DisplayName("read-only always works")
+			public void testNewFileChannelReadOnlyDespiteMaxName() throws IOException {
+				Mockito.doReturn(0).when(fileSystemProperties).maxCleartextNameLength();
+
+				FileChannel ch = inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.READ));
+
+				Assertions.assertSame(fileChannel, ch);
+				verify(readonlyFlag, Mockito.never()).assertWritable();
+			}
+
+			@Test
+			@DisplayName("create new fails when exceeding limit")
+			public void testNewFileChannelCreate1() {
+				Mockito.doReturn(0).when(fileSystemProperties).maxCleartextNameLength();
+
+				Assertions.assertThrows(FileNameTooLongException.class, () -> {
+					inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE));
+				});
+
+				verifyNoInteractions(openCryptoFiles);
+			}
+
+			@Test
+			@DisplayName("create new succeeds when within limit")
+			public void testNewFileChannelCreate2() throws IOException {
+				Mockito.doReturn(10).when(fileSystemProperties).maxCleartextNameLength();
+
+				FileChannel ch = inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.READ));
+
+				Assertions.assertSame(fileChannel, ch);
+				verify(readonlyFlag, Mockito.never()).assertWritable();
+			}
+
 		}
 
 		@Test
