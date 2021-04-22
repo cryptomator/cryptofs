@@ -31,9 +31,8 @@ public class ReadmeCodeSamplesTest {
 	@Test
 	public void testReadmeCodeSampleUsingFileSystemConstructionMethodA(@TempDir Path storageLocation) throws IOException, MasterkeyLoadingFailedException {
 		MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
-		Mockito.when(keyLoader.supportsScheme("test")).thenReturn(true);
 		Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
-		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoaders(keyLoader).build();
+		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
 		CryptoFileSystemProvider.initialize(storageLocation, properties, URI.create("test:key"));
 		FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(storageLocation, properties);
 
@@ -44,9 +43,8 @@ public class ReadmeCodeSamplesTest {
 	public void testReadmeCodeSampleUsingFileSystemConstructionMethodB(@TempDir Path storageLocation) throws IOException, MasterkeyLoadingFailedException {
 		URI uri = CryptoFileSystemUri.create(storageLocation);
 		MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
-		Mockito.when(keyLoader.supportsScheme("test")).thenReturn(true);
 		Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
-		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoaders(keyLoader).build();
+		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
 		CryptoFileSystemProvider.initialize(storageLocation, properties, URI.create("test:key"));
 		FileSystem fileSystem = FileSystems.newFileSystem(uri, properties);
 

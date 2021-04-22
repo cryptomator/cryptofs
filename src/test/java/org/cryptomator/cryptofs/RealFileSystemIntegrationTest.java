@@ -25,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.UserPrincipal;
 
+import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 
 public class RealFileSystemIntegrationTest {
@@ -37,9 +38,8 @@ public class RealFileSystemIntegrationTest {
 		pathToVault = tmpDir.resolve("vault");
 		Files.createDirectory(pathToVault);
 		MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
-		Mockito.when(keyLoader.supportsScheme("test")).thenReturn(true);
 		Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
-		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoaders(keyLoader).build();
+		CryptoFileSystemProperties properties = cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
 		CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"));
 		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), properties);
 	}

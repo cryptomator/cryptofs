@@ -142,7 +142,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		}
 		byte[] rawKey = new byte[0];
 		var config = VaultConfig.createNew().cipherCombo(properties.cipherCombo()).shorteningThreshold(Constants.DEFAULT_SHORTENING_THRESHOLD).build();
-		try (Masterkey key = properties.keyLoader(keyId.getScheme()).loadKey(keyId);
+		try (Masterkey key = properties.keyLoader().loadKey(keyId);
 			 Cryptor cryptor = config.getCipherCombo().getCryptorProvider(strongSecureRandom()).withKey(key)) {
 			rawKey = key.getEncoded();
 			// save vault config:

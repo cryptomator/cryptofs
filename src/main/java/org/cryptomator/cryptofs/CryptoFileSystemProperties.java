@@ -9,9 +9,7 @@
 package org.cryptomator.cryptofs;
 
 import com.google.common.base.Strings;
-import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
-import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 
 import java.net.URI;
 import java.nio.file.FileSystems;
@@ -19,7 +17,6 @@ import java.nio.file.Path;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -51,9 +48,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 *
 	 * @since 2.0.0
 	 */
-	public static final String PROPERTY_KEYLOADERS = "keyLoaders";
-
-	static final Collection<MasterkeyLoader> DEFAULT_KEYLOADERS = Set.of();
+	public static final String PROPERTY_KEYLOADER = "keyLoader";
 
 	/**
 	 * Key identifying the name of the vault config file located inside the vault directory.
@@ -102,7 +97,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	private CryptoFileSystemProperties(Builder builder) {
 		this.entries = Set.of( //
-				Map.entry(PROPERTY_KEYLOADERS, builder.keyLoaders), //
+				Map.entry(PROPERTY_KEYLOADER, builder.keyLoader), //
 				Map.entry(PROPERTY_FILESYSTEM_FLAGS, builder.flags), //
 				Map.entry(PROPERTY_VAULTCONFIG_FILENAME, builder.vaultConfigFilename), //
 				Map.entry(PROPERTY_MASTERKEY_FILENAME, builder.masterkeyFilename), //
@@ -111,24 +106,8 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		);
 	}
 
-	Collection<MasterkeyLoader> keyLoaders() {
-		return (Collection<MasterkeyLoader>) get(PROPERTY_KEYLOADERS);
-	}
-
-	/**
-	 * Selects the first applicable MasterkeyLoader that supports the given scheme.
-	 *
-	 * @param scheme An URI scheme used in key IDs
-	 * @return A key loader
-	 * @throws MasterkeyLoadingFailedException If the scheme is not supported by any key loader
-	 */
-	MasterkeyLoader keyLoader(String scheme) throws MasterkeyLoadingFailedException {
-		for (MasterkeyLoader loader : keyLoaders()) {
-			if (loader.supportsScheme(scheme)) {
-				return loader;
-			}
-		}
-		throw new MasterkeyLoadingFailedException("No key loader for key type: " + scheme);
+	MasterkeyLoader keyLoader() {
+		return (MasterkeyLoader) get(PROPERTY_KEYLOADER);
 	}
 
 	public VaultCipherCombo cipherCombo() {
@@ -205,7 +184,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	public static class Builder {
 
 		public VaultCipherCombo cipherCombo = DEFAULT_CIPHER_COMBO;
-		private Collection<MasterkeyLoader> keyLoaders = new HashSet<>(DEFAULT_KEYLOADERS);
+		private MasterkeyLoader keyLoader = null;
 		private final Set<FileSystemFlags> flags = EnumSet.copyOf(DEFAULT_FILESYSTEM_FLAGS);
 		private String vaultConfigFilename = DEFAULT_VAULTCONFIG_FILENAME;
 		private String masterkeyFilename = DEFAULT_MASTERKEY_FILENAME;
@@ -215,7 +194,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		}
 
 		private Builder(Map<String, ?> properties) {
-			checkedSet(Collection.class, PROPERTY_KEYLOADERS, properties, this::withKeyLoaders);
+			checkedSet(MasterkeyLoader.class, PROPERTY_KEYLOADER, properties, this::withKeyLoader);
 			checkedSet(String.class, PROPERTY_VAULTCONFIG_FILENAME, properties, this::withVaultConfigFilename);
 			checkedSet(String.class, PROPERTY_MASTERKEY_FILENAME, properties, this::withMasterkeyFilename);
 			checkedSet(Set.class, PROPERTY_FILESYSTEM_FLAGS, properties, this::withFlags);
@@ -262,26 +241,14 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		}
 
 		/**
-		 * Sets the keyLoaders for a CryptoFileSystem.
+		 * Sets the keyloader for a CryptoFileSystem.
 		 *
-		 * @param keyLoaders A set of keyLoaders to load the key configured in the vault configuration
+		 * @param keyLoader A factory creating a {@link MasterkeyLoader} capable of handling the given {@code scheme}.
 		 * @return this
 		 * @since 2.0.0
 		 */
-		public Builder withKeyLoaders(MasterkeyLoader... keyLoaders) {
-			return withKeyLoaders(asList(keyLoaders));
-		}
-
-		/**
-		 * Sets the keyLoaders for a CryptoFileSystem.
-		 *
-		 * @param keyLoaders A set of keyLoaders to load the key configured in the vault configuration
-		 * @return this
-		 * @since 2.0.0
-		 */
-		public Builder withKeyLoaders(Collection<MasterkeyLoader> keyLoaders) {
-			this.keyLoaders.clear();
-			this.keyLoaders.addAll(keyLoaders);
+		public Builder withKeyLoader(MasterkeyLoader keyLoader) {
+			this.keyLoader = keyLoader;
 			return this;
 		}
 
@@ -345,8 +312,8 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		}
 
 		private void validate() {
-			if (keyLoaders.isEmpty()) {
-				throw new IllegalStateException("at least one keyloader is required");
+			if (keyLoader == null) {
+				throw new IllegalStateException("keyLoader is required");
 			}
 			if (Strings.nullToEmpty(masterkeyFilename).trim().isEmpty()) {
 				throw new IllegalStateException("masterkeyFilename is required");

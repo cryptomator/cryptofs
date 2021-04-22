@@ -75,9 +75,8 @@ public class CryptoFileSystemUriTest {
 		Path tempDir = createTempDirectory("CryptoFileSystemUrisTest").toAbsolutePath();
 		try {
 			MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
-			Mockito.when(keyLoader.supportsScheme("test")).thenReturn(true);
 			Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
-			CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoaders(keyLoader).build();
+			CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
 			CryptoFileSystemProvider.initialize(tempDir, properties, URI.create("test:key"));
 			FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(tempDir, properties);
 			Path absolutePathToVault = fileSystem.getPath("a").toAbsolutePath();
