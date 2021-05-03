@@ -49,7 +49,7 @@ class CryptoFileSystems {
 
 		var configLoader = VaultConfig.decode(token);
 		var keyId = configLoader.getKeyId();
-		try (Masterkey key = properties.keyLoader(keyId.getScheme()).loadKey(keyId)) {
+		try (Masterkey key = properties.keyLoader().loadKey(keyId)) {
 			var config = configLoader.verify(key.getEncoded(), Constants.VAULT_VERSION);
 			var adjustedProperties = adjustForCapabilities(pathToVault, properties);
 			var cryptor = config.getCipherCombo().getCryptorProvider(csprng).withKey(key.clone());

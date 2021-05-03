@@ -62,9 +62,8 @@ public class FileAttributeIntegrationTest {
 		pathToVault = inMemoryFs.getRootDirectories().iterator().next().resolve("vault");
 		Files.createDirectory(pathToVault);
 		MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
-		Mockito.when(keyLoader.supportsScheme("test")).thenReturn(true);
 		Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
-		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoaders(keyLoader).build();
+		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
 		CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"));
 		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), properties);
 	}

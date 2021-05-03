@@ -6,13 +6,13 @@ import java.nio.file.Path;
 /**
  * Indicates that an operation failed, as it would result in a ciphertext path that is too long for the underlying file system.
  *
- * @see org.cryptomator.cryptofs.common.FileSystemCapabilityChecker#determineSupportedFileNameLength(Path) 
- * @since 1.9.8
+ * @see org.cryptomator.cryptofs.common.FileSystemCapabilityChecker#determineSupportedCleartextFileNameLength(Path)
+ * @since 2.0.0
  */
 public class FileNameTooLongException extends FileSystemException {
 	
-	public FileNameTooLongException(String c9rPathRelativeToVaultRoot, int maxPathLength, int maxNameLength) {
-		super(c9rPathRelativeToVaultRoot, null, "File name or path too long. Max ciphertext path name length is " + maxPathLength + ". Max ciphertext name is " + maxNameLength);
+	public FileNameTooLongException(String path, int maxNameLength) {
+		super(path, null, "File name or path too long. Max cleartext filename name length is " + maxNameLength);
 	}
 	
 }

@@ -32,25 +32,25 @@ public class VaultConfig {
 
 	private static final String JSON_KEY_VAULTVERSION = "format";
 	private static final String JSON_KEY_CIPHERCONFIG = "cipherCombo";
-	private static final String JSON_KEY_MAXFILENAMELEN = "maxFilenameLen";
+	private static final String JSON_KEY_SHORTENING_THRESHOLD = "shorteningThreshold";
 
 	private final String id;
 	private final int vaultVersion;
 	private final VaultCipherCombo cipherCombo;
-	private final int maxFilenameLength;
+	private final int shorteningThreshold;
 
 	private VaultConfig(DecodedJWT verifiedConfig) {
 		this.id = verifiedConfig.getId();
 		this.vaultVersion = verifiedConfig.getClaim(JSON_KEY_VAULTVERSION).asInt();
 		this.cipherCombo = VaultCipherCombo.valueOf(verifiedConfig.getClaim(JSON_KEY_CIPHERCONFIG).asString());
-		this.maxFilenameLength = verifiedConfig.getClaim(JSON_KEY_MAXFILENAMELEN).asInt();
+		this.shorteningThreshold = verifiedConfig.getClaim(JSON_KEY_SHORTENING_THRESHOLD).asInt();
 	}
 
 	private VaultConfig(VaultConfigBuilder builder) {
 		this.id = builder.id;
 		this.vaultVersion = builder.vaultVersion;
 		this.cipherCombo = builder.cipherCombo;
-		this.maxFilenameLength = builder.maxFilenameLength;
+		this.shorteningThreshold = builder.shorteningThreshold;
 	}
 
 	public String getId() {
@@ -65,8 +65,8 @@ public class VaultConfig {
 		return cipherCombo;
 	}
 
-	public int getMaxFilenameLength() {
-		return maxFilenameLength;
+	public int getShorteningThreshold() {
+		return shorteningThreshold;
 	}
 
 	public String toToken(String keyId, byte[] rawKey) {
@@ -75,7 +75,7 @@ public class VaultConfig {
 				.withJWTId(id) //
 				.withClaim(JSON_KEY_VAULTVERSION, vaultVersion) //
 				.withClaim(JSON_KEY_CIPHERCONFIG, cipherCombo.name()) //
-				.withClaim(JSON_KEY_MAXFILENAMELEN, maxFilenameLength) //
+				.withClaim(JSON_KEY_SHORTENING_THRESHOLD, shorteningThreshold) //
 				.sign(Algorithm.HMAC256(rawKey));
 	}
 
@@ -140,10 +140,17 @@ public class VaultConfig {
 		}
 
 		/**
-		 * @return The unverified vault version (JWT signature not verified)
+		 * @return The unverified vault version (signature not verified)
 		 */
 		public int allegedVaultVersion() {
 			return unverifiedConfig.getClaim(JSON_KEY_VAULTVERSION).asInt();
+		}
+
+		/**
+		 * @return The unverified shortening threshold (signature not verified)
+		 */
+		public int allegedShorteningThreshold() {
+			return unverifiedConfig.getClaim(JSON_KEY_SHORTENING_THRESHOLD).asInt();
 		}
 
 		/**
@@ -178,15 +185,15 @@ public class VaultConfig {
 		private final String id = UUID.randomUUID().toString();
 		private final int vaultVersion = Constants.VAULT_VERSION;
 		private VaultCipherCombo cipherCombo;
-		private int maxFilenameLength;
+		private int shorteningThreshold;
 
 		public VaultConfigBuilder cipherCombo(VaultCipherCombo cipherCombo) {
 			this.cipherCombo = cipherCombo;
 			return this;
 		}
 
-		public VaultConfigBuilder maxFilenameLength(int maxFilenameLength) {
-			this.maxFilenameLength = maxFilenameLength;
+		public VaultConfigBuilder shorteningThreshold(int shorteningThreshold) {
+			this.shorteningThreshold = shorteningThreshold;
 			return this;
 		}
 

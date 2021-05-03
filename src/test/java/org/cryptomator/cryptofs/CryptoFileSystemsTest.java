@@ -71,7 +71,7 @@ public class CryptoFileSystemsTest {
 		when(pathToVault.normalize()).thenReturn(normalizedPathToVault);
 		when(normalizedPathToVault.resolve("vault.cryptomator")).thenReturn(configFilePath);
 		when(properties.vaultConfigFilename()).thenReturn("vault.cryptomator");
-		when(properties.keyLoader(Mockito.any())).thenReturn(keyLoader);
+		when(properties.keyLoader()).thenReturn(keyLoader);
 		filesClass.when(() -> Files.readString(configFilePath, StandardCharsets.US_ASCII)).thenReturn("jwt-vault-config");
 		vaultConficClass.when(() -> VaultConfig.decode("jwt-vault-config")).thenReturn(configLoader);
 		when(VaultConfig.decode("jwt-vault-config")).thenReturn(configLoader);

@@ -9,9 +9,7 @@
 package org.cryptomator.cryptofs;
 
 import com.google.common.base.Strings;
-import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
-import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 
 import java.net.URI;
 import java.nio.file.FileSystems;
@@ -19,7 +17,6 @@ import java.nio.file.Path;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -38,31 +35,20 @@ import static java.util.Arrays.asList;
 public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	/**
-	 * Maximum ciphertext path length.
+	 * Maximum cleartext filename length.
 	 *
-	 * @since 1.9.8
+	 * @since 2.0.0
 	 */
-	public static final String PROPERTY_MAX_PATH_LENGTH = "maxPathLength";
+	public static final String PROPERTY_MAX_CLEARTEXT_NAME_LENGTH = "maxCleartextNameLength";
 
-	static final int DEFAULT_MAX_PATH_LENGTH = Constants.MAX_CIPHERTEXT_PATH_LENGTH;
-
-	/**
-	 * Maximum filename length of .c9r files.
-	 *
-	 * @since 1.9.9
-	 */
-	public static final String PROPERTY_MAX_NAME_LENGTH = "maxNameLength";
-
-	static final int DEFAULT_MAX_NAME_LENGTH = Constants.MAX_CIPHERTEXT_NAME_LENGTH;
+	static final int DEFAULT_MAX_CLEARTEXT_NAME_LENGTH = LongFileNameProvider.MAX_FILENAME_BUFFER_SIZE;
 
 	/**
 	 * Key identifying the key loader used during initialization.
 	 *
 	 * @since 2.0.0
 	 */
-	public static final String PROPERTY_KEYLOADERS = "keyLoaders";
-
-	static final Collection<MasterkeyLoader> DEFAULT_KEYLOADERS = Set.of();
+	public static final String PROPERTY_KEYLOADER = "keyLoader";
 
 	/**
 	 * Key identifying the name of the vault config file located inside the vault directory.
@@ -111,34 +97,17 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	private CryptoFileSystemProperties(Builder builder) {
 		this.entries = Set.of( //
-				Map.entry(PROPERTY_KEYLOADERS, builder.keyLoaders), //
+				Map.entry(PROPERTY_KEYLOADER, builder.keyLoader), //
 				Map.entry(PROPERTY_FILESYSTEM_FLAGS, builder.flags), //
 				Map.entry(PROPERTY_VAULTCONFIG_FILENAME, builder.vaultConfigFilename), //
 				Map.entry(PROPERTY_MASTERKEY_FILENAME, builder.masterkeyFilename), //
-				Map.entry(PROPERTY_MAX_PATH_LENGTH, builder.maxPathLength), //
-				Map.entry(PROPERTY_MAX_NAME_LENGTH, builder.maxNameLength), //
+				Map.entry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, builder.maxCleartextNameLength), //
 				Map.entry(PROPERTY_CIPHER_COMBO, builder.cipherCombo) //
 		);
 	}
 
-	Collection<MasterkeyLoader> keyLoaders() {
-		return (Collection<MasterkeyLoader>) get(PROPERTY_KEYLOADERS);
-	}
-
-	/**
-	 * Selects the first applicable MasterkeyLoader that supports the given scheme.
-	 *
-	 * @param scheme An URI scheme used in key IDs
-	 * @return A key loader
-	 * @throws MasterkeyLoadingFailedException If the scheme is not supported by any key loader
-	 */
-	MasterkeyLoader keyLoader(String scheme) throws MasterkeyLoadingFailedException {
-		for (MasterkeyLoader loader : keyLoaders()) {
-			if (loader.supportsScheme(scheme)) {
-				return loader;
-			}
-		}
-		throw new MasterkeyLoadingFailedException("No key loader for key type: " + scheme);
+	MasterkeyLoader keyLoader() {
+		return (MasterkeyLoader) get(PROPERTY_KEYLOADER);
 	}
 
 	public VaultCipherCombo cipherCombo() {
@@ -162,12 +131,8 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		return (String) get(PROPERTY_MASTERKEY_FILENAME);
 	}
 
-	int maxPathLength() {
-		return (int) get(PROPERTY_MAX_PATH_LENGTH);
-	}
-
-	int maxNameLength() {
-		return (int) get(PROPERTY_MAX_NAME_LENGTH);
+	int maxCleartextNameLength() {
+		return (int) get(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH);
 	}
 
 	@Override
@@ -219,23 +184,21 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	public static class Builder {
 
 		public VaultCipherCombo cipherCombo = DEFAULT_CIPHER_COMBO;
-		private Collection<MasterkeyLoader> keyLoaders = new HashSet<>(DEFAULT_KEYLOADERS);
+		private MasterkeyLoader keyLoader = null;
 		private final Set<FileSystemFlags> flags = EnumSet.copyOf(DEFAULT_FILESYSTEM_FLAGS);
 		private String vaultConfigFilename = DEFAULT_VAULTCONFIG_FILENAME;
 		private String masterkeyFilename = DEFAULT_MASTERKEY_FILENAME;
-		private int maxPathLength = DEFAULT_MAX_PATH_LENGTH;
-		private int maxNameLength = DEFAULT_MAX_NAME_LENGTH;
+		private int maxCleartextNameLength = DEFAULT_MAX_CLEARTEXT_NAME_LENGTH;
 
 		private Builder() {
 		}
 
 		private Builder(Map<String, ?> properties) {
-			checkedSet(Collection.class, PROPERTY_KEYLOADERS, properties, this::withKeyLoaders);
+			checkedSet(MasterkeyLoader.class, PROPERTY_KEYLOADER, properties, this::withKeyLoader);
 			checkedSet(String.class, PROPERTY_VAULTCONFIG_FILENAME, properties, this::withVaultConfigFilename);
 			checkedSet(String.class, PROPERTY_MASTERKEY_FILENAME, properties, this::withMasterkeyFilename);
 			checkedSet(Set.class, PROPERTY_FILESYSTEM_FLAGS, properties, this::withFlags);
-			checkedSet(Integer.class, PROPERTY_MAX_PATH_LENGTH, properties, this::withMaxPathLength);
-			checkedSet(Integer.class, PROPERTY_MAX_NAME_LENGTH, properties, this::withMaxNameLength);
+			checkedSet(Integer.class, PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, properties, this::withMaxCleartextNameLength);
 			checkedSet(VaultCipherCombo.class, PROPERTY_CIPHER_COMBO, properties, this::withCipherCombo);
 		}
 
@@ -250,28 +213,17 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 			}
 		}
 
-
 		/**
-		 * Sets the maximum ciphertext path length for a CryptoFileSystem.
+		 * Sets the maximum cleartext filename length for a CryptoFileSystem. This value is checked during write
+		 * operations. Read access to nodes with longer names should be unaffected. Setting this value to {@code 0} or
+		 * a negative value effectively disables write access.
 		 *
-		 * @param maxPathLength The maximum ciphertext path length allowed
+		 * @param maxCleartextNameLength The maximum cleartext filename length allowed
 		 * @return this
-		 * @since 1.9.8
+		 * @since 2.0.0
 		 */
-		public Builder withMaxPathLength(int maxPathLength) {
-			this.maxPathLength = maxPathLength;
-			return this;
-		}
-
-		/**
-		 * Sets the maximum ciphertext filename length for a CryptoFileSystem.
-		 *
-		 * @param maxNameLength The maximum ciphertext filename length allowed
-		 * @return this
-		 * @since 1.9.9
-		 */
-		public Builder withMaxNameLength(int maxNameLength) {
-			this.maxNameLength = maxNameLength;
+		public Builder withMaxCleartextNameLength(int maxCleartextNameLength) {
+			this.maxCleartextNameLength = maxCleartextNameLength;
 			return this;
 		}
 
@@ -289,26 +241,14 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		}
 
 		/**
-		 * Sets the keyLoaders for a CryptoFileSystem.
+		 * Sets the keyloader for a CryptoFileSystem.
 		 *
-		 * @param keyLoaders A set of keyLoaders to load the key configured in the vault configuration
+		 * @param keyLoader A factory creating a {@link MasterkeyLoader} capable of handling the given {@code scheme}.
 		 * @return this
 		 * @since 2.0.0
 		 */
-		public Builder withKeyLoaders(MasterkeyLoader... keyLoaders) {
-			return withKeyLoaders(asList(keyLoaders));
-		}
-
-		/**
-		 * Sets the keyLoaders for a CryptoFileSystem.
-		 *
-		 * @param keyLoaders A set of keyLoaders to load the key configured in the vault configuration
-		 * @return this
-		 * @since 2.0.0
-		 */
-		public Builder withKeyLoaders(Collection<MasterkeyLoader> keyLoaders) {
-			this.keyLoaders.clear();
-			this.keyLoaders.addAll(keyLoaders);
+		public Builder withKeyLoader(MasterkeyLoader keyLoader) {
+			this.keyLoader = keyLoader;
 			return this;
 		}
 
@@ -372,8 +312,8 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		}
 
 		private void validate() {
-			if (keyLoaders.isEmpty()) {
-				throw new IllegalStateException("at least one keyloader is required");
+			if (keyLoader == null) {
+				throw new IllegalStateException("keyLoader is required");
 			}
 			if (Strings.nullToEmpty(masterkeyFilename).trim().isEmpty()) {
 				throw new IllegalStateException("masterkeyFilename is required");

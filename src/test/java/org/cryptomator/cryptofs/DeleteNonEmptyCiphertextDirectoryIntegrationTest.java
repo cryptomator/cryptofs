@@ -32,7 +32,6 @@ import java.util.stream.Stream;
 
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
-import static org.cryptomator.cryptofs.common.Constants.MAX_CIPHERTEXT_NAME_LENGTH;
 
 /**
  * Regression tests https://github.com/cryptomator/cryptofs/issues/17.
@@ -47,9 +46,8 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 		pathToVault = tmpDir.resolve("vault");
 		Files.createDirectory(pathToVault);
 		MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
-		Mockito.when(keyLoader.supportsScheme("test")).thenReturn(true);
 		Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
-		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoaders(keyLoader).build();
+		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
 		CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"));
 		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), properties);
 	}
@@ -125,14 +123,13 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 	}
 
 	@Test
-	@Disabled // c9s not yet implemented
 	public void testDeleteDirectoryContainingLongNamedDirectory() throws IOException {
 		Path cleartextDirectory = fileSystem.getPath("/e");
 		Files.createDirectory(cleartextDirectory);
 
 		// a
 		// .. LongNameaaa...
-		String name = "LongName" + Strings.repeat("a", MAX_CIPHERTEXT_NAME_LENGTH);
+		String name = "LongName" + Strings.repeat("a", Constants.DEFAULT_SHORTENING_THRESHOLD);
 		createFolder(cleartextDirectory, name);
 
 		Assertions.assertThrows(DirectoryNotEmptyException.class, () -> {

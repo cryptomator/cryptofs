@@ -19,6 +19,7 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -74,7 +75,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.internal.verification.VerificationModeFactory.atLeast;
 
@@ -115,8 +115,7 @@ public class CryptoFileSystemImplTest {
 			return other;
 		});
 		
-		when(fileSystemProperties.maxPathLength()).thenReturn(Constants.MAX_CIPHERTEXT_PATH_LENGTH);
-		when(fileSystemProperties.maxNameLength()).thenReturn(Constants.MAX_CIPHERTEXT_NAME_LENGTH);
+		when(fileSystemProperties.maxCleartextNameLength()).thenReturn(32768);
 
 		inTest = new CryptoFileSystemImpl(provider, cryptoFileSystems, pathToVault, cryptor,
 				fileStore, stats, cryptoPathMapper, cryptoPathFactory,
@@ -360,12 +359,57 @@ public class CryptoFileSystemImplTest {
 
 		@BeforeEach
 		public void setup() throws IOException {
+			when(cleartextPath.getFileName()).thenReturn(cleartextPath);
 			when(cryptoPathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
 			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextPath);
 			when(ciphertextPath.getFilePath()).thenReturn(ciphertextFilePath);
 			when(openCryptoFiles.getOrCreate(ciphertextFilePath)).thenReturn(openCryptoFile);
 			when(ciphertextFilePath.getName(3)).thenReturn(mock(CryptoPath.class, "path.c9r"));
 			when(openCryptoFile.newFileChannel(any())).thenReturn(fileChannel);
+		}
+
+		@Nested
+		public class LimitedCleartextNameLength {
+
+			@BeforeEach
+			public void setup() throws IOException {
+				Assumptions.assumeTrue(cleartextPath.getFileName().toString().length() == 9);
+			}
+
+			@Test
+			@DisplayName("read-only always works")
+			public void testNewFileChannelReadOnlyDespiteMaxName() throws IOException {
+				Mockito.doReturn(0).when(fileSystemProperties).maxCleartextNameLength();
+
+				FileChannel ch = inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.READ));
+
+				Assertions.assertSame(fileChannel, ch);
+				verify(readonlyFlag, Mockito.never()).assertWritable();
+			}
+
+			@Test
+			@DisplayName("create new fails when exceeding limit")
+			public void testNewFileChannelCreate1() {
+				Mockito.doReturn(0).when(fileSystemProperties).maxCleartextNameLength();
+
+				Assertions.assertThrows(FileNameTooLongException.class, () -> {
+					inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE));
+				});
+
+				verifyNoInteractions(openCryptoFiles);
+			}
+
+			@Test
+			@DisplayName("create new succeeds when within limit")
+			public void testNewFileChannelCreate2() throws IOException {
+				Mockito.doReturn(10).when(fileSystemProperties).maxCleartextNameLength();
+
+				FileChannel ch = inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.READ));
+
+				Assertions.assertSame(fileChannel, ch);
+				verify(readonlyFlag, Mockito.never()).assertWritable();
+			}
+
 		}
 
 		@Test
@@ -509,6 +553,7 @@ public class CryptoFileSystemImplTest {
 
 		@BeforeEach
 		public void setup() throws IOException {
+			when(cleartextDestination.getFileName()).thenReturn(cleartextDestination);
 			when(ciphertextSource.getRawPath()).thenReturn(ciphertextSourceFile);
 			when(ciphertextSource.getFilePath()).thenReturn(ciphertextSourceFile);
 			when(ciphertextSource.getSymlinkFilePath()).thenReturn(ciphertextSourceFile);
@@ -545,10 +590,12 @@ public class CryptoFileSystemImplTest {
 
 			@Test
 			public void moveFileToItselfDoesNothing() throws IOException {
+				when(cleartextSource.getFileName()).thenReturn(cleartextSource);
+
 				inTest.move(cleartextSource, cleartextSource);
 
 				verify(readonlyFlag).assertWritable();
-				verifyNoInteractions(cleartextSource);
+				verifyNoInteractions(cryptoPathMapper);
 			}
 
 			@Test
@@ -701,10 +748,12 @@ public class CryptoFileSystemImplTest {
 
 			@Test
 			public void copyFileToItselfDoesNothing() throws IOException {
+				when(cleartextSource.getFileName()).thenReturn(cleartextSource);
+
 				inTest.copy(cleartextSource, cleartextSource);
 
 				verify(readonlyFlag).assertWritable();
-				verifyNoInteractions(cleartextSource);
+				verifyNoInteractions(cryptoPathMapper);
 			}
 
 			@Test
@@ -744,6 +793,7 @@ public class CryptoFileSystemImplTest {
 			public void copySymlinkTarget() throws IOException {
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.SYMLINK);
 				when(cryptoPathMapper.getCiphertextFileType(cleartextDestination)).thenThrow(NoSuchFileException.class);
+				when(destinationLinkTarget.getFileName()).thenReturn(destinationLinkTarget);
 
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);
@@ -932,30 +982,30 @@ public class CryptoFileSystemImplTest {
 
 		private final CryptoFileSystemProvider provider = mock(CryptoFileSystemProvider.class);
 		private final CryptoFileSystemImpl fileSystem = mock(CryptoFileSystemImpl.class);
+		private final CryptoPath path = mock(CryptoPath.class, "path");
+		private final CryptoPath parent = mock(CryptoPath.class, "parent");
 
 		@BeforeEach
 		public void setup() {
 			when(fileSystem.provider()).thenReturn(provider);
+			when(path.getFileName()).thenReturn(path);
+			when(path.getParent()).thenReturn(parent);
 		}
 
 		@Test
 		public void createDirectoryIfPathHasNoParentDoesNothing() throws IOException {
-			CryptoPath path = mock(CryptoPath.class);
 			when(path.getParent()).thenReturn(null);
 
 			inTest.createDirectory(path);
 
 			verify(readonlyFlag).assertWritable();
 			verify(path).getParent();
-			verifyNoMoreInteractions(path);
+			verifyNoMoreInteractions(cryptoPathMapper);
 		}
 
 		@Test
 		public void createDirectoryIfPathsParentDoesNotExistsThrowsNoSuchFileException() throws IOException {
-			CryptoPath path = mock(CryptoPath.class);
-			CryptoPath parent = mock(CryptoPath.class);
 			Path ciphertextParent = mock(Path.class);
-			when(path.getParent()).thenReturn(parent);
 			when(cryptoPathMapper.getCiphertextDir(parent)).thenReturn(new CiphertextDirectory("foo", ciphertextParent));
 			when(ciphertextParent.getFileSystem()).thenReturn(fileSystem);
 			doThrow(NoSuchFileException.class).when(provider).checkAccess(ciphertextParent);
@@ -967,11 +1017,8 @@ public class CryptoFileSystemImplTest {
 		}
 
 		@Test
-		public void createDirectoryIfPathCyphertextFileDoesExistThrowsFileAlreadyException() throws IOException {
-			CryptoPath path = mock(CryptoPath.class);
-			CryptoPath parent = mock(CryptoPath.class);
+		public void createDirectoryIfPathCiphertextFileDoesExistThrowsFileAlreadyException() throws IOException {
 			Path ciphertextParent = mock(Path.class);
-			when(path.getParent()).thenReturn(parent);
 			when(cryptoPathMapper.getCiphertextDir(parent)).thenReturn(new CiphertextDirectory("foo", ciphertextParent));
 			when(ciphertextParent.getFileSystem()).thenReturn(fileSystem);
 			doThrow(new FileAlreadyExistsException(path.toString())).when(cryptoPathMapper).assertNonExisting(path);
@@ -984,8 +1031,6 @@ public class CryptoFileSystemImplTest {
 
 		@Test
 		public void createDirectoryCreatesDirectoryIfConditonsAreMet() throws IOException {
-			CryptoPath path = mock(CryptoPath.class, "path");
-			CryptoPath parent = mock(CryptoPath.class, "parent");
 			Path ciphertextParent = mock(Path.class, "ciphertextParent");
 			Path ciphertextRawPath = mock(Path.class, "d/00/00/path.c9r");
 			Path ciphertextDirFile = mock(Path.class, "d/00/00/path.c9r/dir.c9r");
@@ -993,7 +1038,6 @@ public class CryptoFileSystemImplTest {
 			CiphertextFilePath ciphertextPath = mock(CiphertextFilePath.class, "ciphertext");
 			String dirId = "DirId1234ABC";
 			FileChannelMock channel = new FileChannelMock(100);
-			when(path.getParent()).thenReturn(parent);
 			when(ciphertextRawPath.resolve("dir.c9r")).thenReturn(ciphertextDirFile);
 			when(cryptoPathMapper.getCiphertextFilePath(path)).thenReturn(ciphertextPath);
 			when(cryptoPathMapper.getCiphertextDir(path)).thenReturn(new CiphertextDirectory(dirId, ciphertextDirPath));
@@ -1016,8 +1060,6 @@ public class CryptoFileSystemImplTest {
 
 		@Test
 		public void createDirectoryClearsDirIdAndDeletesDirFileIfCreatingDirFails() throws IOException {
-			CryptoPath path = mock(CryptoPath.class, "path");
-			CryptoPath parent = mock(CryptoPath.class, "parent");
 			Path ciphertextParent = mock(Path.class, "ciphertextParent");
 			Path ciphertextRawPath = mock(Path.class, "d/00/00/path.c9r");
 			Path ciphertextDirFile = mock(Path.class, "d/00/00/path.c9r/dir.c9r");
@@ -1025,7 +1067,6 @@ public class CryptoFileSystemImplTest {
 			CiphertextFilePath ciphertextPath = mock(CiphertextFilePath.class, "ciphertext");
 			String dirId = "DirId1234ABC";
 			FileChannelMock channel = new FileChannelMock(100);
-			when(path.getParent()).thenReturn(parent);
 			when(ciphertextRawPath.resolve("dir.c9r")).thenReturn(ciphertextDirFile);
 			when(cryptoPathMapper.getCiphertextFilePath(path)).thenReturn(ciphertextPath);
 			when(cryptoPathMapper.getCiphertextDir(path)).thenReturn(new CiphertextDirectory(dirId, ciphertextDirPath));

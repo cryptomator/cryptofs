@@ -67,7 +67,7 @@ public class Version8Migrator implements Migrator {
 					.withKeyId("masterkeyfile:masterkey.cryptomator") //
 					.withClaim("format", 8) //
 					.withClaim("cipherCombo", "SIV_CTRMAC") //
-					.withClaim("maxFilenameLen", 220) //
+					.withClaim("shorteningThreshold", 220) //
 					.sign(algorithm);
 			Files.writeString(vaultConfigFile, config, StandardCharsets.US_ASCII, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
 			LOG.info("Wrote vault config to {}.", vaultConfigFile);

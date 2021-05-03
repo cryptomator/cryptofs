@@ -35,6 +35,7 @@ public class CryptoPathMapperTest {
 	private final FileNameCryptor fileNameCryptor = Mockito.mock(FileNameCryptor.class);
 	private final DirectoryIdProvider dirIdProvider = Mockito.mock(DirectoryIdProvider.class);
 	private final LongFileNameProvider longFileNameProvider = Mockito.mock(LongFileNameProvider.class);
+	private final VaultConfig vaultConfig = Mockito.mock(VaultConfig.class);
 	private final Symlinks symlinks = Mockito.mock(Symlinks.class);
 	private final CryptoFileSystemImpl fileSystem = Mockito.mock(CryptoFileSystemImpl.class);
 
@@ -45,6 +46,7 @@ public class CryptoPathMapperTest {
 		CryptoPath empty = cryptoPathFactory.emptyFor(fileSystem);
 		Mockito.when(cryptor.fileNameCryptor()).thenReturn(fileNameCryptor);
 		Mockito.when(pathToVault.resolve("d")).thenReturn(dataRoot);
+		Mockito.when(vaultConfig.getShorteningThreshold()).thenReturn(220);
 		Mockito.when(fileSystem.getPath(ArgumentMatchers.anyString(), ArgumentMatchers.any())).thenAnswer(invocation -> {
 			String first = invocation.getArgument(0);
 			if (invocation.getArguments().length == 1) {
@@ -68,7 +70,7 @@ public class CryptoPathMapperTest {
 		Path d0000 = Mockito.mock(Path.class);
 		Mockito.when(d00.resolve("00")).thenReturn(d0000);
 
-		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider);
+		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
 		Path path = mapper.getCiphertextDir(fileSystem.getRootPath()).path;
 		Assertions.assertEquals(d0000, path);
 	}
@@ -92,7 +94,7 @@ public class CryptoPathMapperTest {
 		Path d0001 = Mockito.mock(Path.class);
 		Mockito.when(d00.resolve("01")).thenReturn(d0001);
 
-		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider);
+		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
 		Path path = mapper.getCiphertextDir(fileSystem.getPath("/foo")).path;
 		Assertions.assertEquals(d0001, path);
 	}
@@ -126,7 +128,7 @@ public class CryptoPathMapperTest {
 		Path d0002 = Mockito.mock(Path.class);
 		Mockito.when(d00.resolve("02")).thenReturn(d0002);
 
-		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider);
+		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
 		Path path = mapper.getCiphertextDir(fileSystem.getPath("/foo/bar")).path;
 		Assertions.assertEquals(d0002, path);
 	}
@@ -163,7 +165,7 @@ public class CryptoPathMapperTest {
 		Mockito.when(d0002.resolve("zab.c9r")).thenReturn(d0002zab);
 		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("baz"), Mockito.any())).thenReturn("zab");
 
-		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider);
+		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
 		Path path = mapper.getCiphertextFilePath(fileSystem.getPath("/foo/bar/baz")).getRawPath();
 		Assertions.assertEquals(d0002zab, path);
 	}
@@ -211,7 +213,7 @@ public class CryptoPathMapperTest {
 
 		@Test
 		public void testGetCiphertextFileTypeOfRootPath() throws IOException {
-			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider);
+			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
 			CiphertextFileType type = mapper.getCiphertextFileType(fileSystem.getRootPath());
 			Assertions.assertEquals(CiphertextFileType.DIRECTORY, type);
 		}
@@ -220,7 +222,7 @@ public class CryptoPathMapperTest {
 		public void testGetCiphertextFileTypeForNonexistingFile() throws IOException {
 			Mockito.when(underlyingFileSystemProvider.readAttributes(c9rPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(NoSuchFileException.class);
 
-			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider);
+			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
 
 			CryptoPath path = fileSystem.getPath("/CLEAR");
 			Assertions.assertThrows(NoSuchFileException.class, () -> {
@@ -233,7 +235,7 @@ public class CryptoPathMapperTest {
 			Mockito.when(underlyingFileSystemProvider.readAttributes(c9rPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(c9rAttrs);
 			Mockito.when(c9rAttrs.isDirectory()).thenReturn(false);
 
-			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider);
+			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
 
 			CryptoPath path = fileSystem.getPath("/CLEAR");
 			CiphertextFileType type = mapper.getCiphertextFileType(path);
@@ -248,7 +250,7 @@ public class CryptoPathMapperTest {
 			Mockito.when(underlyingFileSystemProvider.readAttributes(symlinkFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(NoSuchFileException.class);
 			Mockito.when(underlyingFileSystemProvider.readAttributes(contentsFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(NoSuchFileException.class);
 
-			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider);
+			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
 
 			CryptoPath path = fileSystem.getPath("/CLEAR");
 			CiphertextFileType type = mapper.getCiphertextFileType(path);
@@ -263,7 +265,7 @@ public class CryptoPathMapperTest {
 			Mockito.when(underlyingFileSystemProvider.readAttributes(symlinkFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(Mockito.mock(BasicFileAttributes.class));
 			Mockito.when(underlyingFileSystemProvider.readAttributes(contentsFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(NoSuchFileException.class);
 
-			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider);
+			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
 
 			CryptoPath path = fileSystem.getPath("/CLEAR");
 			CiphertextFileType type = mapper.getCiphertextFileType(path);
@@ -280,7 +282,7 @@ public class CryptoPathMapperTest {
 			Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("LONGCLEAR"), Mockito.any())).thenReturn(Strings.repeat("A", 1000));
 			Mockito.when(longFileNameProvider.deflate(Mockito.any())).thenReturn(new LongFileNameProvider.DeflatedFileName(c9rPath, null, null));
 
-			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider);
+			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
 
 			CryptoPath path = fileSystem.getPath("/LONGCLEAR");
 			CiphertextFileType type = mapper.getCiphertextFileType(path);

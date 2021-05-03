@@ -1,6 +1,5 @@
 package org.cryptomator.cryptofs;
 
-import org.cryptomator.cryptofs.CryptoFileSystemProperties.*;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -16,7 +15,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.Set;
 
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.*;
 import static org.hamcrest.CoreMatchers.sameInstance;
@@ -38,7 +36,7 @@ public class CryptoFileSystemPropertiesTest {
 	public void testSetMasterkeyFilenameAndReadonlyFlag() {
 		String masterkeyFilename = "aMasterkeyFilename";
 		CryptoFileSystemProperties inTest = cryptoFileSystemProperties() //
-				.withKeyLoaders(keyLoader) //
+				.withKeyLoader(keyLoader) //
 				.withMasterkeyFilename(masterkeyFilename) //
 				.withFlags(FileSystemFlags.READONLY)
 				.build();
@@ -47,11 +45,10 @@ public class CryptoFileSystemPropertiesTest {
 		MatcherAssert.assertThat(inTest.readonly(), is(true));
 		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
-						anEntry(PROPERTY_KEYLOADERS, Set.of(keyLoader)), //
+						anEntry(PROPERTY_KEYLOADER, keyLoader), //
 						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
-						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
+						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
@@ -60,24 +57,21 @@ public class CryptoFileSystemPropertiesTest {
 	public void testFromMap() {
 		Map<String, Object> map = new HashMap<>();
 		String masterkeyFilename = "aMasterkeyFilename";
-		map.put(PROPERTY_KEYLOADERS, Set.of(keyLoader));
+		map.put(PROPERTY_KEYLOADER, keyLoader);
 		map.put(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename);
-		map.put(PROPERTY_MAX_PATH_LENGTH, 1000);
-		map.put(PROPERTY_MAX_NAME_LENGTH, 255);
+		map.put(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, 255);
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY));
 		CryptoFileSystemProperties inTest = cryptoFileSystemPropertiesFrom(map).build();
 
 		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
 		MatcherAssert.assertThat(inTest.readonly(), is(true));
-		MatcherAssert.assertThat(inTest.maxPathLength(), is(1000));
-		MatcherAssert.assertThat(inTest.maxNameLength(), is(255));
+		MatcherAssert.assertThat(inTest.maxCleartextNameLength(), is(255));
 		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
-						anEntry(PROPERTY_KEYLOADERS, Set.of(keyLoader)), //
+						anEntry(PROPERTY_KEYLOADER, keyLoader), //
 						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, 1000), //
-						anEntry(PROPERTY_MAX_NAME_LENGTH, 255), //
+						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, 255), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
@@ -86,7 +80,7 @@ public class CryptoFileSystemPropertiesTest {
 	public void testWrapMapWithTrueReadonly() {
 		Map<String, Object> map = new HashMap<>();
 		String masterkeyFilename = "aMasterkeyFilename";
-		map.put(PROPERTY_KEYLOADERS, Set.of(keyLoader));
+		map.put(PROPERTY_KEYLOADER, keyLoader);
 		map.put(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename);
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY));
 		CryptoFileSystemProperties inTest = CryptoFileSystemProperties.wrap(map);
@@ -95,11 +89,10 @@ public class CryptoFileSystemPropertiesTest {
 		MatcherAssert.assertThat(inTest.readonly(), is(true));
 		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
-						anEntry(PROPERTY_KEYLOADERS, Set.of(keyLoader)), //
+						anEntry(PROPERTY_KEYLOADER, keyLoader), //
 						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
-						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
+						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
@@ -108,7 +101,7 @@ public class CryptoFileSystemPropertiesTest {
 	public void testWrapMapWithFalseReadonly() {
 		Map<String, Object> map = new HashMap<>();
 		String masterkeyFilename = "aMasterkeyFilename";
-		map.put(PROPERTY_KEYLOADERS, Set.of(keyLoader));
+		map.put(PROPERTY_KEYLOADER, keyLoader);
 		map.put(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename);
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class));
 		CryptoFileSystemProperties inTest = CryptoFileSystemProperties.wrap(map);
@@ -117,11 +110,10 @@ public class CryptoFileSystemPropertiesTest {
 		MatcherAssert.assertThat(inTest.readonly(), is(false));
 		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
-						anEntry(PROPERTY_KEYLOADERS, Set.of(keyLoader)), //
+						anEntry(PROPERTY_KEYLOADER, keyLoader), //
 						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
-						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
+						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class))));
 	}
@@ -162,18 +154,17 @@ public class CryptoFileSystemPropertiesTest {
 	@Test
 	public void testWrapMapWithoutReadonly() {
 		Map<String, Object> map = new HashMap<>();
-		map.put(PROPERTY_KEYLOADERS, Set.of(keyLoader));
+		map.put(PROPERTY_KEYLOADER, keyLoader);
 		CryptoFileSystemProperties inTest = CryptoFileSystemProperties.wrap(map);
 
 		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
 		MatcherAssert.assertThat(inTest.readonly(), is(false));
 		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
-						anEntry(PROPERTY_KEYLOADERS, Set.of(keyLoader)), //
+						anEntry(PROPERTY_KEYLOADER, keyLoader), //
 						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
-						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
+						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class))
 				)
@@ -189,7 +180,7 @@ public class CryptoFileSystemPropertiesTest {
 
 	@Test
 	public void testWrapCryptoFileSystemProperties() {
-		CryptoFileSystemProperties inTest = cryptoFileSystemProperties().withKeyLoaders(keyLoader).build();
+		CryptoFileSystemProperties inTest = cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
 
 		MatcherAssert.assertThat(CryptoFileSystemProperties.wrap(inTest), is(sameInstance(inTest)));
 	}
@@ -198,7 +189,7 @@ public class CryptoFileSystemPropertiesTest {
 	public void testMapIsImmutable() {
 		Assertions.assertThrows(UnsupportedOperationException.class, () -> {
 			cryptoFileSystemProperties() //
-					.withKeyLoaders(keyLoader) //
+					.withKeyLoader(keyLoader) //
 					.build() //
 					.put("test", "test");
 		});
@@ -208,7 +199,7 @@ public class CryptoFileSystemPropertiesTest {
 	public void testEntrySetIsImmutable() {
 		Assertions.assertThrows(UnsupportedOperationException.class, () -> {
 			cryptoFileSystemProperties() //
-					.withKeyLoaders(keyLoader) //
+					.withKeyLoader(keyLoader) //
 					.build() //
 					.entrySet() //
 					.add(null);
@@ -219,7 +210,7 @@ public class CryptoFileSystemPropertiesTest {
 	public void testEntryIsImmutable() {
 		Assertions.assertThrows(UnsupportedOperationException.class, () -> {
 			cryptoFileSystemProperties() //
-					.withKeyLoaders(keyLoader) //
+					.withKeyLoader(keyLoader) //
 					.build() //
 					.entrySet() //
 					.iterator().next() //

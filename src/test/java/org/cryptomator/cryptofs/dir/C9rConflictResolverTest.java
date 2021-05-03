@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.dir;
 
+import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.junit.jupiter.api.Assertions;
@@ -7,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
@@ -20,14 +22,17 @@ class C9rConflictResolverTest {
 
 	private Cryptor cryptor;
 	private FileNameCryptor fileNameCryptor;
+	private VaultConfig vaultConfig;
 	private C9rConflictResolver conflictResolver;
 
 	@BeforeEach
 	public void setup() {
 		cryptor = Mockito.mock(Cryptor.class);
 		fileNameCryptor = Mockito.mock(FileNameCryptor.class);
+		vaultConfig = Mockito.mock(VaultConfig.class);
 		Mockito.when(cryptor.fileNameCryptor()).thenReturn(fileNameCryptor);
-		conflictResolver = new C9rConflictResolver(cryptor, "foo");
+		Mockito.when(vaultConfig.getShorteningThreshold()).thenReturn(44); // results in max cleartext size = 14
+		conflictResolver = new C9rConflictResolver(cryptor, "foo", vaultConfig);
 	}
 	
 	@Test
@@ -68,6 +73,25 @@ class C9rConflictResolverTest {
 		Assertions.assertNotEquals(unresolved, resolved);
 		Assertions.assertEquals("baz.c9r", resolved.fullCiphertextFileName);
 		Assertions.assertEquals("bar (1).txt", resolved.cleartextName);
+		Assertions.assertTrue(Files.exists(resolved.ciphertextPath));
+		Assertions.assertFalse(Files.exists(unresolved.ciphertextPath));
+	}
+
+	@Test
+	public void testResolveConflictingFileByChoosingNewLengthLimitedName(@TempDir Path dir) throws IOException {
+		Files.createFile(dir.resolve("foo (1).c9r"));
+		Files.createFile(dir.resolve("foo.c9r"));
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn("baz");
+		Node unresolved = new Node(dir.resolve("foo (1).c9r"));
+		unresolved.cleartextName = "hello world.txt";
+		unresolved.extractedCiphertext = "foo";
+
+		Stream<Node> result = conflictResolver.process(unresolved);
+		Node resolved = result.findAny().get();
+
+		Assertions.assertNotEquals(unresolved, resolved);
+		Assertions.assertEquals("baz.c9r", resolved.fullCiphertextFileName);
+		Assertions.assertEquals("hello (1).txt", resolved.cleartextName);
 		Assertions.assertTrue(Files.exists(resolved.ciphertextPath));
 		Assertions.assertFalse(Files.exists(unresolved.ciphertextPath));
 	}
