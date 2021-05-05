@@ -4,7 +4,9 @@ import org.cryptomator.cryptofs.common.Constants;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NotDirectoryException;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 
 /**
  * Enumeration of the vault directory structure resemblances.
@@ -46,9 +48,12 @@ public enum DirStructure {
 	 * @param vaultConfigFilename Name of the vault config file
 	 * @param masterkeyFilename Name of the masterkey file
 	 * @return enum indicating what this directory might be
-	 * @throws IOException if the directory itself or certain components cannot be accessed/read.
+	 * @throws IOException if the provided path is not a directory, does not exist or cannot be read
 	 */
 	public static DirStructure checkDirStructure(Path pathToVault, String vaultConfigFilename, String masterkeyFilename) throws IOException {
+		if(! Files.readAttributes(pathToVault, BasicFileAttributes.class).isDirectory()) {
+			throw new NotDirectoryException(pathToVault.toString());
+		}
 		Path vaultConfigPath = pathToVault.resolve(vaultConfigFilename);
 		Path masterkeyPath = pathToVault.resolve(masterkeyFilename);
 		Path dataDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME);

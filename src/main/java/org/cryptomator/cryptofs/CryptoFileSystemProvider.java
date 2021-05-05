@@ -162,7 +162,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	/**
 	 * Checks if the folder represented by the given path exists and contains a valid vault structure.
 	 * <p>
-	 * See {@link DirStructure#VAULT} for the criterias of being a valid vault.
+	 * See {@link DirStructure#VAULT} for the criteria of being a valid vault.
 	 *
 	 * @param pathToAssumedVault A directory path
 	 * @param vaultConfigFilename Name of the vault config file
@@ -179,7 +179,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	/**
-	 * Convenience method for {@link DirStructure#checkDirStructure(Path, String, String)}.
+	 * Delegate to {@link DirStructure#checkDirStructure(Path, String, String)}.
 	 *
 	 * @param pathToAssumedVault
 	 * @param vaultConfigFilename
