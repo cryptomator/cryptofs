@@ -12,10 +12,10 @@ import java.nio.file.attribute.BasicFileAttributes;
  * Enumeration of the vault directory structure resemblances.
  * <p>
  * A valid vault must contain a `d` directory.
- * If the vault version is 8, it must also contains a vault config file.
- * If the vault version is smaller than 8, it must also contain a masterkey file.
+ * Beginning with vault format 8, it must also contain a vault config file.
+ * If the vault format is lower than 8, it must instead contain a masterkey file.
  * <p>
- * In the latter case, to distinct between a damaged vault 8 directory and a legacy vault the masterkey file must be read.
+ * In the latter case, to distinguish between a damaged vault 8 directory and a legacy vault the masterkey file must be read.
  * For efficiency reasons, this class only checks for existence/readability of the above elements.
  * Hence, if the result of {@link #checkDirStructure(Path, String, String)} is {@link #MAYBE_LEGACY}, one needs to parse
  * the masterkey file and read out the vault version to determine this case.
