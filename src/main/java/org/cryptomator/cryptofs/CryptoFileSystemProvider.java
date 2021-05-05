@@ -172,7 +172,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 */
 	public static boolean containsVault(Path pathToAssumedVault, String vaultConfigFilename, String masterkeyFilename) {
 		try {
-			return checkDirStructure(pathToAssumedVault, vaultConfigFilename, masterkeyFilename) == DirStructure.VAULT;
+			return checkDirStructureForVault(pathToAssumedVault, vaultConfigFilename, masterkeyFilename) == DirStructure.VAULT;
 		} catch (IOException e) {
 			return false;
 		}
@@ -188,7 +188,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @throws IOException
 	 * @since 2.0.0
 	 */
-	public static DirStructure checkDirStructure(Path pathToAssumedVault, String vaultConfigFilename, String masterkeyFilename) throws IOException {
+	public static DirStructure checkDirStructureForVault(Path pathToAssumedVault, String vaultConfigFilename, String masterkeyFilename) throws IOException {
 		return DirStructure.checkDirStructure(pathToAssumedVault, vaultConfigFilename, masterkeyFilename);
 	}
 
