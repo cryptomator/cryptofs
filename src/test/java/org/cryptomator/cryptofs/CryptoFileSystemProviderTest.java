@@ -228,7 +228,7 @@ public class CryptoFileSystemProviderTest {
 	}
 
 	@Test
-	public void testContainsVaultReturnsTrueIfDirectoryContainsMasterkeyFileAndDataDir() throws IOException {
+	public void testContainsVaultReturnsFalseIfDirectoryContainsMasterkeyFileAndDataDir() throws IOException {
 		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
 
 		String vaultConfigFilename = "vaultconfig.foo.baz";
@@ -240,7 +240,7 @@ public class CryptoFileSystemProviderTest {
 		Files.createDirectories(dataDir);
 		Files.write(masterkeyFile, new byte[0]);
 
-		Assertions.assertTrue(containsVault(pathToVault, vaultConfigFilename, masterkeyFilename));
+		Assertions.assertFalse(containsVault(pathToVault, vaultConfigFilename, masterkeyFilename));
 	}
 
 	@Test
