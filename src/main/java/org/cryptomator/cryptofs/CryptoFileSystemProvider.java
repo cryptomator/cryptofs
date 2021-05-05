@@ -156,26 +156,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		} finally {
 			Arrays.fill(rawKey, (byte) 0x00);
 		}
-		assert containsVault(pathToVault, properties.vaultConfigFilename(), properties.masterkeyFilename());
-	}
-
-	/**
-	 * Checks if the folder represented by the given path exists and contains a valid vault structure.
-	 * <p>
-	 * See {@link DirStructure#VAULT} for the criteria of being a valid vault.
-	 *
-	 * @param pathToAssumedVault A directory path
-	 * @param vaultConfigFilename Name of the vault config file
-	 * @param masterkeyFilename Name of the masterkey file
-	 * @return <code>true</code> if the directory seems to contain a vault.
-	 * @since 2.0.0
-	 */
-	public static boolean containsVault(Path pathToAssumedVault, String vaultConfigFilename, String masterkeyFilename) {
-		try {
-			return checkDirStructureForVault(pathToAssumedVault, vaultConfigFilename, masterkeyFilename) == DirStructure.VAULT;
-		} catch (IOException e) {
-			return false;
-		}
+		assert checkDirStructureForVault(pathToVault, properties.vaultConfigFilename(), properties.masterkeyFilename()) == DirStructure.VAULT;
 	}
 
 	/**
