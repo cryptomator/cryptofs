@@ -156,23 +156,21 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		} finally {
 			Arrays.fill(rawKey, (byte) 0x00);
 		}
-		assert containsVault(pathToVault, properties.vaultConfigFilename(), properties.masterkeyFilename());
+		assert checkDirStructureForVault(pathToVault, properties.vaultConfigFilename(), properties.masterkeyFilename()) == DirStructure.VAULT;
 	}
 
 	/**
-	 * Checks if the folder represented by the given path exists and contains a valid vault structure.
+	 * Delegate to {@link DirStructure#checkDirStructure(Path, String, String)}.
 	 *
-	 * @param pathToVault         A directory path
-	 * @param vaultConfigFilename Name of the vault config file
-	 * @param masterkeyFilename   Name of the masterkey file
-	 * @return <code>true</code> if the directory seems to contain a vault.
+	 * @param pathToAssumedVault
+	 * @param vaultConfigFilename
+	 * @param masterkeyFilename
+	 * @return a {@link DirStructure} object
+	 * @throws IOException
 	 * @since 2.0.0
 	 */
-	public static boolean containsVault(Path pathToVault, String vaultConfigFilename, String masterkeyFilename) {
-		Path vaultConfigPath = pathToVault.resolve(vaultConfigFilename);
-		Path masterkeyPath = pathToVault.resolve(masterkeyFilename);
-		Path dataDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME);
-		return (Files.isReadable(vaultConfigPath) || Files.isReadable(masterkeyPath)) && Files.isDirectory(dataDirPath);
+	public static DirStructure checkDirStructureForVault(Path pathToAssumedVault, String vaultConfigFilename, String masterkeyFilename) throws IOException {
+		return DirStructure.checkDirStructure(pathToAssumedVault, vaultConfigFilename, masterkeyFilename);
 	}
 
 	/**

@@ -46,7 +46,6 @@ import static java.nio.file.Paths.get;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.util.Arrays.asList;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
-import static org.cryptomator.cryptofs.CryptoFileSystemProvider.containsVault;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.mockito.Mockito.mock;
@@ -209,69 +208,6 @@ public class CryptoFileSystemProviderTest {
 		inTest.newFileSystem(uri, properties);
 
 		Mockito.verify(fileSystems).create(Mockito.same(inTest), Mockito.eq(pathToVault.toAbsolutePath()), Mockito.eq(properties));
-	}
-
-	@Test
-	public void testContainsVaultReturnsTrueIfDirectoryContainsVaultConfigFileAndDataDir() throws IOException {
-		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
-
-		String vaultConfigFilename = "vaultconfig.foo.baz";
-		String masterkeyFilename = "masterkey.foo.baz";
-		Path pathToVault = fs.getPath("/vaultDir");
-
-		Path vaultConfigFile = pathToVault.resolve(vaultConfigFilename);
-		Path dataDir = pathToVault.resolve("d");
-		Files.createDirectories(dataDir);
-		Files.write(vaultConfigFile, new byte[0]);
-
-		Assertions.assertTrue(containsVault(pathToVault, vaultConfigFilename, masterkeyFilename));
-	}
-
-	@Test
-	public void testContainsVaultReturnsTrueIfDirectoryContainsMasterkeyFileAndDataDir() throws IOException {
-		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
-
-		String vaultConfigFilename = "vaultconfig.foo.baz";
-		String masterkeyFilename = "masterkey.foo.baz";
-		Path pathToVault = fs.getPath("/vaultDir");
-
-		Path masterkeyFile = pathToVault.resolve(masterkeyFilename);
-		Path dataDir = pathToVault.resolve("d");
-		Files.createDirectories(dataDir);
-		Files.write(masterkeyFile, new byte[0]);
-
-		Assertions.assertTrue(containsVault(pathToVault, vaultConfigFilename, masterkeyFilename));
-	}
-
-	@Test
-	public void testContainsVaultReturnsFalseIfDirectoryContainsOnlyDataDir() throws IOException {
-		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
-
-		String vaultConfigFilename = "vaultconfig.foo.baz";
-		String masterkeyFilename = "masterkey.foo.baz";
-		Path pathToVault = fs.getPath("/vaultDir");
-
-		Path dataDir = pathToVault.resolve("d");
-		Files.createDirectories(dataDir);
-
-		Assertions.assertFalse(containsVault(pathToVault, vaultConfigFilename, masterkeyFilename));
-	}
-
-	@Test
-	public void testContainsVaultReturnsFalseIfDirectoryContainsNoDataDir() throws IOException {
-		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
-
-		String vaultConfigFilename = "vaultconfig.foo.baz";
-		String masterkeyFilename = "masterkey.foo.baz";
-		Path pathToVault = fs.getPath("/vaultDir");
-
-		Path vaultConfigFile = pathToVault.resolve(vaultConfigFilename);
-		Path masterkeyFile = pathToVault.resolve(masterkeyFilename);
-		Files.createDirectories(pathToVault);
-		Files.write(vaultConfigFile, new byte[0]);
-		Files.write(masterkeyFile, new byte[0]);
-
-		Assertions.assertFalse(containsVault(pathToVault, vaultConfigFilename, masterkeyFilename));
 	}
 
 	@Test

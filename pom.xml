@@ -15,18 +15,24 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<maven.compiler.release>16</maven.compiler.release>
 
 		<!-- dependencies -->
-		<cryptolib.version>2.0.0-beta7</cryptolib.version>
-		<jwt.version>3.12.0</jwt.version>
-		<dagger.version>2.31</dagger.version>
-		<guava.version>30.1-jre</guava.version>
+		<cryptolib.version>2.0.0-rc1</cryptolib.version>
+		<jwt.version>3.15.0</jwt.version>
+		<dagger.version>2.35.1</dagger.version>
+		<guava.version>30.1.1-jre</guava.version>
 		<slf4j.version>1.7.30</slf4j.version>
 
 		<!-- test dependencies -->
-		<junit.jupiter.version>5.7.0</junit.jupiter.version>
-		<mockito.version>3.7.7</mockito.version>
+		<junit.jupiter.version>5.7.1</junit.jupiter.version>
+		<mockito.version>3.9.0</mockito.version>
 		<hamcrest.version>2.2</hamcrest.version>
+
+		<!-- build plugin dependencies -->
+		<dependency-check.version>6.1.6</dependency-check.version>
+		<jacoco.version>0.8.6</jacoco.version>
+		<nexus-staging.version>1.6.8</nexus-staging.version>
 	</properties>
 
 	<licenses>
@@ -121,7 +127,6 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.1</version>
 				<configuration>
-					<release>16</release>
 					<showWarnings>true</showWarnings>
 					<annotationProcessorPaths>
 						<path>
@@ -219,7 +224,7 @@
 					<plugin>
 						<groupId>org.owasp</groupId>
 						<artifactId>dependency-check-maven</artifactId>
-						<version>6.1.0</version>
+						<version>${dependency-check.version}</version>
 						<configuration>
 							<cveValidForHours>24</cveValidForHours>
 							<failBuildOnCVSS>0</failBuildOnCVSS>
@@ -246,7 +251,7 @@
 					<plugin>
 						<groupId>org.jacoco</groupId>
 						<artifactId>jacoco-maven-plugin</artifactId>
-						<version>0.8.6</version>
+						<version>${jacoco.version}</version>
 						<executions>
 							<execution>
 								<id>prepare-agent</id>
@@ -307,7 +312,7 @@
 					<plugin>
 						<groupId>org.sonatype.plugins</groupId>
 						<artifactId>nexus-staging-maven-plugin</artifactId>
-						<version>1.6.8</version>
+						<version>${nexus-staging.version}</version>
 						<extensions>true</extensions>
 						<configuration>
 							<serverId>ossrh</serverId>
