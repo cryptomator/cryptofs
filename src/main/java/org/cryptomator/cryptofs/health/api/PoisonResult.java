@@ -2,7 +2,7 @@ package org.cryptomator.cryptofs.health.api;
 
 record PoisonResult() implements DiagnosticResult {
 	@Override
-	public Severity getServerity() {
+	public Severity getSeverity() {
 		return null;
 	}
 }

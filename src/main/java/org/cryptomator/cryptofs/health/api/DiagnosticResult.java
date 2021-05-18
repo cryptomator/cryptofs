@@ -30,7 +30,7 @@ public interface DiagnosticResult {
 		CRITICAL;
 	}
 
-	Severity getServerity();
+	Severity getSeverity();
 
 	/**
 	 * @return A short, human-readable summary of the result.

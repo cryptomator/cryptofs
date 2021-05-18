@@ -20,7 +20,7 @@ public class DirIdCollision implements DiagnosticResult {
 	}
 
 	@Override
-	public Severity getServerity() {
+	public Severity getSeverity() {
 		return Severity.CRITICAL;
 	}
 

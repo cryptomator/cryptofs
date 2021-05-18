@@ -20,7 +20,7 @@ public class HealthyDir implements DiagnosticResult {
 	}
 
 	@Override
-	public Severity getServerity() {
+	public Severity getSeverity() {
 		return Severity.GOOD;
 	}
 
