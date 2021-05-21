@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.stream.Stream;
 
-class C9SInflatorTest {
+public class C9SInflatorTest {
 
 	private LongFileNameProvider longFileNameProvider;
 	private Cryptor cryptor;

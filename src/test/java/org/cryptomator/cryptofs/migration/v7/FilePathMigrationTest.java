@@ -145,7 +145,7 @@ public class FilePathMigrationTest {
 	@DisplayName("FilePathMigration.parse(...)")
 	@Nested
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-	class Parsing {
+	public class Parsing {
 
 		private FileSystem fs;
 		private Path vaultRoot;
@@ -275,7 +275,7 @@ public class FilePathMigrationTest {
 	@DisplayName("FilePathMigration.parse(...).get().migrate(...)")
 	@Nested
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-	class Migrating {
+	public class Migrating {
 
 		private FileSystem fs;
 		private Path vaultRoot;

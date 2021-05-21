@@ -18,7 +18,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.stream.Stream;
 
-class C9rConflictResolverTest {
+public class C9rConflictResolverTest {
 
 	private Cryptor cryptor;
 	private FileNameCryptor fileNameCryptor;

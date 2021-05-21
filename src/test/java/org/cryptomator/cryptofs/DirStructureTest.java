@@ -20,7 +20,7 @@ public class DirStructureTest {
 	private static final String CONFIG = "config";
 
 	@TempDir
-	Path vaultPath;
+	public Path vaultPath;
 
 	@Test
 	public void testNonExistingVaultPathThrowsIOException() {
@@ -59,7 +59,7 @@ public class DirStructureTest {
 		Assertions.assertEquals(expectedResult, DirStructure.checkDirStructure(vaultPath, CONFIG, KEY));
 	}
 
-	private static Stream<Arguments> provideAllCases() {
+	public static Stream<Arguments> provideAllCases() {
 		return Stream.of(
 				Arguments.of(true, true, true, DirStructure.VAULT),
 				Arguments.of(true, true, false, DirStructure.VAULT),

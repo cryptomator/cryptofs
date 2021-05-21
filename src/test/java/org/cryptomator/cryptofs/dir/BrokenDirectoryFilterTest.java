@@ -11,7 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
 
-class BrokenDirectoryFilterTest {
+public class BrokenDirectoryFilterTest {
 
 	private CryptoPathMapper cryptoPathMapper = Mockito.mock(CryptoPathMapper.class);
 	private BrokenDirectoryFilter brokenDirectoryFilter = new BrokenDirectoryFilter(cryptoPathMapper);

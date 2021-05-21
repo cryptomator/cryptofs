@@ -19,11 +19,11 @@ import java.nio.file.Path;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Collections;
 
-class FileSystemCapabilityCheckerTest {
+public class FileSystemCapabilityCheckerTest {
 	
 	@Nested
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-	class PathLengthLimits {
+	public class PathLengthLimits {
 		
 		private Path pathToVault = Mockito.mock(Path.class);
 		private Path cDir = Mockito.mock(Path.class);

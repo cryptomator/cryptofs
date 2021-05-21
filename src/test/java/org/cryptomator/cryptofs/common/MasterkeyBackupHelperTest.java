@@ -15,7 +15,7 @@ import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Random;
 import java.util.stream.Stream;
 
-class MasterkeyBackupHelperTest {
+public class MasterkeyBackupHelperTest {
 
 	@EnabledOnOs({OS.LINUX, OS.MAC})
 	@ParameterizedTest
@@ -47,7 +47,7 @@ class MasterkeyBackupHelperTest {
 		Assertions.assertEquals(backupFile, backupFile2);
 	}
 
-	static Stream<byte[]> createRandomBytes() {
+	public static Stream<byte[]> createRandomBytes() {
 		Random rnd = new Random(42l);
 		return Stream.generate(() -> {
 			byte[] bytes = new byte[100];

@@ -252,7 +252,7 @@ public class CleartextFileChannelTest {
 	}
 
 	@Nested
-	class Locking {
+	public class Locking {
 
 		private FileLock delegate = Mockito.mock(FileLock.class);
 
