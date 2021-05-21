@@ -18,7 +18,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-class HealthCheckTest {
+public class HealthCheckTest {
 
 	private Path pathToVault = Mockito.mock(Path.class);
 	private VaultConfig config = Mockito.mock(VaultConfig.class);

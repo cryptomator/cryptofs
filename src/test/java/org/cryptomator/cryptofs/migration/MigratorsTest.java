@@ -24,46 +24,39 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.spi.FileSystemProvider;
 import java.util.Collections;
 import java.util.Map;
 
 public class MigratorsTest {
 
-	private MockedStatic<Files> filesClass;
 	private Path pathToVault;
-	private FileSystemCapabilityChecker fsCapabilityChecker;
 	private Path vaultConfigPath;
 	private Path masterkeyPath;
+	private FileSystemCapabilityChecker fsCapabilityChecker;
 
 	@BeforeEach
-	public void setup() {
-		filesClass = Mockito.mockStatic(Files.class);
-		pathToVault = Mockito.mock(Path.class, "path/to/vault");
+	public void setup(@TempDir Path tmpDir) {
+		pathToVault = tmpDir;
+		vaultConfigPath = tmpDir.resolve("vault.cryptomator");
+		masterkeyPath = tmpDir.resolve("masterkey.cryptomator");
 		fsCapabilityChecker = Mockito.mock(FileSystemCapabilityChecker.class);
-		vaultConfigPath = Mockito.mock(Path.class, "path/to/vault/vault.cryptomator");
-		masterkeyPath = Mockito.mock(Path.class, "path/to/vault/masterkey.cryptomator");
-
-		Mockito.when(pathToVault.resolve("masterkey.cryptomator")).thenReturn(masterkeyPath);
-		Mockito.when(pathToVault.resolve("vault.cryptomator")).thenReturn(vaultConfigPath);
-	}
-
-	@AfterEach
-	public void tearDown() {
-		filesClass.close();
 	}
 
 	@Test
 	@DisplayName("can't determine vault version without masterkey.cryptomator or vault.cryptomator")
 	public void throwsExceptionIfNeitherMasterkeyNorVaultConfigExists() {
-		filesClass.when(() -> Files.exists(vaultConfigPath)).thenReturn(false);
-		filesClass.when(() -> Files.exists(masterkeyPath)).thenReturn(false);
-
 		Migrators migrators = new Migrators(Collections.emptyMap(), fsCapabilityChecker);
 
 		IOException thrown = Assertions.assertThrows(IOException.class, () -> {
@@ -79,13 +72,14 @@ public class MigratorsTest {
 		private VaultConfig.UnverifiedVaultConfig unverifiedVaultConfig;
 
 		@BeforeEach
-		public void setup() {
-			Assumptions.assumeFalse(Files.exists(masterkeyPath));
+		public void setup() throws IOException {
 			vaultConfigClass = Mockito.mockStatic(VaultConfig.class);
 			unverifiedVaultConfig = Mockito.mock(VaultConfig.UnverifiedVaultConfig.class);
 
-			filesClass.when(() -> Files.exists(vaultConfigPath)).thenReturn(true);
-			filesClass.when(() -> Files.readString(vaultConfigPath)).thenReturn("vault-config");
+			Files.write(vaultConfigPath, "vault-config".getBytes(StandardCharsets.UTF_8));
+			Assumptions.assumeTrue(Files.exists(vaultConfigPath));
+			Assumptions.assumeFalse(Files.exists(masterkeyPath));
+
 			vaultConfigClass.when(() -> VaultConfig.decode("vault-config")).thenReturn(unverifiedVaultConfig);
 		}
 
@@ -164,10 +158,11 @@ public class MigratorsTest {
 		private MockedStatic<MasterkeyFileAccess> masterkeyFileAccessClass;
 
 		@BeforeEach
-		public void setup() {
-			Assumptions.assumeFalse(Files.exists(vaultConfigPath));
+		public void setup() throws IOException {
 			masterkeyFileAccessClass = Mockito.mockStatic(MasterkeyFileAccess.class);
-			filesClass.when(() -> Files.exists(masterkeyPath)).thenReturn(true);
+			Files.createFile(masterkeyPath);
+			Assumptions.assumeFalse(Files.exists(vaultConfigPath));
+			Assumptions.assumeTrue(Files.exists(masterkeyPath));
 		}
 
 		@AfterEach

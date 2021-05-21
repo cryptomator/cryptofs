@@ -90,7 +90,7 @@ public class OpenCryptoFileTest {
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 	@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 	@DisplayName("FileChannels")
-	class FileChannelFactoryTest {
+	public class FileChannelFactoryTest {
 
 		private OpenCryptoFile openCryptoFile;
 		private CleartextFileChannel cleartextFileChannel;

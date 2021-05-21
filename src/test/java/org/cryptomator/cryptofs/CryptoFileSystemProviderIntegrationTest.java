@@ -74,7 +74,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 	@Nested
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-	class WithLimitedPaths {
+	public class WithLimitedPaths {
 
 		private MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
 		private CryptoFileSystem fs;
@@ -170,7 +170,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 	@Nested
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 	@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-	class InMemory {
+	public class InMemory {
 
 		private FileSystem tmpFs;
 		private MasterkeyLoader keyLoader1;
@@ -523,7 +523,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 	@EnabledOnOs({OS.MAC, OS.LINUX})
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 	@DisplayName("On POSIX Systems")
-	class PosixTests {
+	public class PosixTests {
 
 		private FileSystem fs;
 
@@ -540,7 +540,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 		@Nested
 		@DisplayName("File Locks")
-		class FileLockTests {
+		public class FileLockTests {
 
 			private Path file = fs.getPath("/lock.txt");
 
@@ -615,7 +615,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 	@EnabledOnOs(OS.WINDOWS)
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 	@DisplayName("On Windows Systems")
-	class WindowsTests {
+	public class WindowsTests {
 
 		private FileSystem fs;
 
@@ -661,7 +661,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 		@Nested
 		@DisplayName("read-only file")
-		class OnReadOnlyFile {
+		public class OnReadOnlyFile {
 
 			private Path file = fs.getPath("/readonly.txt");
 			private DosFileAttributeView attrView;

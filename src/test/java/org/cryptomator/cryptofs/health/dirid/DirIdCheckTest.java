@@ -64,7 +64,7 @@ public class DirIdCheckTest {
 
 	@Nested
 	@DisplayName("DirVisitor")
-	class Visitor {
+	public class Visitor {
 
 		private Consumer<DiagnosticResult> resultsCollector;
 		private DirIdCheck.DirVisitor visitor;

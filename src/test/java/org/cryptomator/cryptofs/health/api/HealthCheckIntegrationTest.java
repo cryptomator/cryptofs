@@ -14,7 +14,7 @@ import java.security.SecureRandom;
 import java.util.Scanner;
 import java.util.concurrent.Executors;
 
-class HealthCheckIntegrationTest {
+public class HealthCheckIntegrationTest {
 
 	@Test
 	public void testGetAll() {

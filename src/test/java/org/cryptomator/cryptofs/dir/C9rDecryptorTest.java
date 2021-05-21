@@ -15,7 +15,7 @@ import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-class C9rDecryptorTest {
+public class C9rDecryptorTest {
 	
 	private Cryptor cryptor;
 	private FileNameCryptor fileNameCryptor;

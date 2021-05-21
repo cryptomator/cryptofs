@@ -38,7 +38,7 @@ public class CryptoFileStoreTest {
 	
 	@Nested
 	@DisplayName("with delegate present")
-	class DelegatingCryptoFileStoreTest {
+	public class DelegatingCryptoFileStoreTest {
 
 		private final FileStore delegate = mock(FileStore.class);
 		private CryptoFileStore cryptoFileStore;
@@ -128,7 +128,7 @@ public class CryptoFileStoreTest {
 
 	@Nested
 	@DisplayName("with delegate absent")
-	class FallbackCryptoFileStoreTest {
+	public class FallbackCryptoFileStoreTest {
 		
 		private CryptoFileStore cryptoFileStore;
 		

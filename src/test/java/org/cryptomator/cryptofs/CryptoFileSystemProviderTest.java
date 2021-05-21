@@ -70,7 +70,7 @@ public class CryptoFileSystemProviderTest {
 
 	private CryptoFileSystemProvider inTest;
 
-	private static final Stream<InvocationWhichShouldFail> shouldFailWithProviderMismatch() {
+	public static Stream<InvocationWhichShouldFail> shouldFailWithProviderMismatch() {
 		return Stream.of( //
 				invocation("newAsynchronousFileChannel", (inTest, path) -> inTest.newAsynchronousFileChannel(path, new HashSet<>(), mock(ExecutorService.class))), //
 				invocation("newFileChannel", (inTest, path) -> inTest.newFileChannel(path, new HashSet<>())), //
@@ -91,7 +91,7 @@ public class CryptoFileSystemProviderTest {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static final Stream<InvocationWhichShouldFail> shouldFailWithRelativePath() {
+	public static Stream<InvocationWhichShouldFail> shouldFailWithRelativePath() {
 		return Stream.of( //
 				invocation("newAsynchronousFileChannel", (inTest, path) -> inTest.newAsynchronousFileChannel(path, new HashSet<>(), mock(ExecutorService.class))), //
 				invocation("newFileChannel", (inTest, path) -> inTest.newFileChannel(path, new HashSet<>())), //

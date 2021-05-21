@@ -24,7 +24,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class FileHeaderHolderTest {
+public class FileHeaderHolderTest {
 
 	static {
 		System.setProperty("org.slf4j.simpleLogger.log.org.cryptomator.cryptofs.ch.FileHeaderHolder", "trace");
@@ -46,7 +46,7 @@ class FileHeaderHolderTest {
 
 	@Nested
 	@DisplayName("existing header")
-	class ExistingHeader {
+	public class ExistingHeader {
 
 		private FileHeader headerToLoad = Mockito.mock(FileHeader.class);
 		private FileChannel channel = Mockito.mock(FileChannel.class);
@@ -81,7 +81,7 @@ class FileHeaderHolderTest {
 
 	@Nested
 	@DisplayName("new header")
-	class NewHeader {
+	public class NewHeader {
 
 		private FileHeader headerToCreate = Mockito.mock(FileHeader.class);
 

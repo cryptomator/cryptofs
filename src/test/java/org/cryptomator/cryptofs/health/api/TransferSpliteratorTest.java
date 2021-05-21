@@ -13,7 +13,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-class TransferSpliteratorTest {
+public class TransferSpliteratorTest {
 
 	private ExecutorService executor;
 
