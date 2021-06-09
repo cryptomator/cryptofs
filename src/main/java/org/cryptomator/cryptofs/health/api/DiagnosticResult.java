@@ -5,6 +5,7 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
 
 import java.nio.file.Path;
+import java.util.Map;
 
 public interface DiagnosticResult {
 
@@ -42,4 +43,12 @@ public interface DiagnosticResult {
 		throw new UnsupportedOperationException("Preliminary API not yet implemented");
 	}
 
+	/**
+	 * Get more specific info about the result like names of affected resources.
+	 *
+	 * @return A map of strings containing result specific information
+	 */
+	default Map<String, String> details() {
+		return Map.of();
+	}
 }
