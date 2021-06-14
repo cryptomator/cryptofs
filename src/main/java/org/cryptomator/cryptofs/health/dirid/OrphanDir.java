@@ -81,18 +81,17 @@ public class OrphanDir implements DiagnosticResult {
 			String filePrefix = "file";
 			String dirPrefix = "directory";
 			String symlinkPrefix = "symlink";
-			String veryLongSuffix = clearnameToBeDefinitelyShortend(cryptor, config.getShorteningThreshold());
+			String veryLongSuffix = clearnameToBeDefinitelyShortend(config.getShorteningThreshold());
 			MessageDigest sha1Hasher = MessageDigest.getInstance("SHA-1");
 
 			for (Path orphanedResource : orphanedContentStream) {
+				var newClearName = switch (determineCiphertextFileType(orphanedResource)) {
+					case FILE -> filePrefix + fileCounter.getAndIncrement();
+					case DIRECTORY -> dirPrefix + dirCounter.getAndIncrement();
+					case SYMLINK -> symlinkPrefix + symlinkCounter.getAndIncrement();
+				};
 				if (orphanedResource.toString().endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
-					var newClearName = switch (determineCiphertextFileType(orphanedResource)) {
-						case FILE -> filePrefix + fileCounter.getAndIncrement();
-						case DIRECTORY -> dirPrefix + dirCounter.getAndIncrement();
-						case SYMLINK -> symlinkPrefix + symlinkCounter.getAndIncrement();
-					} + veryLongSuffix;
-					var newCipherName = convertClearToCiphertext(cryptor, newClearName, cipherTargetDir.dirId) + Constants.CRYPTOMATOR_FILE_SUFFIX;
-					//deflate
+					var newCipherName = convertClearToCiphertext(cryptor, newClearName + veryLongSuffix, cipherTargetDir.dirId);
 					var deflatedName = BaseEncoding.base64Url().encode(sha1Hasher.digest(newCipherName.getBytes(StandardCharsets.UTF_8))) + Constants.DEFLATED_FILE_SUFFIX;
 					Path targetPath = cipherTargetDir.path.resolve(deflatedName);
 					Files.move(orphanedResource, targetPath, StandardCopyOption.ATOMIC_MOVE);
@@ -102,15 +101,11 @@ public class OrphanDir implements DiagnosticResult {
 						fc.write(ByteBuffer.wrap(newCipherName.getBytes(StandardCharsets.UTF_8)));
 					}
 				} else {
-					var newClearName = switch (determineCiphertextFileType(orphanedResource)) {
-						case FILE -> filePrefix + fileCounter.getAndIncrement();
-						case DIRECTORY -> dirPrefix + dirCounter.getAndIncrement();
-						case SYMLINK -> symlinkPrefix + symlinkCounter.getAndIncrement();
-					};
-					var newCipherName = convertClearToCiphertext(cryptor, newClearName, cipherTargetDir.dirId) + Constants.CRYPTOMATOR_FILE_SUFFIX;
+					var newCipherName = convertClearToCiphertext(cryptor, newClearName, cipherTargetDir.dirId);
 					Path targetPath = cipherTargetDir.path.resolve(newCipherName);
 					Files.move(orphanedResource, targetPath, StandardCopyOption.ATOMIC_MOVE);
 				}
+
 			}
 		} catch (NoSuchAlgorithmException e) {
 			throw new NoClassDefFoundError("Every JVM must implement SHA-1 algorithm.");
@@ -118,15 +113,11 @@ public class OrphanDir implements DiagnosticResult {
 		Files.delete(orphanedDir);
 	}
 
-	private String clearnameToBeDefinitelyShortend(Cryptor cryptor, int threshold) {
+
+	private String clearnameToBeDefinitelyShortend(int threshold) {
 		String base = "_withVeryLongName"; //all 1Byte chars in UTF8
-		int neededLength = (int) Math.ceil(threshold*0.75 -16);
-		if (neededLength > Integer.MAX_VALUE) {
-			//TODO
-			return "";
-		} else {
-			return base.repeat((neededLength % base.length()) + 1);
-		}
+		int neededLength = (int) Math.ceil(threshold * 0.75 - 16);
+		return base.repeat((neededLength % base.length()) + 1);
 	}
 
 	private CryptoPathMapper.CiphertextDirectory getCiphertextDirFileFromCleartext(Cryptor cryptor, Path pathToVault, Path cleartext) throws IOException {
@@ -137,7 +128,7 @@ public class OrphanDir implements DiagnosticResult {
 		Path target = vaultCipherRootPath;
 
 		for (Path component : cleartext) {
-			String ciphertextName = convertClearToCiphertext(cryptor, component.getFileName().toString(), dirId) + Constants.CRYPTOMATOR_FILE_SUFFIX;
+			String ciphertextName = convertClearToCiphertext(cryptor, component.getFileName().toString(), dirId) ;
 			Path dirFile = target.resolve(ciphertextName + "/" + Constants.DIR_FILE_NAME);
 			dirId = new String(Files.readAllBytes(dirFile), StandardCharsets.UTF_8);
 			String dirHash = cryptor.fileNameCryptor().hashDirectoryId(dirId);
@@ -148,7 +139,7 @@ public class OrphanDir implements DiagnosticResult {
 	}
 
 	private String convertClearToCiphertext(Cryptor cryptor, String clearTextName, String dirId) {
-		return cryptor.fileNameCryptor().encryptFilename(BaseEncoding.base64Url(), clearTextName, dirId.getBytes(StandardCharsets.UTF_8));
+		return cryptor.fileNameCryptor().encryptFilename(BaseEncoding.base64Url(), clearTextName, dirId.getBytes(StandardCharsets.UTF_8)) + Constants.CRYPTOMATOR_FILE_SUFFIX;
 	}
 
 	private CiphertextFileType determineCiphertextFileType(Path ciphertextPath) {
