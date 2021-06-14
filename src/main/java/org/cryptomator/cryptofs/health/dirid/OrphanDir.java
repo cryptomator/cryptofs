@@ -32,6 +32,10 @@ import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.ENCRYPTED_PAT
 public class OrphanDir implements DiagnosticResult {
 
 	private static final String LOST_AND_FOUND_DIR = "lost+found";
+	private static final String FILE_PREFIX = "file";
+	private static final String DIR_PREFIX = "directory";
+	private static final String SYMLINK_PREFIX = "symlink";
+	private static final String LONG_NAME_SUFFIX_BASE = "_withVeryLongName";
 
 	final Path dir;
 
@@ -74,21 +78,18 @@ public class OrphanDir implements DiagnosticResult {
 		}
 
 		try (var orphanedContentStream = Files.newDirectoryStream(orphanedDir)) {
-			//	move resource to unfiddled dir in l+f and rename resource  (use dirId for associated data)
+			//move resource to unfiddled dir in l+f and rename resource  (use dirId for associated data)
 			AtomicInteger fileCounter = new AtomicInteger(1);
 			AtomicInteger dirCounter = new AtomicInteger(1);
 			AtomicInteger symlinkCounter = new AtomicInteger(1);
-			String filePrefix = "file";
-			String dirPrefix = "directory";
-			String symlinkPrefix = "symlink";
-			String veryLongSuffix = clearnameToBeDefinitelyShortend(config.getShorteningThreshold());
+			String veryLongSuffix = createClearnameToBeShortened(config.getShorteningThreshold());
 			MessageDigest sha1Hasher = MessageDigest.getInstance("SHA-1");
 
 			for (Path orphanedResource : orphanedContentStream) {
 				var newClearName = switch (determineCiphertextFileType(orphanedResource)) {
-					case FILE -> filePrefix + fileCounter.getAndIncrement();
-					case DIRECTORY -> dirPrefix + dirCounter.getAndIncrement();
-					case SYMLINK -> symlinkPrefix + symlinkCounter.getAndIncrement();
+					case FILE -> FILE_PREFIX + fileCounter.getAndIncrement();
+					case DIRECTORY -> DIR_PREFIX + dirCounter.getAndIncrement();
+					case SYMLINK -> SYMLINK_PREFIX + symlinkCounter.getAndIncrement();
 				};
 				if (orphanedResource.toString().endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
 					var newCipherName = convertClearToCiphertext(cryptor, newClearName + veryLongSuffix, cipherTargetDir.dirId);
@@ -114,10 +115,9 @@ public class OrphanDir implements DiagnosticResult {
 	}
 
 
-	private String clearnameToBeDefinitelyShortend(int threshold) {
-		String base = "_withVeryLongName"; //all 1Byte chars in UTF8
-		int neededLength = (int) Math.ceil(threshold * 0.75 - 16);
-		return base.repeat((neededLength % base.length()) + 1);
+	private String createClearnameToBeShortened(int threshold) {
+		int neededLength = threshold / 4 * 3 - 16;
+		return LONG_NAME_SUFFIX_BASE.repeat((neededLength % LONG_NAME_SUFFIX_BASE.length()) + 1);
 	}
 
 	private CryptoPathMapper.CiphertextDirectory getCiphertextDirFileFromCleartext(Cryptor cryptor, Path pathToVault, Path cleartext) throws IOException {
@@ -128,7 +128,7 @@ public class OrphanDir implements DiagnosticResult {
 		Path target = vaultCipherRootPath;
 
 		for (Path component : cleartext) {
-			String ciphertextName = convertClearToCiphertext(cryptor, component.getFileName().toString(), dirId) ;
+			String ciphertextName = convertClearToCiphertext(cryptor, component.getFileName().toString(), dirId);
 			Path dirFile = target.resolve(ciphertextName + "/" + Constants.DIR_FILE_NAME);
 			dirId = new String(Files.readAllBytes(dirFile), StandardCharsets.UTF_8);
 			String dirHash = cryptor.fileNameCryptor().hashDirectoryId(dirId);
