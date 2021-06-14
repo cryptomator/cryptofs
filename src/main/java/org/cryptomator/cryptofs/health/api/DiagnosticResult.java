@@ -4,6 +4,7 @@ import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Map;
 
@@ -39,7 +40,7 @@ public interface DiagnosticResult {
 	@Override
 	String toString();
 
-	default void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
+	default void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
 		throw new UnsupportedOperationException("Preliminary API not yet implemented");
 	}
 
