@@ -1,14 +1,13 @@
 package org.cryptomator.cryptofs.health.dirid;
 
 import com.google.common.io.BaseEncoding;
-import org.cryptomator.cryptofs.CryptoFileSystemProperties;
-import org.cryptomator.cryptofs.CryptoFileSystemProvider;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
 
 import java.io.IOException;
@@ -22,6 +21,7 @@ import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.ENCRYPTED_PATH;
@@ -31,7 +31,6 @@ import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.ENCRYPTED_PAT
  */
 public class OrphanDir implements DiagnosticResult {
 
-	private static final String LOST_AND_FOUND_DIR = "lost+found";
 	private static final String FILE_PREFIX = "file";
 	private static final String DIR_PREFIX = "directory";
 	private static final String SYMLINK_PREFIX = "symlink";
@@ -61,21 +60,10 @@ public class OrphanDir implements DiagnosticResult {
 	// fix: create new dirId inside of L+F dir and rename existing dir accordingly.
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
-		//open cryptofilsystem and place lf dir
 		Path orphanedDir = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(this.dir);
 		String orphanHash = dir.getParent().getFileName().toString() + dir.getFileName().toString(); //TODO: is this the way? -> if the process is midterm aborted and later retried files already exist!
-		try (var fs = CryptoFileSystemProvider.newFileSystem(pathToVault, CryptoFileSystemProperties.cryptoFileSystemProperties()
-				.withKeyLoader(uri -> masterkey.clone())
-				.withVaultConfigFilename("vault.cryptomator").build())) {
-			Path lf = fs.getRootDirectories().iterator().next().resolve(LOST_AND_FOUND_DIR);
-			Files.createDirectories(lf.resolve(orphanHash));
-		}
 
-		CryptoPathMapper.CiphertextDirectory cipherTargetDir = getCiphertextDirFileFromCleartext(cryptor, pathToVault, Path.of("/" + LOST_AND_FOUND_DIR + "/" + orphanHash));
-
-		if (!Files.exists(cipherTargetDir.path)) {
-			throw new IOException("Dir file of  not found " + cipherTargetDir.path);
-		}
+		var stepParentDir = prepareCryptoFilesystem(pathToVault, cryptor.fileNameCryptor(), orphanHash);
 
 		try (var orphanedContentStream = Files.newDirectoryStream(orphanedDir)) {
 			//move resource to unfiddled dir in l+f and rename resource  (use dirId for associated data)
@@ -92,9 +80,9 @@ public class OrphanDir implements DiagnosticResult {
 					case SYMLINK -> SYMLINK_PREFIX + symlinkCounter.getAndIncrement();
 				};
 				if (orphanedResource.toString().endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
-					var newCipherName = convertClearToCiphertext(cryptor, newClearName + veryLongSuffix, cipherTargetDir.dirId);
+					var newCipherName = convertClearToCiphertext(cryptor.fileNameCryptor(), newClearName + veryLongSuffix, stepParentDir.dirId);
 					var deflatedName = BaseEncoding.base64Url().encode(sha1Hasher.digest(newCipherName.getBytes(StandardCharsets.UTF_8))) + Constants.DEFLATED_FILE_SUFFIX;
-					Path targetPath = cipherTargetDir.path.resolve(deflatedName);
+					Path targetPath = stepParentDir.path.resolve(deflatedName);
 					Files.move(orphanedResource, targetPath, StandardCopyOption.ATOMIC_MOVE);
 
 					//adjust name.c9s
@@ -102,8 +90,8 @@ public class OrphanDir implements DiagnosticResult {
 						fc.write(ByteBuffer.wrap(newCipherName.getBytes(StandardCharsets.UTF_8)));
 					}
 				} else {
-					var newCipherName = convertClearToCiphertext(cryptor, newClearName, cipherTargetDir.dirId);
-					Path targetPath = cipherTargetDir.path.resolve(newCipherName);
+					var newCipherName = convertClearToCiphertext(cryptor.fileNameCryptor(), newClearName, stepParentDir.dirId);
+					Path targetPath = stepParentDir.path.resolve(newCipherName);
 					Files.move(orphanedResource, targetPath, StandardCopyOption.ATOMIC_MOVE);
 				}
 
@@ -114,32 +102,40 @@ public class OrphanDir implements DiagnosticResult {
 		Files.delete(orphanedDir);
 	}
 
+	CryptoPathMapper.CiphertextDirectory prepareCryptoFilesystem(Path pathToVault, FileNameCryptor cryptor, String clearStepParentDirName) throws IOException {
+		Path dataDir = pathToVault.resolve(Constants.DATA_DIR_NAME);
+		String rootDirHash = cryptor.hashDirectoryId(Constants.ROOT_DIR_ID);
+		Path vaultCipherRootPath = dataDir.resolve(rootDirHash.substring(0, 2)).resolve(rootDirHash.substring(2)).toAbsolutePath();
+
+		//create  if not existent with constant id
+		String cipherRecoveryDirName = convertClearToCiphertext(cryptor, Constants.RECOVERY_DIR_NAME, Constants.ROOT_DIR_ID);
+		Path cipherRecoveryDirFile = vaultCipherRootPath.resolve(cipherRecoveryDirName + "/" + Constants.DIR_FILE_NAME);
+		Files.createDirectory(cipherRecoveryDirFile.getParent());
+		Files.writeString(cipherRecoveryDirFile, Constants.RECOVERY_DIR_ID, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+		String recoveryDirHash = cryptor.hashDirectoryId(Constants.RECOVERY_DIR_ID);
+		Path cipherRecoveryDir = dataDir.resolve(recoveryDirHash.substring(0, 2)).resolve(recoveryDirHash.substring(2)).toAbsolutePath();
+		Files.createDirectories(cipherRecoveryDir);
+
+		//create deorphanedDirectory
+		String cipherStepParentDirName = convertClearToCiphertext(cryptor, clearStepParentDirName, Constants.RECOVERY_DIR_ID);
+		Path cipherStepParentDirFile = cipherRecoveryDir.resolve(cipherStepParentDirName + "/" + Constants.DIR_FILE_NAME);
+		Files.createDirectory(cipherStepParentDirFile.getParent());
+		var stepParentUUID = UUID.randomUUID().toString();
+		Files.writeString(cipherStepParentDirFile, stepParentUUID, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+		String stepParentDirHash = cryptor.hashDirectoryId(stepParentUUID);
+		Path stepParentDir = dataDir.resolve(stepParentDirHash.substring(0, 2)).resolve(stepParentDirHash.substring(2)).toAbsolutePath();
+		Files.createDirectories(stepParentDir);
+		return new CryptoPathMapper.CiphertextDirectory(stepParentUUID, stepParentDir);
+	}
+
 
 	private String createClearnameToBeShortened(int threshold) {
 		int neededLength = threshold / 4 * 3 - 16;
 		return LONG_NAME_SUFFIX_BASE.repeat((neededLength % LONG_NAME_SUFFIX_BASE.length()) + 1);
 	}
 
-	private CryptoPathMapper.CiphertextDirectory getCiphertextDirFileFromCleartext(Cryptor cryptor, Path pathToVault, Path cleartext) throws IOException {
-		String rootHash = cryptor.fileNameCryptor().hashDirectoryId(Constants.ROOT_DIR_ID);
-		Path vaultCipherRootPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(rootHash.substring(0, 2)).resolve(rootHash.substring(2)).toAbsolutePath();
-
-		String dirId = Constants.ROOT_DIR_ID;
-		Path target = vaultCipherRootPath;
-
-		for (Path component : cleartext) {
-			String ciphertextName = convertClearToCiphertext(cryptor, component.getFileName().toString(), dirId);
-			Path dirFile = target.resolve(ciphertextName + "/" + Constants.DIR_FILE_NAME);
-			dirId = new String(Files.readAllBytes(dirFile), StandardCharsets.UTF_8);
-			String dirHash = cryptor.fileNameCryptor().hashDirectoryId(dirId);
-			target = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(dirHash.substring(0, 2)).resolve(dirHash.substring(2)).toAbsolutePath();
-		}
-
-		return new CryptoPathMapper.CiphertextDirectory(dirId, target);
-	}
-
-	private String convertClearToCiphertext(Cryptor cryptor, String clearTextName, String dirId) {
-		return cryptor.fileNameCryptor().encryptFilename(BaseEncoding.base64Url(), clearTextName, dirId.getBytes(StandardCharsets.UTF_8)) + Constants.CRYPTOMATOR_FILE_SUFFIX;
+	private String convertClearToCiphertext(FileNameCryptor cryptor, String clearTextName, String dirId) {
+		return cryptor.encryptFilename(BaseEncoding.base64Url(), clearTextName, dirId.getBytes(StandardCharsets.UTF_8)) + Constants.CRYPTOMATOR_FILE_SUFFIX;
 	}
 
 	private CiphertextFileType determineCiphertextFileType(Path ciphertextPath) {
