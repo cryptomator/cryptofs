@@ -39,7 +39,6 @@ public class OrphanDirTest {
 		dataDir = pathToVault.resolve("d");
 		cipherRoot = dataDir.resolve("00/0000");
 		cipherOrphan = dataDir.resolve("33/3333");
-
 		Files.createDirectories(cipherRoot);
 		Files.createDirectories(cipherOrphan);
 
@@ -150,8 +149,7 @@ public class OrphanDirTest {
 	@Test
 	@DisplayName("adoptOrphanedResource runs for shortened resource with existing name.c9s")
 	public void testAdoptOrphanedShortened() throws IOException {
-		Path orphanDir = pathToVault.resolve("d/33/3333/");
-		OrphanDir.Adoption adoption = new OrphanDir.Adoption("Jim Knopf", orphanDir.resolve("orphan.c9s"));
+		OrphanDir.Adoption adoption = new OrphanDir.Adoption("Jim Knopf", cipherOrphan.resolve("orphan.c9s"));
 		Files.createDirectories(adoption.oldCipherPath());
 		Files.createFile(adoption.oldCipherPath().resolve("name.c9s"));
 
@@ -181,8 +179,7 @@ public class OrphanDirTest {
 	@Test
 	@DisplayName("adoptOrphanedResource runs for shortened resource without existing name.c9s")
 	public void testAdoptOrphanedShortenedMissingNameC9s() throws IOException {
-		Path orphanDir = pathToVault.resolve("d/33/3333/");
-		OrphanDir.Adoption adoption = new OrphanDir.Adoption("Tom Sawyer", orphanDir.resolve("orphan.c9s"));
+		OrphanDir.Adoption adoption = new OrphanDir.Adoption("Tom Sawyer", cipherOrphan.resolve("orphan.c9s"));
 		Files.createDirectories(adoption.oldCipherPath());
 
 		CryptoPathMapper.CiphertextDirectory stepParentDir = new CryptoPathMapper.CiphertextDirectory("aaaaaa", pathToVault.resolve("d/22/2222"));
