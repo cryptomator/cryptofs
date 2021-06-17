@@ -67,7 +67,6 @@ public class OrphanDir implements DiagnosticResult {
 		return Map.of(ENCRYPTED_PATH, dir.toString());
 	}
 
-	// fix: create new dirId inside of L+F dir and rename existing dir accordingly.
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
 		Path orphanedDir = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(this.dir);
@@ -76,7 +75,6 @@ public class OrphanDir implements DiagnosticResult {
 		var stepParentDir = prepareCryptoFilesystem(pathToVault, cryptor.fileNameCryptor(), orphanHash);
 
 		try (var orphanedContentStream = Files.newDirectoryStream(orphanedDir)) {
-			//move resource to unfiddled dir in l+f and rename resource  (use dirId for associated data)
 			AtomicInteger fileCounter = new AtomicInteger(1);
 			AtomicInteger dirCounter = new AtomicInteger(1);
 			AtomicInteger symlinkCounter = new AtomicInteger(1);
@@ -94,13 +92,14 @@ public class OrphanDir implements DiagnosticResult {
 		Files.delete(orphanedDir);
 	}
 
-	/* visisble for testing */
+	// visible for testing
 	CryptoPathMapper.CiphertextDirectory prepareCryptoFilesystem(Path pathToVault, FileNameCryptor cryptor, String clearStepParentDirName) throws IOException {
+		//determine path for cipher root
 		Path dataDir = pathToVault.resolve(Constants.DATA_DIR_NAME);
 		String rootDirHash = cryptor.hashDirectoryId(Constants.ROOT_DIR_ID);
 		Path vaultCipherRootPath = dataDir.resolve(rootDirHash.substring(0, 2)).resolve(rootDirHash.substring(2)).toAbsolutePath();
 
-		//create  if not existent with constant id
+		//check if recovery dir exists and has unique recovery id
 		String cipherRecoveryDirName = convertClearToCiphertext(cryptor, Constants.RECOVERY_DIR_NAME, Constants.ROOT_DIR_ID);
 		Path cipherRecoveryDirFile = vaultCipherRootPath.resolve(cipherRecoveryDirName + "/" + Constants.DIR_FILE_NAME);
 		if (Files.notExists(cipherRecoveryDirFile, LinkOption.NOFOLLOW_LINKS)) {
@@ -116,7 +115,7 @@ public class OrphanDir implements DiagnosticResult {
 		Path cipherRecoveryDir = dataDir.resolve(recoveryDirHash.substring(0, 2)).resolve(recoveryDirHash.substring(2)).toAbsolutePath();
 		Files.createDirectories(cipherRecoveryDir);
 
-		//create deorphanedDirectory
+		//create "step-parent" directory to move orphaned files to
 		String cipherStepParentDirName = convertClearToCiphertext(cryptor, clearStepParentDirName, Constants.RECOVERY_DIR_ID);
 		Path cipherStepParentDirFile = cipherRecoveryDir.resolve(cipherStepParentDirName + "/" + Constants.DIR_FILE_NAME);
 		Files.createDirectory(cipherStepParentDirFile.getParent());
