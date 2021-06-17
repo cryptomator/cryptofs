@@ -103,7 +103,7 @@ public class OrphanDir implements DiagnosticResult {
 		//create  if not existent with constant id
 		String cipherRecoveryDirName = convertClearToCiphertext(cryptor, Constants.RECOVERY_DIR_NAME, Constants.ROOT_DIR_ID);
 		Path cipherRecoveryDirFile = vaultCipherRootPath.resolve(cipherRecoveryDirName + "/" + Constants.DIR_FILE_NAME);
-		if (Files.notExists(cipherRecoveryDirFile)) {
+		if (Files.notExists(cipherRecoveryDirFile, LinkOption.NOFOLLOW_LINKS)) {
 			Files.createDirectory(cipherRecoveryDirFile.getParent());
 			Files.writeString(cipherRecoveryDirFile, Constants.RECOVERY_DIR_ID, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 		} else {
