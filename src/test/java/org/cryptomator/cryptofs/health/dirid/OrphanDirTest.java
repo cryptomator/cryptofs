@@ -2,8 +2,11 @@ package org.cryptomator.cryptofs.health.dirid;
 
 import com.google.common.io.BaseEncoding;
 import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
+import org.cryptomator.cryptolib.api.Masterkey;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -202,5 +205,37 @@ public class OrphanDirTest {
 		Assertions.assertTrue(Files.exists(stepParentDir.path.resolve("adopted_shortened.c9s")));
 		Assertions.assertEquals("adopted.c9r", Files.readString(stepParentDir.path.resolve("adopted_shortened.c9s/name.c9s")));
 		Assertions.assertTrue(Files.notExists(adoption.oldCipherPath()));
+	}
+
+	@Test
+	@DisplayName("fix() prepares vault, process every resource in orphanDir and deletes orphanDir")
+	public void testFix() throws IOException {
+		result = new OrphanDir(dataDir.relativize(cipherOrphan));
+		var resultSpy = Mockito.spy(result);
+
+		Path orphan1 = cipherOrphan.resolve("orphan1.c9r");
+		Path orphan2 = cipherOrphan.resolve("orphan2.c9s");
+		Files.createFile(orphan1);
+		Files.createDirectories(orphan2);
+
+		CryptoPathMapper.CiphertextDirectory stepParentDir = new CryptoPathMapper.CiphertextDirectory("aaaaaa", dataDir.resolve("22/2222"));
+
+		VaultConfig config = Mockito.mock(VaultConfig.class);
+		Mockito.doReturn(170).when(config).getShorteningThreshold();
+		Masterkey masterkey = Mockito.mock(Masterkey.class);
+		Cryptor generalCryptor = Mockito.mock(Cryptor.class);
+		Mockito.doReturn(cryptor).when(generalCryptor).fileNameCryptor();
+
+		Mockito.doReturn(stepParentDir).when(resultSpy).prepareCryptoFilesystem(Mockito.eq(pathToVault), Mockito.eq(cryptor), Mockito.any());
+		Mockito.doAnswer(invocationOnMock -> {
+			var adoption = (OrphanDir.Adoption) invocationOnMock.getArgument(0);
+			Files.delete(adoption.oldCipherPath());
+			return null;
+		}).when(resultSpy).adoptOrphanedResource(Mockito.any(), Mockito.eq(stepParentDir), Mockito.eq(cryptor), Mockito.any());
+
+		resultSpy.fix(pathToVault, config, masterkey, generalCryptor);
+
+		Mockito.verify(resultSpy, Mockito.times(2)).adoptOrphanedResource(Mockito.any(), Mockito.eq(stepParentDir), Mockito.eq(cryptor), Mockito.any());
+		Assertions.assertTrue(Files.notExists(cipherOrphan));
 	}
 }
