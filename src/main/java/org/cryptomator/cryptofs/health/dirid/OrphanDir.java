@@ -80,7 +80,7 @@ public class OrphanDir implements DiagnosticResult {
 			AtomicInteger fileCounter = new AtomicInteger(1);
 			AtomicInteger dirCounter = new AtomicInteger(1);
 			AtomicInteger symlinkCounter = new AtomicInteger(1);
-			String veryLongSuffix = createClearnameToBeShortened(config.getShorteningThreshold());
+			String longNameSuffix = createClearnameToBeShortened(config.getShorteningThreshold());
 
 			for (Path orphanedResource : orphanedContentStream) {
 				var newClearName = switch (determineCiphertextFileType(orphanedResource)) {
@@ -88,22 +88,7 @@ public class OrphanDir implements DiagnosticResult {
 					case DIRECTORY -> DIR_PREFIX + dirCounter.getAndIncrement();
 					case SYMLINK -> SYMLINK_PREFIX + symlinkCounter.getAndIncrement();
 				};
-				if (orphanedResource.toString().endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
-					var newCipherName = convertClearToCiphertext(cryptor.fileNameCryptor(), newClearName + veryLongSuffix, stepParentDir.dirId);
-					var deflatedName = BaseEncoding.base64Url().encode(SHA1_HASHER.digest(newCipherName.getBytes(StandardCharsets.UTF_8))) + Constants.DEFLATED_FILE_SUFFIX;
-					Path targetPath = stepParentDir.path.resolve(deflatedName);
-					Files.move(orphanedResource, targetPath, StandardCopyOption.ATOMIC_MOVE);
-
-					//adjust name.c9s
-					try (var fc = Files.newByteChannel(targetPath.resolve(Constants.INFLATED_FILE_NAME), StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
-						fc.write(ByteBuffer.wrap(newCipherName.getBytes(StandardCharsets.UTF_8)));
-					}
-				} else {
-					var newCipherName = convertClearToCiphertext(cryptor.fileNameCryptor(), newClearName, stepParentDir.dirId);
-					Path targetPath = stepParentDir.path.resolve(newCipherName);
-					Files.move(orphanedResource, targetPath, StandardCopyOption.ATOMIC_MOVE);
-				}
-
+				adoptOrphanedResource(new Adoption(newClearName, orphanedResource), stepParentDir, cryptor.fileNameCryptor(), longNameSuffix);
 			}
 		}
 		Files.delete(orphanedDir);
@@ -143,6 +128,27 @@ public class OrphanDir implements DiagnosticResult {
 		return new CryptoPathMapper.CiphertextDirectory(stepParentUUID, stepParentDir);
 	}
 
+	// visible for testing
+	void adoptOrphanedResource(Adoption adoption, CryptoPathMapper.CiphertextDirectory stepParentDir, FileNameCryptor cryptor, String longNameSuffix) throws IOException {
+		if (adoption.oldCipherPath.toString().endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
+			var newCipherName = convertClearToCiphertext(cryptor, adoption.newClearname + longNameSuffix, stepParentDir.dirId);
+			var deflatedName = BaseEncoding.base64Url().encode(SHA1_HASHER.digest(newCipherName.getBytes(StandardCharsets.UTF_8))) + Constants.DEFLATED_FILE_SUFFIX;
+			Path targetPath = stepParentDir.path.resolve(deflatedName);
+			Files.move(adoption.oldCipherPath, targetPath, StandardCopyOption.ATOMIC_MOVE);
+
+			//adjust name.c9s
+			try (var fc = Files.newByteChannel(targetPath.resolve(Constants.INFLATED_FILE_NAME), StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+				fc.write(ByteBuffer.wrap(newCipherName.getBytes(StandardCharsets.UTF_8)));
+			}
+		} else {
+			var newCipherName = convertClearToCiphertext(cryptor, adoption.newClearname, stepParentDir.dirId);
+			Path targetPath = stepParentDir.path.resolve(newCipherName);
+			Files.move(adoption.oldCipherPath, targetPath, StandardCopyOption.ATOMIC_MOVE);
+		}
+	}
+
+	// visible for testing
+	record Adoption(String newClearname, Path oldCipherPath) {}
 
 	private String createClearnameToBeShortened(int threshold) {
 		int neededLength = threshold / 4 * 3 - 16;
