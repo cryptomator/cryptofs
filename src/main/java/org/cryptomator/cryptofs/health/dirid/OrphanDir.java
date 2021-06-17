@@ -13,6 +13,7 @@ import org.cryptomator.cryptolib.api.Masterkey;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -117,8 +118,15 @@ public class OrphanDir implements DiagnosticResult {
 		//create  if not existent with constant id
 		String cipherRecoveryDirName = convertClearToCiphertext(cryptor, Constants.RECOVERY_DIR_NAME, Constants.ROOT_DIR_ID);
 		Path cipherRecoveryDirFile = vaultCipherRootPath.resolve(cipherRecoveryDirName + "/" + Constants.DIR_FILE_NAME);
-		Files.createDirectory(cipherRecoveryDirFile.getParent());
-		Files.writeString(cipherRecoveryDirFile, Constants.RECOVERY_DIR_ID, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+		if (Files.notExists(cipherRecoveryDirFile)) {
+			Files.createDirectory(cipherRecoveryDirFile.getParent());
+			Files.writeString(cipherRecoveryDirFile, Constants.RECOVERY_DIR_ID, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+		} else {
+			String uuid = Files.readString(cipherRecoveryDirFile, StandardCharsets.UTF_8);
+			if (!uuid.equals(Constants.RECOVERY_DIR_ID)) {
+				throw new FileAlreadyExistsException("Directory /" + Constants.RECOVERY_DIR_NAME + " already exists, but with wrong directory id.");
+			}
+		}
 		String recoveryDirHash = cryptor.hashDirectoryId(Constants.RECOVERY_DIR_ID);
 		Path cipherRecoveryDir = dataDir.resolve(recoveryDirHash.substring(0, 2)).resolve(recoveryDirHash.substring(2)).toAbsolutePath();
 		Files.createDirectories(cipherRecoveryDir);
