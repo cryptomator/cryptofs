@@ -35,6 +35,15 @@ public class OrphanDir implements DiagnosticResult {
 	private static final String DIR_PREFIX = "directory";
 	private static final String SYMLINK_PREFIX = "symlink";
 	private static final String LONG_NAME_SUFFIX_BASE = "_withVeryLongName";
+	private static final MessageDigest SHA1_HASHER;
+
+	static {
+		try {
+			SHA1_HASHER = MessageDigest.getInstance("SHA1");
+		} catch (NoSuchAlgorithmException e) {
+			throw new ExceptionInInitializerError("Every JVM needs to provide a SHA1 implementation.");
+		}
+	}
 
 	final Path dir;
 
@@ -71,7 +80,6 @@ public class OrphanDir implements DiagnosticResult {
 			AtomicInteger dirCounter = new AtomicInteger(1);
 			AtomicInteger symlinkCounter = new AtomicInteger(1);
 			String veryLongSuffix = createClearnameToBeShortened(config.getShorteningThreshold());
-			MessageDigest sha1Hasher = MessageDigest.getInstance("SHA-1");
 
 			for (Path orphanedResource : orphanedContentStream) {
 				var newClearName = switch (determineCiphertextFileType(orphanedResource)) {
@@ -81,7 +89,7 @@ public class OrphanDir implements DiagnosticResult {
 				};
 				if (orphanedResource.toString().endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
 					var newCipherName = convertClearToCiphertext(cryptor.fileNameCryptor(), newClearName + veryLongSuffix, stepParentDir.dirId);
-					var deflatedName = BaseEncoding.base64Url().encode(sha1Hasher.digest(newCipherName.getBytes(StandardCharsets.UTF_8))) + Constants.DEFLATED_FILE_SUFFIX;
+					var deflatedName = BaseEncoding.base64Url().encode(SHA1_HASHER.digest(newCipherName.getBytes(StandardCharsets.UTF_8))) + Constants.DEFLATED_FILE_SUFFIX;
 					Path targetPath = stepParentDir.path.resolve(deflatedName);
 					Files.move(orphanedResource, targetPath, StandardCopyOption.ATOMIC_MOVE);
 
@@ -96,12 +104,11 @@ public class OrphanDir implements DiagnosticResult {
 				}
 
 			}
-		} catch (NoSuchAlgorithmException e) {
-			throw new NoClassDefFoundError("Every JVM must implement SHA-1 algorithm.");
 		}
 		Files.delete(orphanedDir);
 	}
 
+	/* visisble for testing */
 	CryptoPathMapper.CiphertextDirectory prepareCryptoFilesystem(Path pathToVault, FileNameCryptor cryptor, String clearStepParentDirName) throws IOException {
 		Path dataDir = pathToVault.resolve(Constants.DATA_DIR_NAME);
 		String rootDirHash = cryptor.hashDirectoryId(Constants.ROOT_DIR_ID);
