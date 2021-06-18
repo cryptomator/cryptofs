@@ -151,7 +151,7 @@ public class OrphanDir implements DiagnosticResult {
 	record Adoption(String newClearname, Path oldCipherPath) {}
 
 	private String createClearnameToBeShortened(int threshold) {
-		int neededLength = threshold / 4 * 3 - 16;
+		int neededLength = (threshold - 4) / 4 * 3 - 16;
 		return LONG_NAME_SUFFIX_BASE.repeat((neededLength % LONG_NAME_SUFFIX_BASE.length()) + 1);
 	}
 
