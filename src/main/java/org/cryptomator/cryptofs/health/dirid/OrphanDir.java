@@ -69,8 +69,9 @@ public class OrphanDir implements DiagnosticResult {
 
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
+		String runId = BaseEncoding.base64Url().encode(SHA1_HASHER.digest(UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8))).substring(0,3);
 		Path orphanedDir = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(this.dir);
-		String orphanHash = dir.getParent().getFileName().toString() + dir.getFileName().toString(); //TODO: is this the way? -> if the process is midterm aborted and later retried files already exist!
+		String orphanHash = dir.getParent().getFileName().toString() + dir.getFileName().toString();
 
 		var stepParentDir = prepareCryptoFilesystem(pathToVault, cryptor.fileNameCryptor(), orphanHash);
 
@@ -85,7 +86,7 @@ public class OrphanDir implements DiagnosticResult {
 					case FILE -> FILE_PREFIX + fileCounter.getAndIncrement();
 					case DIRECTORY -> DIR_PREFIX + dirCounter.getAndIncrement();
 					case SYMLINK -> SYMLINK_PREFIX + symlinkCounter.getAndIncrement();
-				};
+				} + "_" + runId;
 				adoptOrphanedResource(new Adoption(newClearName, orphanedResource), stepParentDir, cryptor.fileNameCryptor(), longNameSuffix);
 			}
 		}
