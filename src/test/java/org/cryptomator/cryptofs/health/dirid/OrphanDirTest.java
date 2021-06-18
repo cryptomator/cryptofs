@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class OrphanDirTest {
 
@@ -274,5 +275,33 @@ public class OrphanDirTest {
 
 		Mockito.verify(resultSpy, Mockito.times(2)).adoptOrphanedResource(Mockito.any(), Mockito.eq(stepParentDir), Mockito.eq(cryptor), Mockito.any());
 		Assertions.assertTrue(Files.notExists(cipherOrphan));
+	}
+
+	@Test
+	@DisplayName("results with same orphan have write to same cleartext stepparent")
+	public void testfixRepeated() throws IOException {
+		VaultConfig config = Mockito.mock(VaultConfig.class);
+		Mockito.doReturn(170).when(config).getShorteningThreshold();
+		Masterkey masterkey = Mockito.mock(Masterkey.class);
+		Cryptor generalCryptor = Mockito.mock(Cryptor.class);
+		Mockito.doReturn(cryptor).when(generalCryptor).fileNameCryptor();
+
+		AtomicReference<String> clearStepparentNameRef = new AtomicReference<>("");
+
+		var interruptedResult = new OrphanDir(dataDir.relativize(cipherOrphan));
+		var interruptedSpy = Mockito.spy(interruptedResult);
+		Mockito.doAnswer(invocation -> {
+			clearStepparentNameRef.set((String) invocation.getArgument(2));
+			throw new IOException("Interrupt");
+		}).when(interruptedSpy).prepareCryptoFilesystem(Mockito.eq(pathToVault), Mockito.eq(cryptor), Mockito.any());
+
+		var continuedResult = new OrphanDir(dataDir.relativize(cipherOrphan));
+		var continuedSpy = Mockito.spy(continuedResult);
+		Mockito.doThrow(IOException.class).when(continuedSpy).prepareCryptoFilesystem(Mockito.any(), Mockito.any(), Mockito.any());
+
+		Assertions.assertThrows(IOException.class, () -> interruptedSpy.fix(pathToVault, config, masterkey, generalCryptor));
+		Assertions.assertThrows(IOException.class, () -> continuedSpy.fix(pathToVault, config, masterkey, generalCryptor));
+
+		Mockito.verify(continuedSpy).prepareCryptoFilesystem(pathToVault, cryptor, clearStepparentNameRef.get());
 	}
 }
