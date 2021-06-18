@@ -119,9 +119,14 @@ public class OrphanDir implements DiagnosticResult {
 		//create "step-parent" directory to move orphaned files to
 		String cipherStepParentDirName = convertClearToCiphertext(cryptor, clearStepParentDirName, Constants.RECOVERY_DIR_ID);
 		Path cipherStepParentDirFile = cipherRecoveryDir.resolve(cipherStepParentDirName + "/" + Constants.DIR_FILE_NAME);
-		Files.createDirectory(cipherStepParentDirFile.getParent());
-		var stepParentUUID = UUID.randomUUID().toString();
-		Files.writeString(cipherStepParentDirFile, stepParentUUID, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+		final String stepParentUUID;
+		if (Files.exists(cipherStepParentDirFile, LinkOption.NOFOLLOW_LINKS)) {
+			stepParentUUID = Files.readString(cipherStepParentDirFile, StandardCharsets.UTF_8);
+		} else {
+			Files.createDirectory(cipherStepParentDirFile.getParent());
+			stepParentUUID = UUID.randomUUID().toString();
+			Files.writeString(cipherStepParentDirFile, stepParentUUID, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+		}
 		String stepParentDirHash = cryptor.hashDirectoryId(stepParentUUID);
 		Path stepParentDir = dataDir.resolve(stepParentDirHash.substring(0, 2)).resolve(stepParentDirHash.substring(2)).toAbsolutePath();
 		Files.createDirectories(stepParentDir);
