@@ -180,8 +180,9 @@ public class OrphanDirTest {
 		Files.createDirectories(stepParentDir.path);
 
 		Mockito.doReturn("adopted").when(cryptor).encryptFilename(BaseEncoding.base64Url(), adoption.newClearname(), stepParentDir.dirId.getBytes(StandardCharsets.UTF_8));
+		var sha1 = Mockito.mock(MessageDigest.class);
 
-		result.adoptOrphanedResource(adoption, stepParentDir, cryptor, "longNameSuffix");
+		result.adoptOrphanedResource(adoption, stepParentDir, cryptor, "longNameSuffix", sha1);
 
 		Assertions.assertEquals(expectedMsg, Files.readString(stepParentDir.path.resolve("adopted.c9r")));
 		Assertions.assertTrue(Files.notExists(adoption.oldCipherPath()));
@@ -198,17 +199,15 @@ public class OrphanDirTest {
 		Files.createDirectories(stepParentDir.path);
 
 		Mockito.doReturn("adopted").when(cryptor).encryptFilename(Mockito.any(), Mockito.any(), Mockito.any());
-		try (var messageDigestClass = Mockito.mockStatic(MessageDigest.class); //
-			 var baseEncodingClass = Mockito.mockStatic(BaseEncoding.class)) {
+		try (var baseEncodingClass = Mockito.mockStatic(BaseEncoding.class)) {
 			MessageDigest sha1 = Mockito.mock(MessageDigest.class);
-			messageDigestClass.when(() -> MessageDigest.getInstance("SHA1")).thenReturn(sha1);
 			Mockito.doReturn(new byte[]{}).when(sha1).digest(Mockito.any());
 
 			BaseEncoding base64url = Mockito.mock(BaseEncoding.class);
 			baseEncodingClass.when(() -> BaseEncoding.base64Url()).thenReturn(base64url);
 			Mockito.doReturn("adopted_shortened").when(base64url).encode(Mockito.any());
 
-			result.adoptOrphanedResource(adoption, stepParentDir, cryptor, "");
+			result.adoptOrphanedResource(adoption, stepParentDir, cryptor, "", sha1);
 		}
 
 		Assertions.assertTrue(Files.exists(stepParentDir.path.resolve("adopted_shortened.c9s")));
@@ -227,17 +226,15 @@ public class OrphanDirTest {
 		Files.createDirectories(stepParentDir.path);
 
 		Mockito.doReturn("adopted").when(cryptor).encryptFilename(Mockito.any(), Mockito.any(), Mockito.any());
-		try (var messageDigestClass = Mockito.mockStatic(MessageDigest.class); //
-			 var baseEncodingClass = Mockito.mockStatic(BaseEncoding.class)) {
+		try (var baseEncodingClass = Mockito.mockStatic(BaseEncoding.class)) {
 			MessageDigest sha1 = Mockito.mock(MessageDigest.class);
-			messageDigestClass.when(() -> MessageDigest.getInstance("SHA1")).thenReturn(sha1);
 			Mockito.doReturn(new byte[]{}).when(sha1).digest(Mockito.any());
 
 			BaseEncoding base64url = Mockito.mock(BaseEncoding.class);
 			baseEncodingClass.when(() -> BaseEncoding.base64Url()).thenReturn(base64url);
 			Mockito.doReturn("adopted_shortened").when(base64url).encode(Mockito.any());
 
-			result.adoptOrphanedResource(adoption, stepParentDir, cryptor, "");
+			result.adoptOrphanedResource(adoption, stepParentDir, cryptor, "", sha1);
 		}
 
 		Assertions.assertTrue(Files.exists(stepParentDir.path.resolve("adopted_shortened.c9s")));
@@ -269,11 +266,11 @@ public class OrphanDirTest {
 			var adoption = (OrphanDir.Adoption) invocationOnMock.getArgument(0);
 			Files.delete(adoption.oldCipherPath());
 			return null;
-		}).when(resultSpy).adoptOrphanedResource(Mockito.any(), Mockito.eq(stepParentDir), Mockito.eq(cryptor), Mockito.any());
+		}).when(resultSpy).adoptOrphanedResource(Mockito.any(), Mockito.eq(stepParentDir), Mockito.eq(cryptor), Mockito.any(), Mockito.any());
 
 		resultSpy.fix(pathToVault, config, masterkey, generalCryptor);
 
-		Mockito.verify(resultSpy, Mockito.times(2)).adoptOrphanedResource(Mockito.any(), Mockito.eq(stepParentDir), Mockito.eq(cryptor), Mockito.any());
+		Mockito.verify(resultSpy, Mockito.times(2)).adoptOrphanedResource(Mockito.any(), Mockito.eq(stepParentDir), Mockito.eq(cryptor), Mockito.any(), Mockito.any());
 		Assertions.assertTrue(Files.notExists(cipherOrphan));
 	}
 

@@ -36,15 +36,6 @@ public class OrphanDir implements DiagnosticResult {
 	private static final String DIR_PREFIX = "directory";
 	private static final String SYMLINK_PREFIX = "symlink";
 	private static final String LONG_NAME_SUFFIX_BASE = "_withVeryLongName";
-	private static final MessageDigest SHA1_HASHER;
-
-	static {
-		try {
-			SHA1_HASHER = MessageDigest.getInstance("SHA1");
-		} catch (NoSuchAlgorithmException e) {
-			throw new ExceptionInInitializerError("Every JVM needs to provide a SHA1 implementation.");
-		}
-	}
 
 	final Path dir;
 
@@ -69,7 +60,8 @@ public class OrphanDir implements DiagnosticResult {
 
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
-		String runId = BaseEncoding.base64Url().encode(SHA1_HASHER.digest(UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8))).substring(0,3);
+		var sha1 = getSha1MessageDigest();
+		String runId = BaseEncoding.base64Url().encode(sha1.digest(UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8))).substring(0, 3);
 		Path orphanedDir = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(this.dir);
 		String orphanHash = dir.getParent().getFileName().toString() + dir.getFileName().toString();
 
@@ -87,7 +79,7 @@ public class OrphanDir implements DiagnosticResult {
 					case DIRECTORY -> DIR_PREFIX + dirCounter.getAndIncrement();
 					case SYMLINK -> SYMLINK_PREFIX + symlinkCounter.getAndIncrement();
 				} + "_" + runId;
-				adoptOrphanedResource(new Adoption(newClearName, orphanedResource), stepParentDir, cryptor.fileNameCryptor(), longNameSuffix);
+				adoptOrphanedResource(new Adoption(newClearName, orphanedResource), stepParentDir, cryptor.fileNameCryptor(), longNameSuffix, sha1);
 			}
 		}
 		Files.delete(orphanedDir);
@@ -134,10 +126,10 @@ public class OrphanDir implements DiagnosticResult {
 	}
 
 	// visible for testing
-	void adoptOrphanedResource(Adoption adoption, CryptoPathMapper.CiphertextDirectory stepParentDir, FileNameCryptor cryptor, String longNameSuffix) throws IOException {
+	void adoptOrphanedResource(Adoption adoption, CryptoPathMapper.CiphertextDirectory stepParentDir, FileNameCryptor cryptor, String longNameSuffix, MessageDigest sha1) throws IOException {
 		if (adoption.oldCipherPath.toString().endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
 			var newCipherName = convertClearToCiphertext(cryptor, adoption.newClearname + longNameSuffix, stepParentDir.dirId);
-			var deflatedName = BaseEncoding.base64Url().encode(SHA1_HASHER.digest(newCipherName.getBytes(StandardCharsets.UTF_8))) + Constants.DEFLATED_FILE_SUFFIX;
+			var deflatedName = BaseEncoding.base64Url().encode(sha1.digest(newCipherName.getBytes(StandardCharsets.UTF_8))) + Constants.DEFLATED_FILE_SUFFIX;
 			Path targetPath = stepParentDir.path.resolve(deflatedName);
 			Files.move(adoption.oldCipherPath, targetPath, StandardCopyOption.ATOMIC_MOVE);
 
@@ -155,22 +147,30 @@ public class OrphanDir implements DiagnosticResult {
 	// visible for testing
 	record Adoption(String newClearname, Path oldCipherPath) {}
 
-	private String createClearnameToBeShortened(int threshold) {
+	private static String createClearnameToBeShortened(int threshold) {
 		int neededLength = (threshold - 4) / 4 * 3 - 16;
 		return LONG_NAME_SUFFIX_BASE.repeat((neededLength % LONG_NAME_SUFFIX_BASE.length()) + 1);
 	}
 
-	private String convertClearToCiphertext(FileNameCryptor cryptor, String clearTextName, String dirId) {
+	private static String convertClearToCiphertext(FileNameCryptor cryptor, String clearTextName, String dirId) {
 		return cryptor.encryptFilename(BaseEncoding.base64Url(), clearTextName, dirId.getBytes(StandardCharsets.UTF_8)) + Constants.CRYPTOMATOR_FILE_SUFFIX;
 	}
 
-	private CiphertextFileType determineCiphertextFileType(Path ciphertextPath) {
+	private static CiphertextFileType determineCiphertextFileType(Path ciphertextPath) {
 		if (Files.exists(ciphertextPath.resolve(Constants.DIR_FILE_NAME), LinkOption.NOFOLLOW_LINKS)) {
 			return CiphertextFileType.DIRECTORY;
 		} else if (Files.exists(ciphertextPath.resolve(Constants.SYMLINK_FILE_NAME), LinkOption.NOFOLLOW_LINKS)) {
 			return CiphertextFileType.SYMLINK;
 		} else {
 			return CiphertextFileType.FILE;
+		}
+	}
+
+	private static MessageDigest getSha1MessageDigest() {
+		try {
+			return MessageDigest.getInstance("SHA1");
+		} catch (NoSuchAlgorithmException e) {
+			throw new InstantiationError("Every JVM needs to provide a SHA1 implementation.");
 		}
 	}
 }
