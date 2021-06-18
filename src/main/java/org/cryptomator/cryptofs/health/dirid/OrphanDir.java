@@ -170,7 +170,7 @@ public class OrphanDir implements DiagnosticResult {
 		try {
 			return MessageDigest.getInstance("SHA1");
 		} catch (NoSuchAlgorithmException e) {
-			throw new InstantiationError("Every JVM needs to provide a SHA1 implementation.");
+			throw new IllegalStateException("Every JVM needs to provide a SHA1 implementation.");
 		}
 	}
 }
