@@ -10,6 +10,7 @@ import org.cryptomator.cryptolib.api.Masterkey;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
@@ -49,125 +50,114 @@ public class OrphanDirTest {
 		cryptor = Mockito.mock(FileNameCryptor.class);
 	}
 
-	@Test
-	@DisplayName("prepareStepParent() runs without error on not existing recovery dir")
-	public void testPrepareStepParentNonExistingRecoveryDir() throws IOException {
-		String clearStepParentName = "step-parent";
-		FileNameCryptor cryptor = Mockito.mock(FileNameCryptor.class);
-		Mockito.doReturn("000000").when(cryptor).hashDirectoryId(Constants.ROOT_DIR_ID);
-		Mockito.doReturn("111111").when(cryptor).hashDirectoryId(Constants.RECOVERY_DIR_ID);
-		Mockito.doReturn("222222").when(cryptor).hashDirectoryId("aaaaaa");
 
-		Mockito.doReturn("1").when(cryptor).encryptFilename(BaseEncoding.base64Url(), Constants.RECOVERY_DIR_NAME, Constants.ROOT_DIR_ID.getBytes(StandardCharsets.UTF_8));
-		Mockito.doReturn("2").when(cryptor).encryptFilename(BaseEncoding.base64Url(), clearStepParentName, Constants.RECOVERY_DIR_ID.getBytes(StandardCharsets.UTF_8));
+	@Nested
+	class PrepareStepParentTests {
 
-		try (var uuidClass = Mockito.mockStatic(UUID.class)) {
-			UUID uuid = Mockito.mock(UUID.class);
-			uuidClass.when(() -> UUID.randomUUID()).thenReturn(uuid);
-			Mockito.doReturn("aaaaaa").when(uuid).toString();
+		private String clearStepParentName;
 
-			result.prepareStepParent(pathToVault, cryptor, clearStepParentName);
+		@BeforeEach
+		public void init() {
+			clearStepParentName = "step-parent";
+			cryptor = Mockito.mock(FileNameCryptor.class);
+			Mockito.doReturn("000000").when(cryptor).hashDirectoryId(Constants.ROOT_DIR_ID);
+			Mockito.doReturn("111111").when(cryptor).hashDirectoryId(Constants.RECOVERY_DIR_ID);
+			Mockito.doReturn("222222").when(cryptor).hashDirectoryId("aaaaaa");
+
+			Mockito.doReturn("1").when(cryptor).encryptFilename(BaseEncoding.base64Url(), Constants.RECOVERY_DIR_NAME, Constants.ROOT_DIR_ID.getBytes(StandardCharsets.UTF_8));
+			Mockito.doReturn("2").when(cryptor).encryptFilename(BaseEncoding.base64Url(), clearStepParentName, Constants.RECOVERY_DIR_ID.getBytes(StandardCharsets.UTF_8));
 		}
 
-		Assertions.assertEquals(Constants.RECOVERY_DIR_ID, Files.readString(pathToVault.resolve("d/00/0000/1.c9r/dir.c9r"), StandardCharsets.UTF_8));
-		Assertions.assertEquals("aaaaaa", Files.readString(pathToVault.resolve("d/11/1111/2.c9r/dir.c9r"), StandardCharsets.UTF_8));
-		Assertions.assertTrue(Files.isDirectory(pathToVault.resolve("d/22/2222")));
 
-	}
+		@Test
+		@DisplayName("prepareStepParent() runs without error on not existing recovery dir")
+		public void testPrepareStepParentNonExistingRecoveryDir() throws IOException {
+			try (var uuidClass = Mockito.mockStatic(UUID.class)) {
+				UUID uuid = Mockito.mock(UUID.class);
+				uuidClass.when(() -> UUID.randomUUID()).thenReturn(uuid);
+				Mockito.doReturn("aaaaaa").when(uuid).toString();
 
-	@Test
-	@DisplayName("prepareStepParent() runs without error on existing recovery dir")
-	public void testPrepareStepParentExistingRecoveryDir() throws IOException {
-		Path existingRecoveryDirFile = cipherRoot.resolve("1.c9r/dir.c9r");
-		Files.createDirectories(existingRecoveryDirFile.getParent());
-		Files.writeString(existingRecoveryDirFile, Constants.RECOVERY_DIR_ID, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
-		Files.createDirectories(dataDir.resolve("11/1111"));
+				result.prepareStepParent(pathToVault, cryptor, clearStepParentName);
+			}
 
-		String clearStepParentName = "step-parent";
-		Mockito.doReturn("000000").when(cryptor).hashDirectoryId(Constants.ROOT_DIR_ID);
-		Mockito.doReturn("111111").when(cryptor).hashDirectoryId(Constants.RECOVERY_DIR_ID);
-		Mockito.doReturn("222222").when(cryptor).hashDirectoryId("aaaaaa");
-
-		Mockito.doReturn("1").when(cryptor).encryptFilename(BaseEncoding.base64Url(), Constants.RECOVERY_DIR_NAME, Constants.ROOT_DIR_ID.getBytes(StandardCharsets.UTF_8));
-		Mockito.doReturn("2").when(cryptor).encryptFilename(BaseEncoding.base64Url(), clearStepParentName, Constants.RECOVERY_DIR_ID.getBytes(StandardCharsets.UTF_8));
-
-		try (var uuidClass = Mockito.mockStatic(UUID.class)) {
-			UUID uuid = Mockito.mock(UUID.class);
-			uuidClass.when(() -> UUID.randomUUID()).thenReturn(uuid);
-			Mockito.doReturn("aaaaaa").when(uuid).toString();
-
-			result.prepareStepParent(pathToVault, cryptor, clearStepParentName);
+			Assertions.assertEquals(Constants.RECOVERY_DIR_ID, Files.readString(pathToVault.resolve("d/00/0000/1.c9r/dir.c9r"), StandardCharsets.UTF_8));
+			Assertions.assertEquals("aaaaaa", Files.readString(pathToVault.resolve("d/11/1111/2.c9r/dir.c9r"), StandardCharsets.UTF_8));
+			Assertions.assertTrue(Files.isDirectory(pathToVault.resolve("d/22/2222")));
 		}
 
-		Assertions.assertEquals(Constants.RECOVERY_DIR_ID, Files.readString(pathToVault.resolve("d/00/0000/1.c9r/dir.c9r"), StandardCharsets.UTF_8));
-		Assertions.assertEquals("aaaaaa", Files.readString(pathToVault.resolve("d/11/1111/2.c9r/dir.c9r"), StandardCharsets.UTF_8));
-		Assertions.assertTrue(Files.isDirectory(pathToVault.resolve("d/22/2222")));
-	}
 
-	@Test
-	@DisplayName("prepareStepParent() throws exception on existing recovery dir with wrong id")
-	public void testPrepareStepParentWithWrongRecoveryDir() throws IOException {
-		Path existingRecoveryDirFile = cipherRoot.resolve("1.c9r/dir.c9r");
-		Files.createDirectories(existingRecoveryDirFile.getParent());
-		Files.writeString(existingRecoveryDirFile, UUID.randomUUID().toString(), StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+		@Test
+		@DisplayName("prepareStepParent() runs without error on existing recovery dir")
+		public void testPrepareStepParentExistingRecoveryDir() throws IOException {
+			Path existingRecoveryDirFile = cipherRoot.resolve("1.c9r/dir.c9r");
+			Files.createDirectories(existingRecoveryDirFile.getParent());
+			Files.writeString(existingRecoveryDirFile, Constants.RECOVERY_DIR_ID, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+			Files.createDirectories(dataDir.resolve("11/1111"));
 
-		String clearStepParentName = "step-parent";
-		Mockito.doReturn("000000").when(cryptor).hashDirectoryId(Constants.ROOT_DIR_ID);
-		Mockito.doReturn("111111").when(cryptor).hashDirectoryId(Constants.RECOVERY_DIR_ID);
-		Mockito.doReturn("222222").when(cryptor).hashDirectoryId("aaaaaa");
+			try (var uuidClass = Mockito.mockStatic(UUID.class)) {
+				UUID uuid = Mockito.mock(UUID.class);
+				uuidClass.when(() -> UUID.randomUUID()).thenReturn(uuid);
+				Mockito.doReturn("aaaaaa").when(uuid).toString();
 
-		Mockito.doReturn("1").when(cryptor).encryptFilename(BaseEncoding.base64Url(), Constants.RECOVERY_DIR_NAME, Constants.ROOT_DIR_ID.getBytes(StandardCharsets.UTF_8));
-		Mockito.doReturn("2").when(cryptor).encryptFilename(BaseEncoding.base64Url(), clearStepParentName, Constants.RECOVERY_DIR_ID.getBytes(StandardCharsets.UTF_8));
+				result.prepareStepParent(pathToVault, cryptor, clearStepParentName);
+			}
 
-		try (var uuidClass = Mockito.mockStatic(UUID.class)) {
-			UUID uuid = Mockito.mock(UUID.class);
-			uuidClass.when(() -> UUID.randomUUID()).thenReturn(uuid);
-			Mockito.doReturn("aaaaaa").when(uuid).toString();
-
-			Assertions.assertThrows(FileAlreadyExistsException.class, () -> result.prepareStepParent(pathToVault, cryptor, clearStepParentName));
+			Assertions.assertEquals(Constants.RECOVERY_DIR_ID, Files.readString(pathToVault.resolve("d/00/0000/1.c9r/dir.c9r"), StandardCharsets.UTF_8));
+			Assertions.assertEquals("aaaaaa", Files.readString(pathToVault.resolve("d/11/1111/2.c9r/dir.c9r"), StandardCharsets.UTF_8));
+			Assertions.assertTrue(Files.isDirectory(pathToVault.resolve("d/22/2222")));
 		}
 
-		Assertions.assertNotEquals(Constants.RECOVERY_DIR_ID, Files.readString(pathToVault.resolve("d/00/0000/1.c9r/dir.c9r"), StandardCharsets.UTF_8));
-		Assertions.assertTrue(Files.notExists(pathToVault.resolve("d/11/1111/2.c9r/dir.c9r")));
-		Assertions.assertTrue(Files.notExists(pathToVault.resolve("d/22/2222")));
 
-	}
+		@Test
+		@DisplayName("prepareStepParent() throws exception on existing recovery dir with wrong id")
+		public void testPrepareStepParentWithWrongRecoveryDir() throws IOException {
+			Path existingRecoveryDirFile = cipherRoot.resolve("1.c9r/dir.c9r");
+			Files.createDirectories(existingRecoveryDirFile.getParent());
+			Files.writeString(existingRecoveryDirFile, UUID.randomUUID().toString(), StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
 
-	@Test
-	@DisplayName("prepareStepParent() runs without error on existing stepparent")
-	public void testPrepareStepParentExistingStepParentDir() throws IOException {
-		Path existingRecoveryDirFile = cipherRoot.resolve("1.c9r/dir.c9r");
-		Files.createDirectories(existingRecoveryDirFile.getParent());
-		Files.writeString(existingRecoveryDirFile, Constants.RECOVERY_DIR_ID, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
-		Path cipherRecovery = dataDir.resolve("11/1111");
-		Files.createDirectories(cipherRecovery);
+			try (var uuidClass = Mockito.mockStatic(UUID.class)) {
+				UUID uuid = Mockito.mock(UUID.class);
+				uuidClass.when(() -> UUID.randomUUID()).thenReturn(uuid);
+				Mockito.doReturn("aaaaaa").when(uuid).toString();
 
-		Path existingStepparentDirFile = cipherRecovery.resolve("2.c9r/dir.c9r");
-		Files.createDirectories(existingStepparentDirFile.getParent());
-		Files.writeString(existingStepparentDirFile, "aaaaaa", StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
-		Path cipherStepparent = dataDir.resolve("22/2222");
-		Files.createDirectories(cipherStepparent);
+				Assertions.assertThrows(FileAlreadyExistsException.class, () -> result.prepareStepParent(pathToVault, cryptor, clearStepParentName));
+			}
 
-		String clearStepParentName = "step-parent";
-		Mockito.doReturn("000000").when(cryptor).hashDirectoryId(Constants.ROOT_DIR_ID);
-		Mockito.doReturn("111111").when(cryptor).hashDirectoryId(Constants.RECOVERY_DIR_ID);
-		Mockito.doReturn("222222").when(cryptor).hashDirectoryId("aaaaaa");
-
-		Mockito.doReturn("1").when(cryptor).encryptFilename(BaseEncoding.base64Url(), Constants.RECOVERY_DIR_NAME, Constants.ROOT_DIR_ID.getBytes(StandardCharsets.UTF_8));
-		Mockito.doReturn("2").when(cryptor).encryptFilename(BaseEncoding.base64Url(), clearStepParentName, Constants.RECOVERY_DIR_ID.getBytes(StandardCharsets.UTF_8));
-
-		try (var uuidClass = Mockito.mockStatic(UUID.class)) {
-			UUID uuid = Mockito.mock(UUID.class);
-			uuidClass.when(() -> UUID.randomUUID()).thenReturn(uuid);
-			Mockito.doReturn("aaaaaa").when(uuid).toString();
-
-			result.prepareStepParent(pathToVault, cryptor, clearStepParentName);
+			Assertions.assertNotEquals(Constants.RECOVERY_DIR_ID, Files.readString(pathToVault.resolve("d/00/0000/1.c9r/dir.c9r"), StandardCharsets.UTF_8));
+			Assertions.assertTrue(Files.notExists(pathToVault.resolve("d/11/1111/2.c9r/dir.c9r")));
+			Assertions.assertTrue(Files.notExists(pathToVault.resolve("d/22/2222")));
 		}
 
-		Assertions.assertEquals(Constants.RECOVERY_DIR_ID, Files.readString(pathToVault.resolve("d/00/0000/1.c9r/dir.c9r"), StandardCharsets.UTF_8));
-		Assertions.assertEquals("aaaaaa", Files.readString(pathToVault.resolve("d/11/1111/2.c9r/dir.c9r"), StandardCharsets.UTF_8));
-		Assertions.assertTrue(Files.isDirectory(pathToVault.resolve("d/22/2222")));
+
+		@Test
+		@DisplayName("prepareStepParent() runs without error on existing stepparent")
+		public void testPrepareStepParentExistingStepParentDir() throws IOException {
+			Path existingRecoveryDirFile = cipherRoot.resolve("1.c9r/dir.c9r");
+			Files.createDirectories(existingRecoveryDirFile.getParent());
+			Files.writeString(existingRecoveryDirFile, Constants.RECOVERY_DIR_ID, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+			Path cipherRecovery = dataDir.resolve("11/1111");
+			Files.createDirectories(cipherRecovery);
+
+			Path existingStepparentDirFile = cipherRecovery.resolve("2.c9r/dir.c9r");
+			Files.createDirectories(existingStepparentDirFile.getParent());
+			Files.writeString(existingStepparentDirFile, "aaaaaa", StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+			Path cipherStepparent = dataDir.resolve("22/2222");
+			Files.createDirectories(cipherStepparent);
+
+			try (var uuidClass = Mockito.mockStatic(UUID.class)) {
+				UUID uuid = Mockito.mock(UUID.class);
+				uuidClass.when(() -> UUID.randomUUID()).thenReturn(uuid);
+				Mockito.doReturn("aaaaaa").when(uuid).toString();
+
+				result.prepareStepParent(pathToVault, cryptor, clearStepParentName);
+			}
+
+			Assertions.assertEquals(Constants.RECOVERY_DIR_ID, Files.readString(pathToVault.resolve("d/00/0000/1.c9r/dir.c9r"), StandardCharsets.UTF_8));
+			Assertions.assertEquals("aaaaaa", Files.readString(pathToVault.resolve("d/11/1111/2.c9r/dir.c9r"), StandardCharsets.UTF_8));
+			Assertions.assertTrue(Files.isDirectory(pathToVault.resolve("d/22/2222")));
+		}
 	}
+
 
 	@Test
 	@DisplayName("adoptOrphanedResource runs for unshortened resource")
@@ -188,6 +178,7 @@ public class OrphanDirTest {
 		Assertions.assertEquals(expectedMsg, Files.readString(stepParentDir.path.resolve("adopted.c9r")));
 		Assertions.assertTrue(Files.notExists(oldCipherPath));
 	}
+
 
 	@Test
 	@DisplayName("adoptOrphanedResource runs for shortened resource with existing name.c9s")
@@ -245,6 +236,7 @@ public class OrphanDirTest {
 		Assertions.assertTrue(Files.notExists(oldCipherPath));
 	}
 
+
 	@Test
 	@DisplayName("fix() prepares vault, process every resource in orphanDir and deletes orphanDir")
 	public void testFix() throws IOException {
@@ -276,6 +268,7 @@ public class OrphanDirTest {
 		Assertions.assertTrue(Files.notExists(cipherOrphan));
 	}
 
+	
 	@Test
 	@DisplayName("results with same orphan have write to same cleartext stepparent")
 	public void testfixRepeated() throws IOException {
