@@ -61,7 +61,7 @@ public class OrphanDir implements DiagnosticResult {
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
 		var sha1 = getSha1MessageDigest();
-		String runId = BaseEncoding.base64Url().encode(sha1.digest(UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8))).substring(0, 3);
+		String runId = Integer.toString((short) UUID.randomUUID().getMostSignificantBits(), 32);
 		Path orphanedDir = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(this.dir);
 		String orphanHash = dir.getParent().getFileName().toString() + dir.getFileName().toString();
 
@@ -100,7 +100,7 @@ public class OrphanDir implements DiagnosticResult {
 			Files.writeString(cipherRecoveryDirFile, Constants.RECOVERY_DIR_ID, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 		} else {
 			String uuid = Files.readString(cipherRecoveryDirFile, StandardCharsets.UTF_8);
-			if (!uuid.equals(Constants.RECOVERY_DIR_ID)) {
+			if (!Constants.RECOVERY_DIR_ID.equals(uuid)) {
 				throw new FileAlreadyExistsException("Directory /" + Constants.RECOVERY_DIR_NAME + " already exists, but with wrong directory id.");
 			}
 		}
