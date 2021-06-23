@@ -173,27 +173,29 @@ public class OrphanDirTest {
 	@DisplayName("adoptOrphanedResource runs for unshortened resource")
 	public void testAdoptOrphanedUnshortened() throws IOException {
 		String expectedMsg = "Please, sir, I want some more.";
-		OrphanDir.Adoption adoption = new OrphanDir.Adoption("OliverTwist", cipherOrphan.resolve("orphan.c9r"));
-		Files.writeString(adoption.oldCipherPath(), expectedMsg, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+		Path oldCipherPath = cipherOrphan.resolve("orphan.c9r");
+		String newClearName = "OliverTwist";
+		Files.writeString(oldCipherPath, expectedMsg, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 
 		CryptoPathMapper.CiphertextDirectory stepParentDir = new CryptoPathMapper.CiphertextDirectory("aaaaaa", pathToVault.resolve("d/22/2222"));
 		Files.createDirectories(stepParentDir.path);
 
-		Mockito.doReturn("adopted").when(cryptor).encryptFilename(BaseEncoding.base64Url(), adoption.newClearname(), stepParentDir.dirId.getBytes(StandardCharsets.UTF_8));
+		Mockito.doReturn("adopted").when(cryptor).encryptFilename(BaseEncoding.base64Url(), newClearName, stepParentDir.dirId.getBytes(StandardCharsets.UTF_8));
 		var sha1 = Mockito.mock(MessageDigest.class);
 
-		result.adoptOrphanedResource(adoption, stepParentDir, cryptor, "longNameSuffix", sha1);
+		result.adoptOrphanedResource(oldCipherPath, newClearName, stepParentDir, cryptor, "longNameSuffix", sha1);
 
 		Assertions.assertEquals(expectedMsg, Files.readString(stepParentDir.path.resolve("adopted.c9r")));
-		Assertions.assertTrue(Files.notExists(adoption.oldCipherPath()));
+		Assertions.assertTrue(Files.notExists(oldCipherPath));
 	}
 
 	@Test
 	@DisplayName("adoptOrphanedResource runs for shortened resource with existing name.c9s")
 	public void testAdoptOrphanedShortened() throws IOException {
-		OrphanDir.Adoption adoption = new OrphanDir.Adoption("Jim Knopf", cipherOrphan.resolve("orphan.c9s"));
-		Files.createDirectories(adoption.oldCipherPath());
-		Files.createFile(adoption.oldCipherPath().resolve("name.c9s"));
+		Path oldCipherPath = cipherOrphan.resolve("orphan.c9s");
+		String newClearName = "JimKnopf";
+		Files.createDirectories(oldCipherPath);
+		Files.createFile(oldCipherPath.resolve("name.c9s"));
 
 		CryptoPathMapper.CiphertextDirectory stepParentDir = new CryptoPathMapper.CiphertextDirectory("aaaaaa", pathToVault.resolve("d/22/2222"));
 		Files.createDirectories(stepParentDir.path);
@@ -207,20 +209,21 @@ public class OrphanDirTest {
 			baseEncodingClass.when(() -> BaseEncoding.base64Url()).thenReturn(base64url);
 			Mockito.doReturn("adopted_shortened").when(base64url).encode(Mockito.any());
 
-			result.adoptOrphanedResource(adoption, stepParentDir, cryptor, "", sha1);
+			result.adoptOrphanedResource(oldCipherPath, newClearName, stepParentDir, cryptor, "", sha1);
 		}
 
 		Assertions.assertTrue(Files.exists(stepParentDir.path.resolve("adopted_shortened.c9s")));
 		Assertions.assertEquals("adopted.c9r", Files.readString(stepParentDir.path.resolve("adopted_shortened.c9s/name.c9s")));
-		Assertions.assertTrue(Files.notExists(adoption.oldCipherPath()));
+		Assertions.assertTrue(Files.notExists(oldCipherPath));
 	}
 
 
 	@Test
 	@DisplayName("adoptOrphanedResource runs for shortened resource without existing name.c9s")
 	public void testAdoptOrphanedShortenedMissingNameC9s() throws IOException {
-		OrphanDir.Adoption adoption = new OrphanDir.Adoption("Tom Sawyer", cipherOrphan.resolve("orphan.c9s"));
-		Files.createDirectories(adoption.oldCipherPath());
+		Path oldCipherPath = cipherOrphan.resolve("orphan.c9s");
+		String newClearName = "TomSawyer";
+		Files.createDirectories(oldCipherPath);
 
 		CryptoPathMapper.CiphertextDirectory stepParentDir = new CryptoPathMapper.CiphertextDirectory("aaaaaa", pathToVault.resolve("d/22/2222"));
 		Files.createDirectories(stepParentDir.path);
@@ -234,12 +237,12 @@ public class OrphanDirTest {
 			baseEncodingClass.when(() -> BaseEncoding.base64Url()).thenReturn(base64url);
 			Mockito.doReturn("adopted_shortened").when(base64url).encode(Mockito.any());
 
-			result.adoptOrphanedResource(adoption, stepParentDir, cryptor, "", sha1);
+			result.adoptOrphanedResource(oldCipherPath, newClearName, stepParentDir, cryptor, "", sha1);
 		}
 
 		Assertions.assertTrue(Files.exists(stepParentDir.path.resolve("adopted_shortened.c9s")));
 		Assertions.assertEquals("adopted.c9r", Files.readString(stepParentDir.path.resolve("adopted_shortened.c9s/name.c9s")));
-		Assertions.assertTrue(Files.notExists(adoption.oldCipherPath()));
+		Assertions.assertTrue(Files.notExists(oldCipherPath));
 	}
 
 	@Test
@@ -263,14 +266,13 @@ public class OrphanDirTest {
 
 		Mockito.doReturn(stepParentDir).when(resultSpy).prepareCryptoFilesystem(Mockito.eq(pathToVault), Mockito.eq(cryptor), Mockito.any());
 		Mockito.doAnswer(invocationOnMock -> {
-			var adoption = (OrphanDir.Adoption) invocationOnMock.getArgument(0);
-			Files.delete(adoption.oldCipherPath());
+			Files.delete((Path) invocationOnMock.getArgument(0));
 			return null;
-		}).when(resultSpy).adoptOrphanedResource(Mockito.any(), Mockito.eq(stepParentDir), Mockito.eq(cryptor), Mockito.any(), Mockito.any());
+		}).when(resultSpy).adoptOrphanedResource(Mockito.any(), Mockito.any(), Mockito.eq(stepParentDir), Mockito.eq(cryptor), Mockito.any(), Mockito.any());
 
 		resultSpy.fix(pathToVault, config, masterkey, generalCryptor);
 
-		Mockito.verify(resultSpy, Mockito.times(2)).adoptOrphanedResource(Mockito.any(), Mockito.eq(stepParentDir), Mockito.eq(cryptor), Mockito.any(), Mockito.any());
+		Mockito.verify(resultSpy, Mockito.times(2)).adoptOrphanedResource(Mockito.any(), Mockito.any(), Mockito.eq(stepParentDir), Mockito.eq(cryptor), Mockito.any(), Mockito.any());
 		Assertions.assertTrue(Files.notExists(cipherOrphan));
 	}
 

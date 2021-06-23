@@ -79,7 +79,7 @@ public class OrphanDir implements DiagnosticResult {
 					case DIRECTORY -> DIR_PREFIX + dirCounter.getAndIncrement();
 					case SYMLINK -> SYMLINK_PREFIX + symlinkCounter.getAndIncrement();
 				} + "_" + runId;
-				adoptOrphanedResource(new Adoption(newClearName, orphanedResource), stepParentDir, cryptor.fileNameCryptor(), longNameSuffix, sha1);
+				adoptOrphanedResource(orphanedResource, newClearName, stepParentDir, cryptor.fileNameCryptor(), longNameSuffix, sha1);
 			}
 		}
 		Files.delete(orphanedDir);
@@ -126,26 +126,23 @@ public class OrphanDir implements DiagnosticResult {
 	}
 
 	// visible for testing
-	void adoptOrphanedResource(Adoption adoption, CryptoPathMapper.CiphertextDirectory stepParentDir, FileNameCryptor cryptor, String longNameSuffix, MessageDigest sha1) throws IOException {
-		if (adoption.oldCipherPath.toString().endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
-			var newCipherName = convertClearToCiphertext(cryptor, adoption.newClearname + longNameSuffix, stepParentDir.dirId);
+	void adoptOrphanedResource(Path oldCipherPath, String newClearname, CryptoPathMapper.CiphertextDirectory stepParentDir, FileNameCryptor cryptor, String longNameSuffix, MessageDigest sha1) throws IOException {
+		if (oldCipherPath.toString().endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
+			var newCipherName = convertClearToCiphertext(cryptor, newClearname + longNameSuffix, stepParentDir.dirId);
 			var deflatedName = BaseEncoding.base64Url().encode(sha1.digest(newCipherName.getBytes(StandardCharsets.UTF_8))) + Constants.DEFLATED_FILE_SUFFIX;
 			Path targetPath = stepParentDir.path.resolve(deflatedName);
-			Files.move(adoption.oldCipherPath, targetPath, StandardCopyOption.ATOMIC_MOVE);
+			Files.move(oldCipherPath, targetPath, StandardCopyOption.ATOMIC_MOVE);
 
 			//adjust name.c9s
 			try (var fc = Files.newByteChannel(targetPath.resolve(Constants.INFLATED_FILE_NAME), StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
 				fc.write(ByteBuffer.wrap(newCipherName.getBytes(StandardCharsets.UTF_8)));
 			}
 		} else {
-			var newCipherName = convertClearToCiphertext(cryptor, adoption.newClearname, stepParentDir.dirId);
+			var newCipherName = convertClearToCiphertext(cryptor, newClearname, stepParentDir.dirId);
 			Path targetPath = stepParentDir.path.resolve(newCipherName);
-			Files.move(adoption.oldCipherPath, targetPath, StandardCopyOption.ATOMIC_MOVE);
+			Files.move(oldCipherPath, targetPath, StandardCopyOption.ATOMIC_MOVE);
 		}
 	}
-
-	// visible for testing
-	record Adoption(String newClearname, Path oldCipherPath) {}
 
 	private static String createClearnameToBeShortened(int threshold) {
 		int neededLength = (threshold - 4) / 4 * 3 - 16;
