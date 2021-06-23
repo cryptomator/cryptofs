@@ -195,82 +195,86 @@ public class OrphanDirTest {
 		}
 	}
 
+	@Nested
+	class AdoptOrphanedTests {
 
-	@Test
-	@DisplayName("adoptOrphanedResource runs for unshortened resource")
-	public void testAdoptOrphanedUnshortened() throws IOException {
-		String expectedMsg = "Please, sir, I want some more.";
-		Path oldCipherPath = cipherOrphan.resolve("orphan.c9r");
-		String newClearName = "OliverTwist";
-		Files.writeString(oldCipherPath, expectedMsg, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+		@Test
+		@DisplayName("adoptOrphanedResource runs for unshortened resource")
+		public void testAdoptOrphanedUnshortened() throws IOException {
+			String expectedMsg = "Please, sir, I want some more.";
+			Path oldCipherPath = cipherOrphan.resolve("orphan.c9r");
+			String newClearName = "OliverTwist";
+			Files.writeString(oldCipherPath, expectedMsg, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 
-		CryptoPathMapper.CiphertextDirectory stepParentDir = new CryptoPathMapper.CiphertextDirectory("aaaaaa", pathToVault.resolve("d/22/2222"));
-		Files.createDirectories(stepParentDir.path);
+			CryptoPathMapper.CiphertextDirectory stepParentDir = new CryptoPathMapper.CiphertextDirectory("aaaaaa", pathToVault.resolve("d/22/2222"));
+			Files.createDirectories(stepParentDir.path);
 
-		Mockito.doReturn("adopted").when(cryptor).encryptFilename(BaseEncoding.base64Url(), newClearName, stepParentDir.dirId.getBytes(StandardCharsets.UTF_8));
-		var sha1 = Mockito.mock(MessageDigest.class);
+			Mockito.doReturn("adopted").when(cryptor).encryptFilename(BaseEncoding.base64Url(), newClearName, stepParentDir.dirId.getBytes(StandardCharsets.UTF_8));
+			var sha1 = Mockito.mock(MessageDigest.class);
 
-		result.adoptOrphanedResource(oldCipherPath, newClearName, stepParentDir, cryptor, "longNameSuffix", sha1);
+			result.adoptOrphanedResource(oldCipherPath, newClearName, stepParentDir, cryptor, "longNameSuffix", sha1);
 
-		Assertions.assertEquals(expectedMsg, Files.readString(stepParentDir.path.resolve("adopted.c9r")));
-		Assertions.assertTrue(Files.notExists(oldCipherPath));
-	}
-
-
-	@Test
-	@DisplayName("adoptOrphanedResource runs for shortened resource with existing name.c9s")
-	public void testAdoptOrphanedShortened() throws IOException {
-		Path oldCipherPath = cipherOrphan.resolve("orphan.c9s");
-		String newClearName = "JimKnopf";
-		Files.createDirectories(oldCipherPath);
-		Files.createFile(oldCipherPath.resolve("name.c9s"));
-
-		CryptoPathMapper.CiphertextDirectory stepParentDir = new CryptoPathMapper.CiphertextDirectory("aaaaaa", pathToVault.resolve("d/22/2222"));
-		Files.createDirectories(stepParentDir.path);
-
-		Mockito.doReturn("adopted").when(cryptor).encryptFilename(Mockito.any(), Mockito.any(), Mockito.any());
-		try (var baseEncodingClass = Mockito.mockStatic(BaseEncoding.class)) {
-			MessageDigest sha1 = Mockito.mock(MessageDigest.class);
-			Mockito.doReturn(new byte[]{}).when(sha1).digest(Mockito.any());
-
-			BaseEncoding base64url = Mockito.mock(BaseEncoding.class);
-			baseEncodingClass.when(() -> BaseEncoding.base64Url()).thenReturn(base64url);
-			Mockito.doReturn("adopted_shortened").when(base64url).encode(Mockito.any());
-
-			result.adoptOrphanedResource(oldCipherPath, newClearName, stepParentDir, cryptor, "", sha1);
+			Assertions.assertEquals(expectedMsg, Files.readString(stepParentDir.path.resolve("adopted.c9r")));
+			Assertions.assertTrue(Files.notExists(oldCipherPath));
 		}
 
-		Assertions.assertTrue(Files.exists(stepParentDir.path.resolve("adopted_shortened.c9s")));
-		Assertions.assertEquals("adopted.c9r", Files.readString(stepParentDir.path.resolve("adopted_shortened.c9s/name.c9s")));
-		Assertions.assertTrue(Files.notExists(oldCipherPath));
-	}
 
+		@Test
+		@DisplayName("adoptOrphanedResource runs for shortened resource with existing name.c9s")
+		public void testAdoptOrphanedShortened() throws IOException {
+			Path oldCipherPath = cipherOrphan.resolve("orphan.c9s");
+			String newClearName = "JimKnopf";
+			Files.createDirectories(oldCipherPath);
+			Files.createFile(oldCipherPath.resolve("name.c9s"));
 
-	@Test
-	@DisplayName("adoptOrphanedResource runs for shortened resource without existing name.c9s")
-	public void testAdoptOrphanedShortenedMissingNameC9s() throws IOException {
-		Path oldCipherPath = cipherOrphan.resolve("orphan.c9s");
-		String newClearName = "TomSawyer";
-		Files.createDirectories(oldCipherPath);
+			CryptoPathMapper.CiphertextDirectory stepParentDir = new CryptoPathMapper.CiphertextDirectory("aaaaaa", pathToVault.resolve("d/22/2222"));
+			Files.createDirectories(stepParentDir.path);
 
-		CryptoPathMapper.CiphertextDirectory stepParentDir = new CryptoPathMapper.CiphertextDirectory("aaaaaa", pathToVault.resolve("d/22/2222"));
-		Files.createDirectories(stepParentDir.path);
+			Mockito.doReturn("adopted").when(cryptor).encryptFilename(Mockito.any(), Mockito.any(), Mockito.any());
+			try (var baseEncodingClass = Mockito.mockStatic(BaseEncoding.class)) {
+				MessageDigest sha1 = Mockito.mock(MessageDigest.class);
+				Mockito.doReturn(new byte[]{}).when(sha1).digest(Mockito.any());
 
-		Mockito.doReturn("adopted").when(cryptor).encryptFilename(Mockito.any(), Mockito.any(), Mockito.any());
-		try (var baseEncodingClass = Mockito.mockStatic(BaseEncoding.class)) {
-			MessageDigest sha1 = Mockito.mock(MessageDigest.class);
-			Mockito.doReturn(new byte[]{}).when(sha1).digest(Mockito.any());
+				BaseEncoding base64url = Mockito.mock(BaseEncoding.class);
+				baseEncodingClass.when(() -> BaseEncoding.base64Url()).thenReturn(base64url);
+				Mockito.doReturn("adopted_shortened").when(base64url).encode(Mockito.any());
 
-			BaseEncoding base64url = Mockito.mock(BaseEncoding.class);
-			baseEncodingClass.when(() -> BaseEncoding.base64Url()).thenReturn(base64url);
-			Mockito.doReturn("adopted_shortened").when(base64url).encode(Mockito.any());
+				result.adoptOrphanedResource(oldCipherPath, newClearName, stepParentDir, cryptor, "", sha1);
+			}
 
-			result.adoptOrphanedResource(oldCipherPath, newClearName, stepParentDir, cryptor, "", sha1);
+			Assertions.assertTrue(Files.exists(stepParentDir.path.resolve("adopted_shortened.c9s")));
+			Assertions.assertEquals("adopted.c9r", Files.readString(stepParentDir.path.resolve("adopted_shortened.c9s/name.c9s")));
+			Assertions.assertTrue(Files.notExists(oldCipherPath));
 		}
 
-		Assertions.assertTrue(Files.exists(stepParentDir.path.resolve("adopted_shortened.c9s")));
-		Assertions.assertEquals("adopted.c9r", Files.readString(stepParentDir.path.resolve("adopted_shortened.c9s/name.c9s")));
-		Assertions.assertTrue(Files.notExists(oldCipherPath));
+
+		@Test
+		@DisplayName("adoptOrphanedResource runs for shortened resource without existing name.c9s")
+		public void testAdoptOrphanedShortenedMissingNameC9s() throws IOException {
+			Path oldCipherPath = cipherOrphan.resolve("orphan.c9s");
+			String newClearName = "TomSawyer";
+			Files.createDirectories(oldCipherPath);
+
+			CryptoPathMapper.CiphertextDirectory stepParentDir = new CryptoPathMapper.CiphertextDirectory("aaaaaa", pathToVault.resolve("d/22/2222"));
+			Files.createDirectories(stepParentDir.path);
+
+			Mockito.doReturn("adopted").when(cryptor).encryptFilename(Mockito.any(), Mockito.any(), Mockito.any());
+			try (var baseEncodingClass = Mockito.mockStatic(BaseEncoding.class)) {
+				MessageDigest sha1 = Mockito.mock(MessageDigest.class);
+				Mockito.doReturn(new byte[]{}).when(sha1).digest(Mockito.any());
+
+				BaseEncoding base64url = Mockito.mock(BaseEncoding.class);
+				baseEncodingClass.when(() -> BaseEncoding.base64Url()).thenReturn(base64url);
+				Mockito.doReturn("adopted_shortened").when(base64url).encode(Mockito.any());
+
+				result.adoptOrphanedResource(oldCipherPath, newClearName, stepParentDir, cryptor, "", sha1);
+			}
+
+			Assertions.assertTrue(Files.exists(stepParentDir.path.resolve("adopted_shortened.c9s")));
+			Assertions.assertEquals("adopted.c9r", Files.readString(stepParentDir.path.resolve("adopted_shortened.c9s/name.c9s")));
+			Assertions.assertTrue(Files.notExists(oldCipherPath));
+		}
+
 	}
 
 
