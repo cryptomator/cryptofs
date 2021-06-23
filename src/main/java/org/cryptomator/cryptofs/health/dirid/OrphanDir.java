@@ -65,7 +65,7 @@ public class OrphanDir implements DiagnosticResult {
 		Path orphanedDir = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(this.dir);
 		String orphanHash = dir.getParent().getFileName().toString() + dir.getFileName().toString();
 
-		var stepParentDir = prepareCryptoFilesystem(pathToVault, cryptor.fileNameCryptor(), orphanHash);
+		var stepParentDir = prepareStepParent(pathToVault, cryptor.fileNameCryptor(), orphanHash);
 
 		try (var orphanedContentStream = Files.newDirectoryStream(orphanedDir)) {
 			AtomicInteger fileCounter = new AtomicInteger(1);
@@ -86,7 +86,7 @@ public class OrphanDir implements DiagnosticResult {
 	}
 
 	// visible for testing
-	CryptoPathMapper.CiphertextDirectory prepareCryptoFilesystem(Path pathToVault, FileNameCryptor cryptor, String clearStepParentDirName) throws IOException {
+	CryptoPathMapper.CiphertextDirectory prepareStepParent(Path pathToVault, FileNameCryptor cryptor, String clearStepParentDirName) throws IOException {
 		//determine path for cipher root
 		Path dataDir = pathToVault.resolve(Constants.DATA_DIR_NAME);
 		String rootDirHash = cryptor.hashDirectoryId(Constants.ROOT_DIR_ID);

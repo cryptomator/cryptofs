@@ -50,8 +50,8 @@ public class OrphanDirTest {
 	}
 
 	@Test
-	@DisplayName("prepareCryptFileSystem() runs without error on not existing recovery dir")
-	public void testPrepareCryptoFileSystemNonExistingRecoveryDir() throws IOException {
+	@DisplayName("prepareStepParent() runs without error on not existing recovery dir")
+	public void testPrepareStepParentNonExistingRecoveryDir() throws IOException {
 		String clearStepParentName = "step-parent";
 		FileNameCryptor cryptor = Mockito.mock(FileNameCryptor.class);
 		Mockito.doReturn("000000").when(cryptor).hashDirectoryId(Constants.ROOT_DIR_ID);
@@ -66,7 +66,7 @@ public class OrphanDirTest {
 			uuidClass.when(() -> UUID.randomUUID()).thenReturn(uuid);
 			Mockito.doReturn("aaaaaa").when(uuid).toString();
 
-			result.prepareCryptoFilesystem(pathToVault, cryptor, clearStepParentName);
+			result.prepareStepParent(pathToVault, cryptor, clearStepParentName);
 		}
 
 		Assertions.assertEquals(Constants.RECOVERY_DIR_ID, Files.readString(pathToVault.resolve("d/00/0000/1.c9r/dir.c9r"), StandardCharsets.UTF_8));
@@ -76,8 +76,8 @@ public class OrphanDirTest {
 	}
 
 	@Test
-	@DisplayName("prepareCryptFileSystem() runs without error on existing recovery dir")
-	public void testPrepareCryptoFileSystemExistingRecoveryDir() throws IOException {
+	@DisplayName("prepareStepParent() runs without error on existing recovery dir")
+	public void testPrepareStepParentExistingRecoveryDir() throws IOException {
 		Path existingRecoveryDirFile = cipherRoot.resolve("1.c9r/dir.c9r");
 		Files.createDirectories(existingRecoveryDirFile.getParent());
 		Files.writeString(existingRecoveryDirFile, Constants.RECOVERY_DIR_ID, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
@@ -96,7 +96,7 @@ public class OrphanDirTest {
 			uuidClass.when(() -> UUID.randomUUID()).thenReturn(uuid);
 			Mockito.doReturn("aaaaaa").when(uuid).toString();
 
-			result.prepareCryptoFilesystem(pathToVault, cryptor, clearStepParentName);
+			result.prepareStepParent(pathToVault, cryptor, clearStepParentName);
 		}
 
 		Assertions.assertEquals(Constants.RECOVERY_DIR_ID, Files.readString(pathToVault.resolve("d/00/0000/1.c9r/dir.c9r"), StandardCharsets.UTF_8));
@@ -105,8 +105,8 @@ public class OrphanDirTest {
 	}
 
 	@Test
-	@DisplayName("prepareCryptFileSystem() throws exception on existing recovery dir with wrong id")
-	public void testPrepareCryptoFSWithWrongRecoveryDir() throws IOException {
+	@DisplayName("prepareStepParent() throws exception on existing recovery dir with wrong id")
+	public void testPrepareStepParentWithWrongRecoveryDir() throws IOException {
 		Path existingRecoveryDirFile = cipherRoot.resolve("1.c9r/dir.c9r");
 		Files.createDirectories(existingRecoveryDirFile.getParent());
 		Files.writeString(existingRecoveryDirFile, UUID.randomUUID().toString(), StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
@@ -124,7 +124,7 @@ public class OrphanDirTest {
 			uuidClass.when(() -> UUID.randomUUID()).thenReturn(uuid);
 			Mockito.doReturn("aaaaaa").when(uuid).toString();
 
-			Assertions.assertThrows(FileAlreadyExistsException.class, () -> result.prepareCryptoFilesystem(pathToVault, cryptor, clearStepParentName));
+			Assertions.assertThrows(FileAlreadyExistsException.class, () -> result.prepareStepParent(pathToVault, cryptor, clearStepParentName));
 		}
 
 		Assertions.assertNotEquals(Constants.RECOVERY_DIR_ID, Files.readString(pathToVault.resolve("d/00/0000/1.c9r/dir.c9r"), StandardCharsets.UTF_8));
@@ -134,8 +134,8 @@ public class OrphanDirTest {
 	}
 
 	@Test
-	@DisplayName("prepareCryptFileSystem() runs without error on existing stepparent")
-	public void testPrepareCryptoFSExistingStepParentDir() throws IOException {
+	@DisplayName("prepareStepParent() runs without error on existing stepparent")
+	public void testPrepareStepParentExistingStepParentDir() throws IOException {
 		Path existingRecoveryDirFile = cipherRoot.resolve("1.c9r/dir.c9r");
 		Files.createDirectories(existingRecoveryDirFile.getParent());
 		Files.writeString(existingRecoveryDirFile, Constants.RECOVERY_DIR_ID, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
@@ -161,7 +161,7 @@ public class OrphanDirTest {
 			uuidClass.when(() -> UUID.randomUUID()).thenReturn(uuid);
 			Mockito.doReturn("aaaaaa").when(uuid).toString();
 
-			result.prepareCryptoFilesystem(pathToVault, cryptor, clearStepParentName);
+			result.prepareStepParent(pathToVault, cryptor, clearStepParentName);
 		}
 
 		Assertions.assertEquals(Constants.RECOVERY_DIR_ID, Files.readString(pathToVault.resolve("d/00/0000/1.c9r/dir.c9r"), StandardCharsets.UTF_8));
@@ -264,7 +264,7 @@ public class OrphanDirTest {
 		Cryptor generalCryptor = Mockito.mock(Cryptor.class);
 		Mockito.doReturn(cryptor).when(generalCryptor).fileNameCryptor();
 
-		Mockito.doReturn(stepParentDir).when(resultSpy).prepareCryptoFilesystem(Mockito.eq(pathToVault), Mockito.eq(cryptor), Mockito.any());
+		Mockito.doReturn(stepParentDir).when(resultSpy).prepareStepParent(Mockito.eq(pathToVault), Mockito.eq(cryptor), Mockito.any());
 		Mockito.doAnswer(invocationOnMock -> {
 			Files.delete((Path) invocationOnMock.getArgument(0));
 			return null;
@@ -292,15 +292,15 @@ public class OrphanDirTest {
 		Mockito.doAnswer(invocation -> {
 			clearStepparentNameRef.set((String) invocation.getArgument(2));
 			throw new IOException("Interrupt");
-		}).when(interruptedSpy).prepareCryptoFilesystem(Mockito.eq(pathToVault), Mockito.eq(cryptor), Mockito.any());
+		}).when(interruptedSpy).prepareStepParent(Mockito.eq(pathToVault), Mockito.eq(cryptor), Mockito.any());
 
 		var continuedResult = new OrphanDir(dataDir.relativize(cipherOrphan));
 		var continuedSpy = Mockito.spy(continuedResult);
-		Mockito.doThrow(IOException.class).when(continuedSpy).prepareCryptoFilesystem(Mockito.any(), Mockito.any(), Mockito.any());
+		Mockito.doThrow(IOException.class).when(continuedSpy).prepareStepParent(Mockito.any(), Mockito.any(), Mockito.any());
 
 		Assertions.assertThrows(IOException.class, () -> interruptedSpy.fix(pathToVault, config, masterkey, generalCryptor));
 		Assertions.assertThrows(IOException.class, () -> continuedSpy.fix(pathToVault, config, masterkey, generalCryptor));
 
-		Mockito.verify(continuedSpy).prepareCryptoFilesystem(pathToVault, cryptor, clearStepparentNameRef.get());
+		Mockito.verify(continuedSpy).prepareStepParent(pathToVault, cryptor, clearStepparentNameRef.get());
 	}
 }
