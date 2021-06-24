@@ -6,11 +6,16 @@ module org.cryptomator.cryptofs {
 	requires transitive org.cryptomator.cryptolib;
 	requires com.google.common;
 	requires org.slf4j;
+	requires dagger;
 
 	/* TODO: filename-based modules: */
 	requires java.jwt;
-	requires dagger;
-	requires static javax.inject; // probably no longer needed if dagger is an automatic module (but might require --patch-module in case of split packages)
+
+	// filename-based module required by dagger
+	// we will probably need to live with this for a while:
+	// https://github.com/javax-inject/javax-inject/issues/33
+	// May be provided by another lib during runtime
+	requires static javax.inject;
 
 	exports org.cryptomator.cryptofs;
 	exports org.cryptomator.cryptofs.common;
