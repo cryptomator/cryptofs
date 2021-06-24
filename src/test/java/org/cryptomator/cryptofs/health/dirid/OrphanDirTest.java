@@ -145,7 +145,7 @@ public class OrphanDirTest {
 				uuidClass.when(() -> UUID.randomUUID()).thenReturn(uuid);
 				Mockito.doReturn("aaaaaa").when(uuid).toString();
 
-				result.prepareStepParent(cipherRecovery, cryptor, clearStepParentName);
+				result.prepareStepParent(dataDir, cipherRecovery, cryptor, clearStepParentName);
 			}
 
 			Assertions.assertEquals("aaaaaa", Files.readString(cipherRecovery.resolve("2.c9r/dir.c9r"), StandardCharsets.UTF_8));
@@ -166,7 +166,7 @@ public class OrphanDirTest {
 				uuidClass.when(() -> UUID.randomUUID()).thenReturn(uuid);
 				Mockito.doReturn("aaaaaa").when(uuid).toString();
 
-				result.prepareStepParent(cipherRecovery, cryptor, clearStepParentName);
+				result.prepareStepParent(dataDir, cipherRecovery, cryptor, clearStepParentName);
 			}
 
 			Assertions.assertEquals("aaaaaa", Files.readString(cipherRecovery.resolve("2.c9r/dir.c9r"), StandardCharsets.UTF_8));
@@ -187,7 +187,7 @@ public class OrphanDirTest {
 				uuidClass.when(() -> UUID.randomUUID()).thenReturn(uuid);
 				Mockito.doReturn("aaaaaa").when(uuid).toString();
 
-				result.prepareStepParent(cipherRecovery, cryptor, clearStepParentName);
+				result.prepareStepParent(dataDir, cipherRecovery, cryptor, clearStepParentName);
 			}
 
 			Assertions.assertEquals("aaaaaa", Files.readString(cipherRecovery.resolve("2.c9r/dir.c9r"), StandardCharsets.UTF_8));
@@ -298,7 +298,7 @@ public class OrphanDirTest {
 		Mockito.doReturn(cryptor).when(generalCryptor).fileNameCryptor();
 
 		Mockito.doReturn(cipherRecovery).when(resultSpy).prepareRecoveryDir(pathToVault, cryptor);
-		Mockito.doReturn(stepParentDir).when(resultSpy).prepareStepParent(Mockito.eq(cipherRecovery), Mockito.eq(cryptor), Mockito.any());
+		Mockito.doReturn(stepParentDir).when(resultSpy).prepareStepParent(Mockito.eq(dataDir), Mockito.eq(cipherRecovery), Mockito.eq(cryptor), Mockito.any());
 		Mockito.doAnswer(invocationOnMock -> {
 			Files.delete((Path) invocationOnMock.getArgument(0));
 			return null;
@@ -326,19 +326,19 @@ public class OrphanDirTest {
 		var interruptedSpy = Mockito.spy(interruptedResult);
 		Mockito.doReturn(cipherRecovery).when(interruptedSpy).prepareRecoveryDir(pathToVault, cryptor);
 		Mockito.doAnswer(invocation -> {
-			clearStepparentNameRef.set((String) invocation.getArgument(2));
+			clearStepparentNameRef.set((String) invocation.getArgument(3));
 			throw new IOException("Interrupt");
-		}).when(interruptedSpy).prepareStepParent(Mockito.eq(cipherRecovery), Mockito.eq(cryptor), Mockito.any());
+		}).when(interruptedSpy).prepareStepParent(Mockito.eq(dataDir), Mockito.eq(cipherRecovery), Mockito.eq(cryptor), Mockito.any());
 
 		var continuedResult = new OrphanDir(dataDir.relativize(cipherOrphan));
 		var continuedSpy = Mockito.spy(continuedResult);
 		Mockito.doReturn(cipherRecovery).when(continuedSpy).prepareRecoveryDir(pathToVault, cryptor);
-		Mockito.doThrow(IOException.class).when(continuedSpy).prepareStepParent(Mockito.any(), Mockito.any(), Mockito.any());
+		Mockito.doThrow(IOException.class).when(continuedSpy).prepareStepParent(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
 
 		Assertions.assertThrows(IOException.class, () -> interruptedSpy.fix(pathToVault, config, masterkey, generalCryptor));
 		Assertions.assertThrows(IOException.class, () -> continuedSpy.fix(pathToVault, config, masterkey, generalCryptor));
 
-		Mockito.verify(continuedSpy).prepareStepParent(cipherRecovery, cryptor, clearStepparentNameRef.get());
+		Mockito.verify(continuedSpy).prepareStepParent(dataDir, cipherRecovery, cryptor, clearStepparentNameRef.get());
 	}
 
 
@@ -364,7 +364,7 @@ public class OrphanDirTest {
 
 		resultSpy.fix(pathToVault, config, masterkey, generalCryptor);
 
-		Mockito.verify(resultSpy, Mockito.never()).prepareStepParent(Mockito.eq(cipherRecovery), Mockito.eq(cryptor), Mockito.any());
+		Mockito.verify(resultSpy, Mockito.never()).prepareStepParent(Mockito.eq(dataDir), Mockito.eq(cipherRecovery), Mockito.eq(cryptor), Mockito.any());
 		Mockito.verify(resultSpy, Mockito.never()).adoptOrphanedResource(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.eq(cryptor), Mockito.any(), Mockito.any());
 		Mockito.verify(resultSpy).prepareRecoveryDir(pathToVault, cryptor);
 	}

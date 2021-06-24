@@ -62,12 +62,16 @@ public class OrphanDir implements DiagnosticResult {
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
 		var sha1 = getSha1MessageDigest();
 		String runId = Integer.toString((short) UUID.randomUUID().getMostSignificantBits(), 32);
-		Path orphanedDir = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(this.dir);
+		Path dataDir = pathToVault.resolve(Constants.DATA_DIR_NAME);
+		Path orphanedDir = dataDir.resolve(this.dir);
 		String orphanDirIdHash = dir.getParent().getFileName().toString() + dir.getFileName().toString();
 
 		Path recoveryDir = prepareRecoveryDir(pathToVault, cryptor.fileNameCryptor());
-		if (!recoveryDir.toAbsolutePath().equals(orphanedDir.toAbsolutePath())) {
-			var stepParentDir = prepareStepParent(recoveryDir, cryptor.fileNameCryptor(), orphanDirIdHash);
+		if (recoveryDir.toAbsolutePath().equals(orphanedDir.toAbsolutePath())) {
+			// recovery dir was orphaned, already recovered by prepare method
+			return;
+		} else {
+			var stepParentDir = prepareStepParent(dataDir, recoveryDir, cryptor.fileNameCryptor(), orphanDirIdHash);
 
 			try (var orphanedContentStream = Files.newDirectoryStream(orphanedDir)) {
 				AtomicInteger fileCounter = new AtomicInteger(1);
@@ -114,7 +118,7 @@ public class OrphanDir implements DiagnosticResult {
 	}
 
 	// visible for testing
-	CryptoPathMapper.CiphertextDirectory prepareStepParent(Path cipherRecoveryDir, FileNameCryptor cryptor, String clearStepParentDirName) throws IOException {
+	CryptoPathMapper.CiphertextDirectory prepareStepParent(Path dataDir, Path cipherRecoveryDir, FileNameCryptor cryptor, String clearStepParentDirName) throws IOException {
 		//create "step-parent" directory to move orphaned files to
 		String cipherStepParentDirName = convertClearToCiphertext(cryptor, clearStepParentDirName, Constants.RECOVERY_DIR_ID);
 		Path cipherStepParentDirFile = cipherRecoveryDir.resolve(cipherStepParentDirName + "/" + Constants.DIR_FILE_NAME);
@@ -127,7 +131,7 @@ public class OrphanDir implements DiagnosticResult {
 			Files.writeString(cipherStepParentDirFile, stepParentUUID, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 		}
 		String stepParentDirHash = cryptor.hashDirectoryId(stepParentUUID);
-		Path stepParentDir = cipherRecoveryDir.getParent().getParent().resolve(stepParentDirHash.substring(0, 2)).resolve(stepParentDirHash.substring(2)).toAbsolutePath();
+		Path stepParentDir = dataDir.resolve(stepParentDirHash.substring(0, 2)).resolve(stepParentDirHash.substring(2)).toAbsolutePath();
 		Files.createDirectories(stepParentDir);
 		return new CryptoPathMapper.CiphertextDirectory(stepParentUUID, stepParentDir);
 	}
