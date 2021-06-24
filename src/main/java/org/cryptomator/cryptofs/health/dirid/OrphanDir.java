@@ -17,7 +17,6 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -68,28 +67,27 @@ public class OrphanDir implements DiagnosticResult {
 
 		Path recoveryDir = prepareRecoveryDir(pathToVault, cryptor.fileNameCryptor());
 		if (recoveryDir.toAbsolutePath().equals(orphanedDir.toAbsolutePath())) {
-			// recovery dir was orphaned, already recovered by prepare method
-			return;
-		} else {
-			var stepParentDir = prepareStepParent(dataDir, recoveryDir, cryptor.fileNameCryptor(), orphanDirIdHash);
+			return; //recovery dir was orphaned, already recovered by prepare method
+		}
 
-			try (var orphanedContentStream = Files.newDirectoryStream(orphanedDir)) {
-				AtomicInteger fileCounter = new AtomicInteger(1);
-				AtomicInteger dirCounter = new AtomicInteger(1);
-				AtomicInteger symlinkCounter = new AtomicInteger(1);
-				String longNameSuffix = createClearnameToBeShortened(config.getShorteningThreshold());
-
-				for (Path orphanedResource : orphanedContentStream) {
-					var newClearName = switch (determineCiphertextFileType(orphanedResource)) {
+		var stepParentDir = prepareStepParent(dataDir, recoveryDir, cryptor.fileNameCryptor(), orphanDirIdHash);
+		AtomicInteger fileCounter = new AtomicInteger(1);
+		AtomicInteger dirCounter = new AtomicInteger(1);
+		AtomicInteger symlinkCounter = new AtomicInteger(1);
+		String longNameSuffix = createClearnameToBeShortened(config.getShorteningThreshold());
+		try (var orphanedContentStream = Files.newDirectoryStream(orphanedDir)) {
+			for (Path orphanedResource : orphanedContentStream) {
+				//@formatter:off
+				var newClearName = switch (determineCiphertextFileType(orphanedResource)) {
 						case FILE -> FILE_PREFIX + fileCounter.getAndIncrement();
 						case DIRECTORY -> DIR_PREFIX + dirCounter.getAndIncrement();
 						case SYMLINK -> SYMLINK_PREFIX + symlinkCounter.getAndIncrement();
 					} + "_" + runId;
-					adoptOrphanedResource(orphanedResource, newClearName, stepParentDir, cryptor.fileNameCryptor(), longNameSuffix, sha1);
-				}
+				//@formatter:on
+				adoptOrphanedResource(orphanedResource, newClearName, stepParentDir, cryptor.fileNameCryptor(), longNameSuffix, sha1);
 			}
-			Files.delete(orphanedDir);
 		}
+		Files.delete(orphanedDir);
 	}
 
 	//visible for testing
@@ -142,7 +140,7 @@ public class OrphanDir implements DiagnosticResult {
 			var newCipherName = convertClearToCiphertext(cryptor, newClearname + longNameSuffix, stepParentDir.dirId);
 			var deflatedName = BaseEncoding.base64Url().encode(sha1.digest(newCipherName.getBytes(StandardCharsets.UTF_8))) + Constants.DEFLATED_FILE_SUFFIX;
 			Path targetPath = stepParentDir.path.resolve(deflatedName);
-			Files.move(oldCipherPath, targetPath, StandardCopyOption.ATOMIC_MOVE);
+			Files.move(oldCipherPath, targetPath);
 
 			//adjust name.c9s
 			try (var fc = Files.newByteChannel(targetPath.resolve(Constants.INFLATED_FILE_NAME), StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
@@ -151,7 +149,7 @@ public class OrphanDir implements DiagnosticResult {
 		} else {
 			var newCipherName = convertClearToCiphertext(cryptor, newClearname, stepParentDir.dirId);
 			Path targetPath = stepParentDir.path.resolve(newCipherName);
-			Files.move(oldCipherPath, targetPath, StandardCopyOption.ATOMIC_MOVE);
+			Files.move(oldCipherPath, targetPath);
 		}
 	}
 
