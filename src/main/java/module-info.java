@@ -9,9 +9,7 @@ module org.cryptomator.cryptofs {
 	requires com.google.common;
 	requires org.slf4j;
 	requires dagger;
-
-	/* TODO: filename-based modules: */
-	requires java.jwt;
+	requires com.auth0.jwt;
 
 	// filename-based module required by dagger
 	// we will probably need to live with this for a while:
