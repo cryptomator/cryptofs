@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs.health.api;
 
 import org.cryptomator.cryptofs.VaultConfig;
+import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.common.MasterkeyFileAccess;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,7 @@ public class HealthCheckIntegrationTest {
 
 			try (var masterkey = masterkeyFileAccess.load(masterkeyFile, pw)) {
 				var verifiedCfg = unverifiedCfg.verify(masterkey.getEncoded(), unverifiedCfg.allegedVaultVersion());
-				var cryptor = verifiedCfg.getCipherCombo().getCryptorProvider(SecureRandom.getInstanceStrong()).withKey(masterkey);
+				var cryptor = CryptorProvider.forScheme(verifiedCfg.getCipherCombo()).provide(masterkey, SecureRandom.getInstanceStrong());
 				var executor = Executors.newSingleThreadExecutor();
 				HealthCheck.allChecks().forEach(check -> {
 					System.out.println("Running " + check.identifier());

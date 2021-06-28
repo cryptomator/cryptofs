@@ -6,6 +6,7 @@ import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.Verification;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.Masterkey;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
 import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
@@ -47,7 +48,7 @@ public class VaultConfigTest {
 
 		@BeforeEach
 		public void setup() throws MasterkeyLoadingFailedException {
-			originalConfig = VaultConfig.createNew().cipherCombo(VaultCipherCombo.SIV_CTRMAC).shorteningThreshold(220).build();
+			originalConfig = VaultConfig.createNew().cipherCombo(CryptorProvider.Scheme.SIV_CTRMAC).shorteningThreshold(220).build();
 			token = originalConfig.toToken("TEST_KEY", rawKey);
 		}
 
@@ -76,11 +77,11 @@ public class VaultConfigTest {
 
 	@Test
 	public void testCreateNew() {
-		var config = VaultConfig.createNew().cipherCombo(VaultCipherCombo.SIV_CTRMAC).shorteningThreshold(220).build();
+		var config = VaultConfig.createNew().cipherCombo(CryptorProvider.Scheme.SIV_CTRMAC).shorteningThreshold(220).build();
 
 		Assertions.assertNotNull(config.getId());
 		Assertions.assertEquals(Constants.VAULT_VERSION, config.getVaultVersion());
-		Assertions.assertEquals(VaultCipherCombo.SIV_CTRMAC, config.getCipherCombo());
+		Assertions.assertEquals(CryptorProvider.Scheme.SIV_CTRMAC, config.getCipherCombo());
 		Assertions.assertEquals(220, config.getShorteningThreshold());
 	}
 

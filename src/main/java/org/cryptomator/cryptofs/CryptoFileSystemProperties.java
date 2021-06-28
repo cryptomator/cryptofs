@@ -9,6 +9,7 @@
 package org.cryptomator.cryptofs;
 
 import com.google.common.base.Strings;
+import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
 
 import java.net.URI;
@@ -91,7 +92,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 */
 	public static final String PROPERTY_CIPHER_COMBO = "cipherCombo";
 
-	static final VaultCipherCombo DEFAULT_CIPHER_COMBO = VaultCipherCombo.SIV_GCM;
+	static final CryptorProvider.Scheme DEFAULT_CIPHER_COMBO = CryptorProvider.Scheme.SIV_GCM;
 
 	private final Set<Entry<String, Object>> entries;
 
@@ -110,8 +111,8 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		return (MasterkeyLoader) get(PROPERTY_KEYLOADER);
 	}
 
-	public VaultCipherCombo cipherCombo() {
-		return (VaultCipherCombo) get(PROPERTY_CIPHER_COMBO);
+	public CryptorProvider.Scheme cipherCombo() {
+		return (CryptorProvider.Scheme) get(PROPERTY_CIPHER_COMBO);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -183,7 +184,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 */
 	public static class Builder {
 
-		public VaultCipherCombo cipherCombo = DEFAULT_CIPHER_COMBO;
+		public CryptorProvider.Scheme cipherCombo = DEFAULT_CIPHER_COMBO;
 		private MasterkeyLoader keyLoader = null;
 		private final Set<FileSystemFlags> flags = EnumSet.copyOf(DEFAULT_FILESYSTEM_FLAGS);
 		private String vaultConfigFilename = DEFAULT_VAULTCONFIG_FILENAME;
@@ -199,7 +200,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 			checkedSet(String.class, PROPERTY_MASTERKEY_FILENAME, properties, this::withMasterkeyFilename);
 			checkedSet(Set.class, PROPERTY_FILESYSTEM_FLAGS, properties, this::withFlags);
 			checkedSet(Integer.class, PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, properties, this::withMaxCleartextNameLength);
-			checkedSet(VaultCipherCombo.class, PROPERTY_CIPHER_COMBO, properties, this::withCipherCombo);
+			checkedSet(CryptorProvider.Scheme.class, PROPERTY_CIPHER_COMBO, properties, this::withCipherCombo);
 		}
 
 		private <T> void checkedSet(Class<T> type, String key, Map<String, ?> properties, Consumer<T> setter) {
@@ -235,7 +236,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		 * @return this
 		 * @since 2.0.0
 		 */
-		public Builder withCipherCombo(VaultCipherCombo cipherCombo) {
+		public Builder withCipherCombo(CryptorProvider.Scheme cipherCombo) {
 			this.cipherCombo = cipherCombo;
 			return this;
 		}
