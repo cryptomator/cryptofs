@@ -50,7 +50,7 @@ public class CryptoFileSystemsTest {
 	private final Masterkey clonedMasterkey = Mockito.mock(Masterkey.class);
 	private final byte[] rawKey = new byte[64];
 	private final VaultConfig vaultConfig = mock(VaultConfig.class);
-	private final VaultCipherCombo cipherCombo = mock(VaultCipherCombo.class);
+	private final CryptorProvider.Scheme cipherCombo = mock(CryptorProvider.Scheme.class);
 	private final SecureRandom csprng = Mockito.mock(SecureRandom.class);
 	private final CryptorProvider cryptorProvider = mock(CryptorProvider.class);
 	private final Cryptor cryptor = mock(Cryptor.class);
@@ -60,6 +60,7 @@ public class CryptoFileSystemsTest {
 
 	private MockedStatic<VaultConfig> vaultConficClass;
 	private MockedStatic<Files> filesClass;
+	private MockedStatic<CryptorProvider> cryptorProviderClass;
 
 	private final CryptoFileSystems inTest = new CryptoFileSystems(cryptoFileSystemComponentBuilder, capabilityChecker, csprng);
 
@@ -67,6 +68,7 @@ public class CryptoFileSystemsTest {
 	public void setup() throws IOException, MasterkeyLoadingFailedException {
 		vaultConficClass = Mockito.mockStatic(VaultConfig.class);
 		filesClass = Mockito.mockStatic(Files.class);
+		cryptorProviderClass = Mockito.mockStatic(CryptorProvider.class);
 
 		when(pathToVault.normalize()).thenReturn(normalizedPathToVault);
 		when(normalizedPathToVault.resolve("vault.cryptomator")).thenReturn(configFilePath);
@@ -74,16 +76,15 @@ public class CryptoFileSystemsTest {
 		when(properties.keyLoader()).thenReturn(keyLoader);
 		filesClass.when(() -> Files.readString(configFilePath, StandardCharsets.US_ASCII)).thenReturn("jwt-vault-config");
 		vaultConficClass.when(() -> VaultConfig.decode("jwt-vault-config")).thenReturn(configLoader);
+		cryptorProviderClass.when(() -> CryptorProvider.forScheme(cipherCombo)).thenReturn(cryptorProvider);
 		when(VaultConfig.decode("jwt-vault-config")).thenReturn(configLoader);
 		when(configLoader.getKeyId()).thenReturn(URI.create("test:key"));
 		when(keyLoader.loadKey(Mockito.any())).thenReturn(masterkey);
 		when(masterkey.getEncoded()).thenReturn(rawKey);
 		when(masterkey.clone()).thenReturn(clonedMasterkey);
 		when(configLoader.verify(rawKey, Constants.VAULT_VERSION)).thenReturn(vaultConfig);
-		when(cryptorProvider.withKey(clonedMasterkey)).thenReturn(cryptor);
+		when(cryptorProvider.provide(clonedMasterkey, csprng)).thenReturn(cryptor);
 		when(vaultConfig.getCipherCombo()).thenReturn(cipherCombo);
-		when(cipherCombo.getCryptorProvider(csprng)).thenReturn(cryptorProvider);
-		when(cryptorProvider.withKey(masterkey)).thenReturn(cryptor);
 		when(cryptor.fileNameCryptor()).thenReturn(fileNameCryptor);
 		when(fileNameCryptor.hashDirectoryId("")).thenReturn("ABCDEFGHIJKLMNOP");
 		when(pathToVault.resolve(Constants.DATA_DIR_NAME)).thenReturn(dataDirPath);
@@ -103,6 +104,7 @@ public class CryptoFileSystemsTest {
 	public void tearDown() {
 		vaultConficClass.close();
 		filesClass.close();
+		cryptorProviderClass.close();
 	}
 
 	@Test

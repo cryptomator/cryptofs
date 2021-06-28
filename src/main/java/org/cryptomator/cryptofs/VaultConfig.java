@@ -8,6 +8,7 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.exceptions.SignatureVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.Masterkey;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
 import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
@@ -36,13 +37,13 @@ public class VaultConfig {
 
 	private final String id;
 	private final int vaultVersion;
-	private final VaultCipherCombo cipherCombo;
+	private final CryptorProvider.Scheme cipherCombo;
 	private final int shorteningThreshold;
 
 	private VaultConfig(DecodedJWT verifiedConfig) {
 		this.id = verifiedConfig.getId();
 		this.vaultVersion = verifiedConfig.getClaim(JSON_KEY_VAULTVERSION).asInt();
-		this.cipherCombo = VaultCipherCombo.valueOf(verifiedConfig.getClaim(JSON_KEY_CIPHERCONFIG).asString());
+		this.cipherCombo = CryptorProvider.Scheme.valueOf(verifiedConfig.getClaim(JSON_KEY_CIPHERCONFIG).asString());
 		this.shorteningThreshold = verifiedConfig.getClaim(JSON_KEY_SHORTENING_THRESHOLD).asInt();
 	}
 
@@ -61,7 +62,7 @@ public class VaultConfig {
 		return vaultVersion;
 	}
 
-	public VaultCipherCombo getCipherCombo() {
+	public CryptorProvider.Scheme getCipherCombo() {
 		return cipherCombo;
 	}
 
@@ -184,10 +185,10 @@ public class VaultConfig {
 
 		private final String id = UUID.randomUUID().toString();
 		private final int vaultVersion = Constants.VAULT_VERSION;
-		private VaultCipherCombo cipherCombo;
+		private CryptorProvider.Scheme cipherCombo;
 		private int shorteningThreshold;
 
-		public VaultConfigBuilder cipherCombo(VaultCipherCombo cipherCombo) {
+		public VaultConfigBuilder cipherCombo(CryptorProvider.Scheme cipherCombo) {
 			this.cipherCombo = cipherCombo;
 			return this;
 		}

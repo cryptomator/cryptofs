@@ -12,6 +12,7 @@ import org.cryptomator.cryptofs.ch.AsyncDelegatingFileChannel;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
 import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.Masterkey;
 import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 
@@ -143,7 +144,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		byte[] rawKey = new byte[0];
 		var config = VaultConfig.createNew().cipherCombo(properties.cipherCombo()).shorteningThreshold(Constants.DEFAULT_SHORTENING_THRESHOLD).build();
 		try (Masterkey key = properties.keyLoader().loadKey(keyId);
-			 Cryptor cryptor = config.getCipherCombo().getCryptorProvider(strongSecureRandom()).withKey(key)) {
+			 Cryptor cryptor = CryptorProvider.forScheme(config.getCipherCombo()).provide(key, strongSecureRandom())) {
 			rawKey = key.getEncoded();
 			// save vault config:
 			Path vaultConfigPath = pathToVault.resolve(properties.vaultConfigFilename());

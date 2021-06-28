@@ -10,7 +10,6 @@ package org.cryptomator.cryptofs.attr;
 
 import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
-import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +52,8 @@ class CryptoBasicFileAttributes implements BasicFileAttributes {
 
 	private static long calculatePlaintextFileSize(Path ciphertextPath, long size, Cryptor cryptor) {
 		try {
-			return Cryptors.cleartextSize(size - cryptor.fileHeaderCryptor().headerSize(), cryptor);
+			long payloadSize = size - cryptor.fileHeaderCryptor().headerSize();
+			return cryptor.fileContentCryptor().cleartextSize(payloadSize);
 		} catch (IllegalArgumentException e) {
 			LOG.warn("Unable to calculate cleartext file size for {}. Ciphertext size (including header): {}", ciphertextPath, size);
 			return 0l;

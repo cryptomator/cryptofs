@@ -3,6 +3,7 @@ package org.cryptomator.cryptofs;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
 import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.Masterkey;
 import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 import org.slf4j.Logger;
@@ -51,7 +52,7 @@ class CryptoFileSystems {
 		try (Masterkey key = properties.keyLoader().loadKey(keyId)) {
 			var config = configLoader.verify(key.getEncoded(), Constants.VAULT_VERSION);
 			var adjustedProperties = adjustForCapabilities(pathToVault, properties);
-			var cryptor = config.getCipherCombo().getCryptorProvider(csprng).withKey(key.clone());
+			var cryptor = CryptorProvider.forScheme(config.getCipherCombo()).provide(key.clone(), csprng);
 			try {
 				checkVaultRootExistence(pathToVault, cryptor);
 				return fileSystems.compute(normalizedPathToVault, (path, fs) -> {
