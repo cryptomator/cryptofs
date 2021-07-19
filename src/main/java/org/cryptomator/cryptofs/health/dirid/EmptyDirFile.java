@@ -1,17 +1,21 @@
 package org.cryptomator.cryptofs.health.dirid;
 
-import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
-import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.Masterkey;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID_FILE;
 
+/**
+ * A critical diagnostic result of an empty directory id file (dir.c9r).
+ * <p>
+ * Even thou the empty directory ID exists, it is reserved for the root node of the crypto filesystem only.
+ * DUe to its nature, the root node has no corresponding dir.c9r file.
+ * As a consequence, actual dir.c9r files must not be empty, otherwise it is an error in the vault structure.
+ *
+ * @see org.cryptomator.cryptofs.common.Constants#ROOT_DIR_ID
+ */
 public class EmptyDirFile implements DiagnosticResult {
 
 	final Path dirFile;

@@ -37,7 +37,7 @@ public class DirIdCheckTest {
 			AA/aaaa/baz=.c9r/symlink.c9r = linktarget
 			BB/bbbb/foo=.c9r/dir.c9r = CCcccc
 			BB/bbbb/bar=.c9r/dir.c9r = ffffffffffff-aaaaaaaaaaaa-tttttttttttt
-			BB/bbbb/baz=.c9r/dir.c9r = EMPTY
+			BB/bbbb/baz=.c9r/dir.c9r = [EMPTY]
 			BB/bbbb/foo=.c9r/unrelated/dir.c9r = unrelatedfile
 			CC/cccc/foo=.c9r = file
 			""";
@@ -143,7 +143,7 @@ public class DirIdCheckTest {
 				var file = line.substring(0, sep);
 				var contents = line.substring(sep + 3);
 				Files.createDirectories(root.resolve(file).getParent());
-				if (!contents.equals("EMPTY")) {
+				if (!contents.equals("[EMPTY]")) {
 					Files.writeString(root.resolve(file), contents, StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW);
 				} else {
 					Files.createFile(root.resolve(file));
