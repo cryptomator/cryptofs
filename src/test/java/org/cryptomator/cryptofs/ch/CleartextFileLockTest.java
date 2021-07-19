@@ -21,16 +21,19 @@ public class CleartextFileLockTest {
 
 	@BeforeEach
 	public void setup() {
-		channel = Mockito.spy(new DummyFileChannel());
+		channel = Mockito.mock(FileChannel.class);
+		delegate = Mockito.mock(FileLock.class);
+		Mockito.when(channel.isOpen()).thenReturn(true);
 	}
 
 	@Nested
 	@DisplayName("Shared Locks")
-	class ValidSharedLockTests {
+	public class SharedLockTests {
 
 		@BeforeEach
 		public void setup() {
-			delegate = Mockito.spy(new FileLockMock(channel, position, size, true));
+			Mockito.when(delegate.isValid()).thenReturn(true);
+			Mockito.when(delegate.isShared()).thenReturn(true);
 			inTest = new CleartextFileLock(channel, delegate, position, size);
 		}
 
@@ -72,11 +75,12 @@ public class CleartextFileLockTest {
 
 		@Nested
 		@DisplayName("After releasing the lock")
-		class ReleasedLock {
+		public class ReleasedLock {
 
 			@BeforeEach
 			public void setup() throws IOException {
 				inTest.release();
+				Mockito.when(delegate.isValid()).thenReturn(false);
 			}
 
 			@Test
@@ -95,11 +99,11 @@ public class CleartextFileLockTest {
 
 		@Nested
 		@DisplayName("After closing the channel")
-		class ClosedChannel {
+		public class ClosedChannel {
 
 			@BeforeEach
 			public void setup() throws IOException {
-				channel.close();
+				Mockito.when(channel.isOpen()).thenReturn(false);
 			}
 
 			@Test
@@ -114,11 +118,12 @@ public class CleartextFileLockTest {
 
 	@Nested
 	@DisplayName("Exclusive Locks")
-	class InvalidSharedLockTests {
+	public class ExclusiveLockTests {
 
 		@BeforeEach
 		public void setup() {
-			delegate = Mockito.spy(new FileLockMock(channel, position, size, false));
+			Mockito.when(delegate.isValid()).thenReturn(true);
+			Mockito.when(delegate.isShared()).thenReturn(false);
 			inTest = new CleartextFileLock(channel, delegate, position, size);
 		}
 
@@ -160,11 +165,12 @@ public class CleartextFileLockTest {
 
 		@Nested
 		@DisplayName("After releasing the lock")
-		class ReleasedLock {
+		public class ReleasedLock {
 
 			@BeforeEach
 			public void setup() throws IOException {
 				inTest.release();
+				Mockito.when(delegate.isValid()).thenReturn(false);
 			}
 
 			@Test
@@ -183,11 +189,11 @@ public class CleartextFileLockTest {
 
 		@Nested
 		@DisplayName("After closing the channel")
-		class ClosedChannel {
+		public class ClosedChannel {
 
 			@BeforeEach
 			public void setup() throws IOException {
-				channel.close();
+				Mockito.when(channel.isOpen()).thenReturn(false);
 			}
 
 			@Test
@@ -198,26 +204,6 @@ public class CleartextFileLockTest {
 
 		}
 
-	}
-
-	private static class FileLockMock extends FileLock {
-
-		private boolean valid;
-
-		protected FileLockMock(FileChannel channel, long position, long size, boolean shared) {
-			super(channel, position, size, shared);
-			this.valid = true;
-		}
-
-		@Override
-		public boolean isValid() {
-			return valid;
-		}
-
-		@Override
-		public void release() {
-			valid = false;
-		}
 	}
 
 }

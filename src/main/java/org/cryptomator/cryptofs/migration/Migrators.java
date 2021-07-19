@@ -12,11 +12,10 @@ import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener;
 import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.migration.api.NoApplicableMigratorException;
-import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.InvalidPassphraseException;
 import org.cryptomator.cryptolib.api.UnsupportedVaultFormatException;
-import org.cryptomator.cryptolib.common.MasterkeyFile;
+import org.cryptomator.cryptolib.common.MasterkeyFileAccess;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -114,7 +113,7 @@ public class Migrators {
 			var jwt = Files.readString(vaultConfigPath);
 			return VaultConfig.decode(jwt).allegedVaultVersion();
 		} else if (Files.exists(masterKeyPath)) {
-			return MasterkeyFile.withContentFromFile(masterKeyPath).allegedVaultVersion();
+			return MasterkeyFileAccess.readAllegedVaultVersion(Files.readAllBytes(masterKeyPath));
 		} else {
 			throw new IOException("Did not find " + vaultConfigFilename + " nor " + masterkeyFilename);
 		}

@@ -1,6 +1,5 @@
 package org.cryptomator.cryptofs;
 
-import org.cryptomator.cryptofs.CryptoFileSystemProperties.FileSystemFlags;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -10,11 +9,12 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.*;
 import static org.hamcrest.CoreMatchers.sameInstance;
@@ -33,34 +33,12 @@ public class CryptoFileSystemPropertiesTest {
 	}
 
 	@Test
-	@SuppressWarnings({"unchecked", "deprecation"})
-	public void testSetReadonlyFlag() {
-		CryptoFileSystemProperties inTest = cryptoFileSystemProperties() //
-				.withKeyLoader(keyLoader) //
-				.withReadonlyFlag() //
-				.build();
-
-		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
-		MatcherAssert.assertThat(inTest.readonly(), is(true));
-		MatcherAssert.assertThat(inTest.entrySet(),
-				containsInAnyOrder( //
-						anEntry(PROPERTY_KEYLOADER, keyLoader), //
-						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
-						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
-						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
-						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
-	}
-
-	@Test
-	@SuppressWarnings({"unchecked", "deprecation"})
 	public void testSetMasterkeyFilenameAndReadonlyFlag() {
 		String masterkeyFilename = "aMasterkeyFilename";
 		CryptoFileSystemProperties inTest = cryptoFileSystemProperties() //
 				.withKeyLoader(keyLoader) //
 				.withMasterkeyFilename(masterkeyFilename) //
-				.withReadonlyFlag() //
+				.withFlags(FileSystemFlags.READONLY)
 				.build();
 
 		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
@@ -70,41 +48,35 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_KEYLOADER, keyLoader), //
 						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
-						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
+						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
 
 	@Test
-	@SuppressWarnings({"unchecked"})
 	public void testFromMap() {
 		Map<String, Object> map = new HashMap<>();
 		String masterkeyFilename = "aMasterkeyFilename";
 		map.put(PROPERTY_KEYLOADER, keyLoader);
 		map.put(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename);
-		map.put(PROPERTY_MAX_PATH_LENGTH, 1000);
-		map.put(PROPERTY_MAX_NAME_LENGTH, 255);
+		map.put(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, 255);
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY));
 		CryptoFileSystemProperties inTest = cryptoFileSystemPropertiesFrom(map).build();
 
 		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
 		MatcherAssert.assertThat(inTest.readonly(), is(true));
-		MatcherAssert.assertThat(inTest.maxPathLength(), is(1000));
-		MatcherAssert.assertThat(inTest.maxNameLength(), is(255));
+		MatcherAssert.assertThat(inTest.maxCleartextNameLength(), is(255));
 		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_KEYLOADER, keyLoader), //
 						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, 1000), //
-						anEntry(PROPERTY_MAX_NAME_LENGTH, 255), //
+						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, 255), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
 
 	@Test
-	@SuppressWarnings("unchecked")
 	public void testWrapMapWithTrueReadonly() {
 		Map<String, Object> map = new HashMap<>();
 		String masterkeyFilename = "aMasterkeyFilename";
@@ -120,14 +92,12 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_KEYLOADER, keyLoader), //
 						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
-						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
+						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
 
 	@Test
-	@SuppressWarnings("unchecked")
 	public void testWrapMapWithFalseReadonly() {
 		Map<String, Object> map = new HashMap<>();
 		String masterkeyFilename = "aMasterkeyFilename";
@@ -143,8 +113,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_KEYLOADER, keyLoader), //
 						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
-						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
+						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class))));
 	}
@@ -183,7 +152,6 @@ public class CryptoFileSystemPropertiesTest {
 	}
 
 	@Test
-	@SuppressWarnings({"unchecked", "deprecation"})
 	public void testWrapMapWithoutReadonly() {
 		Map<String, Object> map = new HashMap<>();
 		map.put(PROPERTY_KEYLOADER, keyLoader);
@@ -196,8 +164,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_KEYLOADER, keyLoader), //
 						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
-						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
+						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class))
 				)
@@ -252,7 +219,7 @@ public class CryptoFileSystemPropertiesTest {
 	}
 
 	private <K, V> Matcher<Map.Entry<K, V>> anEntry(K key, V value) {
-		return new TypeSafeDiagnosingMatcher<Map.Entry<K, V>>(Map.Entry.class) {
+		return new TypeSafeDiagnosingMatcher<>(Map.Entry.class) {
 			@Override
 			public void describeTo(Description description) {
 				description.appendText("an entry ").appendValue(key).appendText(" = ").appendValue(value);
@@ -268,11 +235,20 @@ public class CryptoFileSystemPropertiesTest {
 			}
 
 			private boolean keyMatches(K itemKey) {
-				return key == null ? itemKey == null : key.equals(itemKey);
+				return Objects.equals(key, itemKey);
 			}
 
 			private boolean valueMatches(V itemValue) {
-				return value == null ? itemValue == null : value.equals(itemValue);
+				if (value instanceof Collection v && itemValue instanceof Collection c) {
+					return valuesMatch(v, c);
+				} else {
+					return Objects.equals(value, itemValue);
+				}
+			}
+
+			@SuppressWarnings("rawtypes")
+			private boolean valuesMatch(Collection<?> value, Collection<?> itemValue) {
+				return value.containsAll(itemValue) && itemValue.containsAll(value);
 			}
 		};
 	}

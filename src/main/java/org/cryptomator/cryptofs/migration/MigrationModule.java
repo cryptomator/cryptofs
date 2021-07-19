@@ -14,24 +14,16 @@ import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.migration.v6.Version6Migrator;
 import org.cryptomator.cryptofs.migration.v7.Version7Migrator;
 import org.cryptomator.cryptofs.migration.v8.Version8Migrator;
-import org.cryptomator.cryptolib.Cryptors;
-import org.cryptomator.cryptolib.api.CryptorProvider;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-import java.security.SecureRandom;
 
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 @Module
 class MigrationModule {
-
-	@Provides
-	CryptorProvider provideVersion1CryptorProvider(SecureRandom csprng) {
-		return Cryptors.version1(csprng);
-	}
 
 	@Provides
 	FileSystemCapabilityChecker provideFileSystemCapabilityChecker() {

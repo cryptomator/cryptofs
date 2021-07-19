@@ -6,7 +6,7 @@ import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.mocks.NullSecureRandom;
 import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.Masterkey;
-import org.cryptomator.cryptolib.common.MasterkeyFile;
+import org.cryptomator.cryptolib.common.MasterkeyFileAccess;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterEach;
@@ -41,9 +41,9 @@ public class Version7MigratorTest {
 		Files.createDirectory(dataDir);
 		Files.createDirectory(metaDir);
 
-		Masterkey masterkey = Masterkey.createNew(csprng);
-		byte[] unmigrated = MasterkeyFile.lock(masterkey, "test", new byte[0], 6, csprng);
-		Files.write(masterkeyFile, unmigrated);
+		Masterkey masterkey = Masterkey.generate(csprng);
+		MasterkeyFileAccess masterkeyFileAccess = new MasterkeyFileAccess(new byte[0], csprng);
+		masterkeyFileAccess.persist(masterkey, masterkeyFile, "test", 6);
 	}
 
 	@AfterEach

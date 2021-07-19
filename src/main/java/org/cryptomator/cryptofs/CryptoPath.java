@@ -55,10 +55,9 @@ public class CryptoPath implements Path {
 	}
 
 	static CryptoPath cast(Path path) {
-		if (path instanceof CryptoPath) {
-			CryptoPath cryptoPath = (CryptoPath) path;
-			cryptoPath.getFileSystem().assertOpen();
-			return cryptoPath;
+		if (path instanceof CryptoPath p) {
+			p.getFileSystem().assertOpen();
+			return p;
 		} else {
 			throw new ProviderMismatchException("Used a path from different provider: " + path);
 		}
@@ -351,8 +350,7 @@ public class CryptoPath implements Path {
 
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof CryptoPath) {
-			CryptoPath other = (CryptoPath) obj;
+		if (obj instanceof CryptoPath other) {
 			return this.fileSystem.equals(other.fileSystem) //
 					&& this.compareTo(other) == 0;
 		} else {

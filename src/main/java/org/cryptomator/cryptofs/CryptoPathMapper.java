@@ -48,17 +48,19 @@ public class CryptoPathMapper {
 	private final Path dataRoot;
 	private final DirectoryIdProvider dirIdProvider;
 	private final LongFileNameProvider longFileNameProvider;
+	private final VaultConfig vaultConfig;
 	private final LoadingCache<DirIdAndName, String> ciphertextNames;
 	private final Cache<CryptoPath, CiphertextDirectory> ciphertextDirectories;
 
 	private final CiphertextDirectory rootDirectory;
 
 	@Inject
-	CryptoPathMapper(@PathToVault Path pathToVault, Cryptor cryptor, DirectoryIdProvider dirIdProvider, LongFileNameProvider longFileNameProvider) {
+	CryptoPathMapper(@PathToVault Path pathToVault, Cryptor cryptor, DirectoryIdProvider dirIdProvider, LongFileNameProvider longFileNameProvider, VaultConfig vaultConfig) {
 		this.dataRoot = pathToVault.resolve(DATA_DIR_NAME);
 		this.cryptor = cryptor;
 		this.dirIdProvider = dirIdProvider;
 		this.longFileNameProvider = longFileNameProvider;
+		this.vaultConfig = vaultConfig;
 		this.ciphertextNames = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_CIPHERTEXT_NAMES).build(CacheLoader.from(this::getCiphertextFileName));
 		this.ciphertextDirectories = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_DIR_PATHS).expireAfterWrite(MAX_CACHE_AGE).build();
 		this.rootDirectory = resolveDirectory(Constants.ROOT_DIR_ID);
@@ -127,7 +129,7 @@ public class CryptoPathMapper {
 	public CiphertextFilePath getCiphertextFilePath(Path parentCiphertextDir, String parentDirId, String cleartextName) {
 		String ciphertextName = ciphertextNames.getUnchecked(new DirIdAndName(parentDirId, cleartextName));
 		Path c9rPath = parentCiphertextDir.resolve(ciphertextName);
-		if (ciphertextName.length() > Constants.MAX_CIPHERTEXT_NAME_LENGTH) {
+		if (ciphertextName.length() > vaultConfig.getShorteningThreshold()) {
 			LongFileNameProvider.DeflatedFileName deflatedFileName = longFileNameProvider.deflate(c9rPath);
 			return new CiphertextFilePath(deflatedFileName.c9sPath, Optional.of(deflatedFileName));
 		} else {
@@ -198,8 +200,7 @@ public class CryptoPathMapper {
 		public boolean equals(Object obj) {
 			if (obj == this) {
 				return true;
-			} else if (obj instanceof CiphertextDirectory) {
-				CiphertextDirectory other = (CiphertextDirectory) obj;
+			} else if (obj instanceof CiphertextDirectory other) {
 				return this.dirId.equals(other.dirId) && this.path.equals(other.path);
 			} else {
 				return false;
@@ -225,8 +226,7 @@ public class CryptoPathMapper {
 		public boolean equals(Object obj) {
 			if (obj == this) {
 				return true;
-			} else if (obj instanceof DirIdAndName) {
-				DirIdAndName other = (DirIdAndName) obj;
+			} else if (obj instanceof DirIdAndName other) {
 				return this.dirId.equals(other.dirId) && this.name.equals(other.name);
 			} else {
 				return false;

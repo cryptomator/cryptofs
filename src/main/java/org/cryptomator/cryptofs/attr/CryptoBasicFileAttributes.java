@@ -10,7 +10,6 @@ package org.cryptomator.cryptofs.attr;
 
 import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
-import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,17 +36,10 @@ class CryptoBasicFileAttributes implements BasicFileAttributes {
 	@Inject
 	public CryptoBasicFileAttributes(BasicFileAttributes delegate, CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile) {
 		this.ciphertextFileType = ciphertextFileType;
-		switch (ciphertextFileType) {
-			case SYMLINK:
-			case DIRECTORY:
-				this.size = delegate.size();
-				break;
-			case FILE:
-				this.size = getPlaintextFileSize(ciphertextPath, delegate.size(), openCryptoFile, cryptor);
-				break;
-			default:
-				throw new IllegalArgumentException("Unsupported ciphertext file type: " + ciphertextFileType);
-		}
+		this.size = switch (ciphertextFileType) {
+			case SYMLINK, DIRECTORY -> delegate.size();
+			case FILE -> getPlaintextFileSize(ciphertextPath, delegate.size(), openCryptoFile, cryptor);
+		};
 		this.lastModifiedTime =  openCryptoFile.map(OpenCryptoFile::getLastModifiedTime).orElseGet(delegate::lastModifiedTime);
 		this.lastAccessTime = openCryptoFile.map(openFile -> FileTime.from(Instant.now())).orElseGet(delegate::lastAccessTime);
 		this.creationTime = delegate.creationTime();
@@ -60,7 +52,8 @@ class CryptoBasicFileAttributes implements BasicFileAttributes {
 
 	private static long calculatePlaintextFileSize(Path ciphertextPath, long size, Cryptor cryptor) {
 		try {
-			return Cryptors.cleartextSize(size - cryptor.fileHeaderCryptor().headerSize(), cryptor);
+			long payloadSize = size - cryptor.fileHeaderCryptor().headerSize();
+			return cryptor.fileContentCryptor().cleartextSize(payloadSize);
 		} catch (IllegalArgumentException e) {
 			LOG.warn("Unable to calculate cleartext file size for {}. Ciphertext size (including header): {}", ciphertextPath, size);
 			return 0l;

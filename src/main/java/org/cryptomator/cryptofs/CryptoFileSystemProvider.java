@@ -11,6 +11,8 @@ package org.cryptomator.cryptofs;
 import org.cryptomator.cryptofs.ch.AsyncDelegatingFileChannel;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.Masterkey;
 import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 
@@ -38,6 +40,8 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
@@ -86,7 +90,15 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	private final CopyOperation copyOperation;
 
 	public CryptoFileSystemProvider() {
-		this(DaggerCryptoFileSystemProviderComponent.create());
+		this(DaggerCryptoFileSystemProviderComponent.builder().csprng(strongSecureRandom()).build());
+	}
+
+	private static SecureRandom strongSecureRandom() {
+		try {
+			return SecureRandom.getInstanceStrong();
+		} catch (NoSuchAlgorithmException e) {
+			throw new IllegalStateException("A strong algorithm must exist in every Java platform.", e);
+		}
 	}
 
 	/**
@@ -107,8 +119,9 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @throws FileSystemNeedsMigrationException                      if the vault format needs to get updated and <code>properties</code> did not contain a flag for implicit migration.
 	 * @throws FileSystemCapabilityChecker.MissingCapabilityException If the underlying filesystem lacks features required to store a vault
 	 * @throws IOException                                            if an I/O error occurs creating the file system
+	 * @throws MasterkeyLoadingFailedException                        if the masterkey for this vault could not be loaded
 	 */
-	public static CryptoFileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws FileSystemNeedsMigrationException, IOException {
+	public static CryptoFileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws FileSystemNeedsMigrationException, IOException, MasterkeyLoadingFailedException {
 		URI uri = CryptoFileSystemUri.create(pathToVault.toAbsolutePath());
 		return (CryptoFileSystem) FileSystems.newFileSystem(uri, properties);
 	}
@@ -124,41 +137,41 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @throws MasterkeyLoadingFailedException If thrown by the supplied keyLoader
 	 * @since 2.0.0
 	 */
-	public static void initialize(Path pathToVault, CryptoFileSystemProperties properties, String keyId) throws NotDirectoryException, IOException, MasterkeyLoadingFailedException {
+	public static void initialize(Path pathToVault, CryptoFileSystemProperties properties, URI keyId) throws NotDirectoryException, IOException, MasterkeyLoadingFailedException {
 		if (!Files.isDirectory(pathToVault)) {
 			throw new NotDirectoryException(pathToVault.toString());
 		}
 		byte[] rawKey = new byte[0];
-		try (Masterkey key = properties.keyLoader().loadKey(keyId)) {
+		var config = VaultConfig.createNew().cipherCombo(properties.cipherCombo()).shorteningThreshold(Constants.DEFAULT_SHORTENING_THRESHOLD).build();
+		try (Masterkey key = properties.keyLoader().loadKey(keyId);
+			 Cryptor cryptor = CryptorProvider.forScheme(config.getCipherCombo()).provide(key, strongSecureRandom())) {
 			rawKey = key.getEncoded();
 			// save vault config:
 			Path vaultConfigPath = pathToVault.resolve(properties.vaultConfigFilename());
-			var config = VaultConfig.createNew().cipherCombo(properties.cipherCombo()).maxFilenameLength(properties.maxNameLength()).build();
-			var token = config.toToken(keyId, rawKey);
+			var token = config.toToken(keyId.toString(), rawKey);
 			Files.writeString(vaultConfigPath, token, StandardCharsets.US_ASCII, WRITE, CREATE_NEW);
-			// create "d" dir:
-			Path dataDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME);
-			Files.createDirectories(dataDirPath);
+			// create "d" dir and root:
+			String dirHash = cryptor.fileNameCryptor().hashDirectoryId(Constants.ROOT_DIR_ID);
+			Path vaultCipherRootPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(dirHash.substring(0, 2)).resolve(dirHash.substring(2));
+			Files.createDirectories(vaultCipherRootPath);
 		} finally {
 			Arrays.fill(rawKey, (byte) 0x00);
 		}
-		assert containsVault(pathToVault, properties.vaultConfigFilename(), properties.masterkeyFilename());
+		assert checkDirStructureForVault(pathToVault, properties.vaultConfigFilename(), properties.masterkeyFilename()) == DirStructure.VAULT;
 	}
 
 	/**
-	 * Checks if the folder represented by the given path exists and contains a valid vault structure.
+	 * Delegate to {@link DirStructure#checkDirStructure(Path, String, String)}.
 	 *
-	 * @param pathToVault         A directory path
-	 * @param vaultConfigFilename Name of the vault config file
-	 * @param masterkeyFilename   Name of the masterkey file
-	 * @return <code>true</code> if the directory seems to contain a vault.
+	 * @param pathToAssumedVault
+	 * @param vaultConfigFilename
+	 * @param masterkeyFilename
+	 * @return a {@link DirStructure} object
+	 * @throws IOException
 	 * @since 2.0.0
 	 */
-	public static boolean containsVault(Path pathToVault, String vaultConfigFilename, String masterkeyFilename) {
-		Path vaultConfigPath = pathToVault.resolve(vaultConfigFilename);
-		Path masterkeyPath = pathToVault.resolve(masterkeyFilename);
-		Path dataDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME);
-		return (Files.isReadable(vaultConfigPath) || Files.isReadable(masterkeyPath)) && Files.isDirectory(dataDirPath);
+	public static DirStructure checkDirStructureForVault(Path pathToAssumedVault, String vaultConfigFilename, String masterkeyFilename) throws IOException {
+		return DirStructure.checkDirStructure(pathToAssumedVault, vaultConfigFilename, masterkeyFilename);
 	}
 
 	/**
@@ -175,14 +188,10 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	@Override
-	public CryptoFileSystem newFileSystem(URI uri, Map<String, ?> rawProperties) throws IOException {
+	public CryptoFileSystem newFileSystem(URI uri, Map<String, ?> rawProperties) throws IOException, MasterkeyLoadingFailedException {
 		CryptoFileSystemUri parsedUri = CryptoFileSystemUri.parse(uri);
 		CryptoFileSystemProperties properties = CryptoFileSystemProperties.wrap(rawProperties);
-		try {
-			return fileSystems.create(this, parsedUri.pathToVault(), properties);
-		} catch (MasterkeyLoadingFailedException e) {
-			throw new IOException("Used invalid key to init filesystem.", e);
-		}
+		return fileSystems.create(this, parsedUri.pathToVault(), properties);
 	}
 
 	@Override

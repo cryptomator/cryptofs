@@ -23,8 +23,10 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
@@ -59,9 +61,10 @@ public class FileAttributeIntegrationTest {
 		inMemoryFs = Jimfs.newFileSystem();
 		pathToVault = inMemoryFs.getRootDirectories().iterator().next().resolve("vault");
 		Files.createDirectory(pathToVault);
-		MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
+		MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
+		Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
 		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
-		CryptoFileSystemProvider.initialize(pathToVault, properties, "irrelevant");
+		CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"));
 		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), properties);
 	}
 
@@ -193,12 +196,11 @@ public class FileAttributeIntegrationTest {
 	}
 
 	private static Matcher<FileTime> isAfter(FileTime previousFileTime) {
-		return new BaseMatcher<FileTime>() {
+		return new BaseMatcher<>() {
 			@Override
 			public boolean matches(Object item) {
-				if (item instanceof FileTime) {
-					FileTime subject = (FileTime) item;
-					return subject.compareTo(previousFileTime) > 0;
+				if (item instanceof FileTime ft) {
+					return ft.compareTo(previousFileTime) > 0;
 				} else {
 					return false;
 				}

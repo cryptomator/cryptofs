@@ -1,6 +1,5 @@
 package org.cryptomator.cryptofs;
 
-import com.auth0.jwt.interfaces.DecodedJWT;
 import dagger.BindsInstance;
 import dagger.Subcomponent;
 import org.cryptomator.cryptolib.api.Cryptor;

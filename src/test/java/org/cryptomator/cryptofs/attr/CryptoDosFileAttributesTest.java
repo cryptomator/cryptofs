@@ -45,7 +45,7 @@ public class CryptoDosFileAttributesTest {
 	@Nested
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 	@DisplayName("on read-write filesystem")
-	class ReadWriteFileSystem {
+	public class ReadWriteFileSystem {
 
 		private CryptoDosFileAttributes inTest;
 
@@ -96,7 +96,7 @@ public class CryptoDosFileAttributesTest {
 	@Nested
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 	@DisplayName("on read-only filesystem")
-	class ReadOnlyFileSystem {
+	public class ReadOnlyFileSystem {
 
 		private CryptoDosFileAttributes inTest;
 

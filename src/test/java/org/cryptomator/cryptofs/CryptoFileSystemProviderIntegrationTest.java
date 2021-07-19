@@ -36,6 +36,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.net.URI;
@@ -73,10 +74,9 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 	@Nested
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-	class WithLimitedPaths {
+	public class WithLimitedPaths {
 
-		private byte[] rawKey = new byte[64];
-		private MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(rawKey);
+		private MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
 		private CryptoFileSystem fs;
 		private Path shortFilePath;
 		private Path shortSymlinkPath;
@@ -84,13 +84,14 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 		@BeforeAll
 		public void setup(@TempDir Path tmpDir) throws IOException, MasterkeyLoadingFailedException {
+			Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
 			CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
 					.withFlags() //
 					.withMasterkeyFilename("masterkey.cryptomator") //
 					.withKeyLoader(keyLoader) //
-					.withMaxPathLength(100)
+					.withMaxCleartextNameLength(50)
 					.build();
-			CryptoFileSystemProvider.initialize(tmpDir, properties, "MASTERKEY_FILE");
+			CryptoFileSystemProvider.initialize(tmpDir, properties, URI.create("test:key"));
 			fs = CryptoFileSystemProvider.newFileSystem(tmpDir, properties);
 		}
 
@@ -114,7 +115,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@DisplayName("expect create file to fail with FileNameTooLongException")
 		@Test
 		public void testCreateFileExceedingPathLengthLimit() {
-			Path p = fs.getPath("/this-should-result-in-ciphertext-path-longer-than-100");
+			Path p = fs.getPath("/this-cleartext-filename-is-longer-than-50-characters");
 			Assertions.assertThrows(FileNameTooLongException.class, () -> {
 				Files.createFile(p);
 			});
@@ -123,7 +124,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@DisplayName("expect create directory to fail with FileNameTooLongException")
 		@Test
 		public void testCreateDirExceedingPathLengthLimit() {
-			Path p = fs.getPath("/this-should-result-in-ciphertext-path-longer-than-100");
+			Path p = fs.getPath("/this-cleartext-filename-is-longer-than-50-characters");
 			Assertions.assertThrows(FileNameTooLongException.class, () -> {
 				Files.createDirectory(p);
 			});
@@ -132,18 +133,18 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@DisplayName("expect create symlink to fail with FileNameTooLongException")
 		@Test
 		public void testCreateSymlinkExceedingPathLengthLimit() {
-			Path p = fs.getPath("/this-should-result-in-ciphertext-path-longer-than-100");
+			Path p = fs.getPath("/this-cleartext-filename-is-longer-than-50-characters");
 			Assertions.assertThrows(FileNameTooLongException.class, () -> {
 				Files.createSymbolicLink(p, shortFilePath);
 			});
 		}
 
 		@DisplayName("expect move to fail with FileNameTooLongException")
-		@ParameterizedTest(name = "move {0} -> this-should-result-in-ciphertext-path-longer-than-100")
+		@ParameterizedTest(name = "move {0} -> this-cleartext-filename-is-longer-than-50-characters")
 		@ValueSource(strings = {"/short-enough.txt", "/short-enough-dir", "/symlink.txt"})
 		public void testMoveExceedingPathLengthLimit(String path) {
 			Path src = fs.getPath(path);
-			Path dst = fs.getPath("/this-should-result-in-ciphertext-path-longer-than-100");
+			Path dst = fs.getPath("/this-cleartext-filename-is-longer-than-50-characters");
 			Assertions.assertThrows(FileNameTooLongException.class, () -> {
 				Files.move(src, dst);
 			});
@@ -152,11 +153,11 @@ public class CryptoFileSystemProviderIntegrationTest {
 		}
 
 		@DisplayName("expect copy to fail with FileNameTooLongException")
-		@ParameterizedTest(name = "copy {0} -> this-should-result-in-ciphertext-path-longer-than-100")
+		@ParameterizedTest(name = "copy {0} -> this-cleartext-filename-is-longer-than-50-characters")
 		@ValueSource(strings = {"/short-enough.txt", "/short-enough-dir", "/symlink.txt"})
 		public void testCopyExceedingPathLengthLimit(String path) {
 			Path src = fs.getPath(path);
-			Path dst = fs.getPath("/this-should-result-in-ciphertext-path-longer-than-100");
+			Path dst = fs.getPath("/this-cleartext-filename-is-longer-than-50-characters");
 			Assertions.assertThrows(FileNameTooLongException.class, () -> {
 				Files.copy(src, dst, LinkOption.NOFOLLOW_LINKS);
 			});
@@ -169,7 +170,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 	@Nested
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 	@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-	class InMemory {
+	public class InMemory {
 
 		private FileSystem tmpFs;
 		private MasterkeyLoader keyLoader1;
@@ -182,14 +183,16 @@ public class CryptoFileSystemProviderIntegrationTest {
 		private FileSystem fs2;
 
 		@BeforeAll
-		public void setup() throws IOException {
+		public void setup() throws IOException, MasterkeyLoadingFailedException {
 			tmpFs = Jimfs.newFileSystem(Configuration.unix());
 			byte[] key1 = new byte[64];
 			byte[] key2 = new byte[64];
 			Arrays.fill(key1, (byte) 0x55);
 			Arrays.fill(key2, (byte) 0x77);
-			keyLoader1 = ignored -> Masterkey.createFromRaw(key1);
-			keyLoader2 = ignored -> Masterkey.createFromRaw(key2);
+			keyLoader1 = Mockito.mock(MasterkeyLoader.class);
+			keyLoader2 = Mockito.mock(MasterkeyLoader.class);
+			Mockito.when(keyLoader1.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(key1));
+			Mockito.when(keyLoader2.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(key2));
 			pathToVault1 = tmpFs.getPath("/vaultDir1");
 			pathToVault2 = tmpFs.getPath("/vaultDir2");
 			Files.createDirectory(pathToVault1);
@@ -210,12 +213,12 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Assertions.assertAll(
 					() -> {
 						var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader1).build();
-						CryptoFileSystemProvider.initialize(pathToVault1, properties, "MASTERKEY_FILE");
+						CryptoFileSystemProvider.initialize(pathToVault1, properties, URI.create("test:key"));
 						Assertions.assertTrue(Files.isDirectory(pathToVault1.resolve("d")));
 						Assertions.assertTrue(Files.isRegularFile(vaultConfigFile1));
 					}, () -> {
 						var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader2).build();
-						CryptoFileSystemProvider.initialize(pathToVault2, properties, "MASTERKEY_FILE");
+						CryptoFileSystemProvider.initialize(pathToVault2, properties, URI.create("test:key"));
 						Assertions.assertTrue(Files.isDirectory(pathToVault2.resolve("d")));
 						Assertions.assertTrue(Files.isRegularFile(vaultConfigFile2));
 					});
@@ -224,9 +227,9 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@Test
 		@Order(2)
 		@DisplayName("get filesystem with incorrect credentials")
-		public void testGetFsWithWrongCredentials() {
-			Assumptions.assumeTrue(CryptoFileSystemProvider.containsVault(pathToVault1, "vault.cryptomator", "masterkey.cryptomator"));
-			Assumptions.assumeTrue(CryptoFileSystemProvider.containsVault(pathToVault2, "vault.cryptomator", "masterkey.cryptomator"));
+		public void testGetFsWithWrongCredentials() throws IOException {
+			Assumptions.assumeTrue(CryptoFileSystemProvider.checkDirStructureForVault(pathToVault1, "vault.cryptomator", "masterkey.cryptomator") == DirStructure.VAULT);
+			Assumptions.assumeTrue(CryptoFileSystemProvider.checkDirStructureForVault(pathToVault2, "vault.cryptomator", "masterkey.cryptomator") == DirStructure.VAULT);
 			Assertions.assertAll(
 					() -> {
 						URI fsUri = CryptoFileSystemUri.create(pathToVault1);
@@ -520,7 +523,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 	@EnabledOnOs({OS.MAC, OS.LINUX})
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 	@DisplayName("On POSIX Systems")
-	class PosixTests {
+	public class PosixTests {
 
 		private FileSystem fs;
 
@@ -528,15 +531,16 @@ public class CryptoFileSystemProviderIntegrationTest {
 		public void setup(@TempDir Path tmpDir) throws IOException, MasterkeyLoadingFailedException {
 			Path pathToVault = tmpDir.resolve("vaultDir1");
 			Files.createDirectories(pathToVault);
-			MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
+			MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
+			Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
 			var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
-			CryptoFileSystemProvider.initialize(pathToVault, properties, "MASTERKEY_FILE");
+			CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"));
 			fs = CryptoFileSystemProvider.newFileSystem(pathToVault, properties);
 		}
 
 		@Nested
 		@DisplayName("File Locks")
-		class FileLockTests {
+		public class FileLockTests {
 
 			private Path file = fs.getPath("/lock.txt");
 
@@ -611,7 +615,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 	@EnabledOnOs(OS.WINDOWS)
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 	@DisplayName("On Windows Systems")
-	class WindowsTests {
+	public class WindowsTests {
 
 		private FileSystem fs;
 
@@ -619,9 +623,10 @@ public class CryptoFileSystemProviderIntegrationTest {
 		public void setup(@TempDir Path tmpDir) throws IOException, MasterkeyLoadingFailedException {
 			Path pathToVault = tmpDir.resolve("vaultDir1");
 			Files.createDirectories(pathToVault);
-			MasterkeyLoader keyLoader = ignored -> Masterkey.createFromRaw(new byte[64]);
+			MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
+			Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
 			var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
-			CryptoFileSystemProvider.initialize(pathToVault, properties, "MASTERKEY_FILE");
+			CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"));
 			fs = CryptoFileSystemProvider.newFileSystem(pathToVault, properties);
 		}
 
@@ -656,7 +661,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 		@Nested
 		@DisplayName("read-only file")
-		class OnReadOnlyFile {
+		public class OnReadOnlyFile {
 
 			private Path file = fs.getPath("/readonly.txt");
 			private DosFileAttributeView attrView;

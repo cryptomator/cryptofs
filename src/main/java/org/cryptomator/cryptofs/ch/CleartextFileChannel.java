@@ -32,7 +32,6 @@ import java.util.function.Supplier;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
-import static org.cryptomator.cryptolib.Cryptors.ciphertextSize;
 
 @ChannelScoped
 public class CleartextFileChannel extends AbstractFileChannel {
@@ -192,7 +191,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			if (sizeOfIncompleteChunk > 0) {
 				chunkCache.get(indexOfLastChunk).truncate(sizeOfIncompleteChunk);
 			}
-			long ciphertextFileSize = cryptor.fileHeaderCryptor().headerSize() + ciphertextSize(newSize, cryptor);
+			long ciphertextFileSize = cryptor.fileHeaderCryptor().headerSize() + cryptor.fileContentCryptor().ciphertextSize(newSize);
 			chunkCache.invalidateAll(); // make sure no chunks _after_ newSize exist that would otherwise be written during the next cache eviction
 			ciphertextFileChannel.truncate(ciphertextFileSize);
 			position = min(newSize, position);
