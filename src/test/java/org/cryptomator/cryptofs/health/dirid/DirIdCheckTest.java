@@ -10,6 +10,7 @@ import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -36,6 +37,7 @@ public class DirIdCheckTest {
 			AA/aaaa/baz=.c9r/symlink.c9r = linktarget
 			BB/bbbb/foo=.c9r/dir.c9r = CCcccc
 			BB/bbbb/bar=.c9r/dir.c9r = ffffffffffff-aaaaaaaaaaaa-tttttttttttt
+			BB/bbbb/baz=.c9r/dir.c9r = EMPTY
 			BB/bbbb/foo=.c9r/unrelated/dir.c9r = unrelatedfile
 			CC/cccc/foo=.c9r = file
 			""";
@@ -121,6 +123,17 @@ public class DirIdCheckTest {
 			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(ObeseDirFile.class, expectedObeseFile, "Obese dir file: /d/BB/bbbb/bar=.c9r/dir.c9r")));
 		}
 
+		@Test
+		@DisplayName("detects empty dirID file in /d/BB/bbbb/baz=.c9r/dir.c9r")
+		public void testVisitorDetectsEmptyDirId() throws IOException {
+			Files.walkFileTree(dataRoot, Set.of(), 4, visitor);
+
+			Predicate<EmptyDirFile> expectedEmptyFile = emptyDirFile -> "/d/BB/bbbb/baz=.c9r/dir.c9r".equals(emptyDirFile.dirFile.toString());
+			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
+			Mockito.verify(resultsCollector, Mockito.atLeastOnce()).accept(resultCaptor.capture());
+			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(EmptyDirFile.class, expectedEmptyFile, "Empty dir file: /d/BB/bbbb/baz=.c9r/dir.c9r")));
+		}
+
 	}
 
 	private static void initDirStructure(Path root, String line) throws UncheckedIOException {
@@ -130,7 +143,11 @@ public class DirIdCheckTest {
 				var file = line.substring(0, sep);
 				var contents = line.substring(sep + 3);
 				Files.createDirectories(root.resolve(file).getParent());
-				Files.writeString(root.resolve(file), contents, StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW);
+				if (!contents.equals("EMPTY")) {
+					Files.writeString(root.resolve(file), contents, StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW);
+				} else {
+					Files.createFile(root.resolve(file));
+				}
 			} else {
 				Files.createDirectories(root.resolve(line));
 			}
