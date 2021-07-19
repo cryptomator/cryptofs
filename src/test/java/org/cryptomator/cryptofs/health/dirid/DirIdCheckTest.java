@@ -142,9 +142,11 @@ public class DirIdCheckTest {
 				var file = root.resolve(line.substring(0, sep));
 				var contents = line.substring(sep + 3);
 				Files.createDirectories(file.getParent());
-				Files.createFile(file);
-				if (!contents.equals("[EMPTY]")) {
-					Files.writeString(file, contents, StandardCharsets.US_ASCII, StandardOpenOption.WRITE);
+				if (contents.equals("[EMPTY]")) {
+					Files.createFile(file);
+				} else {
+					Files.writeString(file, contents, StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW);
+
 				}
 			} else {
 				Files.createDirectories(root.resolve(line));
