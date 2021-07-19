@@ -10,7 +10,6 @@ import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -140,13 +139,12 @@ public class DirIdCheckTest {
 		try {
 			if (line.contains(" = ")) {
 				var sep = line.indexOf(" = ");
-				var file = line.substring(0, sep);
+				var file = root.resolve(line.substring(0, sep));
 				var contents = line.substring(sep + 3);
-				Files.createDirectories(root.resolve(file).getParent());
+				Files.createDirectories(file.getParent());
+				Files.createFile(file);
 				if (!contents.equals("[EMPTY]")) {
-					Files.writeString(root.resolve(file), contents, StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW);
-				} else {
-					Files.createFile(root.resolve(file));
+					Files.writeString(file, contents, StandardCharsets.US_ASCII, StandardOpenOption.WRITE);
 				}
 			} else {
 				Files.createDirectories(root.resolve(line));

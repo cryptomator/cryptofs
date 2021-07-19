@@ -8,7 +8,7 @@ import java.util.Map;
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID_FILE;
 
 /**
- * A critical diagnostic result of an empty directory id file (dir.c9r).
+ * A diagnostic result of an empty directory id file (dir.c9r).
  * <p>
  * Even though the empty directory ID exists, it is reserved for the root node of the crypto filesystem only.
  * Due to its nature, the root node has no corresponding dir.c9r file.
