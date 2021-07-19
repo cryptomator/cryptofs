@@ -42,7 +42,7 @@ public class HealthCheckIntegrationTest {
 				var cryptor = CryptorProvider.forScheme(verifiedCfg.getCipherCombo()).provide(masterkey, SecureRandom.getInstanceStrong());
 				var executor = Executors.newSingleThreadExecutor();
 				HealthCheck.allChecks().forEach(check -> {
-					System.out.println("Running " + check.identifier());
+					System.out.println("Running " + check.name());
 					var results = check.check(p, verifiedCfg, masterkey, cryptor, executor);
 					results.forEach(System.out::println);
 				});

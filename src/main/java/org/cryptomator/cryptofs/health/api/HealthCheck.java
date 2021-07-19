@@ -23,10 +23,11 @@ public interface HealthCheck {
 	}
 
 	/**
-	 * @return A unique name for this check (that might be used as a translation key)
+	 * @return A human readable name for this check
 	 */
-	default String identifier() {
-		return getClass().getCanonicalName();
+	default String name() {
+		var canonicalName = getClass().getCanonicalName();
+		return canonicalName.substring(canonicalName.lastIndexOf('.')+1);
 	}
 
 	/**
@@ -61,7 +62,7 @@ public interface HealthCheck {
 			try {
 				check(pathToVault, config, masterkey, cryptor, resultSpliterator);
 			} catch (TransferSpliterator.TransferClosedException e) {
-				LoggerFactory.getLogger(HealthCheck.class).debug("{} cancelled.", identifier());
+				LoggerFactory.getLogger(HealthCheck.class).debug("{} cancelled.", name());
 			} finally {
 				resultSpliterator.close();
 			}

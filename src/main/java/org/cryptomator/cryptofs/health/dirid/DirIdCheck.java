@@ -30,6 +30,12 @@ public class DirIdCheck implements HealthCheck {
 
 	private static final Logger LOG = LoggerFactory.getLogger(DirIdCheck.class);
 	private static final int MAX_TRAVERSAL_DEPTH = 4; // d/2/30/Fo0==.c9r/dir.c9r
+	private static final String CHECK_NAME = "Directory Check";
+
+	@Override
+	public String name() {
+		return CHECK_NAME;
+	}
 
 	@Override
 	public void check(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor, Consumer<DiagnosticResult> resultCollector) {
