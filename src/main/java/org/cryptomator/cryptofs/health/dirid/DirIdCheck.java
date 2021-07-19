@@ -103,6 +103,9 @@ public class DirIdCheck implements HealthCheck {
 			if (attrs.size() > Constants.MAX_DIR_FILE_LENGTH) {
 				LOG.warn("Encountered dir.c9r file of size {}", attrs.size());
 				resultCollector.accept(new ObeseDirFile(file, attrs.size()));
+			} else if (attrs.size() == 0) {
+				LOG.warn("Empty dir.c9r file.", file);
+				resultCollector.accept(new EmptyDirFile(file));
 			} else {
 				byte[] bytes = Files.readAllBytes(file);
 				String dirId = new String(bytes, StandardCharsets.UTF_8);
