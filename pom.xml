@@ -18,8 +18,8 @@
 		<maven.compiler.release>16</maven.compiler.release>
 
 		<!-- dependencies -->
-		<cryptolib.version>2.0.0-rc6</cryptolib.version>
-		<jwt.version>3.17.0</jwt.version>
+		<cryptolib.version>2.0.0</cryptolib.version>
+		<jwt.version>3.18.1</jwt.version>
 		<dagger.version>2.37</dagger.version>
 		<guava.version>30.1.1-jre</guava.version>
 		<slf4j.version>1.7.31</slf4j.version>
@@ -165,7 +165,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.2.0</version>
+				<version>3.3.0</version>
 				<executions>
 					<execution>
 						<id>attach-javadocs</id>
@@ -200,14 +200,6 @@
 						<tag><name>serialData</name></tag>
 						<tag><name>see</name></tag>
 					</tags>
-					<!-- Used for javax.annotation.Generated in dagger-generated code. Can be removed when using JDK 11+ -->
-					<additionalDependencies>
-						<additionalDependency>
-							<groupId>javax.annotation</groupId>
-							<artifactId>jsr250-api</artifactId>
-							<version>1.0</version>
-						</additionalDependency>
-					</additionalDependencies>
 				</configuration>
 			</plugin>
 		</plugins>
@@ -274,7 +266,7 @@
 				<plugins>
 					<plugin>
 						<artifactId>maven-gpg-plugin</artifactId>
-						<version>1.6</version>
+						<version>3.0.1</version>
 						<executions>
 							<execution>
 								<id>sign-artifacts</id>
