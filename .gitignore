@@ -15,4 +15,5 @@ pom.xml.versionsBackup
 .idea/modules.xml
 .idea/compiler.xml
 .idea/inspectionProfiles/
+.idea/uiDesigner.xml
 *.iml
