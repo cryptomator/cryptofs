@@ -14,11 +14,9 @@ import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener.Cont
 import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener.ContinuationResult;
 import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
 import org.cryptomator.cryptofs.migration.api.Migrator;
-import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.CryptorProvider;
-import org.cryptomator.cryptolib.api.InvalidPassphraseException;
-import org.cryptomator.cryptolib.api.KeyFile;
-import org.cryptomator.cryptolib.api.UnsupportedVaultFormatException;
+import org.cryptomator.cryptolib.api.CryptoException;
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.common.MasterkeyFileAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,34 +25,48 @@ import java.io.IOException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
+import java.security.SecureRandom;
 import java.util.EnumSet;
 
+/**
+ * Renames ciphertext names:
+ *
+ * <ul>
+ *     <li>Files: BASE32== → base64==.c9r</li>
+ *     <li>Dirs: 0BASE32== → base64==.c9r/dir.c9r</li>
+ *     <li>Symlinks: 1SBASE32== → base64.c9r/symlink.c9r</li>
+ * </ul>
+ * <p>
+ * Shortened names:
+ * <ul>
+ *     <li>shortened.lng → shortened.c9s</li>
+ *     <li>m/shortened.lng → shortened.c9s/contents.c9r</li>
+ * </ul>
+ */
 public class Version7Migrator implements Migrator {
 
 	private static final Logger LOG = LoggerFactory.getLogger(Version7Migrator.class);
 
-	private final CryptorProvider cryptorProvider;
+	private final SecureRandom csprng;
 
 	@Inject
-	public Version7Migrator(CryptorProvider cryptorProvider) {
-		this.cryptorProvider = cryptorProvider;
+	public Version7Migrator(SecureRandom csprng) {
+		this.csprng = csprng;
 	}
 
 	@Override
-	public void migrate(Path vaultRoot, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws InvalidPassphraseException, UnsupportedVaultFormatException, IOException {
+	public void migrate(Path vaultRoot, String vaultConfigFilename, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws CryptoException, IOException {
 		LOG.info("Upgrading {} from version 6 to version 7.", vaultRoot);
 		progressListener.update(MigrationProgressListener.ProgressState.INITIALIZING, 0.0);
 		Path masterkeyFile = vaultRoot.resolve(masterkeyFilename);
-		byte[] fileContentsBeforeUpgrade = Files.readAllBytes(masterkeyFile);
-		KeyFile keyFile = KeyFile.parse(fileContentsBeforeUpgrade);
-		try (Cryptor cryptor = cryptorProvider.createFromKeyFile(keyFile, passphrase, 6)) {
+		MasterkeyFileAccess masterkeyFileAccess = new MasterkeyFileAccess(new byte[0], csprng);
+		try (Masterkey masterkey = masterkeyFileAccess.load(masterkeyFile, passphrase)) {
 			// create backup, as soon as we know the password was correct:
 			Path masterkeyBackupFile = MasterkeyBackupHelper.attemptMasterKeyBackup(masterkeyFile);
 			LOG.info("Backed up masterkey from {} to {}.", masterkeyFile.getFileName(), masterkeyBackupFile.getFileName());
-			
+
 			// check file system capabilities:
-			int filenameLengthLimit = new FileSystemCapabilityChecker().determineSupportedFileNameLength(vaultRoot.resolve("c"), 46, 28, 220);
+			int filenameLengthLimit = new FileSystemCapabilityChecker().determineSupportedCiphertextFileNameLength(vaultRoot.resolve("c"), 46, 28, 220);
 			int pathLengthLimit = filenameLengthLimit + 48; // TODO
 			PreMigrationVisitor preMigrationVisitor;
 			if (filenameLengthLimit >= 220) {
@@ -82,13 +94,13 @@ public class Version7Migrator implements Migrator {
 			// fail if ciphertext paths are too long:
 			if (preMigrationVisitor.getMaxCiphertextPathLength() > pathLengthLimit) {
 				LOG.error("Migration aborted due to unsupported path length (required {}) of underlying file system (supports {}). Vault is unchanged.", preMigrationVisitor.getMaxCiphertextPathLength(), pathLengthLimit);
-				throw new FileNameTooLongException(preMigrationVisitor.getLongestPath().toString(), pathLengthLimit, filenameLengthLimit);
+				throw new FileNameTooLongException(preMigrationVisitor.getLongestPath().toString(), filenameLengthLimit);
 			}
 
 			// fail if ciphertext names are too long:
 			if (preMigrationVisitor.getMaxCiphertextNameLength() > filenameLengthLimit) {
 				LOG.error("Migration aborted due to unsupported filename length (required {}) of underlying file system (supports {}). Vault is unchanged.", preMigrationVisitor.getMaxCiphertextNameLength(), filenameLengthLimit);
-				throw new FileNameTooLongException(preMigrationVisitor.getPathWithLongestName().toString(), pathLengthLimit, filenameLengthLimit);
+				throw new FileNameTooLongException(preMigrationVisitor.getPathWithLongestName().toString(), filenameLengthLimit);
 			}
 
 			// start migration:
@@ -103,8 +115,7 @@ public class Version7Migrator implements Migrator {
 			Files.walkFileTree(vaultRoot.resolve("m"), DeletingFileVisitor.INSTANCE);
 
 			// rewrite masterkey file with normalized passphrase:
-			byte[] fileContentsAfterUpgrade = cryptor.writeKeysToMasterkeyFile(passphrase, 7).serialize();
-			Files.write(masterkeyFile, fileContentsAfterUpgrade, StandardOpenOption.TRUNCATE_EXISTING);
+			masterkeyFileAccess.persist(masterkey, masterkeyFile, passphrase, 7);
 			LOG.info("Updated masterkey.");
 		}
 		LOG.info("Upgraded {} from version 6 to version 7.", vaultRoot);

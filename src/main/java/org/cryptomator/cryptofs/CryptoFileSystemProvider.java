@@ -11,19 +11,17 @@ package org.cryptomator.cryptofs;
 import org.cryptomator.cryptofs.ch.AsyncDelegatingFileChannel;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
-import org.cryptomator.cryptofs.common.MasterkeyBackupHelper;
-import org.cryptomator.cryptofs.migration.Migrators;
-import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener.ContinuationResult;
-import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.CryptorProvider;
-import org.cryptomator.cryptolib.api.InvalidPassphraseException;
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 
 import java.io.IOException;
 import java.net.URI;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessMode;
 import java.nio.file.CopyOption;
 import java.nio.file.DirectoryStream;
@@ -33,7 +31,6 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.NotDirectoryException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -45,14 +42,11 @@ import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.text.Normalizer;
-import java.text.Normalizer.Form;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
-import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
 
@@ -82,7 +76,6 @@ import static java.nio.file.StandardOpenOption.WRITE;
  * <p>
  * Afterwards you can use the created {@code FileSystem} to create paths, do directory listings, create files and so on.
  * <p>
- * <p>
  * To create a new FileSystem from a URI using {@link FileSystems#newFileSystem(URI, Map)} you may have a look at {@link CryptoFileSystemUri}.
  *
  * @see CryptoFileSystemUri
@@ -92,23 +85,12 @@ import static java.nio.file.StandardOpenOption.WRITE;
  */
 public class CryptoFileSystemProvider extends FileSystemProvider {
 
-	private static final CryptorProvider CRYPTOR_PROVIDER = Cryptors.version1(strongSecureRandom());
-
 	private final CryptoFileSystems fileSystems;
 	private final MoveOperation moveOperation;
 	private final CopyOperation copyOperation;
 
 	public CryptoFileSystemProvider() {
-		this(DaggerCryptoFileSystemProviderComponent.builder().cryptorProvider(CRYPTOR_PROVIDER).build());
-	}
-
-	/**
-	 * visible for testing
-	 */
-	CryptoFileSystemProvider(CryptoFileSystemProviderComponent component) {
-		this.fileSystems = component.fileSystems();
-		this.moveOperation = component.moveOperation();
-		this.copyOperation = component.copyOperation();
+		this(DaggerCryptoFileSystemProviderComponent.builder().csprng(strongSecureRandom()).build());
 	}
 
 	private static SecureRandom strongSecureRandom() {
@@ -120,16 +102,26 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	/**
+	 * visible for testing
+	 */
+	CryptoFileSystemProvider(CryptoFileSystemProviderComponent component) {
+		this.fileSystems = component.fileSystems();
+		this.moveOperation = component.moveOperation();
+		this.copyOperation = component.copyOperation();
+	}
+
+	/**
 	 * Typesafe alternative to {@link FileSystems#newFileSystem(URI, Map)}. Default way to retrieve a CryptoFS instance.
 	 *
 	 * @param pathToVault Path to this vault's storage location
-	 * @param properties Parameters used during initialization of the file system
+	 * @param properties  Parameters used during initialization of the file system
 	 * @return a new file system
-	 * @throws FileSystemNeedsMigrationException if the vault format needs to get updated and <code>properties</code> did not contain a flag for implicit migration.
+	 * @throws FileSystemNeedsMigrationException                      if the vault format needs to get updated and <code>properties</code> did not contain a flag for implicit migration.
 	 * @throws FileSystemCapabilityChecker.MissingCapabilityException If the underlying filesystem lacks features required to store a vault
-	 * @throws IOException if an I/O error occurs creating the file system
+	 * @throws IOException                                            if an I/O error occurs creating the file system
+	 * @throws MasterkeyLoadingFailedException                        if the masterkey for this vault could not be loaded
 	 */
-	public static CryptoFileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws FileSystemNeedsMigrationException, IOException {
+	public static CryptoFileSystem newFileSystem(Path pathToVault, CryptoFileSystemProperties properties) throws FileSystemNeedsMigrationException, IOException, MasterkeyLoadingFailedException {
 		URI uri = CryptoFileSystemUri.create(pathToVault.toAbsolutePath());
 		return (CryptoFileSystem) FileSystems.newFileSystem(uri, properties);
 	}
@@ -138,142 +130,48 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * Creates a new vault at the given directory path.
 	 *
 	 * @param pathToVault Path to an existing directory
-	 * @param masterkeyFilename Name of the masterkey file
-	 * @param passphrase Passphrase that should be used to unlock the vault
-	 * @throws NotDirectoryException If the given path is not an existing directory.
-	 * @throws FileSystemCapabilityChecker.MissingCapabilityException If the underlying filesystem lacks features required to store a vault
-	 * @throws IOException If the vault structure could not be initialized due to I/O errors
-	 * @since 1.3.0
+	 * @param properties  Parameters to use when writing the vault configuration
+	 * @param keyId       ID of the master key to use for this vault
+	 * @throws NotDirectoryException           If the given path is not an existing directory.
+	 * @throws IOException                     If the vault structure could not be initialized due to I/O errors
+	 * @throws MasterkeyLoadingFailedException If thrown by the supplied keyLoader
+	 * @since 2.0.0
 	 */
-	public static void initialize(Path pathToVault, String masterkeyFilename, CharSequence passphrase) throws NotDirectoryException, IOException {
-		initialize(pathToVault, masterkeyFilename, new byte[0], passphrase);
-	}
-
-	/**
-	 * Creates a new vault at the given directory path.
-	 *
-	 * @param pathToVault Path to an existing directory
-	 * @param masterkeyFilename Name of the masterkey file
-	 * @param pepper Application-specific pepper used during key derivation
-	 * @param passphrase Passphrase that should be used to unlock the vault
-	 * @throws NotDirectoryException If the given path is not an existing directory.
-	 * @throws FileSystemCapabilityChecker.MissingCapabilityException If the underlying filesystem lacks features required to store a vault
-	 * @throws IOException If the vault structure could not be initialized due to I/O errors
-	 * @since 1.3.2
-	 */
-	public static void initialize(Path pathToVault, String masterkeyFilename, byte[] pepper, CharSequence passphrase) throws NotDirectoryException, IOException {
+	public static void initialize(Path pathToVault, CryptoFileSystemProperties properties, URI keyId) throws NotDirectoryException, IOException, MasterkeyLoadingFailedException {
 		if (!Files.isDirectory(pathToVault)) {
 			throw new NotDirectoryException(pathToVault.toString());
 		}
-		try (Cryptor cryptor = CRYPTOR_PROVIDER.createNew()) {
-			// save masterkey file:
-			Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
-			byte[] keyFileContents = cryptor.writeKeysToMasterkeyFile(Normalizer.normalize(passphrase, Form.NFC), pepper, Constants.VAULT_VERSION).serialize();
-			Files.write(masterKeyPath, keyFileContents, CREATE_NEW, WRITE);
-			// create "d/RO/OTDIRECTORY":
-			String rootDirHash = cryptor.fileNameCryptor().hashDirectoryId(Constants.ROOT_DIR_ID);
-			Path rootDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(rootDirHash.substring(0, 2)).resolve(rootDirHash.substring(2));
-			Files.createDirectories(rootDirPath);
+		byte[] rawKey = new byte[0];
+		var config = VaultConfig.createNew().cipherCombo(properties.cipherCombo()).shorteningThreshold(Constants.DEFAULT_SHORTENING_THRESHOLD).build();
+		try (Masterkey key = properties.keyLoader().loadKey(keyId);
+			 Cryptor cryptor = CryptorProvider.forScheme(config.getCipherCombo()).provide(key, strongSecureRandom())) {
+			rawKey = key.getEncoded();
+			// save vault config:
+			Path vaultConfigPath = pathToVault.resolve(properties.vaultConfigFilename());
+			var token = config.toToken(keyId.toString(), rawKey);
+			Files.writeString(vaultConfigPath, token, StandardCharsets.US_ASCII, WRITE, CREATE_NEW);
+			// create "d" dir and root:
+			String dirHash = cryptor.fileNameCryptor().hashDirectoryId(Constants.ROOT_DIR_ID);
+			Path vaultCipherRootPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(dirHash.substring(0, 2)).resolve(dirHash.substring(2));
+			Files.createDirectories(vaultCipherRootPath);
+		} finally {
+			Arrays.fill(rawKey, (byte) 0x00);
 		}
-		assert containsVault(pathToVault, masterkeyFilename);
+		assert checkDirStructureForVault(pathToVault, properties.vaultConfigFilename(), properties.masterkeyFilename()) == DirStructure.VAULT;
 	}
 
 	/**
-	 * Checks if the folder represented by the given path exists and contains a valid vault structure.
+	 * Delegate to {@link DirStructure#checkDirStructure(Path, String, String)}.
 	 *
-	 * @param pathToVault A directory path
-	 * @param masterkeyFilename Name of the masterkey file
-	 * @return <code>true</code> if the directory seems to contain a vault.
-	 * @since 1.1.0
+	 * @param pathToAssumedVault
+	 * @param vaultConfigFilename
+	 * @param masterkeyFilename
+	 * @return a {@link DirStructure} object
+	 * @throws IOException
+	 * @since 2.0.0
 	 */
-	public static boolean containsVault(Path pathToVault, String masterkeyFilename) {
-		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
-		Path dataDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME);
-		return Files.isReadable(masterKeyPath) && Files.isDirectory(dataDirPath);
-	}
-
-	/**
-	 * Changes the passphrase of a vault at the given path.
-	 *
-	 * @param pathToVault Vault directory
-	 * @param masterkeyFilename Name of the masterkey file
-	 * @param oldPassphrase Current passphrase
-	 * @param newPassphrase Future passphrase
-	 * @throws InvalidPassphraseException If <code>oldPassphrase</code> can not be used to unlock the vault.
-	 * @throws FileSystemNeedsMigrationException if the vault format needs to get updated.
-	 * @throws IOException If the masterkey could not be read or written.
-	 * @see #changePassphrase(Path, String, byte[], CharSequence, CharSequence)
-	 * @since 1.1.0
-	 */
-	public static void changePassphrase(Path pathToVault, String masterkeyFilename, CharSequence oldPassphrase, CharSequence newPassphrase)
-			throws InvalidPassphraseException, FileSystemNeedsMigrationException, IOException {
-		changePassphrase(pathToVault, masterkeyFilename, new byte[0], oldPassphrase, newPassphrase);
-	}
-
-	/**
-	 * Changes the passphrase of a vault at the given path.
-	 *
-	 * @param pathToVault Vault directory
-	 * @param masterkeyFilename Name of the masterkey file
-	 * @param pepper An application-specific pepper added to the salt during key-derivation (if applicable)
-	 * @param oldPassphrase Current passphrase
-	 * @param newPassphrase Future passphrase
-	 * @throws InvalidPassphraseException If <code>oldPassphrase</code> can not be used to unlock the vault.
-	 * @throws FileSystemNeedsMigrationException if the vault format needs to get updated.
-	 * @throws IOException If the masterkey could not be read or written.
-	 * @since 1.4.0
-	 */
-	public static void changePassphrase(Path pathToVault, String masterkeyFilename, byte[] pepper, CharSequence oldPassphrase, CharSequence newPassphrase)
-			throws InvalidPassphraseException, FileSystemNeedsMigrationException, IOException {
-		if (Migrators.get().needsMigration(pathToVault, masterkeyFilename)) {
-			throw new FileSystemNeedsMigrationException(pathToVault);
-		}
-		String normalizedOldPassphrase = Normalizer.normalize(oldPassphrase, Form.NFC);
-		String normalizedNewPassphrase = Normalizer.normalize(newPassphrase, Form.NFC);
-		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
-		byte[] oldMasterkeyBytes = Files.readAllBytes(masterKeyPath);
-		byte[] newMasterkeyBytes = Cryptors.changePassphrase(CRYPTOR_PROVIDER, oldMasterkeyBytes, pepper, normalizedOldPassphrase, normalizedNewPassphrase);
-		Path backupKeyPath = pathToVault.resolve(masterkeyFilename + MasterkeyBackupHelper.generateFileIdSuffix(oldMasterkeyBytes) + Constants.MASTERKEY_BACKUP_SUFFIX);
-		Files.move(masterKeyPath, backupKeyPath, REPLACE_EXISTING, ATOMIC_MOVE);
-		Files.write(masterKeyPath, newMasterkeyBytes, CREATE_NEW, WRITE);
-	}
-
-	/**
-	 * Exports the raw key for backup purposes or external key management.
-	 *
-	 * @param pathToVault       Vault directory
-	 * @param masterkeyFilename Name of the masterkey file
-	 * @param pepper            An application-specific pepper added to the salt during key-derivation (if applicable)
-	 * @param passphrase        Current passphrase
-	 * @return A 64 byte array consisting of 32 byte aes key and 32 byte mac key
-	 * @since 1.9.0
-	 */
-	public static byte[] exportRawKey(Path pathToVault, String masterkeyFilename, byte[] pepper, CharSequence passphrase) throws InvalidPassphraseException, IOException {
-		String normalizedPassphrase = Normalizer.normalize(passphrase, Form.NFC);
-		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
-		byte[] masterKeyBytes = Files.readAllBytes(masterKeyPath);
-		return Cryptors.exportRawKey(CRYPTOR_PROVIDER, masterKeyBytes, pepper, normalizedPassphrase);
-	}
-
-	/**
-	 * Imports a raw key from backup or external key management.
-	 *
-	 * @param pathToVault       Vault directory
-	 * @param masterkeyFilename Name of the masterkey file
-	 * @param pepper            An application-specific pepper added to the salt during key-derivation (if applicable)
-	 * @param passphrase        Future passphrase
-	 * @since 1.9.0
-	 */
-	public static void restoreRawKey(Path pathToVault, String masterkeyFilename, byte[] rawKey, byte[] pepper, CharSequence passphrase) throws InvalidPassphraseException, IOException {
-		String normalizedPassphrase = Normalizer.normalize(passphrase, Form.NFC);
-		byte[] masterKeyBytes = Cryptors.restoreRawKey(CRYPTOR_PROVIDER, rawKey, pepper, normalizedPassphrase, Constants.VAULT_VERSION);
-		Path masterKeyPath = pathToVault.resolve(masterkeyFilename);
-		if (Files.exists(masterKeyPath)) {
-			byte[] oldMasterkeyBytes = Files.readAllBytes(masterKeyPath);
-			Path backupKeyPath = pathToVault.resolve(masterkeyFilename + MasterkeyBackupHelper.generateFileIdSuffix(oldMasterkeyBytes) + Constants.MASTERKEY_BACKUP_SUFFIX);
-			Files.move(masterKeyPath, backupKeyPath, REPLACE_EXISTING, ATOMIC_MOVE);
-		}
-		Files.write(masterKeyPath, masterKeyBytes, CREATE_NEW, WRITE);
+	public static DirStructure checkDirStructureForVault(Path pathToAssumedVault, String vaultConfigFilename, String masterkeyFilename) throws IOException {
+		return DirStructure.checkDirStructure(pathToAssumedVault, vaultConfigFilename, masterkeyFilename);
 	}
 
 	/**
@@ -290,37 +188,10 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	@Override
-	public CryptoFileSystem newFileSystem(URI uri, Map<String, ?> rawProperties) throws IOException {
+	public CryptoFileSystem newFileSystem(URI uri, Map<String, ?> rawProperties) throws IOException, MasterkeyLoadingFailedException {
 		CryptoFileSystemUri parsedUri = CryptoFileSystemUri.parse(uri);
 		CryptoFileSystemProperties properties = CryptoFileSystemProperties.wrap(rawProperties);
-
-		// TODO remove implicit initialization in 2.0.0
-		initializeFileSystemIfRequired(parsedUri, properties);
-		migrateFileSystemIfRequired(parsedUri, properties);
-
 		return fileSystems.create(this, parsedUri.pathToVault(), properties);
-	}
-
-	@Deprecated
-	private void migrateFileSystemIfRequired(CryptoFileSystemUri parsedUri, CryptoFileSystemProperties properties) throws IOException, FileSystemNeedsMigrationException {
-		if (Migrators.get().needsMigration(parsedUri.pathToVault(), properties.masterkeyFilename())) {
-			if (properties.migrateImplicitly()) {
-				Migrators.get().migrate(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase(), (state, progress) -> {}, (event) -> ContinuationResult.CANCEL);
-			} else {
-				throw new FileSystemNeedsMigrationException(parsedUri.pathToVault());
-			}
-		}
-	}
-
-	@Deprecated
-	private void initializeFileSystemIfRequired(CryptoFileSystemUri parsedUri, CryptoFileSystemProperties properties) throws NotDirectoryException, IOException, NoSuchFileException {
-		if (!CryptoFileSystemProvider.containsVault(parsedUri.pathToVault(), properties.masterkeyFilename())) {
-			if (properties.initializeImplicitly()) {
-				CryptoFileSystemProvider.initialize(parsedUri.pathToVault(), properties.masterkeyFilename(), properties.passphrase());
-			} else {
-				throw new NoSuchFileException(parsedUri.pathToVault().toString(), null, "Vault not initialized.");
-			}
-		}
 	}
 
 	@Override
@@ -394,7 +265,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	}
 
 	@Override
-	public FileStore getFileStore(Path cleartextPath) throws IOException {
+	public FileStore getFileStore(Path cleartextPath) {
 		return fileSystem(cleartextPath).getFileStore();
 	}
 

@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs.fh;
 
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
+import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 
 import javax.inject.Inject;
@@ -23,7 +24,7 @@ class ChunkLoader {
 		this.stats = stats;
 	}
 
-	public ChunkData load(Long chunkIndex) throws IOException {
+	public ChunkData load(Long chunkIndex) throws IOException, AuthenticationFailedException {
 		stats.addChunkCacheMiss();
 		int payloadSize = cryptor.fileContentCryptor().cleartextChunkSize();
 		int chunkSize = cryptor.fileContentCryptor().ciphertextChunkSize();

@@ -8,7 +8,6 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.ch;
 
-import org.cryptomator.cryptofs.ch.AsyncDelegatingFileChannel;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Assertions;
@@ -16,17 +15,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.CompletionHandler;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
-import java.nio.channels.spi.AbstractInterruptibleChannel;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -44,38 +39,22 @@ public class AsyncDelegatingFileChannelTest {
 	@BeforeEach
 	public void setup() throws ReflectiveOperationException {
 		channel = Mockito.mock(FileChannel.class);
-		try {
-			Field channelOpenField = AbstractInterruptibleChannel.class.getDeclaredField("open");
-			channelOpenField.setAccessible(true);
-			channelOpenField.set(channel, true);
-		} catch (NoSuchFieldException e) {
-			// field only declared in jdk8
-		}
-		try {
-			Field channelClosedField = AbstractInterruptibleChannel.class.getDeclaredField("closed");
-			channelClosedField.setAccessible(true);
-			channelClosedField.set(channel, false);
-		} catch (NoSuchFieldException e) {
-			// field only declared in jdk 9
-		}
-		Field channelCloseLockField = AbstractInterruptibleChannel.class.getDeclaredField("closeLock");
-		channelCloseLockField.setAccessible(true);
-		channelCloseLockField.set(channel, new Object());
 		asyncChannel = new AsyncDelegatingFileChannel(channel, executor);
 	}
 
 	@Test
-	public void testIsOpen() throws IOException {
+	public void testIsOpen() {
+		Mockito.when(channel.isOpen()).thenReturn(true);
 		Assertions.assertTrue(asyncChannel.isOpen());
-		channel.close();
+
+		Mockito.when(channel.isOpen()).thenReturn(false);
 		Assertions.assertFalse(asyncChannel.isOpen());
 	}
 
 	@Test
 	public void testClose() throws IOException {
-		Assertions.assertTrue(asyncChannel.isOpen());
 		asyncChannel.close();
-		Assertions.assertFalse(asyncChannel.isOpen());
+		Mockito.verify(channel).close();
 	}
 
 	@Test
@@ -112,21 +91,19 @@ public class AsyncDelegatingFileChannelTest {
 	public class LockTest {
 
 		@Test
-		public void testSuccess() throws IOException, InterruptedException, ExecutionException {
+		public void testSuccess() throws IOException, InterruptedException {
+			Mockito.when(channel.isOpen()).thenReturn(true);
 			final FileLock lock = Mockito.mock(FileLock.class);
-			Mockito.when(channel.lock(Mockito.anyLong(), Mockito.anyLong(), Mockito.anyBoolean())).thenAnswer(new Answer<FileLock>() {
-				@Override
-				public FileLock answer(InvocationOnMock invocation) throws Throwable {
-					Thread.sleep(100);
-					return lock;
-				}
+			Mockito.when(channel.lock(Mockito.anyLong(), Mockito.anyLong(), Mockito.anyBoolean())).thenAnswer(invocation -> {
+				Thread.sleep(100);
+				return lock;
 			});
 
 			CountDownLatch cdl = new CountDownLatch(1);
 			AtomicReference<FileLock> result = new AtomicReference<>();
 			AtomicReference<String> attachment = new AtomicReference<>();
 			AtomicReference<Throwable> exception = new AtomicReference<>();
-			asyncChannel.lock(123l, 234l, true, "bam", new CompletionHandler<FileLock, String>() {
+			asyncChannel.lock(123l, 234l, true, "bam", new CompletionHandler<>() {
 
 				@Override
 				public void completed(FileLock r, String a) {
@@ -162,18 +139,16 @@ public class AsyncDelegatingFileChannelTest {
 
 		@Test
 		public void testExecutionException() throws Throwable {
-			Mockito.when(channel.lock(Mockito.anyLong(), Mockito.anyLong(), Mockito.anyBoolean())).thenAnswer(new Answer<FileLock>() {
-				@Override
-				public FileLock answer(InvocationOnMock invocation) throws Throwable {
-					throw new java.lang.ArithmeticException("fail");
-				}
+			Mockito.when(channel.isOpen()).thenReturn(true);
+			Mockito.when(channel.lock(Mockito.anyLong(), Mockito.anyLong(), Mockito.anyBoolean())).thenAnswer(invocation -> {
+				throw new ArithmeticException("fail");
 			});
 
 			CountDownLatch cdl = new CountDownLatch(1);
 			AtomicReference<FileLock> result = new AtomicReference<>();
 			AtomicReference<String> attachment = new AtomicReference<>();
 			AtomicReference<Throwable> exception = new AtomicReference<>();
-			asyncChannel.lock(123l, 234l, true, "bam", new CompletionHandler<FileLock, String>() {
+			asyncChannel.lock(123l, 234l, true, "bam", new CompletionHandler<>() {
 
 				@Override
 				public void completed(FileLock r, String a) {
@@ -204,16 +179,14 @@ public class AsyncDelegatingFileChannelTest {
 	public class ReadTest {
 
 		@Test
-		public void testSuccess() throws IOException, InterruptedException, ExecutionException {
-			Mockito.when(channel.read(Mockito.any(), Mockito.anyLong())).thenAnswer(new Answer<Integer>() {
-				@Override
-				public Integer answer(InvocationOnMock invocation) throws Throwable {
-					ByteBuffer dst = invocation.getArgument(0);
-					Thread.sleep(100);
-					int read = dst.remaining();
-					dst.position(dst.position() + read);
-					return read;
-				}
+		public void testSuccess() throws IOException, InterruptedException {
+			Mockito.when(channel.isOpen()).thenReturn(true);
+			Mockito.when(channel.read(Mockito.any(), Mockito.anyLong())).thenAnswer(invocation -> {
+				ByteBuffer dst = invocation.getArgument(0);
+				Thread.sleep(100);
+				int read = dst.remaining();
+				dst.position(dst.position() + read);
+				return read;
 			});
 
 			CountDownLatch cdl = new CountDownLatch(1);
@@ -221,7 +194,7 @@ public class AsyncDelegatingFileChannelTest {
 			AtomicReference<String> attachment = new AtomicReference<>();
 			AtomicReference<Throwable> exception = new AtomicReference<>();
 			ByteBuffer buf = ByteBuffer.allocate(42);
-			asyncChannel.read(buf, 0l, "bam", new CompletionHandler<Integer, String>() {
+			asyncChannel.read(buf, 0l, "bam", new CompletionHandler<>() {
 
 				@Override
 				public void completed(Integer r, String a) {
@@ -261,16 +234,14 @@ public class AsyncDelegatingFileChannelTest {
 	public class WriteTest {
 
 		@Test
-		public void testSuccess() throws IOException, InterruptedException, ExecutionException {
-			Mockito.when(channel.write(Mockito.any(), Mockito.anyLong())).thenAnswer(new Answer<Integer>() {
-				@Override
-				public Integer answer(InvocationOnMock invocation) throws Throwable {
-					ByteBuffer dst = invocation.getArgument(0);
-					Thread.sleep(100);
-					int read = dst.remaining();
-					dst.position(dst.position() + read);
-					return read;
-				}
+		public void testSuccess() throws IOException, InterruptedException {
+			Mockito.when(channel.isOpen()).thenReturn(true);
+			Mockito.when(channel.write(Mockito.any(), Mockito.anyLong())).thenAnswer(invocation -> {
+				ByteBuffer dst = invocation.getArgument(0);
+				Thread.sleep(100);
+				int read = dst.remaining();
+				dst.position(dst.position() + read);
+				return read;
 			});
 
 			CountDownLatch cdl = new CountDownLatch(1);
@@ -278,7 +249,7 @@ public class AsyncDelegatingFileChannelTest {
 			AtomicReference<String> attachment = new AtomicReference<>();
 			AtomicReference<Throwable> exception = new AtomicReference<>();
 			ByteBuffer buf = ByteBuffer.allocate(42);
-			asyncChannel.write(buf, 0l, "bam", new CompletionHandler<Integer, String>() {
+			asyncChannel.write(buf, 0l, "bam", new CompletionHandler<>() {
 
 				@Override
 				public void completed(Integer r, String a) {

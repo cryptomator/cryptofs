@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.cryptomator</groupId>
 	<artifactId>cryptofs</artifactId>
-	<version>1.9.14</version>
+	<version>2.0.0</version>
 	<name>Cryptomator Crypto Filesystem</name>
 	<description>This library provides the Java filesystem provider used by Cryptomator.</description>
 	<url>https://github.com/cryptomator/cryptofs</url>
@@ -15,17 +15,24 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<maven.compiler.release>16</maven.compiler.release>
 
 		<!-- dependencies -->
-		<cryptolib.version>1.4.1</cryptolib.version>
-		<dagger.version>2.29.1</dagger.version>
-		<guava.version>30.0-jre</guava.version>
-		<slf4j.version>1.7.30</slf4j.version>
+		<cryptolib.version>2.0.0</cryptolib.version>
+		<jwt.version>3.18.1</jwt.version>
+		<dagger.version>2.37</dagger.version>
+		<guava.version>30.1.1-jre</guava.version>
+		<slf4j.version>1.7.31</slf4j.version>
 
 		<!-- test dependencies -->
-		<junit.jupiter.version>5.6.2</junit.jupiter.version>
-		<mockito.version>3.3.3</mockito.version>
+		<junit.jupiter.version>5.7.2</junit.jupiter.version>
+		<mockito.version>3.11.2</mockito.version>
 		<hamcrest.version>2.2</hamcrest.version>
+
+		<!-- build plugin dependencies -->
+		<dependency-check.version>6.2.2</dependency-check.version>
+		<jacoco.version>0.8.7</jacoco.version>
+		<nexus-staging.version>1.6.8</nexus-staging.version>
 	</properties>
 
 	<licenses>
@@ -60,23 +67,24 @@
 			<version>${cryptolib.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>com.google.guava</groupId>
-			<artifactId>guava</artifactId>
-			<version>${guava.version}</version>
+			<groupId>com.auth0</groupId>
+			<artifactId>java-jwt</artifactId>
+			<version>${jwt.version}</version>
 		</dependency>
-
-		<!-- Logging -->
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-api</artifactId>
-			<version>${slf4j.version}</version>
-		</dependency>
-
-		<!-- DI -->
 		<dependency>
 			<groupId>com.google.dagger</groupId>
 			<artifactId>dagger</artifactId>
 			<version>${dagger.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>${guava.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>${slf4j.version}</version>
 		</dependency>
 
 		<!-- Test -->
@@ -116,31 +124,9 @@
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-enforcer-plugin</artifactId>
-				<version>3.0.0-M3</version>
-				<executions>
-					<execution>
-						<id>enforce-java</id>
-						<goals>
-							<goal>enforce</goal>
-						</goals>
-						<configuration>
-							<rules>
-								<requireJavaVersion>
-									<message>You need at least JDK 11.0.3 to build this project.</message>
-									<version>[11.0.3,)</version>
-								</requireJavaVersion>
-							</rules>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.1</version>
 				<configuration>
-					<release>8</release>
 					<showWarnings>true</showWarnings>
 					<annotationProcessorPaths>
 						<path>
@@ -154,19 +140,12 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>2.22.2</version>
+				<version>3.0.0-M5</version>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
 				<version>3.2.0</version>
-				<configuration>
-					<archive>
-						<manifestEntries>
-							<Automatic-Module-Name>org.cryptomator.cryptofs</Automatic-Module-Name>
-						</manifestEntries>
-					</archive>
-				</configuration>
 			</plugin>
 			<plugin>
 				<artifactId>maven-source-plugin</artifactId>
@@ -182,7 +161,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.2.0</version>
+				<version>3.3.0</version>
 				<executions>
 					<execution>
 						<id>attach-javadocs</id>
@@ -217,14 +196,6 @@
 						<tag><name>serialData</name></tag>
 						<tag><name>see</name></tag>
 					</tags>
-					<!-- Used for javax.annotation.Generated in dagger-generated code. Can be removed when using JDK 11+ -->
-					<additionalDependencies>
-						<additionalDependency>
-							<groupId>javax.annotation</groupId>
-							<artifactId>jsr250-api</artifactId>
-							<version>1.0</version>
-						</additionalDependency>
-					</additionalDependencies>
 				</configuration>
 			</plugin>
 		</plugins>
@@ -238,7 +209,7 @@
 					<plugin>
 						<groupId>org.owasp</groupId>
 						<artifactId>dependency-check-maven</artifactId>
-						<version>6.1.0</version>
+						<version>${dependency-check.version}</version>
 						<configuration>
 							<cveValidForHours>24</cveValidForHours>
 							<failBuildOnCVSS>0</failBuildOnCVSS>
@@ -265,7 +236,7 @@
 					<plugin>
 						<groupId>org.jacoco</groupId>
 						<artifactId>jacoco-maven-plugin</artifactId>
-						<version>0.8.6</version>
+						<version>${jacoco.version}</version>
 						<executions>
 							<execution>
 								<id>prepare-agent</id>
@@ -291,7 +262,7 @@
 				<plugins>
 					<plugin>
 						<artifactId>maven-gpg-plugin</artifactId>
-						<version>1.6</version>
+						<version>3.0.1</version>
 						<executions>
 							<execution>
 								<id>sign-artifacts</id>
@@ -326,7 +297,7 @@
 					<plugin>
 						<groupId>org.sonatype.plugins</groupId>
 						<artifactId>nexus-staging-maven-plugin</artifactId>
-						<version>1.6.8</version>
+						<version>${nexus-staging.version}</version>
 						<extensions>true</extensions>
 						<configuration>
 							<serverId>ossrh</serverId>

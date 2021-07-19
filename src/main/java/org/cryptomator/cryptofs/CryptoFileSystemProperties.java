@@ -8,24 +8,21 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import static java.util.Arrays.asList;
-import static java.util.Collections.unmodifiableSet;
+import com.google.common.base.Strings;
+import org.cryptomator.cryptolib.api.CryptorProvider;
+import org.cryptomator.cryptolib.api.MasterkeyLoader;
 
 import java.net.URI;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.text.Normalizer;
-import java.text.Normalizer.Form;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
-import com.google.common.base.Strings;
-import org.cryptomator.cryptofs.common.Constants;
+import static java.util.Arrays.asList;
 
 /**
  * Properties to pass to
@@ -33,46 +30,39 @@ import org.cryptomator.cryptofs.common.Constants;
  * <li>{@link FileSystems#newFileSystem(URI, Map)} or
  * <li>{@link CryptoFileSystemProvider#newFileSystem(Path, CryptoFileSystemProperties)}.
  * </ul>
- * 
+ *
  * @author Markus Kreusch
  */
 public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	/**
-	 * Key identifying the passphrase for an encrypted vault.
-	 */
-	public static final String PROPERTY_PASSPHRASE = "passphrase";
-
-	/**
-	 * Maximum ciphertext path length.
+	 * Maximum cleartext filename length.
 	 *
-	 * @since 1.9.8
+	 * @since 2.0.0
 	 */
-	public static final String PROPERTY_MAX_PATH_LENGTH = "maxPathLength";
+	public static final String PROPERTY_MAX_CLEARTEXT_NAME_LENGTH = "maxCleartextNameLength";
 
-	static final int DEFAULT_MAX_PATH_LENGTH = Constants.MAX_CIPHERTEXT_PATH_LENGTH;
+	static final int DEFAULT_MAX_CLEARTEXT_NAME_LENGTH = LongFileNameProvider.MAX_FILENAME_BUFFER_SIZE;
 
 	/**
-	 * Maximum filename length of .c9r files.
+	 * Key identifying the key loader used during initialization.
 	 *
-	 * @since 1.9.9
+	 * @since 2.0.0
 	 */
-	public static final String PROPERTY_MAX_NAME_LENGTH = "maxNameLength";
-
-	static final int DEFAULT_MAX_NAME_LENGTH = Constants.MAX_CIPHERTEXT_NAME_LENGTH;
+	public static final String PROPERTY_KEYLOADER = "keyLoader";
 
 	/**
-	 * Key identifying the pepper used during key derivation.
-	 * 
-	 * @since 1.3.2
+	 * Key identifying the name of the vault config file located inside the vault directory.
+	 *
+	 * @since 2.0.0
 	 */
-	public static final String PROPERTY_PEPPER = "pepper";
+	public static final String PROPERTY_VAULTCONFIG_FILENAME = "vaultConfigFilename";
 
-	static final byte[] DEFAULT_PEPPER = new byte[0];
+	static final String DEFAULT_VAULTCONFIG_FILENAME = "vault.cryptomator";
 
 	/**
 	 * Key identifying the name of the masterkey file located inside the vault directory.
-	 * 
+	 *
 	 * @since 1.1.0
 	 */
 	public static final String PROPERTY_MASTERKEY_FILENAME = "masterkeyFilename";
@@ -81,69 +71,48 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	/**
 	 * Key identifying the filesystem flags.
-	 * 
+	 *
 	 * @since 1.3.0
 	 */
 	public static final String PROPERTY_FILESYSTEM_FLAGS = "flags";
 
-	static final Set<FileSystemFlags> DEFAULT_FILESYSTEM_FLAGS = unmodifiableSet(EnumSet.of(FileSystemFlags.MIGRATE_IMPLICITLY, FileSystemFlags.INIT_IMPLICITLY));
+	static final Set<FileSystemFlags> DEFAULT_FILESYSTEM_FLAGS = EnumSet.noneOf(FileSystemFlags.class);
 
 	public enum FileSystemFlags {
 		/**
 		 * If present, the vault is opened in read-only mode.
-		 * <p>
-		 * This flag can not be set together with {@link #INIT_IMPLICITLY} or {@link #MIGRATE_IMPLICITLY}.
 		 */
 		READONLY,
+	}
 
-		/**
-		 * If present, the vault gets automatically migrated during file system creation, which might become significantly slower.
-		 * If absent, a {@link FileSystemNeedsMigrationException} will get thrown during the attempt to open a vault that needs migration.
-		 * <p>
-		 * This flag can not be set together with {@link #READONLY}.
-		 * 
-		 * @since 1.4.0
-		 */
-		MIGRATE_IMPLICITLY,
+	/**
+	 * Key identifying the combination of ciphers to use in a vault. Only meaningful during vault initialization.
+	 *
+	 * @since 2.0.0
+	 */
+	public static final String PROPERTY_CIPHER_COMBO = "cipherCombo";
 
-		/**
-		 * If present, the vault structure will implicitly get initialized upon filesystem creation.
-		 * <p>
-		 * This flag can not be set together with {@link #READONLY}.
-		 * 
-		 * @deprecated Will get removed in version 2.0.0. Use {@link CryptoFileSystemProvider#initialize(Path, String, CharSequence)} explicitly.
-		 */
-		@Deprecated INIT_IMPLICITLY,
-
-		/**
-		 * If present, the maximum ciphertext path length (beginning from the root of the vault directory).
-		 * <p>
-		 * If exceeding the limit during a file operation, an exception is thrown.
-		 * 
-		 * @since 1.9.8
-		 */
-		MAX_PATH_LENGTH,
-	};
+	static final CryptorProvider.Scheme DEFAULT_CIPHER_COMBO = CryptorProvider.Scheme.SIV_GCM;
 
 	private final Set<Entry<String, Object>> entries;
 
 	private CryptoFileSystemProperties(Builder builder) {
-		this.entries = unmodifiableSet(new HashSet<>(asList( //
-				entry(PROPERTY_PASSPHRASE, builder.passphrase), //
-				entry(PROPERTY_PEPPER, builder.pepper), //
-				entry(PROPERTY_FILESYSTEM_FLAGS, builder.flags), //
-				entry(PROPERTY_MASTERKEY_FILENAME, builder.masterkeyFilename), //
-				entry(PROPERTY_MAX_PATH_LENGTH, builder.maxPathLength), //
-				entry(PROPERTY_MAX_NAME_LENGTH, builder.maxNameLength) //
-		)));
+		this.entries = Set.of( //
+				Map.entry(PROPERTY_KEYLOADER, builder.keyLoader), //
+				Map.entry(PROPERTY_FILESYSTEM_FLAGS, builder.flags), //
+				Map.entry(PROPERTY_VAULTCONFIG_FILENAME, builder.vaultConfigFilename), //
+				Map.entry(PROPERTY_MASTERKEY_FILENAME, builder.masterkeyFilename), //
+				Map.entry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, builder.maxCleartextNameLength), //
+				Map.entry(PROPERTY_CIPHER_COMBO, builder.cipherCombo) //
+		);
 	}
 
-	CharSequence passphrase() {
-		return (CharSequence) get(PROPERTY_PASSPHRASE);
+	MasterkeyLoader keyLoader() {
+		return (MasterkeyLoader) get(PROPERTY_KEYLOADER);
 	}
 
-	byte[] pepper() {
-		return (byte[]) get(PROPERTY_PEPPER);
+	public CryptorProvider.Scheme cipherCombo() {
+		return (CryptorProvider.Scheme) get(PROPERTY_CIPHER_COMBO);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -155,24 +124,16 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		return flags().contains(FileSystemFlags.READONLY);
 	}
 
-	boolean migrateImplicitly() {
-		return flags().contains(FileSystemFlags.MIGRATE_IMPLICITLY);
-	}
-
-	boolean initializeImplicitly() {
-		return flags().contains(FileSystemFlags.INIT_IMPLICITLY);
+	String vaultConfigFilename() {
+		return (String) get(PROPERTY_VAULTCONFIG_FILENAME);
 	}
 
 	String masterkeyFilename() {
 		return (String) get(PROPERTY_MASTERKEY_FILENAME);
 	}
 
-	int maxPathLength() {
-		return (int) get(PROPERTY_MAX_PATH_LENGTH);
-	}
-	
-	int maxNameLength() {
-		return (int) get(PROPERTY_MAX_NAME_LENGTH);
+	int maxCleartextNameLength() {
+		return (int) get(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH);
 	}
 
 	@Override
@@ -180,28 +141,9 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		return entries;
 	}
 
-	private static Entry<String, Object> entry(String key, Object value) {
-		return new Entry<String, Object>() {
-			@Override
-			public String getKey() {
-				return key;
-			}
-
-			@Override
-			public Object getValue() {
-				return value;
-			}
-
-			@Override
-			public Object setValue(Object value) {
-				throw new UnsupportedOperationException();
-			}
-		};
-	}
-
 	/**
 	 * Starts construction of {@code CryptoFileSystemProperties}
-	 * 
+	 *
 	 * @return a {@link Builder} which can be used to construct {@code CryptoFileSystemProperties}
 	 */
 	public static Builder cryptoFileSystemProperties() {
@@ -209,20 +151,8 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	}
 
 	/**
-	 * Starts construction of {@code CryptoFileSystemProperties}.
-	 * Convenience function for <code>cryptoFileSystemProperties().withPassphrase(passphrase)</code>.
-	 * 
-	 * @param passphrase the passphrase to use
-	 * @return a {@link Builder} which can be used to construct {@code CryptoFileSystemProperties}
-	 * @since 1.4.0
-	 */
-	public static Builder withPassphrase(CharSequence passphrase) {
-		return new Builder().withPassphrase(passphrase);
-	}
-
-	/**
 	 * Starts construction of {@code CryptoFileSystemProperties}
-	 * 
+	 *
 	 * @param properties a {@link Map} containing properties used to initialize the builder
 	 * @return a {@link Builder} which can be used to construct {@code CryptoFileSystemProperties} and has been initialized with the values from properties
 	 */
@@ -232,14 +162,14 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	/**
 	 * Constructs {@code CryptoFileSystemProperties} from a {@link Map}.
-	 * 
+	 *
 	 * @param properties the {@code Map} to convert
 	 * @return the passed in {@code Map} if already of type {@code CryptoFileSystemProperties} or a new {@code CryptoFileSystemProperties} instance holding the values from the {@code Map}
 	 * @throws IllegalArgumentException if a value in the {@code Map} does not have the expected type or if a required value is missing
 	 */
 	public static CryptoFileSystemProperties wrap(Map<String, ?> properties) {
-		if (properties instanceof CryptoFileSystemProperties) {
-			return (CryptoFileSystemProperties) properties;
+		if (properties instanceof CryptoFileSystemProperties p) {
+			return p;
 		} else {
 			try {
 				return cryptoFileSystemPropertiesFrom(properties).build();
@@ -254,23 +184,23 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 */
 	public static class Builder {
 
-		private CharSequence passphrase;
-		public byte[] pepper = DEFAULT_PEPPER;
+		public CryptorProvider.Scheme cipherCombo = DEFAULT_CIPHER_COMBO;
+		private MasterkeyLoader keyLoader = null;
 		private final Set<FileSystemFlags> flags = EnumSet.copyOf(DEFAULT_FILESYSTEM_FLAGS);
+		private String vaultConfigFilename = DEFAULT_VAULTCONFIG_FILENAME;
 		private String masterkeyFilename = DEFAULT_MASTERKEY_FILENAME;
-		private int maxPathLength = DEFAULT_MAX_PATH_LENGTH;
-		private int maxNameLength = DEFAULT_MAX_NAME_LENGTH;
+		private int maxCleartextNameLength = DEFAULT_MAX_CLEARTEXT_NAME_LENGTH;
 
 		private Builder() {
 		}
 
 		private Builder(Map<String, ?> properties) {
-			checkedSet(CharSequence.class, PROPERTY_PASSPHRASE, properties, this::withPassphrase);
-			checkedSet(byte[].class, PROPERTY_PEPPER, properties, this::withPepper);
+			checkedSet(MasterkeyLoader.class, PROPERTY_KEYLOADER, properties, this::withKeyLoader);
+			checkedSet(String.class, PROPERTY_VAULTCONFIG_FILENAME, properties, this::withVaultConfigFilename);
 			checkedSet(String.class, PROPERTY_MASTERKEY_FILENAME, properties, this::withMasterkeyFilename);
 			checkedSet(Set.class, PROPERTY_FILESYSTEM_FLAGS, properties, this::withFlags);
-			checkedSet(Integer.class, PROPERTY_MAX_PATH_LENGTH, properties, this::withMaxPathLength);
-			checkedSet(Integer.class, PROPERTY_MAX_NAME_LENGTH, properties, this::withMaxNameLength);
+			checkedSet(Integer.class, PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, properties, this::withMaxCleartextNameLength);
+			checkedSet(CryptorProvider.Scheme.class, PROPERTY_CIPHER_COMBO, properties, this::withCipherCombo);
 		}
 
 		private <T> void checkedSet(Class<T> type, String key, Map<String, ?> properties, Consumer<T> setter) {
@@ -285,55 +215,47 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		}
 
 		/**
-		 * Sets the passphrase to use for a CryptoFileSystem.
-		 * 
-		 * @param passphrase the passphrase to use
-		 * @return this
-		 */
-		public Builder withPassphrase(CharSequence passphrase) {
-			this.passphrase = Normalizer.normalize(passphrase, Form.NFC);
-			return this;
-		}
-
-		/**
-		 * Sets the maximum ciphertext path length for a CryptoFileSystem.
+		 * Sets the maximum cleartext filename length for a CryptoFileSystem. This value is checked during write
+		 * operations. Read access to nodes with longer names should be unaffected. Setting this value to {@code 0} or
+		 * a negative value effectively disables write access.
 		 *
-		 * @param maxPathLength The maximum ciphertext path length allowed
+		 * @param maxCleartextNameLength The maximum cleartext filename length allowed
 		 * @return this
-		 * @since 1.9.8
+		 * @since 2.0.0
 		 */
-		public Builder withMaxPathLength(int maxPathLength) {
-			this.maxPathLength = maxPathLength;
+		public Builder withMaxCleartextNameLength(int maxCleartextNameLength) {
+			this.maxCleartextNameLength = maxCleartextNameLength;
 			return this;
 		}
 
+
 		/**
-		 * Sets the maximum ciphertext filename length for a CryptoFileSystem.
+		 * Sets the cipher combo used during vault initialization.
 		 *
-		 * @param maxNameLength The maximum ciphertext filename length allowed
+		 * @param cipherCombo The cipher combo
 		 * @return this
-		 * @since 1.9.9
+		 * @since 2.0.0
 		 */
-		public Builder withMaxNameLength(int maxNameLength) {
-			this.maxNameLength = maxNameLength;
+		public Builder withCipherCombo(CryptorProvider.Scheme cipherCombo) {
+			this.cipherCombo = cipherCombo;
 			return this;
 		}
 
 		/**
-		 * Sets the pepper for a CryptoFileSystem.
-		 * 
-		 * @param pepper A pepper used during key derivation
+		 * Sets the keyloader for a CryptoFileSystem.
+		 *
+		 * @param keyLoader A factory creating a {@link MasterkeyLoader} capable of handling the given {@code scheme}.
 		 * @return this
-		 * @since 1.3.2
+		 * @since 2.0.0
 		 */
-		public Builder withPepper(byte[] pepper) {
-			this.pepper = pepper;
+		public Builder withKeyLoader(MasterkeyLoader keyLoader) {
+			this.keyLoader = keyLoader;
 			return this;
 		}
 
 		/**
 		 * Sets the flags for a CryptoFileSystem.
-		 * 
+		 *
 		 * @param flags File system flags
 		 * @return this
 		 * @since 1.3.1
@@ -344,46 +266,32 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 		/**
 		 * Sets the flags for a CryptoFileSystem.
-		 * 
+		 *
 		 * @param flags collection of file system flags
 		 * @return this
 		 * @since 1.3.0
 		 */
 		public Builder withFlags(Collection<FileSystemFlags> flags) {
-			validate(flags);
 			this.flags.clear();
 			this.flags.addAll(flags);
 			return this;
 		}
 
-		private void validate(Collection<FileSystemFlags> flags) {
-			if (flags.contains(FileSystemFlags.READONLY)) {
-				if (flags.contains(FileSystemFlags.INIT_IMPLICITLY)) {
-					throw new IllegalStateException("Can not set flag INIT_IMPLICITLY in conjunction with flag READONLY.");
-				}
-				if (flags.contains(FileSystemFlags.MIGRATE_IMPLICITLY)) {
-					throw new IllegalStateException("Can not set flag MIGRATE_IMPLICITLY in conjunction with flag READONLY.");
-				}
-			}
-		}
-
 		/**
-		 * Sets the readonly flag for a CryptoFileSystem.
-		 * 
+		 * Sets the name of the vault config file located inside the vault directory.
+		 *
+		 * @param vaultConfigFilename the filename of the jwt file containing the vault configuration
 		 * @return this
-		 * @deprecated Will be removed in 2.0.0. Use {@link #withFlags(FileSystemFlags...) withFlags(FileSystemFlags.READONLY)}
+		 * @since 2.0.0
 		 */
-		@Deprecated
-		public Builder withReadonlyFlag() {
-			flags.add(FileSystemFlags.READONLY);
-			flags.remove(FileSystemFlags.INIT_IMPLICITLY);
-			flags.remove(FileSystemFlags.MIGRATE_IMPLICITLY);
+		public Builder withVaultConfigFilename(String vaultConfigFilename) {
+			this.vaultConfigFilename = vaultConfigFilename;
 			return this;
 		}
 
 		/**
 		 * Sets the name of the masterkey file located inside the vault directory.
-		 * 
+		 *
 		 * @param masterkeyFilename the filename of the json file containing configuration to decrypt the masterkey
 		 * @return this
 		 * @since 1.1.0
@@ -395,7 +303,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 		/**
 		 * Validates the values and creates new {@link CryptoFileSystemProperties}.
-		 * 
+		 *
 		 * @return a new {@code CryptoFileSystemProperties} with the values from this builder
 		 * @throws IllegalStateException if a required value was not set on this {@code Builder}
 		 */
@@ -405,8 +313,8 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		}
 
 		private void validate() {
-			if (passphrase == null) {
-				throw new IllegalStateException("passphrase is required");
+			if (keyLoader == null) {
+				throw new IllegalStateException("keyLoader is required");
 			}
 			if (Strings.nullToEmpty(masterkeyFilename).trim().isEmpty()) {
 				throw new IllegalStateException("masterkeyFilename is required");

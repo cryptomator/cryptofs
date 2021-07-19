@@ -9,7 +9,11 @@
 package org.cryptomator.cryptofs.attr;
 
 import com.google.common.jimfs.Jimfs;
+import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptofs.CryptoFileSystemProvider;
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.api.MasterkeyLoader;
+import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -19,8 +23,10 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
@@ -39,7 +45,6 @@ import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;
 import static java.lang.System.currentTimeMillis;
 import static java.nio.file.Files.readAttributes;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.greaterThan;
@@ -52,11 +57,15 @@ public class FileAttributeIntegrationTest {
 	private static FileSystem fileSystem;
 
 	@BeforeAll
-	public static void setupClass() throws IOException {
+	public static void setupClass() throws IOException, MasterkeyLoadingFailedException {
 		inMemoryFs = Jimfs.newFileSystem();
 		pathToVault = inMemoryFs.getRootDirectories().iterator().next().resolve("vault");
 		Files.createDirectory(pathToVault);
-		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), cryptoFileSystemProperties().withPassphrase("asd").build());
+		MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
+		Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
+		CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+		CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"));
+		fileSystem = new CryptoFileSystemProvider().newFileSystem(create(pathToVault), properties);
 	}
 
 	@AfterAll
@@ -187,12 +196,11 @@ public class FileAttributeIntegrationTest {
 	}
 
 	private static Matcher<FileTime> isAfter(FileTime previousFileTime) {
-		return new BaseMatcher<FileTime>() {
+		return new BaseMatcher<>() {
 			@Override
 			public boolean matches(Object item) {
-				if (item instanceof FileTime) {
-					FileTime subject = (FileTime) item;
-					return subject.compareTo(previousFileTime) > 0;
+				if (item instanceof FileTime ft) {
+					return ft.compareTo(previousFileTime) > 0;
 				} else {
 					return false;
 				}

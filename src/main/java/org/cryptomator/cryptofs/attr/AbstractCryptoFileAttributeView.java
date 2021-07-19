@@ -8,13 +8,13 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.attr;
 
-import org.cryptomator.cryptofs.common.ArrayUtils;
-import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
-import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptofs.Symlinks;
+import org.cryptomator.cryptofs.common.ArrayUtils;
+import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
+import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 
 import java.io.IOException;
 import java.nio.file.LinkOption;
@@ -50,19 +50,19 @@ abstract class AbstractCryptoFileAttributeView implements FileAttributeView {
 
 	private Path getCiphertextPath(CryptoPath path) throws IOException {
 		CiphertextFileType type = pathMapper.getCiphertextFileType(path);
-		switch (type) {
+		return switch (type) {
 			case SYMLINK:
 				if (ArrayUtils.contains(linkOptions, LinkOption.NOFOLLOW_LINKS)) {
-					return pathMapper.getCiphertextFilePath(path).getSymlinkFilePath();
+					yield pathMapper.getCiphertextFilePath(path).getSymlinkFilePath();
 				} else {
 					CryptoPath resolved = symlinks.resolveRecursively(path);
-					return getCiphertextPath(resolved);
+					yield getCiphertextPath(resolved);
 				}
 			case DIRECTORY:
-				return pathMapper.getCiphertextDir(path).path;
-			default:
-				return pathMapper.getCiphertextFilePath(path).getFilePath();
-		}
+				yield pathMapper.getCiphertextDir(path).path;
+			case FILE:
+				yield pathMapper.getCiphertextFilePath(path).getFilePath();
+		};
 	}
 
 }

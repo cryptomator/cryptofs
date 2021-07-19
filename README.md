@@ -1,8 +1,8 @@
 ![cryptomator](cryptomator.png)
 
 [![Build](https://github.com/cryptomator/cryptofs/workflows/Build/badge.svg)](https://github.com/cryptomator/cryptofs/actions?query=workflow%3ABuild)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/7248ca7d466843f785f79f33374302c2)](https://www.codacy.com/app/cryptomator/cryptofs)
-[![Codacy Badge](https://api.codacy.com/project/badge/Coverage/7248ca7d466843f785f79f33374302c2)](https://www.codacy.com/app/cryptomator/cryptofs?utm_source=github.com&utm_medium=referral&utm_content=cryptomator/cryptofs&utm_campaign=Badge_Coverage)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/7248ca7d466843f785f79f33374302c2)](https://www.codacy.com/gh/cryptomator/cryptofs/dashboard)
+[![Codacy Badge](https://api.codacy.com/project/badge/Coverage/7248ca7d466843f785f79f33374302c2)](https://www.codacy.com/gh/cryptomator/cryptofs/dashboard)
 [![Known Vulnerabilities](https://snyk.io/test/github/cryptomator/cryptofs/badge.svg)](https://snyk.io/test/github/cryptomator/cryptofs)
 
 **CryptoFS:** Implementation of the [Cryptomator](https://github.com/cryptomator/cryptomator) encryption scheme.
@@ -93,7 +93,7 @@ For more details on how to use the constructed `FileSystem`, you may consult the
 
 ### Dependencies
 
-* Java 11
+* Java 16 (will be updated to 17 in late 2021)
 * Maven 3
 
 ### Run Maven

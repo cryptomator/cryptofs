@@ -11,7 +11,6 @@ package org.cryptomator.cryptofs.fh;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ch.ChannelComponent;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
-import org.cryptomator.cryptolib.Cryptors;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
 import org.slf4j.Logger;
@@ -135,7 +134,8 @@ public class OpenCryptoFile implements Closeable {
 			try {
 				long ciphertextSize = ciphertextFileChannel.size();
 				if (ciphertextSize > 0l) {
-					cleartextSize = Cryptors.cleartextSize(ciphertextSize - cryptor.fileHeaderCryptor().headerSize(), cryptor);
+					long payloadSize = ciphertextSize - cryptor.fileHeaderCryptor().headerSize();
+					cleartextSize = cryptor.fileContentCryptor().cleartextSize(payloadSize);
 				}
 			} catch (IllegalArgumentException e) {
 				LOG.warn("Invalid cipher text file size. Assuming empty file.", e);

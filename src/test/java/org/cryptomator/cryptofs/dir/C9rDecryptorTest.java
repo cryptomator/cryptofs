@@ -15,7 +15,7 @@ import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-class C9rDecryptorTest {
+public class C9rDecryptorTest {
 	
 	private Cryptor cryptor;
 	private FileNameCryptor fileNameCryptor;
@@ -58,7 +58,7 @@ class C9rDecryptorTest {
 	
 	@Test
 	@DisplayName("process canonical filename")
-	public void testProcessFullMatch() {
+	public void testProcessFullMatch() throws AuthenticationFailedException {
 		Mockito.when(fileNameCryptor.decryptFilename(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn("helloWorld.txt");
 		Node input = new Node(Paths.get("aaaaBBBBccccDDDDeeeeFFFF.c9r"));
 
@@ -81,7 +81,7 @@ class C9rDecryptorTest {
 			"foo_aaaaBBBBcccc_--_11112222_foo.c9r",
 			"aaaaBBBBccccDDDDeeeeFFFF___aaaaBBBBcccc_--_11112222----aaaaBBBBccccDDDDeeeeFFFF.c9r",
 	})
-	public void testProcessPartialMatch(String filename) {
+	public void testProcessPartialMatch(String filename) throws AuthenticationFailedException {
 		Mockito.when(fileNameCryptor.decryptFilename(Mockito.any(), Mockito.any(), Mockito.any())).then(invocation -> {
 			String ciphertext = invocation.getArgument(1);
 			if (ciphertext.equals("aaaaBBBBcccc_--_11112222")) {
@@ -107,7 +107,7 @@ class C9rDecryptorTest {
 			"aaaaBBBB$$$$DDDDeeeeFFFF.c9r",
 			"aaaaBBBBxxxxDDDDeeeeFFFF.c9r",
 	})
-	public void testProcessNoMatch(String filename) {
+	public void testProcessNoMatch(String filename) throws AuthenticationFailedException {
 		Mockito.when(fileNameCryptor.decryptFilename(Mockito.any(), Mockito.any(), Mockito.any())).thenThrow(new AuthenticationFailedException("Invalid ciphertext."));
 		Node input = new Node(Paths.get(filename));
 

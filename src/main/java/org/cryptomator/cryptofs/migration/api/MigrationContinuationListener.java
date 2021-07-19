@@ -3,6 +3,8 @@ package org.cryptomator.cryptofs.migration.api;
 @FunctionalInterface
 public interface MigrationContinuationListener {
 
+	MigrationContinuationListener CANCEL_ALWAYS = event -> ContinuationResult.CANCEL;
+
 	/**
 	 * Invoked when the migration requires action.
 	 * <p>

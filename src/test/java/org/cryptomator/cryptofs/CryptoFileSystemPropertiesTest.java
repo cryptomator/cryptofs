@@ -1,36 +1,29 @@
 package org.cryptomator.cryptofs;
 
-import org.cryptomator.cryptofs.CryptoFileSystemProperties.FileSystemFlags;
+import org.cryptomator.cryptolib.api.MasterkeyLoader;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.TypeSafeDiagnosingMatcher;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
-import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.DEFAULT_MASTERKEY_FILENAME;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.DEFAULT_MAX_NAME_LENGTH;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.DEFAULT_MAX_PATH_LENGTH;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.DEFAULT_PEPPER;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_FILESYSTEM_FLAGS;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_MASTERKEY_FILENAME;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_MAX_NAME_LENGTH;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_MAX_PATH_LENGTH;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_PASSPHRASE;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.PROPERTY_PEPPER;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
-import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemPropertiesFrom;
+import static org.cryptomator.cryptofs.CryptoFileSystemProperties.*;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.is;
 
 public class CryptoFileSystemPropertiesTest {
+
+	private final MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
 
 	@Test
 	public void testSetNoPassphrase() {
@@ -40,167 +33,94 @@ public class CryptoFileSystemPropertiesTest {
 	}
 
 	@Test
-	@SuppressWarnings({"unchecked", "deprecation"})
-	public void testSetOnlyPassphrase() {
-		String passphrase = "aPassphrase";
-		CryptoFileSystemProperties inTest = cryptoFileSystemProperties() //
-				.withPassphrase(passphrase) //
-				.build();
-
-		MatcherAssert.assertThat(inTest.passphrase(), is(passphrase));
-		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
-		MatcherAssert.assertThat(inTest.readonly(), is(false));
-		MatcherAssert.assertThat(inTest.initializeImplicitly(), is(true));
-		MatcherAssert.assertThat(inTest.migrateImplicitly(), is(true));
-		MatcherAssert.assertThat(inTest.entrySet(),
-				containsInAnyOrder( //
-						anEntry(PROPERTY_PASSPHRASE, passphrase), //
-						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
-						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
-						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.INIT_IMPLICITLY, FileSystemFlags.MIGRATE_IMPLICITLY))));
-	}
-
-	@Test
-	@SuppressWarnings({"unchecked", "deprecation"})
-	public void testSetPassphraseAndReadonlyFlag() {
-		String passphrase = "aPassphrase";
-		CryptoFileSystemProperties inTest = cryptoFileSystemProperties() //
-				.withPassphrase(passphrase) //
-				.withReadonlyFlag() //
-				.build();
-
-		MatcherAssert.assertThat(inTest.passphrase(), is(passphrase));
-		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
-		MatcherAssert.assertThat(inTest.readonly(), is(true));
-		MatcherAssert.assertThat(inTest.initializeImplicitly(), is(false));
-		MatcherAssert.assertThat(inTest.migrateImplicitly(), is(false));
-		MatcherAssert.assertThat(inTest.entrySet(),
-				containsInAnyOrder( //
-						anEntry(PROPERTY_PASSPHRASE, passphrase), //
-						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
-						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
-						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
-	}
-
-	@Test
-	@SuppressWarnings({"unchecked", "deprecation"})
-	public void testSetPassphraseAndMasterkeyFilenameAndReadonlyFlag() {
-		String passphrase = "aPassphrase";
+	public void testSetMasterkeyFilenameAndReadonlyFlag() {
 		String masterkeyFilename = "aMasterkeyFilename";
 		CryptoFileSystemProperties inTest = cryptoFileSystemProperties() //
-				.withPassphrase(passphrase) //
+				.withKeyLoader(keyLoader) //
 				.withMasterkeyFilename(masterkeyFilename) //
-				.withReadonlyFlag() //
+				.withFlags(FileSystemFlags.READONLY)
 				.build();
 
-		MatcherAssert.assertThat(inTest.passphrase(), is(passphrase));
 		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
 		MatcherAssert.assertThat(inTest.readonly(), is(true));
-		MatcherAssert.assertThat(inTest.initializeImplicitly(), is(false));
-		MatcherAssert.assertThat(inTest.migrateImplicitly(), is(false));
 		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
-						anEntry(PROPERTY_PASSPHRASE, passphrase), //
-						anEntry(PROPERTY_PEPPER, DEFAULT_PEPPER), //
+						anEntry(PROPERTY_KEYLOADER, keyLoader), //
+						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
-						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
+						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
+						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
 
 	@Test
-	@SuppressWarnings({"unchecked"})
 	public void testFromMap() {
 		Map<String, Object> map = new HashMap<>();
-		String passphrase = "aPassphrase";
-		byte[] pepper = "aPepper".getBytes(StandardCharsets.US_ASCII);
 		String masterkeyFilename = "aMasterkeyFilename";
-		map.put(PROPERTY_PASSPHRASE, passphrase);
-		map.put(PROPERTY_PEPPER, pepper);
+		map.put(PROPERTY_KEYLOADER, keyLoader);
 		map.put(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename);
-		map.put(PROPERTY_MAX_PATH_LENGTH, 1000);
-		map.put(PROPERTY_MAX_NAME_LENGTH, 255);
+		map.put(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, 255);
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY));
 		CryptoFileSystemProperties inTest = cryptoFileSystemPropertiesFrom(map).build();
 
-		MatcherAssert.assertThat(inTest.passphrase(), is(passphrase));
 		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
 		MatcherAssert.assertThat(inTest.readonly(), is(true));
-		MatcherAssert.assertThat(inTest.initializeImplicitly(), is(false));
-		MatcherAssert.assertThat(inTest.maxPathLength(), is(1000));
-		MatcherAssert.assertThat(inTest.maxNameLength(), is(255));
+		MatcherAssert.assertThat(inTest.maxCleartextNameLength(), is(255));
 		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
-						anEntry(PROPERTY_PASSPHRASE, passphrase), //
-						anEntry(PROPERTY_PEPPER, pepper), //
+						anEntry(PROPERTY_KEYLOADER, keyLoader), //
+						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, 1000), //
-						anEntry(PROPERTY_MAX_NAME_LENGTH, 255), //
+						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, 255), //
+						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
 
 	@Test
-	@SuppressWarnings("unchecked")
 	public void testWrapMapWithTrueReadonly() {
 		Map<String, Object> map = new HashMap<>();
-		String passphrase = "aPassphrase";
-		byte[] pepper = "aPepper".getBytes(StandardCharsets.US_ASCII);
 		String masterkeyFilename = "aMasterkeyFilename";
-		map.put(PROPERTY_PASSPHRASE, passphrase);
-		map.put(PROPERTY_PEPPER, pepper);
+		map.put(PROPERTY_KEYLOADER, keyLoader);
 		map.put(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename);
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY));
 		CryptoFileSystemProperties inTest = CryptoFileSystemProperties.wrap(map);
 
-		MatcherAssert.assertThat(inTest.passphrase(), is(passphrase));
 		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
 		MatcherAssert.assertThat(inTest.readonly(), is(true));
-		MatcherAssert.assertThat(inTest.initializeImplicitly(), is(false));
 		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
-						anEntry(PROPERTY_PASSPHRASE, passphrase), //
-						anEntry(PROPERTY_PEPPER, pepper), //
+						anEntry(PROPERTY_KEYLOADER, keyLoader), //
+						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
-						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
+						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
+						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
 
 	@Test
-	@SuppressWarnings("unchecked")
 	public void testWrapMapWithFalseReadonly() {
 		Map<String, Object> map = new HashMap<>();
-		String passphrase = "aPassphrase";
-		byte[] pepper = "aPepper".getBytes(StandardCharsets.US_ASCII);
 		String masterkeyFilename = "aMasterkeyFilename";
-		map.put(PROPERTY_PASSPHRASE, passphrase);
-		map.put(PROPERTY_PEPPER, pepper);
+		map.put(PROPERTY_KEYLOADER, keyLoader);
 		map.put(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename);
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class));
 		CryptoFileSystemProperties inTest = CryptoFileSystemProperties.wrap(map);
 
-		MatcherAssert.assertThat(inTest.passphrase(), is(passphrase));
 		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
 		MatcherAssert.assertThat(inTest.readonly(), is(false));
-		MatcherAssert.assertThat(inTest.initializeImplicitly(), is(false));
 		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
-						anEntry(PROPERTY_PASSPHRASE, passphrase), //
-						anEntry(PROPERTY_PEPPER, pepper), //
+						anEntry(PROPERTY_KEYLOADER, keyLoader), //
+						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
-						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
+						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
+						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class))));
 	}
 
 	@Test
 	public void testWrapMapWithInvalidFilesystemFlags() {
 		Map<String, Object> map = new HashMap<>();
-		map.put(PROPERTY_PASSPHRASE, "any");
 		map.put(PROPERTY_MASTERKEY_FILENAME, "any");
 		map.put(PROPERTY_FILESYSTEM_FLAGS, "invalidType");
 
@@ -212,7 +132,6 @@ public class CryptoFileSystemPropertiesTest {
 	@Test
 	public void testWrapMapWithInvalidMasterkeyFilename() {
 		Map<String, Object> map = new HashMap<>();
-		map.put(PROPERTY_PASSPHRASE, "any");
 		map.put(PROPERTY_MASTERKEY_FILENAME, "");
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class));
 
@@ -224,7 +143,6 @@ public class CryptoFileSystemPropertiesTest {
 	@Test
 	public void testWrapMapWithInvalidPassphrase() {
 		Map<String, Object> map = new HashMap<>();
-		map.put(PROPERTY_PASSPHRASE, new Object());
 		map.put(PROPERTY_MASTERKEY_FILENAME, "any");
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class));
 
@@ -234,28 +152,23 @@ public class CryptoFileSystemPropertiesTest {
 	}
 
 	@Test
-	@SuppressWarnings({"unchecked", "deprecation"})
 	public void testWrapMapWithoutReadonly() {
 		Map<String, Object> map = new HashMap<>();
-		String passphrase = "aPassphrase";
-		byte[] pepper = "aPepper".getBytes(StandardCharsets.US_ASCII);
-		map.put(PROPERTY_PASSPHRASE, passphrase);
-		map.put(PROPERTY_PEPPER, pepper);
+		map.put(PROPERTY_KEYLOADER, keyLoader);
 		CryptoFileSystemProperties inTest = CryptoFileSystemProperties.wrap(map);
 
-		MatcherAssert.assertThat(inTest.passphrase(), is(passphrase));
 		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(DEFAULT_MASTERKEY_FILENAME));
 		MatcherAssert.assertThat(inTest.readonly(), is(false));
-		MatcherAssert.assertThat(inTest.initializeImplicitly(), is(true));
-		MatcherAssert.assertThat(inTest.migrateImplicitly(), is(true));
 		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
-						anEntry(PROPERTY_PASSPHRASE, passphrase), //
-						anEntry(PROPERTY_PEPPER, pepper), //
+						anEntry(PROPERTY_KEYLOADER, keyLoader), //
+						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
-						anEntry(PROPERTY_MAX_PATH_LENGTH, DEFAULT_MAX_PATH_LENGTH), //
-						anEntry(PROPERTY_MAX_NAME_LENGTH, DEFAULT_MAX_NAME_LENGTH), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.INIT_IMPLICITLY, FileSystemFlags.MIGRATE_IMPLICITLY))));
+						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
+						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class))
+				)
+		);
 	}
 
 	@Test
@@ -267,9 +180,7 @@ public class CryptoFileSystemPropertiesTest {
 
 	@Test
 	public void testWrapCryptoFileSystemProperties() {
-		CryptoFileSystemProperties inTest = cryptoFileSystemProperties() //
-				.withPassphrase("any") //
-				.build();
+		CryptoFileSystemProperties inTest = cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
 
 		MatcherAssert.assertThat(CryptoFileSystemProperties.wrap(inTest), is(sameInstance(inTest)));
 	}
@@ -278,7 +189,7 @@ public class CryptoFileSystemPropertiesTest {
 	public void testMapIsImmutable() {
 		Assertions.assertThrows(UnsupportedOperationException.class, () -> {
 			cryptoFileSystemProperties() //
-					.withPassphrase("irrelevant") //
+					.withKeyLoader(keyLoader) //
 					.build() //
 					.put("test", "test");
 		});
@@ -288,7 +199,7 @@ public class CryptoFileSystemPropertiesTest {
 	public void testEntrySetIsImmutable() {
 		Assertions.assertThrows(UnsupportedOperationException.class, () -> {
 			cryptoFileSystemProperties() //
-					.withPassphrase("irrelevant") //
+					.withKeyLoader(keyLoader) //
 					.build() //
 					.entrySet() //
 					.add(null);
@@ -299,7 +210,7 @@ public class CryptoFileSystemPropertiesTest {
 	public void testEntryIsImmutable() {
 		Assertions.assertThrows(UnsupportedOperationException.class, () -> {
 			cryptoFileSystemProperties() //
-					.withPassphrase("irrelevant") //
+					.withKeyLoader(keyLoader) //
 					.build() //
 					.entrySet() //
 					.iterator().next() //
@@ -308,7 +219,7 @@ public class CryptoFileSystemPropertiesTest {
 	}
 
 	private <K, V> Matcher<Map.Entry<K, V>> anEntry(K key, V value) {
-		return new TypeSafeDiagnosingMatcher<Map.Entry<K, V>>(Map.Entry.class) {
+		return new TypeSafeDiagnosingMatcher<>(Map.Entry.class) {
 			@Override
 			public void describeTo(Description description) {
 				description.appendText("an entry ").appendValue(key).appendText(" = ").appendValue(value);
@@ -324,11 +235,20 @@ public class CryptoFileSystemPropertiesTest {
 			}
 
 			private boolean keyMatches(K itemKey) {
-				return key == null ? itemKey == null : key.equals(itemKey);
+				return Objects.equals(key, itemKey);
 			}
 
 			private boolean valueMatches(V itemValue) {
-				return value == null ? itemValue == null : value.equals(itemValue);
+				if (value instanceof Collection v && itemValue instanceof Collection c) {
+					return valuesMatch(v, c);
+				} else {
+					return Objects.equals(value, itemValue);
+				}
+			}
+
+			@SuppressWarnings("rawtypes")
+			private boolean valuesMatch(Collection<?> value, Collection<?> itemValue) {
+				return value.containsAll(itemValue) && itemValue.containsAll(value);
 			}
 		};
 	}

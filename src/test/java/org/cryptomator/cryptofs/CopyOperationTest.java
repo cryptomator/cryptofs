@@ -25,6 +25,7 @@ import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
 import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
@@ -54,7 +55,7 @@ public class CopyOperationTest {
 	public void testCopyWithEqualPathDoesNothing() throws IOException {
 		inTest.copy(aPathFromFsA, aPathFromFsA);
 
-		verifyZeroInteractions(aPathFromFsA);
+		verifyNoInteractions(aPathFromFsA);
 	}
 
 	@Test

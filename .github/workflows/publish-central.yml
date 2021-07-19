@@ -15,7 +15,7 @@ jobs:
           ref: "refs/tags/${{ github.event.inputs.tag }}"
       - uses: actions/setup-java@v1
         with:
-          java-version: 11
+          java-version: 16
           server-id: ossrh # Value of the distributionManagement/repository/id field of the pom.xml
           server-username: MAVEN_USERNAME # env variable for username in deploy
           server-password: MAVEN_PASSWORD # env variable for token in deploy
@@ -32,6 +32,11 @@ jobs:
       - name: Deploy
         run: mvn deploy -B -DskipTests -Psign,deploy-central --no-transfer-progress
         env:
+          MAVEN_OPTS: >
+            --add-opens=java.base/java.util=ALL-UNNAMED
+            --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+            --add-opens=java.base/java.text=ALL-UNNAMED
+            --add-opens=java.desktop/java.awt.font=ALL-UNNAMED
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.RELEASES_GPG_PASSPHRASE }}

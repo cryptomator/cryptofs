@@ -3,6 +3,8 @@ package org.cryptomator.cryptofs.migration.api;
 @FunctionalInterface
 public interface MigrationProgressListener {
 
+	MigrationProgressListener IGNORE = (state, progress) -> {};
+
 	/**
 	 * Called on every step during migration that might change the progress.
 	 *

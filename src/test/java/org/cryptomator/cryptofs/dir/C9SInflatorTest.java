@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.stream.Stream;
 
-class C9SInflatorTest {
+public class C9SInflatorTest {
 
 	private LongFileNameProvider longFileNameProvider;
 	private Cryptor cryptor;
@@ -30,7 +30,7 @@ class C9SInflatorTest {
 	}
 	
 	@Test
-	public void inflateDeflated() throws IOException {
+	public void inflateDeflated() throws IOException, AuthenticationFailedException {
 		Node deflated = new Node(Paths.get("foo.c9s"));
 		Mockito.when(longFileNameProvider.inflate(deflated.ciphertextPath)).thenReturn("foo.c9r");
 		Mockito.when(fileNameCryptor.decryptFilename(Mockito.any(), Mockito.eq("foo"), Mockito.any())).thenReturn("hello world.txt");
@@ -52,7 +52,7 @@ class C9SInflatorTest {
 	}
 
 	@Test
-	public void inflateUninflatableDueToInvalidCiphertext() throws IOException {
+	public void inflateUninflatableDueToInvalidCiphertext() throws IOException, AuthenticationFailedException {
 		Node deflated = new Node(Paths.get("foo.c9s"));
 		Mockito.when(longFileNameProvider.inflate(deflated.ciphertextPath)).thenReturn("foo.c9r");
 		Mockito.when(fileNameCryptor.decryptFilename(Mockito.any(), Mockito.eq("foo"), Mockito.any())).thenThrow(new AuthenticationFailedException("peng!"));

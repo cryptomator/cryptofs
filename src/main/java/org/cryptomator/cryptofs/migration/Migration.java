@@ -17,9 +17,14 @@ enum Migration {
 	FIVE_TO_SIX(5),
 
 	/**
-	 * Migrates vault format 5 to 6.
+	 * Migrates vault format 6 to 7.
 	 */
-	SIX_TO_SEVEN(6);
+	SIX_TO_SEVEN(6),
+
+	/**
+	 * Migrates vault format 7 to 8
+	 */
+	SEVEN_TO_EIGHT(7);
 
 	private final int applicableVersion;
 

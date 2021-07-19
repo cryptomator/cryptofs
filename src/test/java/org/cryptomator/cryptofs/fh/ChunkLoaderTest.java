@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs.fh;
 
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
+import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
@@ -49,7 +50,7 @@ public class ChunkLoaderTest {
 	}
 
 	@Test
-	public void testChunkLoaderReturnsEmptyDataOfChunkAfterEndOfFile() throws IOException {
+	public void testChunkLoaderReturnsEmptyDataOfChunkAfterEndOfFile() throws IOException, AuthenticationFailedException {
 		long chunkIndex = 482L;
 		long chunkOffset = chunkIndex * CIPHERTEXT_CHUNK_SIZE + HEADER_SIZE;
 		when(chunkIO.read(argThat(hasAtLeastRemaining(CIPHERTEXT_CHUNK_SIZE)), eq(chunkOffset))).thenReturn(-1);
@@ -63,7 +64,7 @@ public class ChunkLoaderTest {
 	}
 
 	@Test
-	public void testChunkLoaderReturnsDecryptedDataOfChunkInsideFile() throws IOException {
+	public void testChunkLoaderReturnsDecryptedDataOfChunkInsideFile() throws IOException, AuthenticationFailedException {
 		long chunkIndex = 482L;
 		long chunkOffset = chunkIndex * CIPHERTEXT_CHUNK_SIZE + HEADER_SIZE;
 		Supplier<ByteBuffer> decryptedData = () -> repeat(9).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer();
@@ -81,7 +82,7 @@ public class ChunkLoaderTest {
 	}
 
 	@Test
-	public void testChunkLoaderReturnsDecrytedDataOfChunkContainingEndOfFile() throws IOException {
+	public void testChunkLoaderReturnsDecrytedDataOfChunkContainingEndOfFile() throws IOException, AuthenticationFailedException {
 		long chunkIndex = 482L;
 		long chunkOffset = chunkIndex * CIPHERTEXT_CHUNK_SIZE + HEADER_SIZE;
 		Supplier<ByteBuffer> decryptedData = () -> repeat(9).times(CLEARTEXT_CHUNK_SIZE - 3).asByteBuffer();

@@ -28,8 +28,8 @@ abstract class AttributeModule {
 	@Provides
 	@AttributeScoped
 	public static PosixFileAttributes providePosixFileAttributes(BasicFileAttributes ciphertextAttributes) {
-		if (ciphertextAttributes instanceof PosixFileAttributes) {
-			return (PosixFileAttributes) ciphertextAttributes;
+		if (ciphertextAttributes instanceof PosixFileAttributes attr) {
+			return attr;
 		} else {
 			throw new IllegalStateException("Attempted to inject instance of type " + ciphertextAttributes.getClass() + " but expected PosixFileAttributes.");
 		}
@@ -38,8 +38,8 @@ abstract class AttributeModule {
 	@Provides
 	@AttributeScoped
 	public static DosFileAttributes provideDosFileAttributes(BasicFileAttributes ciphertextAttributes) {
-		if (ciphertextAttributes instanceof DosFileAttributes) {
-			return (DosFileAttributes) ciphertextAttributes;
+		if (ciphertextAttributes instanceof DosFileAttributes attr) {
+			return attr;
 		} else {
 			throw new IllegalStateException("Attempted to inject instance of type " + ciphertextAttributes.getClass() + " but expected DosFileAttributes.");
 		}

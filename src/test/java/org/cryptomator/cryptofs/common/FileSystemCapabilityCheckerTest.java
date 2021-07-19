@@ -3,12 +3,13 @@ package org.cryptomator.cryptofs.common;
 import org.cryptomator.cryptofs.mocks.DirectoryStreamMock;
 import org.cryptomator.cryptofs.mocks.SeekableByteChannelMock;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -18,11 +19,11 @@ import java.nio.file.Path;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Collections;
 
-class FileSystemCapabilityCheckerTest {
+public class FileSystemCapabilityCheckerTest {
 	
 	@Nested
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-	class PathLengthLimits {
+	public class PathLengthLimits {
 		
 		private Path pathToVault = Mockito.mock(Path.class);
 		private Path cDir = Mockito.mock(Path.class);
@@ -62,7 +63,7 @@ class FileSystemCapabilityCheckerTest {
 				return checkDirMock;
 			});
 
-			int determinedLimit = new FileSystemCapabilityChecker().determineSupportedFileNameLength(pathToVault);
+			int determinedLimit = new FileSystemCapabilityChecker().determineSupportedCiphertextFileNameLength(pathToVault);
 
 			Assertions.assertEquals(220, determinedLimit);
 		}
@@ -95,7 +96,7 @@ class FileSystemCapabilityCheckerTest {
 				return checkDirMock;
 			});
 
-			int determinedLimit = new FileSystemCapabilityChecker().determineSupportedFileNameLength(pathToVault);
+			int determinedLimit = new FileSystemCapabilityChecker().determineSupportedCiphertextFileNameLength(pathToVault);
 			
 			Assertions.assertEquals(limit, determinedLimit);
 		}
@@ -125,9 +126,22 @@ class FileSystemCapabilityCheckerTest {
 				return checkDirMock;
 			});
 
-			int determinedLimit = new FileSystemCapabilityChecker().determineSupportedFileNameLength(pathToVault);
+			int determinedLimit = new FileSystemCapabilityChecker().determineSupportedCiphertextFileNameLength(pathToVault);
 
 			Assertions.assertEquals(limit, determinedLimit);
+		}
+
+		@DisplayName("determineSupportedCleartextFileNameLength(...)")
+		@ParameterizedTest(name = "ciphertext length {0} -> cleartext length {1}")
+		@CsvSource({"220, 146", "219, 143", "218, 143", "217, 143", "216, 143", "215, 140"})
+		public void testDetermineSupportedCleartextFileNameLength(int ciphertextLimit, int expectedCleartextLimit) throws IOException {
+			Path path = Mockito.mock(Path.class);
+			FileSystemCapabilityChecker checker = Mockito.spy(new FileSystemCapabilityChecker());
+			Mockito.doReturn(ciphertextLimit).when(checker).determineSupportedCiphertextFileNameLength(path);
+
+			int result = checker.determineSupportedCleartextFileNameLength(path);
+
+			Assertions.assertEquals(expectedCleartextLimit, result);
 		}
 		
 	}
