@@ -10,8 +10,8 @@ import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID_FILE;
 /**
  * A critical diagnostic result of an empty directory id file (dir.c9r).
  * <p>
- * Even thou the empty directory ID exists, it is reserved for the root node of the crypto filesystem only.
- * DUe to its nature, the root node has no corresponding dir.c9r file.
+ * Even though the empty directory ID exists, it is reserved for the root node of the crypto filesystem only.
+ * Due to its nature, the root node has no corresponding dir.c9r file.
  * As a consequence, actual dir.c9r files must not be empty, otherwise it is an error in the vault structure.
  *
  * @see org.cryptomator.cryptofs.common.Constants#ROOT_DIR_ID
