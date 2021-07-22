@@ -21,7 +21,12 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 /**
- * TODO: doc, doc, doc
+ * TODO: doc doc doc
+ * 		-- the dockumentation duck
+ *                __
+ *              <(o )___
+ *               ( ._> /
+ *                `---'   hjw
  */
 public class CiphertextFileTypeCheck implements HealthCheck {
 
@@ -58,8 +63,13 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 		public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
 			var dirName = dir.getFileName().toString();
 			if (dirName.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX) || dirName.endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
-				if (isValidFileType(dir)) {
+				boolean isDir = containsDirFile(dir);
+				boolean isSymlink = containsSymlinkFile(dir);
+				boolean isFile = containsContentsFile(dir);
+				if (isDir ^ isSymlink ^ isFile) {
 					resultCollector.accept(new KnownType(dir));
+				} else if (isDir || isSymlink || isFile) {
+					resultCollector.accept(new AmbiguousType(dir));
 				} else {
 					resultCollector.accept(new UnknownType(dir));
 				}
@@ -67,12 +77,6 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 			} else {
 				return FileVisitResult.CONTINUE;
 			}
-		}
-
-		private boolean isValidFileType(Path p) {
-			return containsDirFile(p) //
-					|| containsSymlinkFile(p) //
-					|| containsContentsFile(p);
 		}
 
 		private boolean containsDirFile(Path path) {
