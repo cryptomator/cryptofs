@@ -20,9 +20,9 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Set;
 import java.util.function.Consumer;
 
-public class CipherTextFileTypeCheck implements HealthCheck {
+public class CiphertextFileTypeCheck implements HealthCheck {
 
-	private static final Logger LOG = LoggerFactory.getLogger(CipherTextFileTypeCheck.class);
+	private static final Logger LOG = LoggerFactory.getLogger(CiphertextFileTypeCheck.class);
 	private static final int MAX_TRAVERSAL_DEPTH = 4; //TODO: correct?
 
 	@Override
@@ -35,7 +35,7 @@ public class CipherTextFileTypeCheck implements HealthCheck {
 
 		// scan vault structure:
 		var dataDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME);
-		var dirVisitor = new CipherTextFileTypeCheck.DirVisitor(resultCollector);
+		var dirVisitor = new CiphertextFileTypeCheck.DirVisitor(resultCollector);
 		try {
 			Files.walkFileTree(dataDirPath, Set.of(), MAX_TRAVERSAL_DEPTH, dirVisitor);
 		} catch (IOException e) {
@@ -56,9 +56,9 @@ public class CipherTextFileTypeCheck implements HealthCheck {
 			var dirName = dir.getFileName().toString();
 			if (dirName.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX) || dirName.endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
 				if (isValidFileType(dir)) {
-					resultCollector.accept(new KnownCTFType(dir));
+					resultCollector.accept(new KnownType(dir));
 				} else {
-					resultCollector.accept(new UnknownCTFType(dir));
+					resultCollector.accept(new UnknownType(dir));
 				}
 				return FileVisitResult.SKIP_SUBTREE;
 			} else {

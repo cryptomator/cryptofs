@@ -4,12 +4,12 @@ import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 
 import java.nio.file.Path;
 
-public class KnownCTFType implements DiagnosticResult {
+public class KnownType implements DiagnosticResult {
 
-	private final Path ctfDirectory;
+	private final Path cipherDir;
 
-	KnownCTFType(Path ctfDirectory) {
-		this.ctfDirectory = ctfDirectory;
+	KnownType(Path ctfDirectory) {
+		this.cipherDir = ctfDirectory;
 	}
 
 	@Override
