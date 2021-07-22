@@ -20,6 +20,9 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Set;
 import java.util.function.Consumer;
 
+/**
+ * TODO: doc, doc, doc
+ */
 public class CiphertextFileTypeCheck implements HealthCheck {
 
 	private static final Logger LOG = LoggerFactory.getLogger(CiphertextFileTypeCheck.class);

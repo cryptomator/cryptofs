@@ -4,6 +4,9 @@ import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 
 import java.nio.file.Path;
 
+/**
+ * TODO: doc, doc, doc
+ */
 public class KnownType implements DiagnosticResult {
 
 	private final Path cipherDir;
