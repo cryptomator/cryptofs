@@ -15,11 +15,11 @@ public class UnknownCTFType implements DiagnosticResult {
 
 	@Override
 	public Severity getSeverity() {
-		return Severity.WARN;
+		return Severity.CRITICAL;
 	}
 
 	/*
-	TODO: remove?
+	TODO: remove directory? might cause data loss (for shortened files)
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
 		DiagnosticResult.super.fix(pathToVault, config, masterkey, cryptor);
