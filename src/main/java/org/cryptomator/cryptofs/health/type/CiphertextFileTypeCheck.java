@@ -70,21 +70,24 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 		}
 
 		private boolean isValidFileType(Path p) {
-			return Files.exists(getDirFilePath(p), LinkOption.NOFOLLOW_LINKS) //
-					|| Files.exists(getSymlinkFilePath(p), LinkOption.NOFOLLOW_LINKS) //
-					|| Files.exists(getInflatedNamePath(p), LinkOption.NOFOLLOW_LINKS);
+			return containsDirFile(p) //
+					|| containsSymlinkFile(p) //
+					|| containsContentsFile(p);
 		}
 
-		private Path getDirFilePath(Path path) {
-			return path.resolve(Constants.DIR_FILE_NAME);
+		private boolean containsDirFile(Path path) {
+			var dirc9r = path.resolve(Constants.DIR_FILE_NAME);
+			return Files.isRegularFile(dirc9r, LinkOption.NOFOLLOW_LINKS);
 		}
 
-		private Path getSymlinkFilePath(Path path) {
-			return path.resolve(Constants.SYMLINK_FILE_NAME);
+		private boolean containsSymlinkFile(Path path) {
+			var symlinkc9r = path.resolve(Constants.SYMLINK_FILE_NAME);
+			return Files.isRegularFile(symlinkc9r, LinkOption.NOFOLLOW_LINKS);
 		}
 
-		private Path getInflatedNamePath(Path path) {
-			return path.resolve(Constants.INFLATED_FILE_NAME);
+		private boolean containsContentsFile(Path path) {
+			var contentsc9r = path.resolve(Constants.CONTENTS_FILE_NAME);
+			return Files.isRegularFile(contentsc9r, LinkOption.NOFOLLOW_LINKS);
 		}
 
 	}
