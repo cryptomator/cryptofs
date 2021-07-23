@@ -63,22 +63,57 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 		@Override
 		public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
 			var dirName = dir.getFileName().toString();
-			boolean isC9r = dirName.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX);
-			boolean isC9s = dirName.endsWith(Constants.DEFLATED_FILE_SUFFIX);
-			if (isC9r || isC9s) {
-				boolean isDir = containsDirFile(dir);
-				boolean isSymlink = containsSymlinkFile(dir);
-				boolean isFile = containsContentsFile(dir);
-				if ((isC9r && (isDir ^ isSymlink)) || (isC9s && (isDir ^ isSymlink ^ isFile))) {
-					resultCollector.accept(new KnownType(dir));
-				} else if (isDir || isSymlink || isFile) {
-					resultCollector.accept(new AmbiguousType(dir));
-				} else {
-					resultCollector.accept(new UnknownType(dir));
+			return switch (determineDirType(dir)) {
+				case C9R -> {
+					checkCiphertextTypeForC9r(dir);
+					yield FileVisitResult.SKIP_SUBTREE;
 				}
-				return FileVisitResult.SKIP_SUBTREE;
+				case C9S -> {
+					checkCiphertextTypeForC9s(dir);
+					yield FileVisitResult.SKIP_SUBTREE;
+				}
+				case UNKNOWN -> FileVisitResult.CONTINUE;
+			};
+		}
+
+		DirType determineDirType(Path p) {
+			var dirName = p.getFileName().toString();
+			if (dirName.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX)) {
+				return DirType.C9R;
+			} else if (dirName.endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
+				return DirType.C9S;
 			} else {
-				return FileVisitResult.CONTINUE;
+				return DirType.UNKNOWN;
+			}
+		}
+
+		void checkCiphertextTypeForC9r(Path dir) {
+			assert dir.getFileName().toString().endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX);
+
+			boolean isDir = containsDirFile(dir);
+			boolean isSymlink = containsSymlinkFile(dir);
+			boolean isFile = containsContentsFile(dir);
+			if (isDir ^ isSymlink) {
+				resultCollector.accept(new KnownType(dir));
+			} else if (isDir || isSymlink || isFile) {
+				resultCollector.accept(new AmbiguousType(dir));
+			} else {
+				resultCollector.accept(new UnknownType(dir));
+			}
+		}
+
+		void checkCiphertextTypeForC9s(Path dir) {
+			assert dir.getFileName().toString().endsWith(Constants.DEFLATED_FILE_SUFFIX);
+
+			boolean isDir = containsDirFile(dir);
+			boolean isSymlink = containsSymlinkFile(dir);
+			boolean isFile = containsContentsFile(dir);
+			if (isDir ^ isSymlink ^ isFile) {
+				resultCollector.accept(new KnownType(dir));
+			} else if (isDir || isSymlink || isFile) {
+				resultCollector.accept(new AmbiguousType(dir));
+			} else {
+				resultCollector.accept(new UnknownType(dir));
 			}
 		}
 
@@ -97,6 +132,12 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 			return Files.isRegularFile(contentsc9r, LinkOption.NOFOLLOW_LINKS);
 		}
 
+	}
+
+	enum DirType {
+		C9R,
+		C9S,
+		UNKNOWN;
 	}
 
 }
