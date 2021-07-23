@@ -14,7 +14,7 @@ import java.nio.file.Path;
  */
 public class AmbiguousType implements DiagnosticResult {
 
-	private final Path cipherDir;
+	final Path cipherDir;
 
 	AmbiguousType(Path cipherDir) {
 		this.cipherDir = cipherDir;

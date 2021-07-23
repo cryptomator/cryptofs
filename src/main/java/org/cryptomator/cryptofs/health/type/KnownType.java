@@ -9,7 +9,7 @@ import java.nio.file.Path;
  */
 public class KnownType implements DiagnosticResult {
 
-	private final Path cipherDir;
+	final Path cipherDir;
 
 	KnownType(Path ctfDirectory) {
 		this.cipherDir = ctfDirectory;

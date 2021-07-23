@@ -53,7 +53,8 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 		}
 	}
 
-	private class DirVisitor extends SimpleFileVisitor<Path> {
+	// visible for testing
+	static class DirVisitor extends SimpleFileVisitor<Path> {
 
 		private final Consumer<DiagnosticResult> resultCollector;
 
@@ -62,11 +63,13 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 		@Override
 		public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
 			var dirName = dir.getFileName().toString();
-			if (dirName.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX) || dirName.endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
+			boolean isC9r = dirName.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX);
+			boolean isC9s = dirName.endsWith(Constants.DEFLATED_FILE_SUFFIX);
+			if (isC9r || isC9s) {
 				boolean isDir = containsDirFile(dir);
 				boolean isSymlink = containsSymlinkFile(dir);
 				boolean isFile = containsContentsFile(dir);
-				if (isDir ^ isSymlink ^ isFile) {
+				if ((isC9r && (isDir ^ isSymlink)) || (isC9s && (isDir ^ isSymlink ^ isFile))) {
 					resultCollector.accept(new KnownType(dir));
 				} else if (isDir || isSymlink || isFile) {
 					resultCollector.accept(new AmbiguousType(dir));

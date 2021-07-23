@@ -10,7 +10,7 @@ import java.util.Map;
  */
 public class UnknownType implements DiagnosticResult {
 
-	private final Path cipherDir;
+	final Path cipherDir;
 
 	UnknownType(Path c9rDir) {
 		this.cipherDir = c9rDir;
