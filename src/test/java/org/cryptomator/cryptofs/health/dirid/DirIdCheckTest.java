@@ -3,7 +3,6 @@ package org.cryptomator.cryptofs.health.dirid;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.common.CustomMatchers;
-import org.cryptomator.cryptofs.health.VaultStructureUtil;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
@@ -19,9 +18,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -50,7 +52,7 @@ public class DirIdCheckTest {
 		cryptor = Mockito.mock(Cryptor.class);
 		fileNameCryptor = Mockito.mock(FileNameCryptor.class);
 		dataRoot = fs.getPath("/d");
-		VaultStructureUtil.initDirStructure(dataRoot, VAULT_STRUCTURE);
+		VAULT_STRUCTURE.lines().forEach(line -> initDirStructure(dataRoot, line));
 
 		Mockito.when(cryptor.fileNameCryptor()).thenReturn(fileNameCryptor);
 		Mockito.when(fileNameCryptor.hashDirectoryId(Mockito.any())).then(i -> i.getArgument(0));
@@ -131,6 +133,27 @@ public class DirIdCheckTest {
 			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(EmptyDirFile.class, expectedEmptyFile, "Empty dir file: /d/BB/bbbb/baz=.c9r/dir.c9r")));
 		}
 
+	}
+
+	private static void initDirStructure(Path root, String line) throws UncheckedIOException {
+		try {
+			if (line.contains(" = ")) {
+				var sep = line.indexOf(" = ");
+				var file = root.resolve(line.substring(0, sep));
+				var contents = line.substring(sep + 3);
+				Files.createDirectories(file.getParent());
+				if (contents.equals("[EMPTY]")) {
+					Files.createFile(file);
+				} else {
+					Files.writeString(file, contents, StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW);
+
+				}
+			} else {
+				Files.createDirectories(root.resolve(line));
+			}
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 	}
 
 }
