@@ -1,0 +1,90 @@
+package org.cryptomator.cryptofs.health.shortened;
+
+import com.google.common.io.BaseEncoding;
+import org.cryptomator.cryptofs.LongFileNameProvider;
+import org.cryptomator.cryptofs.VaultConfig;
+import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.health.api.CheckFailed;
+import org.cryptomator.cryptofs.health.api.DiagnosticResult;
+import org.cryptomator.cryptofs.health.api.HealthCheck;
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.common.MessageDigestSupplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Set;
+import java.util.function.Consumer;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.cryptomator.cryptofs.common.Constants.DEFLATED_FILE_SUFFIX;
+import static org.cryptomator.cryptofs.common.Constants.INFLATED_FILE_NAME;
+
+/**
+ * TODO: doc doc doc
+ * 			- the duckumentation duck
+ *		   __
+ *	   ___( o)>
+ *	   \ <_. )
+ *		`---'   hjw
+ */
+public class ShortenedNamesCheck implements HealthCheck {
+
+	private static final Logger LOG = LoggerFactory.getLogger(ShortenedNamesCheck.class);
+	private static final int MAX_TRAVERSAL_DEPTH = 3;
+	private static final BaseEncoding BASE64URL = BaseEncoding.base64Url();
+
+	@Override
+	public String name() {
+		return "Shortened Names Check";
+	}
+
+	@Override
+	public void check(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor, Consumer<DiagnosticResult> resultCollector) {
+
+		// scan vault structure:
+		var dataDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME);
+		var dirVisitor = new ShortenedNamesCheck.DirVisitor(resultCollector);
+		try {
+			Files.walkFileTree(dataDirPath, Set.of(), MAX_TRAVERSAL_DEPTH, dirVisitor);
+		} catch (IOException e) {
+			LOG.error("Traversal of data dir failed.", e);
+			resultCollector.accept(new CheckFailed("Traversal of data dir failed. See log for details."));
+		}
+	}
+
+	// visible for testing
+	static class DirVisitor extends SimpleFileVisitor<Path> {
+
+		private final Consumer<DiagnosticResult> resultCollector;
+
+		public DirVisitor(Consumer<DiagnosticResult> resultCollector) {
+			this.resultCollector = resultCollector;
+		}
+
+		@Override
+		public FileVisitResult visitFile(Path dir, BasicFileAttributes attrs) throws IOException {
+			var name = dir.getFileName().toString();
+			if (attrs.isDirectory() && name.endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
+				checkShortenedName(dir);
+			}
+			return FileVisitResult.CONTINUE;
+		}
+
+		// visible for testing
+		void checkShortenedName(Path dir) throws IOException {
+		}
+
+	}
+
+}
