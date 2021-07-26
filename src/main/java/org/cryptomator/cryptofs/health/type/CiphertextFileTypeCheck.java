@@ -62,16 +62,9 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 
 		@Override
 		public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-			var dirName = dir.getFileName().toString();
 			return switch (determineDirType(dir)) {
-				case C9R -> {
-					checkCiphertextTypeForC9r(dir);
-					yield FileVisitResult.SKIP_SUBTREE;
-				}
-				case C9S -> {
-					checkCiphertextTypeForC9s(dir);
-					yield FileVisitResult.SKIP_SUBTREE;
-				}
+				case C9R -> checkCiphertextType(dir, false);
+				case C9S -> checkCiphertextType(dir, true);
 				case UNKNOWN -> FileVisitResult.CONTINUE;
 			};
 		}
@@ -87,34 +80,21 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 			}
 		}
 
-		void checkCiphertextTypeForC9r(Path dir) {
-			assert dir.getFileName().toString().endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX);
-
+		FileVisitResult checkCiphertextType(Path dir, boolean isC9s) {
 			boolean isDir = containsDirFile(dir);
 			boolean isSymlink = containsSymlinkFile(dir);
 			boolean isFile = containsContentsFile(dir);
-			if (isDir ^ isSymlink) {
+
+			//TODO: discuss, if this is the correct logic
+			if (!isC9s && (isDir ^ isSymlink) || //
+					(isC9s && ((isDir && isFile && isSymlink) ^ isSymlink ^ isFile ^ isDir))) {
 				resultCollector.accept(new KnownType(dir));
 			} else if (isDir || isSymlink || isFile) {
 				resultCollector.accept(new AmbiguousType(dir));
 			} else {
 				resultCollector.accept(new UnknownType(dir));
 			}
-		}
-
-		void checkCiphertextTypeForC9s(Path dir) {
-			assert dir.getFileName().toString().endsWith(Constants.DEFLATED_FILE_SUFFIX);
-
-			boolean isDir = containsDirFile(dir);
-			boolean isSymlink = containsSymlinkFile(dir);
-			boolean isFile = containsContentsFile(dir);
-			if (isDir ^ isSymlink ^ isFile) {
-				resultCollector.accept(new KnownType(dir));
-			} else if (isDir || isSymlink || isFile) {
-				resultCollector.accept(new AmbiguousType(dir));
-			} else {
-				resultCollector.accept(new UnknownType(dir));
-			}
+			return FileVisitResult.SKIP_SUBTREE;
 		}
 
 		private boolean containsDirFile(Path path) {
