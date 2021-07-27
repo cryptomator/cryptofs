@@ -30,13 +30,11 @@ public class CiphertextFileTypeCheckTest {
 
 
 	private FileSystem fs;
-	private Cryptor cryptor;
 	private Path dataRoot;
 
 	@BeforeEach
 	public void setup() {
 		fs = Jimfs.newFileSystem(Configuration.unix());
-		cryptor = Mockito.mock(Cryptor.class);
 		dataRoot = fs.getPath("/d");
 	}
 
@@ -154,7 +152,8 @@ public class CiphertextFileTypeCheckTest {
 
 			private static List<Arguments> provideAllContentsC9rCombos() {
 				return List.of( //
-						Arguments.of(List.of("contents.c9r"), UnknownType.class), Arguments.of(List.of("dir.c9r", "contents.c9r"), KnownType.class), //
+						Arguments.of(List.of("contents.c9r"), UnknownType.class), //
+						Arguments.of(List.of("dir.c9r", "contents.c9r"), KnownType.class), //
 						Arguments.of(List.of("symlink.c9r", "contents.c9r"), KnownType.class), //
 						Arguments.of(List.of("dir.c9r", "symlink.c9r", "contents.c9r"), AmbiguousType.class));
 			}
