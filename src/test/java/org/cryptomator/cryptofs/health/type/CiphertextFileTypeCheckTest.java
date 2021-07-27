@@ -95,8 +95,8 @@ public class CiphertextFileTypeCheckTest {
 			@ParameterizedTest
 			@DisplayName("c9r dir with only dir.c9r or symlink.c9r is known")
 			@ValueSource(strings = {"dir.c9r", "symlink.c9r"})
-			public void testSigDirOrSymlinkFileProduceKnownType(String signatureFile) throws IOException {
-				Files.createFile(c9rDir.resolve(signatureFile));
+			public void testSigDirOrSymlinkFileProduceKnownType(String typeFile) throws IOException {
+				Files.createFile(c9rDir.resolve(typeFile));
 
 				visitor.checkCiphertextType(c9rDir, false);
 
@@ -134,9 +134,9 @@ public class CiphertextFileTypeCheckTest {
 			@ParameterizedTest
 			@DisplayName("contents.c9r is ignored for c9r dir")
 			@MethodSource("provideAllContentsC9rCombos")
-			public void testContentsC9rIsIgnored(List<String> sigFiles, Class resultClass) throws IOException {
-				for (var sigFile : sigFiles) {
-					Files.createFile(c9rDir.resolve(sigFile));
+			public void testContentsC9rIsIgnored(List<String> typeFiles, Class resultClass) throws IOException {
+				for (var typeFile : typeFiles) {
+					Files.createFile(c9rDir.resolve(typeFile));
 				}
 
 				visitor.checkCiphertextType(c9rDir, false);
@@ -168,10 +168,10 @@ public class CiphertextFileTypeCheckTest {
 			}
 
 			@ParameterizedTest
-			@DisplayName("c9s dir with only one sig file is known")
+			@DisplayName("c9s dir with only one type file is known")
 			@ValueSource(strings = {"dir.c9r", "symlink.c9r", "contents.c9r"})
-			public void testSignatureSymlinkFileProducesKnownType(String signatureFile) throws IOException {
-				Files.createFile(c9sDir.resolve(signatureFile));
+			public void testSignatureSymlinkFileProducesKnownType(String typeFile) throws IOException {
+				Files.createFile(c9sDir.resolve(typeFile));
 
 				visitor.checkCiphertextType(c9sDir, true);
 
@@ -181,11 +181,11 @@ public class CiphertextFileTypeCheckTest {
 			}
 
 			@ParameterizedTest
-			@DisplayName("c9s dir with multiple sig files is ambiguous")
+			@DisplayName("c9s dir with multiple type files is ambiguous")
 			@MethodSource("provideAllSigFileCombos")
-			public void testMultipleSigFilesProduceAmbiguousType(List<String> signatureFiles) throws IOException {
-				for (var signatureFile : signatureFiles) {
-					Files.createFile(c9sDir.resolve(signatureFile));
+			public void testMultipleSigFilesProduceAmbiguousType(List<String> typeFiles) throws IOException {
+				for (var typeFile : typeFiles) {
+					Files.createFile(c9sDir.resolve(typeFile));
 				}
 
 				visitor.checkCiphertextType(c9sDir, true);
@@ -205,7 +205,7 @@ public class CiphertextFileTypeCheckTest {
 			}
 
 			@Test
-			@DisplayName("c9s dir without any signature file is unknown")
+			@DisplayName("c9s dir without any type file is unknown")
 			public void testNoneSignatureFileProducesUnknownType() throws IOException {
 				Path p = dataRoot.resolve("AA/aaaa/zaz.c9s");
 				Files.createDirectories(p);

@@ -25,9 +25,9 @@ import java.util.function.Consumer;
 /**
  * Checks for each c9r or c9s dir in the vault structure if its {@link org.cryptomator.cryptofs.common.CiphertextFileType} can be determined.
  * <p>
- * The type is based on the presence of a signature file.
- * The signature files are {@value org.cryptomator.cryptofs.common.Constants#DIR_FILE_NAME}, {@value org.cryptomator.cryptofs.common.Constants#SYMLINK_FILE_NAME} and {@value org.cryptomator.cryptofs.common.Constants#CONTENTS_FILE_NAME}.
- * Note: For c9r dirs, only the dir and symlink sig files are tested.
+ * The type is based on the presence of a valid type file.
+ * Valid type files for a c9r dir are {@value org.cryptomator.cryptofs.common.Constants#DIR_FILE_NAME} and {@value org.cryptomator.cryptofs.common.Constants#SYMLINK_FILE_NAME}.
+ * Valid type files for a c9s dir are the ones for c9r and {@value org.cryptomator.cryptofs.common.Constants#CONTENTS_FILE_NAME}.
  */
 public class CiphertextFileTypeCheck implements HealthCheck {
 
