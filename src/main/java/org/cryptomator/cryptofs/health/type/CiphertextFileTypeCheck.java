@@ -30,7 +30,7 @@ import java.util.function.Consumer;
 public class CiphertextFileTypeCheck implements HealthCheck {
 
 	private static final Logger LOG = LoggerFactory.getLogger(CiphertextFileTypeCheck.class);
-	private static final int MAX_TRAVERSAL_DEPTH = 4;
+	private static final int MAX_TRAVERSAL_DEPTH = 3;
 
 	@Override
 	public String name() {
@@ -60,26 +60,29 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 		public DirVisitor(Consumer<DiagnosticResult> resultCollector) {this.resultCollector = resultCollector;}
 
 		@Override
-		public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-			return switch (determineDirType(dir)) {
-				case C9R -> checkCiphertextTypeC9r(dir);
-				case C9S -> checkCiphertextTypeC9s(dir);
-				case UNKNOWN -> FileVisitResult.CONTINUE;
+		public FileVisitResult visitFile(Path dir, BasicFileAttributes attrs) {
+			switch (determineFileType(dir, attrs)) {
+				case C9R_DIR -> checkCiphertextTypeC9r(dir);
+				case C9S_DIR -> checkCiphertextTypeC9s(dir);
+				case UNRELATED -> {}
 			};
+			return FileVisitResult.CONTINUE;
 		}
 
-		DirType determineDirType(Path p) {
+		DirType determineFileType(Path p, BasicFileAttributes attrs) {
 			var dirName = p.getFileName().toString();
-			if (dirName.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX)) {
-				return DirType.C9R;
-			} else if (dirName.endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
-				return DirType.C9S;
+			boolean isDir = attrs.isDirectory();
+
+			if (isDir && dirName.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX)) {
+				return DirType.C9R_DIR;
+			} else if (isDir && dirName.endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
+				return DirType.C9S_DIR;
 			} else {
-				return DirType.UNKNOWN;
+				return DirType.UNRELATED;
 			}
 		}
 
-		FileVisitResult checkCiphertextTypeC9r(Path dir) {
+		void checkCiphertextTypeC9r(Path dir) {
 			boolean isDir = containsDirFile(dir);
 			boolean isSymlink = containsSymlinkFile(dir);
 
@@ -90,10 +93,9 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 			} else {
 				resultCollector.accept(new UnknownType(dir));
 			}
-			return FileVisitResult.SKIP_SUBTREE;
 		}
 
-		FileVisitResult checkCiphertextTypeC9s(Path dir) {
+		void checkCiphertextTypeC9s(Path dir) {
 			boolean isDir = containsDirFile(dir);
 			boolean isSymlink = containsSymlinkFile(dir);
 			boolean isFile = containsContentsFile(dir);
@@ -105,7 +107,6 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 			} else {
 				resultCollector.accept(new UnknownType(dir));
 			}
-			return FileVisitResult.SKIP_SUBTREE;
 		}
 
 		private boolean containsDirFile(Path path) {
@@ -126,9 +127,9 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 	}
 
 	enum DirType {
-		C9R,
-		C9S,
-		UNKNOWN;
+		C9R_DIR,
+		C9S_DIR,
+		UNRELATED;
 	}
 
 }

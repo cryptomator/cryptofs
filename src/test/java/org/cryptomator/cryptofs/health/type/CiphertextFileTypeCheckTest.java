@@ -7,7 +7,6 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -21,7 +20,6 @@ import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.file.FileSystem;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -67,9 +65,9 @@ public class CiphertextFileTypeCheckTest {
 			Files.createDirectories(p);
 
 			var visitorSpy = Mockito.spy(visitor);
-			Files.walkFileTree(dataRoot, Set.of(), 4, visitorSpy);
+			Files.walkFileTree(dataRoot, Set.of(), 3, visitorSpy);
 
-			Mockito.verify(visitorSpy).preVisitDirectory(Mockito.eq(p), Mockito.any());
+			Mockito.verify(visitorSpy).visitFile(Mockito.eq(p), Mockito.any());
 			Mockito.verify(visitorSpy).checkCiphertextTypeC9r(p);
 			Mockito.verify(visitorSpy, Mockito.never()).checkCiphertextTypeC9s(p);
 		}
@@ -81,9 +79,9 @@ public class CiphertextFileTypeCheckTest {
 			Files.createDirectories(p);
 
 			var visitorSpy = Mockito.spy(visitor);
-			Files.walkFileTree(dataRoot, Set.of(), 4, visitorSpy);
+			Files.walkFileTree(dataRoot, Set.of(), 3, visitorSpy);
 
-			Mockito.verify(visitorSpy).preVisitDirectory(Mockito.eq(p), Mockito.any());
+			Mockito.verify(visitorSpy).visitFile(Mockito.eq(p), Mockito.any());
 			Mockito.verify(visitorSpy).checkCiphertextTypeC9s(p);
 			Mockito.verify(visitorSpy, Mockito.never()).checkCiphertextTypeC9r(p);
 		}
@@ -106,9 +104,8 @@ public class CiphertextFileTypeCheckTest {
 			public void testSigDirOrSymlinkFileProduceKnownType(String signatureFile) throws IOException {
 				Files.createFile(c9rDir.resolve(signatureFile));
 
-				var actualFileVisitResult = visitor.checkCiphertextTypeC9r(c9rDir);
+				visitor.checkCiphertextTypeC9r(c9rDir);
 
-				Assertions.assertEquals(FileVisitResult.SKIP_SUBTREE, actualFileVisitResult);
 				ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
 				Mockito.verify(resultsCollector).accept(resultCaptor.capture());
 				MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(KnownType.class));
@@ -120,9 +117,8 @@ public class CiphertextFileTypeCheckTest {
 				Files.createFile(c9rDir.resolve("dir.c9r"));
 				Files.createFile(c9rDir.resolve("symlink.c9r"));
 
-				var actualFileVisitResult = visitor.checkCiphertextTypeC9r(c9rDir);
+				visitor.checkCiphertextTypeC9r(c9rDir);
 
-				Assertions.assertEquals(FileVisitResult.SKIP_SUBTREE, actualFileVisitResult);
 				ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
 				Mockito.verify(resultsCollector).accept(resultCaptor.capture());
 				MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(AmbiguousType.class));
@@ -134,9 +130,8 @@ public class CiphertextFileTypeCheckTest {
 				Path p = dataRoot.resolve("AA/aaaa/zaz.c9r");
 				Files.createDirectories(p);
 
-				var actualFileVisitResult = visitor.checkCiphertextTypeC9r(p);
+				visitor.checkCiphertextTypeC9r(p);
 
-				Assertions.assertEquals(FileVisitResult.SKIP_SUBTREE, actualFileVisitResult);
 				ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
 				Mockito.verify(resultsCollector).accept(resultCaptor.capture());
 				MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(UnknownType.class));
@@ -150,9 +145,8 @@ public class CiphertextFileTypeCheckTest {
 					Files.createFile(c9rDir.resolve(sigFile));
 				}
 
-				var actualFileVisitResult = visitor.checkCiphertextTypeC9r(c9rDir);
+				visitor.checkCiphertextTypeC9r(c9rDir);
 
-				Assertions.assertEquals(FileVisitResult.SKIP_SUBTREE, actualFileVisitResult);
 				ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
 				Mockito.verify(resultsCollector).accept(resultCaptor.capture());
 				MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(resultClass));
@@ -184,9 +178,8 @@ public class CiphertextFileTypeCheckTest {
 			public void testSignatureSymlinkFileProducesKnownType(String signatureFile) throws IOException {
 				Files.createFile(c9sDir.resolve(signatureFile));
 
-				var actualFileVisitResult = visitor.checkCiphertextTypeC9s(c9sDir);
+				visitor.checkCiphertextTypeC9s(c9sDir);
 
-				Assertions.assertEquals(FileVisitResult.SKIP_SUBTREE, actualFileVisitResult);
 				ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
 				Mockito.verify(resultsCollector).accept(resultCaptor.capture());
 				MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(KnownType.class));
@@ -200,9 +193,8 @@ public class CiphertextFileTypeCheckTest {
 					Files.createFile(c9sDir.resolve(sigFile));
 				}
 
-				var actualFileVisitResult = visitor.checkCiphertextTypeC9s(c9sDir);
+				visitor.checkCiphertextTypeC9s(c9sDir);
 
-				Assertions.assertEquals(FileVisitResult.SKIP_SUBTREE, actualFileVisitResult);
 				ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
 				Mockito.verify(resultsCollector).accept(resultCaptor.capture());
 				MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(AmbiguousType.class));
@@ -223,9 +215,8 @@ public class CiphertextFileTypeCheckTest {
 				Path p = dataRoot.resolve("AA/aaaa/zaz.c9s");
 				Files.createDirectories(p);
 
-				var actualFileVisitResult = visitor.checkCiphertextTypeC9r(p);
+				visitor.checkCiphertextTypeC9r(p);
 
-				Assertions.assertEquals(FileVisitResult.SKIP_SUBTREE, actualFileVisitResult);
 				ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
 				Mockito.verify(resultsCollector).accept(resultCaptor.capture());
 				MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(UnknownType.class));
