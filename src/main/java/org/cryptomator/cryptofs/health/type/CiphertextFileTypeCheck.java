@@ -143,7 +143,7 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 			} else if (isSymlink) {
 				return EnumSet.of(CiphertextFileType.SYMLINK);
 			} else if (isFile) {
-				return EnumSet.of(CiphertextFileType.SYMLINK);
+				return EnumSet.of(CiphertextFileType.FILE);
 			} else {
 				return EnumSet.noneOf(CiphertextFileType.class);
 			}
