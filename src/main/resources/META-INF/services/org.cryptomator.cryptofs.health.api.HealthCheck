@@ -1,1 +1,2 @@
 org.cryptomator.cryptofs.health.dirid.DirIdCheck
+org.cryptomator.cryptofs.health.type.CiphertextFileTypeCheck
