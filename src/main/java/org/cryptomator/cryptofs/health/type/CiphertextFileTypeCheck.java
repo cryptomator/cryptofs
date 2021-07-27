@@ -21,17 +21,16 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 /**
- * TODO: doc doc doc
- * 		-- the dockumentation duck
- *                __
- *              <(o )___
- *               ( ._> /
- *                `---'   hjw
+ * Checks for each c9r or c9s dir in the vault structure if its {@link org.cryptomator.cryptofs.common.CiphertextFileType} can be determined.
+ * <p>
+ * The type is based on the presence of a signature file.
+ * The signature files are {@value org.cryptomator.cryptofs.common.Constants#DIR_FILE_NAME}, {@value org.cryptomator.cryptofs.common.Constants#SYMLINK_FILE_NAME} and {@value org.cryptomator.cryptofs.common.Constants#CONTENTS_FILE_NAME}.
+ * Note: For c9r dirs, only the dir and symlink sig files are tested.
  */
 public class CiphertextFileTypeCheck implements HealthCheck {
 
 	private static final Logger LOG = LoggerFactory.getLogger(CiphertextFileTypeCheck.class);
-	private static final int MAX_TRAVERSAL_DEPTH = 4; //TODO: correct?
+	private static final int MAX_TRAVERSAL_DEPTH = 4;
 
 	@Override
 	public String name() {
@@ -63,8 +62,8 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 		@Override
 		public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
 			return switch (determineDirType(dir)) {
-				case C9R -> checkCiphertextType(dir, false);
-				case C9S -> checkCiphertextType(dir, true);
+				case C9R -> checkCiphertextTypeC9r(dir);
+				case C9S -> checkCiphertextTypeC9s(dir);
 				case UNKNOWN -> FileVisitResult.CONTINUE;
 			};
 		}
@@ -80,14 +79,26 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 			}
 		}
 
-		FileVisitResult checkCiphertextType(Path dir, boolean isC9s) {
+		FileVisitResult checkCiphertextTypeC9r(Path dir) {
+			boolean isDir = containsDirFile(dir);
+			boolean isSymlink = containsSymlinkFile(dir);
+
+			if (isDir ^ isSymlink) {
+				resultCollector.accept(new KnownType(dir));
+			} else if (isDir || isSymlink) {
+				resultCollector.accept(new AmbiguousType(dir));
+			} else {
+				resultCollector.accept(new UnknownType(dir));
+			}
+			return FileVisitResult.SKIP_SUBTREE;
+		}
+
+		FileVisitResult checkCiphertextTypeC9s(Path dir) {
 			boolean isDir = containsDirFile(dir);
 			boolean isSymlink = containsSymlinkFile(dir);
 			boolean isFile = containsContentsFile(dir);
 
-			//TODO: discuss, if this is the correct logic
-			if (!isC9s && (isDir ^ isSymlink) || //
-					(isC9s && ((isDir && isFile && isSymlink) ^ isSymlink ^ isFile ^ isDir))) {
+			if ((isDir && isFile && isSymlink) ^ isSymlink ^ isFile ^ isDir) {
 				resultCollector.accept(new KnownType(dir));
 			} else if (isDir || isSymlink || isFile) {
 				resultCollector.accept(new AmbiguousType(dir));

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
@@ -69,7 +70,8 @@ public class CiphertextFileTypeCheckTest {
 			Files.walkFileTree(dataRoot, Set.of(), 4, visitorSpy);
 
 			Mockito.verify(visitorSpy).preVisitDirectory(Mockito.eq(p), Mockito.any());
-			Mockito.verify(visitorSpy).checkCiphertextType(p, false);
+			Mockito.verify(visitorSpy).checkCiphertextTypeC9r(p);
+			Mockito.verify(visitorSpy, Mockito.never()).checkCiphertextTypeC9s(p);
 		}
 
 		@Test
@@ -82,7 +84,8 @@ public class CiphertextFileTypeCheckTest {
 			Files.walkFileTree(dataRoot, Set.of(), 4, visitorSpy);
 
 			Mockito.verify(visitorSpy).preVisitDirectory(Mockito.eq(p), Mockito.any());
-			Mockito.verify(visitorSpy).checkCiphertextType(p, true);
+			Mockito.verify(visitorSpy).checkCiphertextTypeC9s(p);
+			Mockito.verify(visitorSpy, Mockito.never()).checkCiphertextTypeC9r(p);
 		}
 
 		@Nested
@@ -103,7 +106,7 @@ public class CiphertextFileTypeCheckTest {
 			public void testSigDirOrSymlinkFileProduceKnownType(String signatureFile) throws IOException {
 				Files.createFile(c9rDir.resolve(signatureFile));
 
-				var actualFileVisitResult = visitor.checkCiphertextType(c9rDir, false);
+				var actualFileVisitResult = visitor.checkCiphertextTypeC9r(c9rDir);
 
 				Assertions.assertEquals(FileVisitResult.SKIP_SUBTREE, actualFileVisitResult);
 				ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
@@ -112,11 +115,12 @@ public class CiphertextFileTypeCheckTest {
 			}
 
 			@Test
-			@DisplayName("c9r dir with only contents.c9r is ambiguous")
-			public void testSignatureContentFileProducesAmbiguousType() throws IOException {
-				Files.createFile(c9rDir.resolve("contents.c9r"));
+			@DisplayName("c9r dir with dir.c9r AND symlink.c9r is ambiguous")
+			public void testDirC9rAndSymlinkC9rProducesAmbiguousType() throws IOException {
+				Files.createFile(c9rDir.resolve("dir.c9r"));
+				Files.createFile(c9rDir.resolve("symlink.c9r"));
 
-				var actualFileVisitResult = visitor.checkCiphertextType(c9rDir, false);
+				var actualFileVisitResult = visitor.checkCiphertextTypeC9r(c9rDir);
 
 				Assertions.assertEquals(FileVisitResult.SKIP_SUBTREE, actualFileVisitResult);
 				ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
@@ -124,30 +128,41 @@ public class CiphertextFileTypeCheckTest {
 				MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(AmbiguousType.class));
 			}
 
-			//TODO: what about content.c9r inside a c9r dir?
+			@Test
+			@DisplayName("c9r dir without dir.c9r or symlink.c9r is unknown")
+			public void testNoneSignatureFileProducesUnknownType() throws IOException {
+				Path p = dataRoot.resolve("AA/aaaa/zaz.c9r");
+				Files.createDirectories(p);
+
+				var actualFileVisitResult = visitor.checkCiphertextTypeC9r(p);
+
+				Assertions.assertEquals(FileVisitResult.SKIP_SUBTREE, actualFileVisitResult);
+				ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
+				Mockito.verify(resultsCollector).accept(resultCaptor.capture());
+				MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(UnknownType.class));
+			}
+
 			@ParameterizedTest
-			@DisplayName("c9r dir with multiple sig files is ambiguous")
-			@MethodSource("provideAllSigFileCombos")
-			public void testMultipleSigFilesProduceAmbiguousType(List<String> sigFiles) throws IOException {
+			@DisplayName("contents.c9r is ignored for c9r dir")
+			@MethodSource("provideAllContentsC9rCombos")
+			public void testContentsC9rIsIgnored(List<String> sigFiles, Class resultClass) throws IOException {
 				for (var sigFile : sigFiles) {
 					Files.createFile(c9rDir.resolve(sigFile));
 				}
 
-				var actualFileVisitResult = visitor.checkCiphertextType(c9rDir, false);
+				var actualFileVisitResult = visitor.checkCiphertextTypeC9r(c9rDir);
 
 				Assertions.assertEquals(FileVisitResult.SKIP_SUBTREE, actualFileVisitResult);
 				ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
 				Mockito.verify(resultsCollector).accept(resultCaptor.capture());
-				MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(AmbiguousType.class));
+				MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(resultClass));
 			}
 
-			private static List<List<String>> provideAllSigFileCombos() {
+			private static List<Arguments> provideAllContentsC9rCombos() {
 				return List.of( //
-						List.of("dir.c9r", "symlink.c9r"), //
-						List.of("dir.c9r", "contents.c9r"), //
-						List.of("contents.c9r", "symlink.c9r"), //
-						List.of("dir.c9r", "symlink.c9r", "contents.c9r") //
-				);
+						Arguments.of(List.of("contents.c9r"), UnknownType.class), Arguments.of(List.of("dir.c9r", "contents.c9r"), KnownType.class), //
+						Arguments.of(List.of("symlink.c9r", "contents.c9r"), KnownType.class), //
+						Arguments.of(List.of("dir.c9r", "symlink.c9r", "contents.c9r"), AmbiguousType.class));
 			}
 		}
 
@@ -169,7 +184,7 @@ public class CiphertextFileTypeCheckTest {
 			public void testSignatureSymlinkFileProducesKnownType(String signatureFile) throws IOException {
 				Files.createFile(c9sDir.resolve(signatureFile));
 
-				var actualFileVisitResult = visitor.checkCiphertextType(c9sDir, true);
+				var actualFileVisitResult = visitor.checkCiphertextTypeC9s(c9sDir);
 
 				Assertions.assertEquals(FileVisitResult.SKIP_SUBTREE, actualFileVisitResult);
 				ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
@@ -185,7 +200,7 @@ public class CiphertextFileTypeCheckTest {
 					Files.createFile(c9sDir.resolve(sigFile));
 				}
 
-				var actualFileVisitResult = visitor.checkCiphertextType(c9sDir, true);
+				var actualFileVisitResult = visitor.checkCiphertextTypeC9s(c9sDir);
 
 				Assertions.assertEquals(FileVisitResult.SKIP_SUBTREE, actualFileVisitResult);
 				ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
@@ -201,22 +216,22 @@ public class CiphertextFileTypeCheckTest {
 						List.of("dir.c9r", "symlink.c9r", "contents.c9r") //
 				);
 			}
+
+			@Test
+			@DisplayName("c9s dir without any signature file is unknown")
+			public void testNoneSignatureFileProducesUnknownType() throws IOException {
+				Path p = dataRoot.resolve("AA/aaaa/zaz.c9s");
+				Files.createDirectories(p);
+
+				var actualFileVisitResult = visitor.checkCiphertextTypeC9r(p);
+
+				Assertions.assertEquals(FileVisitResult.SKIP_SUBTREE, actualFileVisitResult);
+				ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
+				Mockito.verify(resultsCollector).accept(resultCaptor.capture());
+				MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(UnknownType.class));
+			}
 		}
 
-
-		@Test
-		@DisplayName("dir without any signature file is unknown")
-		public void testDirWithoutSignatureFileProducesUnknownType() throws IOException {
-			Path p = dataRoot.resolve("AA/aaaa/agnostic");
-			Files.createDirectories(p);
-
-			var actualFileVisitResult = visitor.checkCiphertextType(p, true);
-
-			Assertions.assertEquals(FileVisitResult.SKIP_SUBTREE, actualFileVisitResult);
-			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
-			Mockito.verify(resultsCollector).accept(resultCaptor.capture());
-			MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(UnknownType.class));
-		}
 
 	}
 }
