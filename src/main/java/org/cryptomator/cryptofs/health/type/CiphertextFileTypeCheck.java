@@ -90,13 +90,11 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 			boolean isSymlink = containsSymlinkFile(dir);
 			var types = ciphertextFileTypesFrom(isDir, isSymlink, false);
 
-			if (isDir ^ isSymlink) {
-				resultCollector.accept(new KnownType(dir, types.iterator().next()));
-			} else if (isDir || isSymlink) {
-				resultCollector.accept(new AmbiguousType(dir, types));
-			} else {
-				resultCollector.accept(new UnknownType(dir));
-			}
+			resultCollector.accept(switch (types.size()) {
+				case 0 -> new UnknownType(dir);
+				case 1 -> new KnownType(dir, types.iterator().next());
+				default -> new AmbiguousType(dir, types);
+			});
 		}
 
 		void checkCiphertextTypeC9s(Path dir) {
@@ -105,13 +103,11 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 			boolean isFile = containsContentsFile(dir);
 			var types = ciphertextFileTypesFrom(isDir, isSymlink, isFile);
 
-			if ((isDir && isFile && isSymlink) ^ isSymlink ^ isFile ^ isDir) {
-				resultCollector.accept(new KnownType(dir, types.iterator().next()));
-			} else if (isDir || isSymlink || isFile) {
-				resultCollector.accept(new AmbiguousType(dir, types));
-			} else {
-				resultCollector.accept(new UnknownType(dir));
-			}
+			resultCollector.accept(switch (types.size()) {
+				case 0 -> new UnknownType(dir);
+				case 1 -> new KnownType(dir, types.iterator().next());
+				default -> new AmbiguousType(dir, types);
+			});
 		}
 
 		private boolean containsDirFile(Path path) {
