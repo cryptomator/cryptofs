@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.health.type;
 
+import org.cryptomator.cryptofs.health.api.CommonDetailKeys;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 
 import java.nio.file.Path;
@@ -7,7 +8,7 @@ import java.util.Map;
 
 /**
  * A ciphertext dir ending with c9r or c9s but does not contain a valid signature file.
- *
+ * <p>
  * Valid signature files for c9r are {@value org.cryptomator.cryptofs.common.Constants#DIR_FILE_NAME} and {@value org.cryptomator.cryptofs.common.Constants#SYMLINK_FILE_NAME}.
  * Valid signature files for c9s are the ones for c9r and {@value org.cryptomator.cryptofs.common.Constants#CONTENTS_FILE_NAME}.
  */
@@ -33,7 +34,12 @@ public class UnknownType implements DiagnosticResult {
 	 */
 
 	@Override
+	public String toString() {
+		return String.format("Encrypted dir %s of unknown type.", cipherDir);
+	}
+
+	@Override
 	public Map<String, String> details() {
-		return DiagnosticResult.super.details();
+		return Map.of(CommonDetailKeys.ENCRYPTED_PATH, cipherDir.toString());
 	}
 }

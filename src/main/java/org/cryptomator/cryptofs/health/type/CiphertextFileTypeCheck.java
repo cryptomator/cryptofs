@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs.health.type;
 
 import org.cryptomator.cryptofs.VaultConfig;
+import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.health.api.CheckFailed;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
@@ -17,6 +18,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.EnumSet;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -65,7 +67,8 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 				case C9R_DIR -> checkCiphertextTypeC9r(dir);
 				case C9S_DIR -> checkCiphertextTypeC9s(dir);
 				case UNRELATED -> {}
-			};
+			}
+			;
 			return FileVisitResult.CONTINUE;
 		}
 
@@ -85,11 +88,12 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 		void checkCiphertextTypeC9r(Path dir) {
 			boolean isDir = containsDirFile(dir);
 			boolean isSymlink = containsSymlinkFile(dir);
+			var types = ciphertextFileTypesFrom(isDir, isSymlink, false);
 
 			if (isDir ^ isSymlink) {
-				resultCollector.accept(new KnownType(dir));
+				resultCollector.accept(new KnownType(dir, types.iterator().next()));
 			} else if (isDir || isSymlink) {
-				resultCollector.accept(new AmbiguousType(dir));
+				resultCollector.accept(new AmbiguousType(dir, types));
 			} else {
 				resultCollector.accept(new UnknownType(dir));
 			}
@@ -99,11 +103,12 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 			boolean isDir = containsDirFile(dir);
 			boolean isSymlink = containsSymlinkFile(dir);
 			boolean isFile = containsContentsFile(dir);
+			var types = ciphertextFileTypesFrom(isDir, isSymlink, isFile);
 
 			if ((isDir && isFile && isSymlink) ^ isSymlink ^ isFile ^ isDir) {
-				resultCollector.accept(new KnownType(dir));
+				resultCollector.accept(new KnownType(dir, types.iterator().next()));
 			} else if (isDir || isSymlink || isFile) {
-				resultCollector.accept(new AmbiguousType(dir));
+				resultCollector.accept(new AmbiguousType(dir, types));
 			} else {
 				resultCollector.accept(new UnknownType(dir));
 			}
@@ -122,6 +127,26 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 		private boolean containsContentsFile(Path path) {
 			var contentsc9r = path.resolve(Constants.CONTENTS_FILE_NAME);
 			return Files.isRegularFile(contentsc9r, LinkOption.NOFOLLOW_LINKS);
+		}
+
+		private Set<CiphertextFileType> ciphertextFileTypesFrom(boolean isDir, boolean isSymlink, boolean isFile) {
+			if (isDir && isSymlink && isFile) {
+				return EnumSet.of(CiphertextFileType.DIRECTORY, CiphertextFileType.SYMLINK, CiphertextFileType.FILE);
+			} else if (isDir && isSymlink) {
+				return EnumSet.of(CiphertextFileType.DIRECTORY, CiphertextFileType.SYMLINK);
+			} else if (isDir && isFile) {
+				return EnumSet.of(CiphertextFileType.DIRECTORY, CiphertextFileType.FILE);
+			} else if (isSymlink && isFile) {
+				return EnumSet.of(CiphertextFileType.SYMLINK, CiphertextFileType.FILE);
+			} else if (isDir) {
+				return EnumSet.of(CiphertextFileType.DIRECTORY);
+			} else if (isSymlink) {
+				return EnumSet.of(CiphertextFileType.SYMLINK);
+			} else if (isFile) {
+				return EnumSet.of(CiphertextFileType.SYMLINK);
+			} else {
+				return EnumSet.noneOf(CiphertextFileType.class);
+			}
 		}
 
 	}
