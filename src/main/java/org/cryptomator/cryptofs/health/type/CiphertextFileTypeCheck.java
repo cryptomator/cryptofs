@@ -69,8 +69,8 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 		@Override
 		public FileVisitResult visitFile(Path dir, BasicFileAttributes attrs) {
 			switch (determineFileType(dir, attrs)) {
-				case C9R_DIR -> checkCiphertextTypeC9r(dir);
-				case C9S_DIR -> checkCiphertextTypeC9s(dir);
+				case C9R_DIR -> checkCiphertextType(dir, false);
+				case C9S_DIR -> checkCiphertextType(dir, true);
 				case UNRELATED -> {}
 			}
 			return FileVisitResult.CONTINUE;
@@ -89,20 +89,10 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 			}
 		}
 
-		void checkCiphertextTypeC9r(Path dir) {
-			int octalTypes = (containsDirFile(dir) ? DIR : 0) //
-					+ (containsSymlinkFile(dir) ? LINK : 0);
-			checkCiphertextType(dir, octalTypes);
-		}
-
-		void checkCiphertextTypeC9s(Path dir) {
+		void checkCiphertextType(Path dir, boolean checkForContentsC9r) {
 			int octalTypes = (containsDirFile(dir) ? DIR : 0) //
 					+ (containsSymlinkFile(dir) ? LINK : 0) //
-					+ (containsContentsFile(dir) ? FILE : 0);
-			checkCiphertextType(dir, octalTypes);
-		}
-
-		private void checkCiphertextType(Path dir, int octalTypes) {
+					+ (checkForContentsC9r && containsContentsFile(dir) ? FILE : 0);
 			var types = ciphertextFileTypesFromOctal(octalTypes);
 			resultCollector.accept(switch (types.size()) {
 				case 0 -> new UnknownType(dir);
@@ -136,7 +126,7 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 				case 5 -> EnumSet.of(CiphertextFileType.DIRECTORY, CiphertextFileType.FILE);
 				case 6 -> EnumSet.of(CiphertextFileType.DIRECTORY, CiphertextFileType.SYMLINK);
 				case 7 -> EnumSet.of(CiphertextFileType.DIRECTORY, CiphertextFileType.SYMLINK, CiphertextFileType.FILE);
-				default -> throw new IllegalArgumentException("octalType must be a number between 0 and 7");
+				default -> throw new IllegalArgumentException("octalTypes must be a number between 0 and 7");
 			};
 		}
 
