@@ -30,7 +30,7 @@ public class KnownType implements DiagnosticResult {
 
 	@Override
 	public String toString() {
-		return String.format("Encrypted dir %s with determined type %s.", cipherDir, type);
+		return String.format("Node %s with determined type %s.", cipherDir, type);
 	}
 
 	@Override

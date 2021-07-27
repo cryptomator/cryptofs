@@ -35,7 +35,7 @@ public class UnknownType implements DiagnosticResult {
 
 	@Override
 	public String toString() {
-		return String.format("Encrypted dir %s of unknown type.", cipherDir);
+		return String.format("Node %s of unknown type.", cipherDir);
 	}
 
 	@Override

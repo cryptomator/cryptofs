@@ -31,7 +31,7 @@ public class AmbiguousType implements DiagnosticResult {
 
 	@Override
 	public String toString() {
-		return String.format("Encrypted dir %s of ambiguous type. Possible types are: %s", cipherDir, possibleTypes);
+		return String.format("Node %s of ambiguous type. Possible types are: %s", cipherDir, possibleTypes);
 	}
 
 	@Override
