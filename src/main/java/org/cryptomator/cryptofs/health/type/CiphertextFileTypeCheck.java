@@ -34,11 +34,6 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 	private static final Logger LOG = LoggerFactory.getLogger(CiphertextFileTypeCheck.class);
 	private static final int MAX_TRAVERSAL_DEPTH = 3;
 
-	//octal representation of present signature files
-	private static final int FILE = 1;
-	private static final int LINK = 2;
-	private static final int DIR = 4;
-
 	@Override
 	public String name() {
 		return "Resource Type Check";
@@ -55,7 +50,6 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 		} catch (IOException e) {
 			LOG.error("Traversal of data dir failed.", e);
 			resultCollector.accept(new CheckFailed("Traversal of data dir failed. See log for details."));
-			return;
 		}
 	}
 
@@ -64,36 +58,24 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 
 		private final Consumer<DiagnosticResult> resultCollector;
 
-		public DirVisitor(Consumer<DiagnosticResult> resultCollector) {this.resultCollector = resultCollector;}
+		public DirVisitor(Consumer<DiagnosticResult> resultCollector) {
+			this.resultCollector = resultCollector;
+		}
 
 		@Override
 		public FileVisitResult visitFile(Path dir, BasicFileAttributes attrs) {
-			switch (determineFileType(dir, attrs)) {
-				case C9R_DIR -> checkCiphertextType(dir, false);
-				case C9S_DIR -> checkCiphertextType(dir, true);
-				case UNRELATED -> {}
+			var name = dir.getFileName().toString();
+			if (attrs.isDirectory() && name.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX)) {
+				checkCiphertextType(dir, false);
+			} else if (attrs.isDirectory() && name.endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
+				checkCiphertextType(dir, true);
 			}
 			return FileVisitResult.CONTINUE;
 		}
 
-		DirType determineFileType(Path p, BasicFileAttributes attrs) {
-			var dirName = p.getFileName().toString();
-			boolean isDir = attrs.isDirectory();
-
-			if (isDir && dirName.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX)) {
-				return DirType.C9R_DIR;
-			} else if (isDir && dirName.endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
-				return DirType.C9S_DIR;
-			} else {
-				return DirType.UNRELATED;
-			}
-		}
-
+		// visible for testing
 		void checkCiphertextType(Path dir, boolean checkForContentsC9r) {
-			int octalTypes = (containsDirFile(dir) ? DIR : 0) //
-					+ (containsSymlinkFile(dir) ? LINK : 0) //
-					+ (checkForContentsC9r && containsContentsFile(dir) ? FILE : 0);
-			var types = ciphertextFileTypesFromOctal(octalTypes);
+			var types = containedCiphertextFileTypes(dir, checkForContentsC9r);
 			resultCollector.accept(switch (types.size()) {
 				case 0 -> new UnknownType(dir);
 				case 1 -> new KnownType(dir, types.iterator().next());
@@ -116,26 +98,20 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 			return Files.isRegularFile(contentsc9r, LinkOption.NOFOLLOW_LINKS);
 		}
 
-		private Set<CiphertextFileType> ciphertextFileTypesFromOctal(int octalTypes) {
-			return switch (octalTypes) {
-				case 0 -> EnumSet.noneOf(CiphertextFileType.class);
-				case 1 -> EnumSet.of(CiphertextFileType.FILE);
-				case 2 -> EnumSet.of(CiphertextFileType.SYMLINK);
-				case 3 -> EnumSet.of(CiphertextFileType.SYMLINK, CiphertextFileType.FILE);
-				case 4 -> EnumSet.of(CiphertextFileType.DIRECTORY);
-				case 5 -> EnumSet.of(CiphertextFileType.DIRECTORY, CiphertextFileType.FILE);
-				case 6 -> EnumSet.of(CiphertextFileType.DIRECTORY, CiphertextFileType.SYMLINK);
-				case 7 -> EnumSet.of(CiphertextFileType.DIRECTORY, CiphertextFileType.SYMLINK, CiphertextFileType.FILE);
-				default -> throw new IllegalArgumentException("octalTypes must be a number between 0 and 7");
-			};
+		private Set<CiphertextFileType> containedCiphertextFileTypes(Path dir, boolean checkForContentsC9r) {
+			var result = EnumSet.noneOf(CiphertextFileType.class);
+			if (containsDirFile(dir)) {
+				result.add(CiphertextFileType.DIRECTORY);
+			}
+			if (containsSymlinkFile(dir)) {
+				result.add(CiphertextFileType.SYMLINK);
+			}
+			if (checkForContentsC9r && containsContentsFile(dir)) {
+				result.add(CiphertextFileType.FILE);
+			}
+			return result;
 		}
 
-	}
-
-	enum DirType {
-		C9R_DIR,
-		C9S_DIR,
-		UNRELATED;
 	}
 
 }
