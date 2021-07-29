@@ -83,6 +83,20 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 			});
 		}
 
+		private Set<CiphertextFileType> containedCiphertextFileTypes(Path dir, boolean checkForContentsC9r) {
+			var result = EnumSet.noneOf(CiphertextFileType.class);
+			if (containsDirFile(dir)) {
+				result.add(CiphertextFileType.DIRECTORY);
+			}
+			if (containsSymlinkFile(dir)) {
+				result.add(CiphertextFileType.SYMLINK);
+			}
+			if (checkForContentsC9r && containsContentsFile(dir)) {
+				result.add(CiphertextFileType.FILE);
+			}
+			return result;
+		}
+
 		private boolean containsDirFile(Path path) {
 			var dirc9r = path.resolve(Constants.DIR_FILE_NAME);
 			return Files.isRegularFile(dirc9r, LinkOption.NOFOLLOW_LINKS);
@@ -96,20 +110,6 @@ public class CiphertextFileTypeCheck implements HealthCheck {
 		private boolean containsContentsFile(Path path) {
 			var contentsc9r = path.resolve(Constants.CONTENTS_FILE_NAME);
 			return Files.isRegularFile(contentsc9r, LinkOption.NOFOLLOW_LINKS);
-		}
-
-		private Set<CiphertextFileType> containedCiphertextFileTypes(Path dir, boolean checkForContentsC9r) {
-			var result = EnumSet.noneOf(CiphertextFileType.class);
-			if (containsDirFile(dir)) {
-				result.add(CiphertextFileType.DIRECTORY);
-			}
-			if (containsSymlinkFile(dir)) {
-				result.add(CiphertextFileType.SYMLINK);
-			}
-			if (checkForContentsC9r && containsContentsFile(dir)) {
-				result.add(CiphertextFileType.FILE);
-			}
-			return result;
 		}
 
 	}
