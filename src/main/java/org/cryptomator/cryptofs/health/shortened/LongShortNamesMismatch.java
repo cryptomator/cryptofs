@@ -9,18 +9,17 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 /**
- * TODO: doc doc doc
- * 			- the duckumentation duck
- *		   __
- *	   ___( o)>
- *	   \ <_. )
- *		`---'   hjw
+ * A c9s directory where the name of the directory is not a Base64URL encoded SHA1-hash of the contents in {@Value org.cryptomator.cryptofs.Constants#INFLATED_FILE_NAME}
  */
 public class LongShortNamesMismatch implements DiagnosticResult {
 
 	final Path c9sDir;
+	final String encryptedLongName;
 
-	public LongShortNamesMismatch(Path c9sDir) {this.c9sDir = c9sDir;}
+	public LongShortNamesMismatch(Path c9sDir, String encryptedLongName) {
+		this.c9sDir = c9sDir;
+		this.encryptedLongName = encryptedLongName;
+	}
 
 	@Override
 	public Severity getSeverity() {
@@ -29,12 +28,12 @@ public class LongShortNamesMismatch implements DiagnosticResult {
 
 	@Override
 	public String toString() {
-		return String.format("TODO %s",c9sDir); //TODO
+		return String.format("Filename of %s is not a base64url encoded SHA1 hash of %s.", c9sDir, encryptedLongName);
 	}
 
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
-		//TODO: security implications
+		//TODO: discuss security implications
 	}
 
 }

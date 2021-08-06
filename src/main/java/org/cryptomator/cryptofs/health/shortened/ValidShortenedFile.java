@@ -5,12 +5,7 @@ import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 import java.nio.file.Path;
 
 /**
- * TODO: doc doc doc
- * 			- the duckumentation duck
- *		   __
- *	   ___( o)>
- *	   \ <_. )
- *		`---'   hjw
+ * A valid shortened resource according to the Cryptomator vault specification.
  */
 public class ValidShortenedFile implements DiagnosticResult {
 
@@ -25,7 +20,7 @@ public class ValidShortenedFile implements DiagnosticResult {
 
 	@Override
 	public String toString() {
-		return String.format("TODO %s", c9sDir);
+		return String.format("Found valid shortened resource at %s.", c9sDir);
 	}
 
 }

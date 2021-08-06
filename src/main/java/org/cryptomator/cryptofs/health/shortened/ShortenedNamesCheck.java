@@ -33,12 +33,7 @@ import static org.cryptomator.cryptofs.common.Constants.DEFLATED_FILE_SUFFIX;
 import static org.cryptomator.cryptofs.common.Constants.INFLATED_FILE_NAME;
 
 /**
- * TODO: doc doc doc
- * 			- the duckumentation duck
- * 		   __
- * 	   ___( o)>
- * 	   \ <_. )
- * 		`---'   hjw
+ * Visits all c9s directories and checks if they all are valid shortened resource according the Cryptomator vault specification.
  */
 public class ShortenedNamesCheck implements HealthCheck {
 
@@ -105,7 +100,7 @@ public class ShortenedNamesCheck implements HealthCheck {
 			var longName = readLongName(nameFile);
 			var shortName = deflate(longName);
 			if (!dir.getFileName().toString().equals(shortName)) {
-				resultCollector.accept(new LongShortNamesMismatch(dir));
+				resultCollector.accept(new LongShortNamesMismatch(dir, longName));
 			} else {
 				resultCollector.accept(new ValidShortenedFile(dir));
 			}
