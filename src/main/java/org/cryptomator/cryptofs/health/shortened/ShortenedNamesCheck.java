@@ -18,7 +18,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardOpenOption;
@@ -33,10 +33,10 @@ import static org.cryptomator.cryptofs.common.Constants.INFLATED_FILE_NAME;
 /**
  * TODO: doc doc doc
  * 			- the duckumentation duck
- *		   __
- *	   ___( o)>
- *	   \ <_. )
- *		`---'   hjw
+ * 		   __
+ * 	   ___( o)>
+ * 	   \ <_. )
+ * 		`---'   hjw
  */
 public class ShortenedNamesCheck implements HealthCheck {
 
@@ -83,8 +83,53 @@ public class ShortenedNamesCheck implements HealthCheck {
 
 		// visible for testing
 		void checkShortenedName(Path dir) throws IOException {
+			try {
+				var longName = inflate(dir);
+				var shortName = deflate(longName);
+				if (!dir.getFileName().equals(shortName)) {
+					resultCollector.accept(new LongShortNamesMismatch(dir));
+				}
+				//TODO: check if content of longName is decryptable
+				// dirID is needed for that
+			} catch (ResultAlreadyPresentException e) {
+				resultCollector.accept(e.result);
+			}
 		}
 
+		//copied from LongFileNameProvider
+		String inflate(Path c9sPath) throws IOException, ResultAlreadyPresentException {
+			Path nameFile = c9sPath.resolve(INFLATED_FILE_NAME);
+
+			if (!Files.isRegularFile(nameFile, LinkOption.NOFOLLOW_LINKS)) {
+				throw new ResultAlreadyPresentException(new MissingLongName(c9sPath));
+			}
+
+			try (SeekableByteChannel ch = Files.newByteChannel(nameFile, StandardOpenOption.READ)) {
+				if (ch.size() > LongFileNameProvider.MAX_FILENAME_BUFFER_SIZE) {
+					throw new ResultAlreadyPresentException(new ObeseNameFile(nameFile, ch.size()));
+				}
+				ByteBuffer buf = ByteBuffer.allocate((int) ch.size());
+				ch.read(buf);
+				buf.flip();
+				return UTF_8.decode(buf).toString();
+			}
+		}
+
+		public String deflate(String longFileName) {
+			byte[] longFileNameBytes = longFileName.getBytes(UTF_8);
+			byte[] hash = MessageDigestSupplier.SHA1.get().digest(longFileNameBytes);
+			return BASE64URL.encode(hash) + DEFLATED_FILE_SUFFIX;
+		}
+
+	}
+
+	private static class ResultAlreadyPresentException extends Exception {
+
+		final DiagnosticResult result;
+
+		ResultAlreadyPresentException(DiagnosticResult result) {
+			this.result = result;
+		}
 	}
 
 }
