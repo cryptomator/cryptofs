@@ -19,9 +19,11 @@ import java.nio.channels.SeekableByteChannel;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -83,33 +85,37 @@ public class ShortenedNamesCheck implements HealthCheck {
 
 		// visible for testing
 		void checkShortenedName(Path dir) throws IOException {
+			Path nameFile = dir.resolve(INFLATED_FILE_NAME);
+
+			final BasicFileAttributes attrs;
 			try {
-				var longName = inflate(dir);
-				var shortName = deflate(longName);
-				if (!dir.getFileName().toString().equals(shortName)) {
-					resultCollector.accept(new LongShortNamesMismatch(dir));
-				} else {
-					resultCollector.accept(new ValidShortenedFile(dir));
-				}
-				//TODO: check if content of longName is decryptable
-				// dirID is needed for that
-			} catch (ResultAlreadyPresentException e) {
-				resultCollector.accept(e.result);
+				attrs = Files.getFileAttributeView(nameFile, BasicFileAttributeView.class, LinkOption.NOFOLLOW_LINKS).readAttributes();
+			} catch (NoSuchFileException e) {
+				resultCollector.accept(new MissingLongName(dir));
+				return;
 			}
+			if (!attrs.isRegularFile()) {
+				resultCollector.accept(new MissingLongName(dir));
+				return;
+			} else if (attrs.size() > LongFileNameProvider.MAX_FILENAME_BUFFER_SIZE) {
+				resultCollector.accept(new ObeseNameFile(nameFile, attrs.size()));
+				return;
+			}
+
+			var longName = readLongName(nameFile);
+			var shortName = deflate(longName);
+			if (!dir.getFileName().toString().equals(shortName)) {
+				resultCollector.accept(new LongShortNamesMismatch(dir));
+			} else {
+				resultCollector.accept(new ValidShortenedFile(dir));
+			}
+			//TODO: check if content of longName is decryptable
+			// dirID is needed for that
 		}
 
 		//copied from LongFileNameProvider
-		String inflate(Path c9sPath) throws IOException, ResultAlreadyPresentException {
-			Path nameFile = c9sPath.resolve(INFLATED_FILE_NAME);
-
-			if (!Files.isRegularFile(nameFile, LinkOption.NOFOLLOW_LINKS)) {
-				throw new ResultAlreadyPresentException(new MissingLongName(c9sPath));
-			}
-
+		String readLongName(Path nameFile) throws IOException {
 			try (SeekableByteChannel ch = Files.newByteChannel(nameFile, StandardOpenOption.READ)) {
-				if (ch.size() > LongFileNameProvider.MAX_FILENAME_BUFFER_SIZE) {
-					throw new ResultAlreadyPresentException(new ObeseNameFile(nameFile, ch.size()));
-				}
 				ByteBuffer buf = ByteBuffer.allocate((int) ch.size());
 				ch.read(buf);
 				buf.flip();
@@ -126,13 +132,5 @@ public class ShortenedNamesCheck implements HealthCheck {
 
 	}
 
-	private static class ResultAlreadyPresentException extends Exception {
-
-		final DiagnosticResult result;
-
-		ResultAlreadyPresentException(DiagnosticResult result) {
-			this.result = result;
-		}
-	}
 
 }

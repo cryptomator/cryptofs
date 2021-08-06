@@ -14,6 +14,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
@@ -80,25 +81,57 @@ public class ShortenedNamesCheckTest {
 			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
 			Mockito.verify(resultsCollector).accept(resultCaptor.capture());
 			MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(ValidShortenedFile.class));
-
 		}
 
 		@Test
 		@DisplayName("dir with missing name.c9s produces missing result")
-		public void testMissingNamesFileProducesMissingResult() {
+		public void testMissingNamesFileProducesMissingResult() throws IOException {
+			Path dir = dataRoot.resolve("AA/zzzz/shortName.c9s");
+			Files.createDirectories(dir);
 
+			visitor.checkShortenedName(dir);
+			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
+			Mockito.verify(resultsCollector).accept(resultCaptor.capture());
+			MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(MissingLongName.class));
 		}
 
 		@Test
 		@DisplayName("dir with too big name.c9s produces obese result")
-		public void testTooBigNamesFileProducesObeseResult() {
+		public void testTooBigNamesFileProducesObeseResult() throws IOException {
+			Path dir = dataRoot.resolve("AA/zzzz/shortName.c9s");
+			Path obeseFile = dir.resolve("name.c9s");
+			Files.createDirectories(dir);
+			byte[] content = new byte[1024];
+			try (var ch = Files.newByteChannel(obeseFile, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+				//truncate is no-op on jimFs RegularFile
+				for (int i = 0; i < 11; i++) {
+					ch.write(ByteBuffer.wrap(content));
+				}
+			}
 
+			visitor.checkShortenedName(dir);
+			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
+			Mockito.verify(resultsCollector).accept(resultCaptor.capture());
+			MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(ObeseNameFile.class));
 		}
 
 		@Test
 		@DisplayName("dir with mismatching long and short names produces mismatch result")
-		public void testMismatchingNamesProducesMismatchResult() {
+		public void testMismatchingNamesProducesMismatchResult() throws IOException {
+			String longName = "veryLongButNotTooLongName";
+			Path dir = dataRoot.resolve("AA/zzzz/shortName.c9s");
+			Path nameFile = dir.resolve("name.c9s");
+			Files.createDirectories(dir);
+			Files.writeString(nameFile, longName, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 
+			var visitorSpy = Mockito.spy(visitor);
+			Mockito.doReturn("otherName.c9s").when(visitorSpy).deflate(longName);
+
+			visitorSpy.checkShortenedName(dir);
+			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
+			Mockito.verify(resultsCollector).accept(resultCaptor.capture());
+			MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(LongShortNamesMismatch.class));
 		}
+
 	}
 }
