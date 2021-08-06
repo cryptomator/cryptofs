@@ -86,8 +86,10 @@ public class ShortenedNamesCheck implements HealthCheck {
 			try {
 				var longName = inflate(dir);
 				var shortName = deflate(longName);
-				if (!dir.getFileName().equals(shortName)) {
+				if (!dir.getFileName().toString().equals(shortName)) {
 					resultCollector.accept(new LongShortNamesMismatch(dir));
+				} else {
+					resultCollector.accept(new ValidShortenedFile(dir));
 				}
 				//TODO: check if content of longName is decryptable
 				// dirID is needed for that
@@ -115,7 +117,8 @@ public class ShortenedNamesCheck implements HealthCheck {
 			}
 		}
 
-		public String deflate(String longFileName) {
+		//visible for testing
+		String deflate(String longFileName) {
 			byte[] longFileNameBytes = longFileName.getBytes(UTF_8);
 			byte[] hash = MessageDigestSupplier.SHA1.get().digest(longFileNameBytes);
 			return BASE64URL.encode(hash) + DEFLATED_FILE_SUFFIX;

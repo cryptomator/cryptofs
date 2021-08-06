@@ -143,8 +143,10 @@
 				<version>3.0.0-M5</version>
 				<configuration>
 					<!-- Allow reflection for Mockito, so it can properly mock non-public classes -->
-					<argLine>--add-opens=org.cryptomator.cryptofs/org.cryptomator.cryptofs.health.dirid=ALL-UNNAMED --add-opens=org.cryptomator.cryptofs/org.cryptomator.cryptofs.health.type=ALL-UNNAMED</argLine>
-				</configuration>
+					<argLine>--add-opens=org.cryptomator.cryptofs/org.cryptomator.cryptofs.health.dirid=ALL-UNNAMED
+						--add-opens=org.cryptomator.cryptofs/org.cryptomator.cryptofs.health.type=ALL-UNNAMED
+						--add-opens=org.cryptomator.cryptofs/org.cryptomator.cryptofs.health.shortened=ALL-UNNAMED</argLine>
+			</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
