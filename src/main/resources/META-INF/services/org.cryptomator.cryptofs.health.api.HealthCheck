@@ -1,2 +1,3 @@
 org.cryptomator.cryptofs.health.dirid.DirIdCheck
 org.cryptomator.cryptofs.health.type.CiphertextFileTypeCheck
+org.cryptomator.cryptofs.health.shortened.ShortenedNamesCheck
