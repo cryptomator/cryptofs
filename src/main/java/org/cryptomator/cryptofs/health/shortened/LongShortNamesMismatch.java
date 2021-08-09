@@ -6,6 +6,7 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
@@ -14,11 +15,11 @@ import java.nio.file.Path;
 public class LongShortNamesMismatch implements DiagnosticResult {
 
 	final Path c9sDir;
-	final String encryptedLongName;
+	final String expectedShortName;
 
-	public LongShortNamesMismatch(Path c9sDir, String encryptedLongName) {
+	public LongShortNamesMismatch(Path c9sDir, String expectedShortName) {
 		this.c9sDir = c9sDir;
-		this.encryptedLongName = encryptedLongName;
+		this.expectedShortName = expectedShortName;
 	}
 
 	@Override
@@ -28,12 +29,14 @@ public class LongShortNamesMismatch implements DiagnosticResult {
 
 	@Override
 	public String toString() {
-		return String.format("Filename of %s is not a base64url encoded SHA1 hash of %s.", c9sDir, encryptedLongName);
+		return String.format("Name of %s is not a base64url encoded SHA1 hash of String inside name.c9s.", c9sDir);
 	}
 
+	// fix by renaming the parent to the content of name.c9s
+	// TODO: once dirId is present, on AlreadyExistsException reattempt move with suffixed name
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
-		//TODO: discuss security implications
+		Files.move(c9sDir, c9sDir.resolveSibling(expectedShortName));
 	}
 
 }

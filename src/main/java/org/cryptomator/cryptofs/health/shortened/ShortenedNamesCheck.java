@@ -79,6 +79,8 @@ public class ShortenedNamesCheck implements HealthCheck {
 		}
 
 		// visible for testing
+		//TODO: check if content of longName is decryptable. If not, result is Missing (not Mismatch as right now)
+		// dirID is needed for that
 		void checkShortenedName(Path dir) throws IOException {
 			Path nameFile = dir.resolve(INFLATED_FILE_NAME);
 
@@ -98,14 +100,12 @@ public class ShortenedNamesCheck implements HealthCheck {
 			}
 
 			var longName = readLongName(nameFile);
-			var shortName = deflate(longName);
-			if (!dir.getFileName().toString().equals(shortName)) {
-				resultCollector.accept(new LongShortNamesMismatch(dir, longName));
+			var expectedShortName = deflate(longName);
+			if (!dir.getFileName().toString().equals(expectedShortName)) {
+				resultCollector.accept(new LongShortNamesMismatch(dir, expectedShortName));
 			} else {
 				resultCollector.accept(new ValidShortenedFile(dir));
 			}
-			//TODO: check if content of longName is decryptable
-			// dirID is needed for that
 		}
 
 		//copied from LongFileNameProvider
