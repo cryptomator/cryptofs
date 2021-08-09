@@ -9,12 +9,11 @@ import java.nio.file.Path;
  * A c9s directory with a missing long name.
  * <p>
  * A long name is missing if either
- *     <ul>
- * 		<li> the file {@Value org.cryptomator.cryptofs.Constants#INFLATED_FILE_NAME} does not exist</li>
- * 		<li> it is not a regular file</li>
- * 		<li> (TODO: it is not decryptable)</li>
- *     </ul>
- * </p>
+ *   <ul>
+ * <li> the file {@value org.cryptomator.cryptofs.common.Constants#INFLATED_FILE_NAME} does not exist</li>
+ * <li> it is not a regular file</li>
+ * <li> (TODO: it is not decryptable)</li>
+ *   </ul>
  */
 public class MissingLongName implements DiagnosticResult {
 

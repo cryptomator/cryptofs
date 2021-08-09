@@ -10,7 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * A c9s directory where the name of the directory is not a Base64URL encoded SHA1-hash of the contents in {@Value org.cryptomator.cryptofs.Constants#INFLATED_FILE_NAME}
+ * A c9s directory where the name of the directory is not a Base64URL encoded SHA1-hash of the contents in {@value org.cryptomator.cryptofs.common.Constants#INFLATED_FILE_NAME}
  */
 public class LongShortNamesMismatch implements DiagnosticResult {
 

@@ -7,7 +7,7 @@ import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 import java.nio.file.Path;
 
 /**
- * A shortend file name file which exceeds the maximum size of {@Value org.cryptomator.cryptofs.LongFileNameProvider#MAX_FILENAME_BUFFER_SIZE} bytes.
+ * A shortend file name file which exceeds the maximum size of {@value org.cryptomator.cryptofs.LongFileNameProvider#MAX_FILENAME_BUFFER_SIZE} bytes.
  */
 public class ObeseNameFile implements DiagnosticResult {
 
