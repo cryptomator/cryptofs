@@ -2,6 +2,7 @@ import org.cryptomator.cryptofs.CryptoFileSystemProvider;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.health.api.HealthCheck;
 import org.cryptomator.cryptofs.health.dirid.DirIdCheck;
+import org.cryptomator.cryptofs.health.shortened.ShortenedNamesCheck;
 import org.cryptomator.cryptofs.health.type.CiphertextFileTypeCheck;
 
 import java.nio.file.spi.FileSystemProvider;
@@ -27,6 +28,6 @@ module org.cryptomator.cryptofs {
 
 	uses HealthCheck;
 
-	provides HealthCheck with DirIdCheck, CiphertextFileTypeCheck;
+	provides HealthCheck with DirIdCheck, CiphertextFileTypeCheck, ShortenedNamesCheck;
 	provides FileSystemProvider with CryptoFileSystemProvider;
 }
