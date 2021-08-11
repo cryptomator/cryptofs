@@ -12,7 +12,6 @@ import java.nio.file.Path;
  *   <ul>
  * <li> the file {@value org.cryptomator.cryptofs.common.Constants#INFLATED_FILE_NAME} does not exist</li>
  * <li> it is not a regular file</li>
- * <li> (TODO: it is not decryptable)</li>
  *   </ul>
  */
 public class MissingLongName implements DiagnosticResult {
@@ -30,13 +29,5 @@ public class MissingLongName implements DiagnosticResult {
 	public String toString() {
 		return String.format("Shortened resource %s either misses %s or the file has invalid content.", c9sDir, Constants.INFLATED_FILE_NAME); //TODO
 	}
-
-	/*
-		Fix: create new name. BUUUT: without dirId not possible
-	@Override
-	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
-		//TODO
-	}
-	 */
 
 }

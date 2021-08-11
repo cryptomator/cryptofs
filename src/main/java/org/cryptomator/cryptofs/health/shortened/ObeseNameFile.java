@@ -1,7 +1,6 @@
 package org.cryptomator.cryptofs.health.shortened;
 
 import org.cryptomator.cryptofs.LongFileNameProvider;
-import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 
 import java.nio.file.Path;

@@ -14,15 +14,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.SeekableByteChannel;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
-import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Set;
@@ -79,8 +76,6 @@ public class ShortenedNamesCheck implements HealthCheck {
 		}
 
 		// visible for testing
-		//TODO: check if content of longName is decryptable. If not, result is Missing (not Mismatch as right now)
-		// dirID is needed for that
 		void checkShortenedName(Path dir) throws IOException {
 			Path nameFile = dir.resolve(INFLATED_FILE_NAME);
 
@@ -99,22 +94,12 @@ public class ShortenedNamesCheck implements HealthCheck {
 				return;
 			}
 
-			var longName = readLongName(nameFile);
+			var longName = Files.readString(nameFile, UTF_8);
 			var expectedShortName = deflate(longName);
 			if (!dir.getFileName().toString().equals(expectedShortName)) {
 				resultCollector.accept(new LongShortNamesMismatch(dir, expectedShortName));
 			} else {
 				resultCollector.accept(new ValidShortenedFile(dir));
-			}
-		}
-
-		//copied from LongFileNameProvider
-		String readLongName(Path nameFile) throws IOException {
-			try (SeekableByteChannel ch = Files.newByteChannel(nameFile, StandardOpenOption.READ)) {
-				ByteBuffer buf = ByteBuffer.allocate((int) ch.size());
-				ch.read(buf);
-				buf.flip();
-				return UTF_8.decode(buf).toString();
 			}
 		}
 

@@ -33,7 +33,6 @@ public class LongShortNamesMismatch implements DiagnosticResult {
 	}
 
 	// fix by renaming the parent to the content of name.c9s
-	// TODO: once dirId is present, on AlreadyExistsException reattempt move with suffixed name
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
 		Files.move(c9sDir, c9sDir.resolveSibling(expectedShortName));
