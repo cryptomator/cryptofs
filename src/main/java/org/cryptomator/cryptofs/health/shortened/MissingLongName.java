@@ -27,7 +27,7 @@ public class MissingLongName implements DiagnosticResult {
 
 	@Override
 	public String toString() {
-		return String.format("Shortened resource %s either misses %s or the file has invalid content.", c9sDir, Constants.INFLATED_FILE_NAME); //TODO
+		return String.format("Shortened resource %s either misses %s or the file has invalid content.", c9sDir, Constants.INFLATED_FILE_NAME);
 	}
 
 }
