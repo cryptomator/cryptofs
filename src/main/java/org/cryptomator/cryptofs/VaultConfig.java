@@ -6,6 +6,7 @@ import com.auth0.jwt.exceptions.InvalidClaimException;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.exceptions.SignatureVerificationException;
+import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptolib.api.CryptorProvider;
@@ -140,18 +141,22 @@ public class VaultConfig {
 			return URI.create(unverifiedConfig.getKeyId());
 		}
 
+		public Claim get(String key) {
+			return unverifiedConfig.getClaim(key);
+		}
+
 		/**
 		 * @return The unverified vault version (signature not verified)
 		 */
 		public int allegedVaultVersion() {
-			return unverifiedConfig.getClaim(JSON_KEY_VAULTVERSION).asInt();
+			return get(JSON_KEY_VAULTVERSION).asInt();
 		}
 
 		/**
 		 * @return The unverified shortening threshold (signature not verified)
 		 */
 		public int allegedShorteningThreshold() {
-			return unverifiedConfig.getClaim(JSON_KEY_SHORTENING_THRESHOLD).asInt();
+			return get(JSON_KEY_SHORTENING_THRESHOLD).asInt();
 		}
 
 		/**
