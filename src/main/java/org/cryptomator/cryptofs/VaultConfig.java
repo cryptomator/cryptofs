@@ -141,22 +141,34 @@ public class VaultConfig {
 			return URI.create(unverifiedConfig.getKeyId());
 		}
 
-		public Claim get(String key) {
-			return unverifiedConfig.getClaim(key);
+		/**
+		 * Gets a value from the tokens header
+		 * @param key Which key to read
+		 * @param clazz Type of the value
+		 * @param <T> Type of the value
+		 * @return The value or <code>null</code> if the key doesn't exist
+		 */
+		public <T> T getHeader(String key, Class<T> clazz) {
+			var claim = unverifiedConfig.getHeaderClaim(key);
+			try {
+				return unverifiedConfig.getHeaderClaim(key).as(clazz);
+			} catch (JWTDecodeException e) {
+				throw new IllegalArgumentException("Can't convert " + claim + " to type " + clazz.getName(), e);
+			}
 		}
 
 		/**
 		 * @return The unverified vault version (signature not verified)
 		 */
 		public int allegedVaultVersion() {
-			return get(JSON_KEY_VAULTVERSION).asInt();
+			return unverifiedConfig.getClaim(JSON_KEY_VAULTVERSION).asInt();
 		}
 
 		/**
 		 * @return The unverified shortening threshold (signature not verified)
 		 */
 		public int allegedShorteningThreshold() {
-			return get(JSON_KEY_SHORTENING_THRESHOLD).asInt();
+			return unverifiedConfig.getClaim(JSON_KEY_SHORTENING_THRESHOLD).asInt();
 		}
 
 		/**
