@@ -81,7 +81,7 @@ public class CryptoFileSystemsTest {
 		when(configLoader.getKeyId()).thenReturn(URI.create("test:key"));
 		when(keyLoader.loadKey(Mockito.any())).thenReturn(masterkey);
 		when(masterkey.getEncoded()).thenReturn(rawKey);
-		when(masterkey.clone()).thenReturn(clonedMasterkey);
+		when(masterkey.copy()).thenReturn(clonedMasterkey);
 		when(configLoader.verify(rawKey, Constants.VAULT_VERSION)).thenReturn(vaultConfig);
 		when(cryptorProvider.provide(clonedMasterkey, csprng)).thenReturn(cryptor);
 		when(vaultConfig.getCipherCombo()).thenReturn(cipherCombo);
