@@ -388,44 +388,101 @@ public class CryptoFileSystemProviderIntegrationTest {
 
 		@Test
 		@Order(9)
-		@DisplayName("mkdir '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet'")
+		@DisplayName("ln -s foo '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen'")
+		public void testCreateSymlinkWithLongName() throws IOException {
+			Path target = fs1.getPath("/foo");
+			Assumptions.assumeTrue(Files.isRegularFile(target));
+			Path longNameLink = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen");
+			Files.createSymbolicLink(longNameLink, target);
+			MatcherAssert.assertThat(MoreFiles.listFiles(fs1.getPath("/")), Matchers.hasItem(longNameLink));
+			Assertions.assertTrue(Files.exists(longNameLink));
+		}
+
+		@Test
+		@Order(10)
+		@DisplayName("mv '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen' 'Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan'")
+		public void testMoveSymlinkWithLongNameToAnotherLongName() throws IOException {
+			Path longNameSource = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen");
+			Assumptions.assumeTrue(Files.isSymbolicLink(longNameSource));
+			Path longNameTarget = longNameSource.resolveSibling("Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan");
+			Files.move(longNameSource, longNameTarget);
+			Assertions.assertTrue(Files.exists(longNameTarget));
+			Assertions.assertTrue(Files.notExists(longNameSource));
+		}
+
+		@Test
+		@Order(11)
+		@DisplayName("rm -r '/Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan'")
+		public void testRemoveSymlinkWithLongName() throws IOException {
+			Path longNamePath = fs1.getPath("/Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan");
+			Files.delete(longNamePath);
+			Assertions.assertTrue(Files.notExists(longNamePath));
+		}
+
+		@Test
+		@Order(12)
+		@DisplayName("mkdir '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen'")
 		public void testCreateDirWithLongName() throws IOException {
-			Path longNamePath = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet");
+			Path longNamePath = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen");
 			Files.createDirectory(longNamePath);
 			Assertions.assertTrue(Files.isDirectory(longNamePath));
 			MatcherAssert.assertThat(MoreFiles.listFiles(fs1.getPath("/")), Matchers.hasItem(longNamePath));
 		}
 
 		@Test
-		@Order(10)
-		@DisplayName("rm -r '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet'")
+		@Order(13)
+		@DisplayName("mv '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen' 'Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan'")
+		public void testMoveDirWithLongNameToAnotherLongName() throws IOException {
+			Path longNameSource = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen");
+			Assumptions.assumeTrue(Files.isDirectory(longNameSource));
+			Path longNameTarget = longNameSource.resolveSibling("Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan");
+			Files.move(longNameSource, longNameTarget);
+			Assertions.assertTrue(Files.exists(longNameTarget));
+			Assertions.assertTrue(Files.notExists(longNameSource));
+		}
+
+		@Test
+		@Order(14)
+		@DisplayName("rm -r '/Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan'")
 		public void testRemoveDirWithLongName() throws IOException {
-			Path longNamePath = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet");
+			Path longNamePath = fs1.getPath("/Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan");
 			Files.delete(longNamePath);
 			Assertions.assertTrue(Files.notExists(longNamePath));
 		}
 
 		@Test
-		@Order(11)
-		@DisplayName("touch '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet'")
+		@Order(15)
+		@DisplayName("touch '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen'")
 		public void testCreateFileWithLongName() throws IOException {
-			Path longNamePath = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet");
+			Path longNamePath = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen");
 			Files.createFile(longNamePath);
 			Assertions.assertTrue(Files.isRegularFile(longNamePath));
 			MatcherAssert.assertThat(MoreFiles.listFiles(fs1.getPath("/")), Matchers.hasItem(longNamePath));
 		}
 
 		@Test
-		@Order(12)
-		@DisplayName("rm '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet'")
+		@Order(16)
+		@DisplayName("mv '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen' 'Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan'")
+		public void testMoveFileWithLongNameToAnotherLongName() throws IOException {
+			Path longNameSource = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen");
+			Assumptions.assumeTrue(Files.isRegularFile(longNameSource));
+			Path longNameTarget = longNameSource.resolveSibling("Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan");
+			Files.move(longNameSource, longNameTarget);
+			Assertions.assertTrue(Files.exists(longNameTarget));
+			Assertions.assertTrue(Files.notExists(longNameSource));
+		}
+
+		@Test
+		@Order(17)
+		@DisplayName("rm -r '/Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan'")
 		public void testRemoveFileWithLongName() throws IOException {
-			Path longNamePath = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet");
+			Path longNamePath = fs1.getPath("/Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan");
 			Files.delete(longNamePath);
 			Assertions.assertTrue(Files.notExists(longNamePath));
 		}
 
 		@Test
-		@Order(13)
+		@Order(18)
 		@DisplayName("cp fs1:/foo fs2:/bar")
 		public void testCopyFileAcrossFilesystem() throws IOException {
 			Path file1 = fs1.getPath("/foo");
@@ -439,7 +496,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		}
 
 		@Test
-		@Order(14)
+		@Order(19)
 		@DisplayName("echo 'goodbye world' > /foo")
 		public void testWriteToFile() throws IOException {
 			Path file1 = fs1.getPath("/foo");
@@ -448,7 +505,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		}
 
 		@Test
-		@Order(15)
+		@Order(20)
 		@DisplayName("cp -f fs1:/foo fs2:/bar")
 		public void testCopyFileAcrossFilesystemReplaceExisting() throws IOException {
 			Path file1 = fs1.getPath("/foo");
@@ -462,7 +519,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		}
 
 		@Test
-		@Order(16)
+		@Order(21)
 		@DisplayName("readattr /attributes.txt")
 		public void testLazinessOfFileAttributeViews() throws IOException {
 			Path file = fs1.getPath("/attributes.txt");
@@ -487,7 +544,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		}
 
 		@Test
-		@Order(17)
+		@Order(22)
 		@DisplayName("ln -s /linked/targetY /links/linkX")
 		public void testSymbolicLinks() throws IOException {
 			Path linksDir = fs1.getPath("/links");
@@ -526,7 +583,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		}
 
 		@Test
-		@Order(18)
+		@Order(22)
 		@DisplayName("mv -f fs1:/foo fs2:/baz")
 		public void testMoveFileFromOneCryptoFileSystemToAnother() throws IOException {
 			Path file1 = fs1.getPath("/foo");
