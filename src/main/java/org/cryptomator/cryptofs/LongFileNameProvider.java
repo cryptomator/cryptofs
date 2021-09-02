@@ -116,12 +116,7 @@ public class LongFileNameProvider {
 		private void persistInternal() throws IOException {
 			Path longNameFile = c9sPath.resolve(INFLATED_FILE_NAME);
 			Files.createDirectories(c9sPath);
-			try (WritableByteChannel ch = Files.newByteChannel(longNameFile, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW)) {
-				ch.write(UTF_8.encode(longName));
-			} catch (FileAlreadyExistsException e) {
-				// no-op: if the file already exists, we assume its content to be what we want (or we found a SHA1 collision ;-))
-				assert Arrays.equals(Files.readAllBytes(longNameFile), longName.getBytes(UTF_8));
-			}
+			Files.write(longNameFile,UTF_8.encode(longName).array()); //WRITE, CREATE, TRUNCATE_EXISTING
 		}
 	}
 
