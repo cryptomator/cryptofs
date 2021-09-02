@@ -52,7 +52,7 @@ class CryptoFileSystems {
 		try (Masterkey key = properties.keyLoader().loadKey(keyId)) {
 			var config = configLoader.verify(key.getEncoded(), Constants.VAULT_VERSION);
 			var adjustedProperties = adjustForCapabilities(pathToVault, properties);
-			var cryptor = CryptorProvider.forScheme(config.getCipherCombo()).provide(key.clone(), csprng);
+			var cryptor = CryptorProvider.forScheme(config.getCipherCombo()).provide(key.copy(), csprng);
 			try {
 				checkVaultRootExistence(pathToVault, cryptor);
 				return fileSystems.compute(normalizedPathToVault, (path, fs) -> {
