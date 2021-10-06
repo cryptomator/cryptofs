@@ -23,7 +23,7 @@ public class ObeseDirFile implements DiagnosticResult {
 
 	@Override
 	public Severity getSeverity() {
-		return Severity.WARN;
+		return Severity.CRITICAL;
 	}
 
 	@Override

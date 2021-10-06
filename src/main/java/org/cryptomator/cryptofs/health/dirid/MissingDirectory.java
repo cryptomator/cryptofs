@@ -24,7 +24,7 @@ public class MissingDirectory implements DiagnosticResult {
 
 	@Override
 	public Severity getSeverity() {
-		return Severity.WARN;
+		return Severity.CRITICAL;
 	}
 
 	@Override

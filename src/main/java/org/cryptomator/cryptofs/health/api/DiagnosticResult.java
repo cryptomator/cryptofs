@@ -41,7 +41,7 @@ public interface DiagnosticResult {
 	String toString();
 
 	default void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
-		throw new UnsupportedOperationException("Preliminary API not yet implemented");
+		throw new UnsupportedOperationException("Fix for result" + this.getClass() + " not implemented");
 	}
 
 	/**
