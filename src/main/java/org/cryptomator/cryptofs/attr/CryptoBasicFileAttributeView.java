@@ -10,9 +10,9 @@ package org.cryptomator.cryptofs.attr;
 
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
-import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptofs.ReadonlyFlag;
 import org.cryptomator.cryptofs.Symlinks;
+import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -22,7 +22,8 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 
 @AttributeViewScoped
-class CryptoBasicFileAttributeView extends AbstractCryptoFileAttributeView implements BasicFileAttributeView {
+sealed class CryptoBasicFileAttributeView extends AbstractCryptoFileAttributeView implements BasicFileAttributeView
+		permits CryptoDosFileAttributeView, CryptoPosixFileAttributeView {
 
 	protected final AttributeProvider fileAttributeProvider;
 	protected final ReadonlyFlag readonlyFlag;
