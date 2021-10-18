@@ -22,7 +22,8 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 
 @AttributeViewScoped
-class CryptoBasicFileAttributeView extends AbstractCryptoFileAttributeView implements BasicFileAttributeView {
+sealed class CryptoBasicFileAttributeView extends AbstractCryptoFileAttributeView implements BasicFileAttributeView
+		permits CryptoDosFileAttributeView, CryptoPosixFileAttributeView {
 
 	protected final AttributeProvider fileAttributeProvider;
 	protected final ReadonlyFlag readonlyFlag;
