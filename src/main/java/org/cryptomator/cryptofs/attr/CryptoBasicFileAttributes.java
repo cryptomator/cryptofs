@@ -20,7 +20,8 @@ import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.Optional;
 
-class CryptoBasicFileAttributes implements BasicFileAttributes {
+sealed class CryptoBasicFileAttributes implements BasicFileAttributes
+		permits CryptoDosFileAttributes, CryptoPosixFileAttributes {
 
 	private static final Logger LOG = LoggerFactory.getLogger(CryptoBasicFileAttributes.class);
 

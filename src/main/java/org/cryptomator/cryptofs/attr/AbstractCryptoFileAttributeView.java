@@ -22,7 +22,8 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileAttributeView;
 import java.util.Optional;
 
-abstract class AbstractCryptoFileAttributeView implements FileAttributeView {
+abstract sealed class AbstractCryptoFileAttributeView implements FileAttributeView
+		permits CryptoBasicFileAttributeView, CryptoFileOwnerAttributeView {
 
 	protected final CryptoPath cleartextPath;
 	private final CryptoPathMapper pathMapper;
