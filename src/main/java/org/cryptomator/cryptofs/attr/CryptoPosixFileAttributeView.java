@@ -10,9 +10,9 @@ package org.cryptomator.cryptofs.attr;
 
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
-import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptofs.ReadonlyFlag;
 import org.cryptomator.cryptofs.Symlinks;
+import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -25,7 +25,7 @@ import java.nio.file.attribute.UserPrincipal;
 import java.util.Set;
 
 @AttributeViewScoped
-class CryptoPosixFileAttributeView extends CryptoBasicFileAttributeView implements PosixFileAttributeView {
+final class CryptoPosixFileAttributeView extends CryptoBasicFileAttributeView implements PosixFileAttributeView {
 
 	@Inject
 	public CryptoPosixFileAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, LinkOption[] linkOptions, Symlinks symlinks, OpenCryptoFiles openCryptoFiles, AttributeProvider fileAttributeProvider, ReadonlyFlag readonlyFlag) {
