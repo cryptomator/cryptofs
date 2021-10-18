@@ -8,24 +8,20 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.attr;
 
-import java.nio.file.Path;
-import java.nio.file.attribute.DosFileAttributes;
-import java.util.Optional;
-
 import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptolib.api.Cryptor;
 
-import javax.inject.Inject;
+import java.nio.file.Path;
+import java.nio.file.attribute.DosFileAttributes;
+import java.util.Optional;
 
-@AttributeScoped
-class CryptoDosFileAttributes extends CryptoBasicFileAttributes implements DosFileAttributes {
+final class CryptoDosFileAttributes extends CryptoBasicFileAttributes implements DosFileAttributes {
 
 	private final boolean readonlyFileSystem;
 	private final DosFileAttributes delegate;
 
-	@Inject
 	public CryptoDosFileAttributes(DosFileAttributes delegate, CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, CryptoFileSystemProperties fileSystemProperties) {
 		super(delegate, ciphertextFileType, ciphertextPath, cryptor, openCryptoFile);
 		this.readonlyFileSystem = fileSystemProperties.readonly();

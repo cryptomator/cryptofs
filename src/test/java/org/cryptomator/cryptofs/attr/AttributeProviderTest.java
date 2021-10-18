@@ -54,7 +54,6 @@ public class AttributeProviderTest {
 		Mockito.when(attributeComponentBuilder.ciphertextFileType(Mockito.any())).thenReturn(attributeComponentBuilder);
 		Mockito.when(attributeComponentBuilder.ciphertextPath(Mockito.any())).thenReturn(attributeComponentBuilder);
 		Mockito.when(attributeComponentBuilder.ciphertextAttributes(Mockito.any())).thenReturn(attributeComponentBuilder);
-		Mockito.when(attributeComponentBuilder.type(Mockito.any())).thenReturn(attributeComponentBuilder);
 		Mockito.when(attributeComponentBuilder.build()).thenReturn(attributeComponent);
 
 		pathMapper = Mockito.mock(CryptoPathMapper.class);
@@ -98,11 +97,10 @@ public class AttributeProviderTest {
 
 		@Test
 		public void testReadBasicAttributes() throws IOException {
-			Mockito.when(attributeComponent.attributes()).thenReturn(Optional.of(ciphertextBasicAttr));
+			Mockito.when(attributeComponent.attributes(BasicFileAttributes.class)).thenReturn(ciphertextBasicAttr);
 
 			BasicFileAttributes attr = prov.readAttributes(cleartextPath, BasicFileAttributes.class);
 
-			Mockito.verify(attributeComponentBuilder).type(BasicFileAttributes.class);
 			Mockito.verify(attributeComponentBuilder).ciphertextPath(ciphertextRawPath);
 			Mockito.verify(attributeComponentBuilder).ciphertextFileType(CiphertextFileType.FILE);
 			Mockito.verify(attributeComponentBuilder).ciphertextAttributes(ciphertextBasicAttr);
@@ -111,11 +109,10 @@ public class AttributeProviderTest {
 
 		@Test
 		public void testReadPosixAttributes() throws IOException {
-			Mockito.when(attributeComponent.attributes()).thenReturn(Optional.of(ciphertextPosixAttr));
+			Mockito.when(attributeComponent.attributes(PosixFileAttributes.class)).thenReturn(ciphertextPosixAttr);
 
 			PosixFileAttributes attr = prov.readAttributes(cleartextPath, PosixFileAttributes.class);
 
-			Mockito.verify(attributeComponentBuilder).type(PosixFileAttributes.class);
 			Mockito.verify(attributeComponentBuilder).ciphertextPath(ciphertextRawPath);
 			Mockito.verify(attributeComponentBuilder).ciphertextFileType(CiphertextFileType.FILE);
 			Mockito.verify(attributeComponentBuilder).ciphertextAttributes(ciphertextPosixAttr);
@@ -124,11 +121,10 @@ public class AttributeProviderTest {
 
 		@Test
 		public void testReadDosAttributes() throws IOException {
-			Mockito.when(attributeComponent.attributes()).thenReturn(Optional.of(ciphertextDosAttr));
+			Mockito.when(attributeComponent.attributes(DosFileAttributes.class)).thenReturn(ciphertextDosAttr);
 
 			DosFileAttributes attr = prov.readAttributes(cleartextPath, DosFileAttributes.class);
 
-			Mockito.verify(attributeComponentBuilder).type(DosFileAttributes.class);
 			Mockito.verify(attributeComponentBuilder).ciphertextPath(ciphertextRawPath);
 			Mockito.verify(attributeComponentBuilder).ciphertextFileType(CiphertextFileType.FILE);
 			Mockito.verify(attributeComponentBuilder).ciphertextAttributes(ciphertextDosAttr);
@@ -137,12 +133,11 @@ public class AttributeProviderTest {
 
 		@Test
 		public void testReadUnsupportedAttributes() {
-			Mockito.when(attributeComponent.attributes()).thenReturn(Optional.empty());
+			Mockito.when(attributeComponent.attributes(UnsupportedAttributes.class)).thenThrow(UnsupportedOperationException.class);
 
-			UnsupportedOperationException e = Assertions.assertThrows(UnsupportedOperationException.class, () -> {
+			Assertions.assertThrows(UnsupportedOperationException.class, () -> {
 				prov.readAttributes(cleartextPath, UnsupportedAttributes.class);
 			});
-			Mockito.verify(attributeComponentBuilder).type(UnsupportedAttributes.class);
 			Mockito.verify(attributeComponentBuilder).ciphertextPath(ciphertextRawPath);
 			Mockito.verify(attributeComponentBuilder).ciphertextFileType(CiphertextFileType.FILE);
 		}
@@ -165,11 +160,10 @@ public class AttributeProviderTest {
 
 		@Test
 		public void testReadBasicAttributes() throws IOException {
-			Mockito.when(attributeComponent.attributes()).thenReturn(Optional.of(ciphertextBasicAttr));
+			Mockito.when(attributeComponent.attributes(BasicFileAttributes.class)).thenReturn(ciphertextBasicAttr);
 
 			BasicFileAttributes attr = prov.readAttributes(cleartextPath, BasicFileAttributes.class);
 
-			Mockito.verify(attributeComponentBuilder).type(BasicFileAttributes.class);
 			Mockito.verify(attributeComponentBuilder).ciphertextPath(ciphertextRawPath);
 			Mockito.verify(attributeComponentBuilder).ciphertextFileType(CiphertextFileType.DIRECTORY);
 			Mockito.verify(attributeComponentBuilder).ciphertextAttributes(ciphertextBasicAttr);
@@ -194,11 +188,10 @@ public class AttributeProviderTest {
 		public void testReadBasicAttributesNoFollow() throws IOException {
 			Mockito.when(symlinks.resolveRecursively(cleartextPath)).thenReturn(cleartextPath);
 			Mockito.when(pathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextPath);
-			Mockito.when(attributeComponent.attributes()).thenReturn(Optional.of(ciphertextBasicAttr));
+			Mockito.when(attributeComponent.attributes(BasicFileAttributes.class)).thenReturn(ciphertextBasicAttr);
 
 			BasicFileAttributes attr = prov.readAttributes(cleartextPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
 
-			Mockito.verify(attributeComponentBuilder).type(BasicFileAttributes.class);
 			Mockito.verify(attributeComponentBuilder).ciphertextPath(ciphertextRawPath);
 			Mockito.verify(attributeComponentBuilder).ciphertextFileType(CiphertextFileType.SYMLINK);
 			Mockito.verify(attributeComponentBuilder).ciphertextAttributes(ciphertextBasicAttr);
@@ -211,11 +204,10 @@ public class AttributeProviderTest {
 			Mockito.when(symlinks.resolveRecursively(cleartextPath)).thenReturn(targetPath);
 			Mockito.when(pathMapper.getCiphertextFileType(targetPath)).thenReturn(CiphertextFileType.FILE);
 			Mockito.when(pathMapper.getCiphertextFilePath(targetPath)).thenReturn(ciphertextPath);
-			Mockito.when(attributeComponent.attributes()).thenReturn(Optional.of(ciphertextBasicAttr));
+			Mockito.when(attributeComponent.attributes(BasicFileAttributes.class)).thenReturn(ciphertextBasicAttr);
 
 			BasicFileAttributes attr = prov.readAttributes(cleartextPath, BasicFileAttributes.class);
 
-			Mockito.verify(attributeComponentBuilder).type(BasicFileAttributes.class);
 			Mockito.verify(attributeComponentBuilder).ciphertextPath(ciphertextRawPath);
 			Mockito.verify(attributeComponentBuilder).ciphertextFileType(CiphertextFileType.FILE);
 			Mockito.verify(attributeComponentBuilder).ciphertextAttributes(ciphertextBasicAttr);
