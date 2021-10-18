@@ -14,7 +14,6 @@ import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptolib.api.Cryptor;
 
-import javax.inject.Inject;
 import java.nio.file.Path;
 import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFileAttributes;
@@ -28,8 +27,7 @@ import static java.nio.file.attribute.PosixFilePermission.GROUP_WRITE;
 import static java.nio.file.attribute.PosixFilePermission.OTHERS_WRITE;
 import static java.nio.file.attribute.PosixFilePermission.OWNER_WRITE;
 
-@AttributeScoped
-class CryptoPosixFileAttributes extends CryptoBasicFileAttributes implements PosixFileAttributes {
+final class CryptoPosixFileAttributes extends CryptoBasicFileAttributes implements PosixFileAttributes {
 
 	private static final Set<PosixFilePermission> ALL_WRITE = EnumSet.of(OWNER_WRITE, GROUP_WRITE, OTHERS_WRITE);
 
@@ -37,7 +35,6 @@ class CryptoPosixFileAttributes extends CryptoBasicFileAttributes implements Pos
 	private final GroupPrincipal group;
 	private final Set<PosixFilePermission> permissions;
 
-	@Inject
 	public CryptoPosixFileAttributes(PosixFileAttributes delegate, CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, CryptoFileSystemProperties fileSystemProperties) {
 		super(delegate, ciphertextFileType, ciphertextPath, cryptor, openCryptoFile);
 		this.owner = delegate.owner();

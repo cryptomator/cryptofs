@@ -22,7 +22,6 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Optional;
 
 @CryptoFileSystemScoped
 public class AttributeProvider {
@@ -47,18 +46,12 @@ public class AttributeProvider {
 		Path ciphertextPath = getCiphertextPath(cleartextPath, ciphertextFileType);
 		A ciphertextAttrs = Files.readAttributes(ciphertextPath, type);
 		AttributeComponent.Builder builder = attributeComponentBuilderProvider.get();
-		Optional<BasicFileAttributes> cleartextAttrs = builder  //
-				.type(type) //
+		return builder  //
 				.ciphertextFileType(ciphertextFileType) //
 				.ciphertextPath(ciphertextPath) //
 				.ciphertextAttributes(ciphertextAttrs) //
 				.build() //
-				.attributes();
-		if (cleartextAttrs.isPresent() && type.isInstance(cleartextAttrs.get())) {
-			return type.cast(cleartextAttrs.get());
-		} else {
-			throw new UnsupportedOperationException("Unsupported file attribute type: " + type);
-		}
+				.attributes(type);
 	}
 
 	private Path getCiphertextPath(CryptoPath path, CiphertextFileType type) throws IOException {
