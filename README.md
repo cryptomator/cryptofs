@@ -93,7 +93,7 @@ For more details on how to use the constructed `FileSystem`, you may consult the
 
 ### Dependencies
 
-* Java 16 (will be updated to 17 in late 2021)
+* Java 17
 * Maven 3
 
 ### Run Maven
