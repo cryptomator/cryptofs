@@ -17,6 +17,8 @@ public final class Constants {
 	public static final String MASTERKEY_BACKUP_SUFFIX = ".bkup";
 	public static final String DATA_DIR_NAME = "d";
 	public static final String ROOT_DIR_ID = "";
+	public static final String RECOVERY_DIR_ID = "recovery";
+
 	public static final String CRYPTOMATOR_FILE_SUFFIX = ".c9r";
 	public static final String DEFLATED_FILE_SUFFIX = ".c9s";
 	public static final String DIR_FILE_NAME = "dir.c9r";
@@ -29,4 +31,5 @@ public final class Constants {
 	public static final int MAX_DIR_FILE_LENGTH = 36; // UUIDv4: hex-encoded 16 byte int + 4 hyphens = 36 ASCII chars
 
 	public static final String SEPARATOR = "/";
+	public static final String RECOVERY_DIR_NAME = "CRYPTOMATOR_RECOVERY";
 }

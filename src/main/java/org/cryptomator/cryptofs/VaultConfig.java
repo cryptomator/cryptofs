@@ -6,6 +6,7 @@ import com.auth0.jwt.exceptions.InvalidClaimException;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.exceptions.SignatureVerificationException;
+import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptolib.api.CryptorProvider;
@@ -138,6 +139,22 @@ public class VaultConfig {
 		 */
 		public URI getKeyId() {
 			return URI.create(unverifiedConfig.getKeyId());
+		}
+
+		/**
+		 * Gets a value from the tokens header
+		 * @param key Which key to read
+		 * @param clazz Type of the value
+		 * @param <T> Type of the value
+		 * @return The value or <code>null</code> if the key doesn't exist
+		 */
+		public <T> T getHeader(String key, Class<T> clazz) {
+			var claim = unverifiedConfig.getHeaderClaim(key);
+			try {
+				return unverifiedConfig.getHeaderClaim(key).as(clazz);
+			} catch (JWTDecodeException e) {
+				throw new IllegalArgumentException("Can't convert " + claim + " to type " + clazz.getName(), e);
+			}
 		}
 
 		/**
