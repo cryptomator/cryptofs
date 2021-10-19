@@ -2,8 +2,8 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.cryptomator</groupId>
 	<artifactId>cryptofs</artifactId>
-	<version>2.0.2</version>
-  <name>Cryptomator Crypto Filesystem</name>
+	<version>2.1.0</version>
+	<name>Cryptomator Crypto Filesystem</name>
 	<description>This library provides the Java filesystem provider used by Cryptomator.</description>
 	<url>https://github.com/cryptomator/cryptofs</url>
 
@@ -141,6 +141,12 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>3.0.0-M5</version>
+				<configuration>
+					<!-- Allow reflection for Mockito, so it can properly mock non-public classes -->
+					<argLine>--add-opens=org.cryptomator.cryptofs/org.cryptomator.cryptofs.health.dirid=ALL-UNNAMED
+						--add-opens=org.cryptomator.cryptofs/org.cryptomator.cryptofs.health.type=ALL-UNNAMED
+						--add-opens=org.cryptomator.cryptofs/org.cryptomator.cryptofs.health.shortened=ALL-UNNAMED</argLine>
+			</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
