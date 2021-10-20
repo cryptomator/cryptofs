@@ -6,7 +6,6 @@ import com.auth0.jwt.exceptions.InvalidClaimException;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.exceptions.SignatureVerificationException;
-import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptolib.api.CryptorProvider;
@@ -84,12 +83,12 @@ public class VaultConfig {
 	/**
 	 * Convenience wrapper for {@link #decode(String)} and {@link UnverifiedVaultConfig#verify(byte[], int)}
 	 *
-	 * @param token                The token
-	 * @param keyLoader            A key loader capable of providing a key for this token
+	 * @param token The token
+	 * @param keyLoader A key loader capable of providing a key for this token
 	 * @param expectedVaultVersion The vault version this token should contain
 	 * @return The decoded configuration
 	 * @throws MasterkeyLoadingFailedException If the key loader was unable to provide a key for this vault configuration
-	 * @throws VaultConfigLoadException        When loading the configuration fails
+	 * @throws VaultConfigLoadException When loading the configuration fails
 	 */
 	public static VaultConfig load(String token, MasterkeyLoader keyLoader, int expectedVaultVersion) throws MasterkeyLoadingFailedException, VaultConfigLoadException {
 		var configLoader = decode(token);
@@ -143,6 +142,7 @@ public class VaultConfig {
 
 		/**
 		 * Gets a value from the tokens header
+		 *
 		 * @param key Which key to read
 		 * @param clazz Type of the value
 		 * @param <T> Type of the value
@@ -171,19 +171,30 @@ public class VaultConfig {
 			return unverifiedConfig.getClaim(JSON_KEY_SHORTENING_THRESHOLD).asInt();
 		}
 
+		private Algorithm initAlgorithm(byte[] rawKey) throws VaultConfigLoadException {
+			var algo = unverifiedConfig.getAlgorithm();
+			return switch (algo) {
+				case "HS256" -> Algorithm.HMAC256(rawKey);
+				case "HS384" -> Algorithm.HMAC384(rawKey);
+				case "HS512" -> Algorithm.HMAC512(rawKey);
+				default -> throw new VaultConfigLoadException("Unsupported signature algorithm: " + algo);
+			};
+		}
+
 		/**
 		 * Decodes a vault configuration stored in JWT format.
 		 *
-		 * @param rawKey               The key matching the id in {@link #getKeyId()}
+		 * @param rawKey The key matching the id in {@link #getKeyId()}
 		 * @param expectedVaultVersion The vault version this token should contain
 		 * @return The decoded configuration
-		 * @throws VaultKeyInvalidException      If the provided key was invalid
+		 * @throws VaultKeyInvalidException If the provided key was invalid
 		 * @throws VaultVersionMismatchException If the token did not match the expected vault version
-		 * @throws VaultConfigLoadException      Generic parse error
+		 * @throws VaultConfigLoadException Generic parse error
 		 */
 		public VaultConfig verify(byte[] rawKey, int expectedVaultVersion) throws VaultKeyInvalidException, VaultVersionMismatchException, VaultConfigLoadException {
 			try {
-				var verifier = JWT.require(Algorithm.HMAC256(rawKey)) //
+				unverifiedConfig.getAlgorithm();
+				var verifier = JWT.require(initAlgorithm(rawKey)) //
 						.withClaim(JSON_KEY_VAULTVERSION, expectedVaultVersion) //
 						.build();
 				var verifiedConfig = verifier.verify(unverifiedConfig);
