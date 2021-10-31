@@ -17,11 +17,11 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 /**
- * Utility class for generating a suffix for the backup file to make it unique to its original master key file.
+ * Utility class for generating a suffix for the backup file to make it unique to its original file.
  */
-public final class MasterkeyBackupHelper {
+public final class BackupHelper {
 
-	private static final Logger LOG = LoggerFactory.getLogger(MasterkeyBackupHelper.class);
+	private static final Logger LOG = LoggerFactory.getLogger(BackupHelper.class);
 
 	/**
 	 * Computes the SHA-256 digest of the given byte array and returns a file suffix containing the first 4 bytes in hex string format.
@@ -40,22 +40,23 @@ public final class MasterkeyBackupHelper {
 	}
 
 	/**
-	 * Do a best-effort attempt to backup the masterkey at the given path.
+	 * Do a best-effort attempt to back up the file at the given path.
 	 * Fails silently if a _valid_ backup already exists and fails with a log entry, if any IO error occurs while creating or reading the backup file.
 	 *
-	 * @param masterKeyPath The masterkey file to backup
-	 * @throws IOException If the masterkey cannot be read.
+	 * @param path The file to back up
+	 * @throws IOException If the path cannot be read.
 	 */
-	public static Path attemptMasterKeyBackup(Path masterKeyPath) throws IOException {
-		byte[] keyFileContents = Files.readAllBytes(masterKeyPath);
-		String backupFileName = masterKeyPath.getFileName().toString() + generateFileIdSuffix(keyFileContents) + Constants.MASTERKEY_BACKUP_SUFFIX;
-		Path backupFilePath = masterKeyPath.resolveSibling(backupFileName);
+	public static Path attemptBackup(Path path) throws IOException {
+		byte[] keyFileContents = Files.readAllBytes(path);
+		final String fileToBackup = path.getFileName().toString();
+		String backupFileName = fileToBackup + generateFileIdSuffix(keyFileContents) + Constants.BACKUP_SUFFIX;
+		Path backupFilePath = path.resolveSibling(backupFileName);
 		try (WritableByteChannel ch = Files.newByteChannel(backupFilePath, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
 			ch.write(ByteBuffer.wrap(keyFileContents));
 		} catch (AccessDeniedException | FileAlreadyExistsException e) {
 			assertExistingBackupMatchesContent(backupFilePath, ByteBuffer.wrap(keyFileContents));
 		} catch (IOException e) {
-			LOG.warn("Failed to backup valid masterkey file.");
+			LOG.warn("Failed to backup valid {} file.", fileToBackup);
 		}
 		return backupFilePath;
 	}
@@ -64,16 +65,17 @@ public final class MasterkeyBackupHelper {
 		if (Files.exists(backupFilePath)) {
 			// TODO replace by Files.mismatch() when using JDK > 12
 			ByteBuffer buf = ByteBuffer.allocateDirect(expectedContent.remaining() + 1);
+			final String backupFileName = backupFilePath.getFileName().toString();
 			try (ReadableByteChannel ch = Files.newByteChannel(backupFilePath, StandardOpenOption.READ)) {
 				ch.read(buf);
 				buf.flip();
 				if (buf.compareTo(expectedContent) != 0) {
-					LOG.warn("Corrupt masterkey backup {}. Please replace it manually or unlock the vault on a writable storage device.", backupFilePath);
+					LOG.warn("Corrupt {} backup for: {}. Please replace it manually or unlock the vault on a writable storage device.", backupFileName, backupFilePath);
 				} else {
 					LOG.debug("Verified backup file: {}", backupFilePath);
 				}
 			} catch (IOException e) {
-				LOG.warn("Failed to compare valid masterkey with backup file.", e);
+				LOG.warn("Failed to compare valid %s with backup file.".formatted(backupFileName), e);
 			}
 		}
 	}

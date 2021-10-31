@@ -14,7 +14,7 @@ public final class Constants {
 	}
 
 	public static final int VAULT_VERSION = 8;
-	public static final String MASTERKEY_BACKUP_SUFFIX = ".bkup";
+	public static final String BACKUP_SUFFIX = ".bkup";
 	public static final String DATA_DIR_NAME = "d";
 	public static final String ROOT_DIR_ID = "";
 	public static final String RECOVERY_DIR_ID = "recovery";

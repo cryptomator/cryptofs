@@ -15,7 +15,7 @@ import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Random;
 import java.util.stream.Stream;
 
-public class MasterkeyBackupHelperTest {
+public class BackupHelperTest {
 
 	@EnabledOnOs({OS.LINUX, OS.MAC})
 	@ParameterizedTest
@@ -24,11 +24,11 @@ public class MasterkeyBackupHelperTest {
 		Path originalFile = tmp.resolve("original");
 		Files.write(originalFile, contents);
 		
-		Path backupFile = MasterkeyBackupHelper.attemptMasterKeyBackup(originalFile);
+		Path backupFile = BackupHelper.attemptBackup(originalFile);
 		Assertions.assertArrayEquals(contents, Files.readAllBytes(backupFile));
 		
 		Files.setPosixFilePermissions(backupFile, PosixFilePermissions.fromString("r--r--r--"));
-		Path backupFile2 = MasterkeyBackupHelper.attemptMasterKeyBackup(originalFile);
+		Path backupFile2 = BackupHelper.attemptBackup(originalFile);
 		Assertions.assertEquals(backupFile, backupFile2);
 	}
 
@@ -39,16 +39,16 @@ public class MasterkeyBackupHelperTest {
 		Path originalFile = tmp.resolve("original");
 		Files.write(originalFile, contents);
 
-		Path backupFile = MasterkeyBackupHelper.attemptMasterKeyBackup(originalFile);
+		Path backupFile = BackupHelper.attemptBackup(originalFile);
 		Assertions.assertArrayEquals(contents, Files.readAllBytes(backupFile));
 		
 		Files.getFileAttributeView(backupFile, DosFileAttributeView.class).setReadOnly(true);
-		Path backupFile2 = MasterkeyBackupHelper.attemptMasterKeyBackup(originalFile);
+		Path backupFile2 = BackupHelper.attemptBackup(originalFile);
 		Assertions.assertEquals(backupFile, backupFile2);
 	}
 
 	public static Stream<byte[]> createRandomBytes() {
-		Random rnd = new Random(42l);
+		Random rnd = new Random(42L);
 		return Stream.generate(() -> {
 			byte[] bytes = new byte[100];
 			rnd.nextBytes(bytes);
