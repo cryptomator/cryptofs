@@ -126,11 +126,4 @@ public class Version7Migrator implements Migrator {
 		Files.walkFileTree(dataDir, EnumSet.noneOf(FileVisitOption.class), 3, new MigratingVisitor(vaultRoot, progressListener, totalFiles));
 	}
 
-	private void createBackup(Path masterkeyFile, Path configFile) throws IOException {
-		final Path configBackupFile = BackupHelper.attemptBackup(configFile);
-		LOG.info("Backed up config from {} to {}.", configFile.getFileName(), configBackupFile.getFileName());
-
-		Path masterkeyBackupFile = BackupHelper.attemptBackup(masterkeyFile);
-		LOG.info("Backed up masterkey from {} to {}.", masterkeyFile.getFileName(), masterkeyBackupFile.getFileName());
-	}
 }
