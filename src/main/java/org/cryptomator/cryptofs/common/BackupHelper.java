@@ -21,6 +21,7 @@ import java.security.NoSuchAlgorithmException;
  */
 public final class BackupHelper {
 
+	private final static long NO_MISMATCH = -1L;
 	private static final Logger LOG = LoggerFactory.getLogger(BackupHelper.class);
 
 	/**
@@ -63,7 +64,7 @@ public final class BackupHelper {
 
 	private static void assertSameContent(final Path backupFile, final Path originalFile) {
 		try {
-			if (Files.mismatch(backupFile, originalFile) == -1) {
+			if (Files.mismatch(backupFile, originalFile) == NO_MISMATCH) {
 				LOG.debug("Verified backup file: {}", backupFile);
 			} else {
 				LOG.warn("Corrupt {} backup for: {}. Please replace it manually or unlock the vault on a writable storage device.", backupFile.getFileName(), backupFile);
