@@ -47,37 +47,29 @@ public final class BackupHelper {
 	 * @throws IOException If the path cannot be read.
 	 */
 	public static Path attemptBackup(Path path) throws IOException {
-		byte[] keyFileContents = Files.readAllBytes(path);
+		byte[] fileContents = Files.readAllBytes(path);
 		final String fileToBackup = path.getFileName().toString();
-		String backupFileName = fileToBackup + generateFileIdSuffix(keyFileContents) + Constants.BACKUP_SUFFIX;
+		String backupFileName = fileToBackup + generateFileIdSuffix(fileContents) + Constants.BACKUP_SUFFIX;
 		Path backupFilePath = path.resolveSibling(backupFileName);
 		try (WritableByteChannel ch = Files.newByteChannel(backupFilePath, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
-			ch.write(ByteBuffer.wrap(keyFileContents));
+			ch.write(ByteBuffer.wrap(fileContents));
 		} catch (AccessDeniedException | FileAlreadyExistsException e) {
-			assertExistingBackupMatchesContent(backupFilePath, ByteBuffer.wrap(keyFileContents));
+			assertSameContent(backupFilePath, path);
 		} catch (IOException e) {
 			LOG.warn("Failed to backup valid {} file.", fileToBackup);
 		}
 		return backupFilePath;
 	}
 
-	private static void assertExistingBackupMatchesContent(Path backupFilePath, ByteBuffer expectedContent) {
-		if (Files.exists(backupFilePath)) {
-			// TODO replace by Files.mismatch() when using JDK > 12
-			ByteBuffer buf = ByteBuffer.allocateDirect(expectedContent.remaining() + 1);
-			final String backupFileName = backupFilePath.getFileName().toString();
-			try (ReadableByteChannel ch = Files.newByteChannel(backupFilePath, StandardOpenOption.READ)) {
-				ch.read(buf);
-				buf.flip();
-				if (buf.compareTo(expectedContent) != 0) {
-					LOG.warn("Corrupt {} backup for: {}. Please replace it manually or unlock the vault on a writable storage device.", backupFileName, backupFilePath);
-				} else {
-					LOG.debug("Verified backup file: {}", backupFilePath);
-				}
-			} catch (IOException e) {
-				LOG.warn("Failed to compare valid %s with backup file.".formatted(backupFileName), e);
+	private static void assertSameContent(final Path backupFile, final Path originalFile) {
+		try {
+			if (Files.mismatch(backupFile, originalFile) == -1) {
+				LOG.debug("Verified backup file: {}", backupFile);
+			} else {
+				LOG.warn("Corrupt {} backup for: {}. Please replace it manually or unlock the vault on a writable storage device.", backupFile.getFileName(), backupFile);
 			}
+		} catch (IOException e) {
+			LOG.warn("Failed to compare valid %s with backup file.".formatted(backupFile), e);
 		}
 	}
-
 }
