@@ -7,7 +7,7 @@ package org.cryptomator.cryptofs.migration.v8;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import org.cryptomator.cryptofs.common.MasterkeyBackupHelper;
+import org.cryptomator.cryptofs.common.BackupHelper;
 import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener;
 import org.cryptomator.cryptofs.migration.api.MigrationProgressListener;
 import org.cryptomator.cryptofs.migration.api.Migrator;
@@ -56,7 +56,7 @@ public class Version8Migrator implements Migrator {
 		MasterkeyFileAccess masterkeyFileAccess = new MasterkeyFileAccess(new byte[0], csprng);
 		try (Masterkey masterkey = masterkeyFileAccess.load(masterkeyFile, passphrase)) {
 			// create backup, as soon as we know the password was correct:
-			Path masterkeyBackupFile = MasterkeyBackupHelper.attemptMasterKeyBackup(masterkeyFile);
+			Path masterkeyBackupFile = BackupHelper.attemptBackup(masterkeyFile);
 			LOG.info("Backed up masterkey from {} to {}.", masterkeyFile.getFileName(), masterkeyBackupFile.getFileName());
 
 			// create vaultconfig.cryptomator
