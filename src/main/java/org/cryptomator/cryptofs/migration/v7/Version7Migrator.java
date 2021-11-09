@@ -8,7 +8,8 @@ package org.cryptomator.cryptofs.migration.v7;
 import org.cryptomator.cryptofs.FileNameTooLongException;
 import org.cryptomator.cryptofs.common.DeletingFileVisitor;
 import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
-import org.cryptomator.cryptofs.common.MasterkeyBackupHelper;
+import org.cryptomator.cryptofs.common.BackupHelper;
+import org.cryptomator.cryptofs.migration.Migrators;
 import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener;
 import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener.ContinuationEvent;
 import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener.ContinuationResult;
@@ -58,11 +59,11 @@ public class Version7Migrator implements Migrator {
 	public void migrate(Path vaultRoot, String vaultConfigFilename, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws CryptoException, IOException {
 		LOG.info("Upgrading {} from version 6 to version 7.", vaultRoot);
 		progressListener.update(MigrationProgressListener.ProgressState.INITIALIZING, 0.0);
-		Path masterkeyFile = vaultRoot.resolve(masterkeyFilename);
+		final Path masterkeyFile = vaultRoot.resolve(masterkeyFilename);
 		MasterkeyFileAccess masterkeyFileAccess = new MasterkeyFileAccess(new byte[0], csprng);
 		try (Masterkey masterkey = masterkeyFileAccess.load(masterkeyFile, passphrase)) {
 			// create backup, as soon as we know the password was correct:
-			Path masterkeyBackupFile = MasterkeyBackupHelper.attemptMasterKeyBackup(masterkeyFile);
+			Path masterkeyBackupFile = BackupHelper.attemptBackup(masterkeyFile);
 			LOG.info("Backed up masterkey from {} to {}.", masterkeyFile.getFileName(), masterkeyBackupFile.getFileName());
 
 			// check file system capabilities:
@@ -76,14 +77,12 @@ public class Version7Migrator implements Migrator {
 				LOG.warn("Underlying file system only supports names with up to {} chars (required: 220). Asking for user feedback...", filenameLengthLimit);
 				ContinuationResult result = continuationListener.continueMigrationOnEvent(ContinuationEvent.REQUIRES_FULL_VAULT_DIR_SCAN);
 				switch (result) {
-					case PROCEED:
-						preMigrationVisitor = new PreMigrationVisitor(vaultRoot, true);
-						break;
-					case CANCEL:
+					case PROCEED -> preMigrationVisitor = new PreMigrationVisitor(vaultRoot, true);
+					case CANCEL -> {
 						LOG.info("Migration canceled by user.");
 						return;
-					default:
-						throw new IllegalStateException("Unexpected result " + result);
+					}
+					default -> throw new IllegalStateException("Unexpected result " + result);
 				}
 			}
 

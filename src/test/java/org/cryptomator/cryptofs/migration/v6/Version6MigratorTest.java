@@ -3,7 +3,7 @@ package org.cryptomator.cryptofs.migration.v6;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.common.Constants;
-import org.cryptomator.cryptofs.common.MasterkeyBackupHelper;
+import org.cryptomator.cryptofs.common.BackupHelper;
 import org.cryptomator.cryptofs.migration.api.Migrator;
 import org.cryptomator.cryptofs.mocks.NullSecureRandom;
 import org.cryptomator.cryptolib.api.CryptoException;
@@ -58,7 +58,7 @@ public class Version6MigratorTest {
 		byte[] beforeMigration = Files.readAllBytes(masterkeyFile);
 
 		Files.write(masterkeyFile, beforeMigration);
-		Path masterkeyBackupFile = pathToVault.resolve("masterkey.cryptomator" + MasterkeyBackupHelper.generateFileIdSuffix(beforeMigration) + Constants.MASTERKEY_BACKUP_SUFFIX);
+		Path masterkeyBackupFile = pathToVault.resolve("masterkey.cryptomator" + BackupHelper.generateFileIdSuffix(beforeMigration) + Constants.BACKUP_SUFFIX);
 
 		Migrator migrator = new Version6Migrator(csprng);
 		migrator.migrate(pathToVault, null, "masterkey.cryptomator", oldPassword);
