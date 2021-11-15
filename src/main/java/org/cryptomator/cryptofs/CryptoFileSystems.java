@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.common.BackupHelper;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -51,6 +52,7 @@ class CryptoFileSystems {
 		var keyId = configLoader.getKeyId();
 		try (Masterkey key = properties.keyLoader().loadKey(keyId)) {
 			var config = configLoader.verify(key.getEncoded(), Constants.VAULT_VERSION);
+			backupVaultConfigFile(normalizedPathToVault, properties);
 			var adjustedProperties = adjustForCapabilities(pathToVault, properties);
 			var cryptor = CryptorProvider.forScheme(config.getCipherCombo()).provide(key.copy(), csprng);
 			try {
@@ -71,6 +73,7 @@ class CryptoFileSystems {
 
 	/**
 	 * Checks if the vault has a content root folder. If not, an exception is raised.
+	 *
 	 * @param pathToVault Path to the vault root
 	 * @param cryptor Cryptor object initialized with the correct masterkey
 	 * @throws ContentRootMissingException If the existence of encrypted vault content root cannot be ensured
@@ -117,6 +120,18 @@ class CryptoFileSystems {
 				throw e;
 			}
 		}
+	}
+
+	/**
+	 * Attempts to create a backup of the vault config or compares to an existing one.
+	 *
+	 * @param pathToVault path to the vault's root
+	 * @param properties properties used when attempting to construct a fs for this vault
+	 * @throws IOException If the config cannot be read
+	 */
+	private void backupVaultConfigFile(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
+		Path vaultConfigFile = pathToVault.resolve(properties.vaultConfigFilename());
+		BackupHelper.attemptBackup(vaultConfigFile);
 	}
 
 	private CryptoFileSystemProperties adjustForCapabilities(Path pathToVault, CryptoFileSystemProperties originalProperties) throws FileSystemCapabilityChecker.MissingCapabilityException {

@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.common.BackupHelper;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -36,6 +37,7 @@ public class CryptoFileSystemsTest {
 	private final Path pathToVault = mock(Path.class, "vaultPath");
 	private final Path normalizedPathToVault = mock(Path.class, "normalizedVaultPath");
 	private final Path configFilePath = mock(Path.class, "normalizedVaultPath/vault.cryptomator");
+	private final Path configFileBackupPath = mock(Path.class, "normalizedVaultPath/vault.cryptomator.12345678.bkup");
 	private final Path dataDirPath = mock(Path.class, "normalizedVaultPath/d");
 	private final Path preContenRootPath = mock(Path.class, "normalizedVaultPath/d/AB");
 	private final Path contenRootPath = mock(Path.class, "normalizedVaultPath/d/AB/CDEFGHIJKLMNOP");
@@ -61,6 +63,7 @@ public class CryptoFileSystemsTest {
 	private MockedStatic<VaultConfig> vaultConficClass;
 	private MockedStatic<Files> filesClass;
 	private MockedStatic<CryptorProvider> cryptorProviderClass;
+	private MockedStatic<BackupHelper> backupHelperClass;
 
 	private final CryptoFileSystems inTest = new CryptoFileSystems(cryptoFileSystemComponentBuilder, capabilityChecker, csprng);
 
@@ -69,6 +72,7 @@ public class CryptoFileSystemsTest {
 		vaultConficClass = Mockito.mockStatic(VaultConfig.class);
 		filesClass = Mockito.mockStatic(Files.class);
 		cryptorProviderClass = Mockito.mockStatic(CryptorProvider.class);
+		backupHelperClass = Mockito.mockStatic(BackupHelper.class);
 
 		when(pathToVault.normalize()).thenReturn(normalizedPathToVault);
 		when(normalizedPathToVault.resolve("vault.cryptomator")).thenReturn(configFilePath);
@@ -77,6 +81,7 @@ public class CryptoFileSystemsTest {
 		filesClass.when(() -> Files.readString(configFilePath, StandardCharsets.US_ASCII)).thenReturn("jwt-vault-config");
 		vaultConficClass.when(() -> VaultConfig.decode("jwt-vault-config")).thenReturn(configLoader);
 		cryptorProviderClass.when(() -> CryptorProvider.forScheme(cipherCombo)).thenReturn(cryptorProvider);
+		backupHelperClass.when(() -> BackupHelper.attemptBackup(configFilePath)).thenReturn(configFileBackupPath);
 		when(VaultConfig.decode("jwt-vault-config")).thenReturn(configLoader);
 		when(configLoader.getKeyId()).thenReturn(URI.create("test:key"));
 		when(keyLoader.loadKey(Mockito.any())).thenReturn(masterkey);
@@ -105,6 +110,7 @@ public class CryptoFileSystemsTest {
 		vaultConficClass.close();
 		filesClass.close();
 		cryptorProviderClass.close();
+		backupHelperClass.close();
 	}
 
 	@Test
@@ -151,6 +157,25 @@ public class CryptoFileSystemsTest {
 		filesClass.when(() -> Files.exists(contenRootPath)).thenReturn(false);
 
 		Assertions.assertThrows(IOException.class, () -> inTest.create(provider, pathToVault, properties));
+	}
+
+	@Test
+	public void testCreateAttemptsBackupOnSuccessfulVerification() throws IOException {
+		inTest.create(provider, pathToVault, properties);
+		backupHelperClass.verify(() -> BackupHelper.attemptBackup(configFilePath));
+	}
+
+	@Test
+	public void testCreateWithFailedConfigVerificationMakesNoBackup() throws IOException {
+		when(configLoader.verify(rawKey, Constants.VAULT_VERSION)).thenThrow(VaultKeyInvalidException.class);
+		Assertions.assertThrows(VaultKeyInvalidException.class, () -> inTest.create(provider, pathToVault, properties));
+		backupHelperClass.verify(() -> BackupHelper.attemptBackup(configFilePath), Mockito.never());
+	}
+
+	@Test
+	public void testCreateThrowsIOExceptionIfBackupAttemptThrowsOne() throws IOException {
+		backupHelperClass.when(() -> BackupHelper.attemptBackup(configFilePath)).thenThrow(new IOException());
+		Assertions.assertThrows(IOException.class,() -> inTest.create(provider, pathToVault, properties));
 	}
 
 	@Test
