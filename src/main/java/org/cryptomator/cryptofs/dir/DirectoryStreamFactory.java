@@ -4,6 +4,9 @@ import org.cryptomator.cryptofs.CryptoFileSystemScoped;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
+import org.cryptomator.cryptofs.DirectoryIdBackup;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -19,16 +22,20 @@ import java.util.Map;
 @CryptoFileSystemScoped
 public class DirectoryStreamFactory {
 
+	private static final Logger LOG = LoggerFactory.getLogger(DirectoryStreamFactory.class);
+
 	private final CryptoPathMapper cryptoPathMapper;
 	private final DirectoryStreamComponent.Builder directoryStreamComponentBuilder; // sharing reusable builder via synchronized
+	private final DirectoryIdBackup dirIdBackup;
 	private final Map<CryptoDirectoryStream, DirectoryStream> streams = new HashMap<>();
 
 	private volatile boolean closed = false;
 
 	@Inject
-	public DirectoryStreamFactory(CryptoPathMapper cryptoPathMapper, DirectoryStreamComponent.Builder directoryStreamComponentBuilder) {
+	public DirectoryStreamFactory(CryptoPathMapper cryptoPathMapper, DirectoryStreamComponent.Builder directoryStreamComponentBuilder, DirectoryIdBackup dirIdBackup) {
 		this.cryptoPathMapper = cryptoPathMapper;
 		this.directoryStreamComponentBuilder = directoryStreamComponentBuilder;
+		this.dirIdBackup = dirIdBackup;
 	}
 
 	public synchronized CryptoDirectoryStream newDirectoryStream(CryptoPath cleartextDir, Filter<? super Path> filter) throws IOException {
@@ -36,6 +43,12 @@ public class DirectoryStreamFactory {
 			throw new ClosedFileSystemException();
 		}
 		CiphertextDirectory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
+		//TODO: should we really do this implicit backup?
+		try{
+			dirIdBackup.execute(ciphertextDir);
+		} catch (IOException e) {
+			LOG.info("Cannot create dirId backup of {}. Probably read only.");
+		}
 		DirectoryStream<Path> ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path);
 		CryptoDirectoryStream cleartextDirStream = directoryStreamComponentBuilder //
 				.dirId(ciphertextDir.dirId) //

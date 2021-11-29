@@ -32,4 +32,5 @@ public final class Constants {
 
 	public static final String SEPARATOR = "/";
 	public static final String RECOVERY_DIR_NAME = "CRYPTOMATOR_RECOVERY";
+	public static final String DIR_ID_FILE = "id.c9r";
 }

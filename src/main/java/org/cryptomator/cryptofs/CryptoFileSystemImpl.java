@@ -15,6 +15,7 @@ import org.cryptomator.cryptofs.attr.AttributeViewProvider;
 import org.cryptomator.cryptofs.attr.AttributeViewType;
 import org.cryptomator.cryptofs.common.ArrayUtils;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.DeletingFileVisitor;
 import org.cryptomator.cryptofs.common.FinallyUtil;
 import org.cryptomator.cryptofs.dir.CiphertextDirectoryDeleter;
@@ -68,7 +69,7 @@ import static org.cryptomator.cryptofs.common.Constants.SEPARATOR;
 
 @CryptoFileSystemScoped
 class CryptoFileSystemImpl extends CryptoFileSystem {
-	
+
 	private final CryptoFileSystemProvider provider;
 	private final CryptoFileSystems cryptoFileSystems;
 	private final Path pathToVault;
@@ -80,6 +81,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	private final PathMatcherFactory pathMatcherFactory;
 	private final DirectoryStreamFactory directoryStreamFactory;
 	private final DirectoryIdProvider dirIdProvider;
+	private final DirectoryIdBackup dirIdBackup;
 	private final AttributeProvider fileAttributeProvider;
 	private final AttributeByNameProvider fileAttributeByNameProvider;
 	private final AttributeViewProvider fileAttributeViewProvider;
@@ -98,7 +100,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	@Inject
 	public CryptoFileSystemImpl(CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, @PathToVault Path pathToVault, Cryptor cryptor,
 								CryptoFileStore fileStore, CryptoFileSystemStats stats, CryptoPathMapper cryptoPathMapper, CryptoPathFactory cryptoPathFactory,
-								PathMatcherFactory pathMatcherFactory, DirectoryStreamFactory directoryStreamFactory, DirectoryIdProvider dirIdProvider,
+								PathMatcherFactory pathMatcherFactory, DirectoryStreamFactory directoryStreamFactory, DirectoryIdProvider dirIdProvider, DirectoryIdBackup dirIdBackup,
 								AttributeProvider fileAttributeProvider, AttributeByNameProvider fileAttributeByNameProvider, AttributeViewProvider fileAttributeViewProvider,
 								OpenCryptoFiles openCryptoFiles, Symlinks symlinks, FinallyUtil finallyUtil, CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag,
 								CryptoFileSystemProperties fileSystemProperties) {
@@ -113,6 +115,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		this.pathMatcherFactory = pathMatcherFactory;
 		this.directoryStreamFactory = directoryStreamFactory;
 		this.dirIdProvider = dirIdProvider;
+		this.dirIdBackup = dirIdBackup;
 		this.fileAttributeProvider = fileAttributeProvider;
 		this.fileAttributeByNameProvider = fileAttributeByNameProvider;
 		this.fileAttributeViewProvider = fileAttributeViewProvider;
@@ -235,8 +238,8 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	/**
 	 * @param cleartextPath the path to the file
-	 * @param type          the Class object corresponding to the file attribute view
-	 * @param options       future use
+	 * @param type the Class object corresponding to the file attribute view
+	 * @param options future use
 	 * @return a file attribute view of the specified type, or <code>null</code> if the attribute view type is not available
 	 * @see AttributeViewProvider#getAttributeView(CryptoPath, Class, LinkOption...)
 	 */
@@ -302,6 +305,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		// create dir if and only if the dirFile has been created right now (not if it has been created before):
 		try {
 			Files.createDirectories(ciphertextDir.path);
+			dirIdBackup.execute(ciphertextDir);
 			ciphertextPath.persistLongFileName();
 		} catch (IOException e) {
 			// make sure there is no orphan dir file:
@@ -312,8 +316,9 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		}
 	}
 
+	//TODO: where should the filter decorator be placed? Here or DirectoryStreamFactory?
 	DirectoryStream<Path> newDirectoryStream(CryptoPath cleartextDir, Filter<? super Path> filter) throws IOException {
-		return directoryStreamFactory.newDirectoryStream(cleartextDir, filter);
+		return directoryStreamFactory.newDirectoryStream(cleartextDir, entry -> !entry.getFileName().equals(Constants.DIR_ID_FILE) && filter.accept(entry));
 	}
 
 	FileChannel newFileChannel(CryptoPath cleartextPath, Set<? extends OpenOption> optionsSet, FileAttribute<?>... attrs) throws IOException {
@@ -574,7 +579,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			}
 			Files.walkFileTree(ciphertextTarget.getRawPath(), DeletingFileVisitor.INSTANCE);
 		}
-		
+
 		// no exceptions until this point, so MOVE:
 		Files.move(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath(), options);
 		if (ciphertextTarget.isShortened()) {
