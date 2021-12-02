@@ -45,7 +45,7 @@ public abstract class SimpleMigrationContinuationListener implements MigrationCo
 			waitForResult.await();
 			return atomicResult.get();
 		} catch (InterruptedException e) {
-			Thread.interrupted();
+			Thread.currentThread().interrupt();
 			return ContinuationResult.CANCEL;
 		} finally {
 			lock.unlock();

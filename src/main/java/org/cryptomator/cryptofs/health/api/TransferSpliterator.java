@@ -70,7 +70,8 @@ class TransferSpliterator<T> extends Spliterators.AbstractSpliterator<T> impleme
 	@Override
 	public void close() {
 		poisoned.set(true);
-		queue.offer(poison);
+		boolean accepted = queue.offer(poison);
+		assert accepted : "queue is unbounded, offer must succeed";
 	}
 
 	/**

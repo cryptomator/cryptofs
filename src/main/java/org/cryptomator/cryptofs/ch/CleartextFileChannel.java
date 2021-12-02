@@ -143,6 +143,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			long chunkIndex = currentPosition / cleartextChunkSize; // floor by int-truncation
 			assert chunkIndex >= 0;
 			int offsetInChunk = (int) (currentPosition % cleartextChunkSize); // known to fit in int, because cleartextChunkSize is int
+			assert offsetInChunk < cleartextChunkSize;
 			int len = (int) min(src.remaining(), cleartextChunkSize - offsetInChunk); // known to fit in int, because second argument is int
 			assert len <= cleartextChunkSize;
 			if (offsetInChunk == 0 && len == cleartextChunkSize) {
