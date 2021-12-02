@@ -294,11 +294,14 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@Test
 		@Order(6)
 		@DisplayName("ln -s foo /link")
-		public void testCreateSymlink() throws IOException {
+		public void testCreateSymlink() {
 			Path target = fs1.getPath("/foo");
 			Assumptions.assumeTrue(Files.isRegularFile(target));
 			Path link = fs1.getPath("/link");
-			Files.createSymbolicLink(link, target);
+
+			Assertions.assertDoesNotThrow(() -> {
+				Files.createSymbolicLink(link, target);
+			});
 		}
 
 		@Test
@@ -308,9 +311,11 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Path link = fs1.getPath("/link");
 			Assumptions.assumeTrue(Files.isSymbolicLink(link));
 
-			try (WritableByteChannel ch = Files.newByteChannel(link, StandardOpenOption.WRITE)) {
-				ch.write(StandardCharsets.US_ASCII.encode("hello world"));
-			}
+			Assertions.assertDoesNotThrow(() -> {
+				try (WritableByteChannel ch = Files.newByteChannel(link, StandardOpenOption.WRITE)) {
+					ch.write(StandardCharsets.US_ASCII.encode("hello world"));
+				}
+			});
 		}
 
 		@Test
@@ -349,7 +354,10 @@ public class CryptoFileSystemProviderIntegrationTest {
 		public void testRemoveSymlink() throws IOException {
 			Path link = fs1.getPath("/link");
 			Assumptions.assumeTrue(Files.isSymbolicLink(link));
-			Files.delete(link);
+
+			Assertions.assertDoesNotThrow(() -> {
+				Files.delete(link);
+			});
 		}
 
 		@Test
@@ -358,7 +366,10 @@ public class CryptoFileSystemProviderIntegrationTest {
 		public void testRemoveOtherSymlink() throws IOException {
 			Path link = fs1.getPath("/otherlink");
 			Assumptions.assumeTrue(Files.isSymbolicLink(link));
-			Files.delete(link);
+
+			Assertions.assertDoesNotThrow(() -> {
+				Files.delete(link);
+			});
 		}
 
 		@Test
@@ -473,7 +484,10 @@ public class CryptoFileSystemProviderIntegrationTest {
 		public void testWriteToFile() throws IOException {
 			Path file1 = fs1.getPath("/foo");
 			Assumptions.assumeTrue(Files.isRegularFile(file1));
-			Files.write(file1, "goodbye world".getBytes());
+
+			Assertions.assertDoesNotThrow(() -> {
+				Files.write(file1, "goodbye world".getBytes());
+			});
 		}
 
 		@Test

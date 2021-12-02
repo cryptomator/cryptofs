@@ -11,6 +11,7 @@ package org.cryptomator.cryptofs;
 import org.cryptomator.cryptolib.api.Masterkey;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
 import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -51,9 +52,7 @@ public class RealFileSystemIntegrationTest {
 		Path file = fileSystem.getPath("/a");
 		Files.write(file, new byte[1]);
 
-		UserPrincipal user = Files.getOwner(file);
-
-		System.out.println(user.getName());
+		Assertions.assertNotNull(Files.getOwner(file));
 	}
 
 }

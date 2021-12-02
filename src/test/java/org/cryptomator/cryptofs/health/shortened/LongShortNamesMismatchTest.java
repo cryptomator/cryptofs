@@ -3,6 +3,7 @@ package org.cryptomator.cryptofs.health.shortened;
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,8 +44,8 @@ public class LongShortNamesMismatchTest {
 
 		//evaluate
 		Path expectedC9sDir = c9sDir.resolveSibling("bar==.c9s");
-		Files.exists(expectedC9sDir);
-		Files.notExists(c9sDir);
+		Assertions.assertTrue(Files.exists(expectedC9sDir));
+		Assertions.assertTrue(Files.notExists(c9sDir));
 	}
 
 }

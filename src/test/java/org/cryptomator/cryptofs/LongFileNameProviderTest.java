@@ -80,10 +80,13 @@ public class LongFileNameProviderTest {
 	public void testDeflateMultipleTimes(@TempDir Path tmpPath) {
 		LongFileNameProvider prov = new LongFileNameProvider(readonlyFlag);
 		Path canonicalFileName = tmpPath.resolve("longName");
-		prov.deflate(canonicalFileName);
-		prov.deflate(canonicalFileName);
-		prov.deflate(canonicalFileName);
-		prov.deflate(canonicalFileName);
+
+		Assertions.assertDoesNotThrow(() -> {
+			prov.deflate(canonicalFileName);
+			prov.deflate(canonicalFileName);
+			prov.deflate(canonicalFileName);
+			prov.deflate(canonicalFileName);
+		});
 	}
 
 	@Test
