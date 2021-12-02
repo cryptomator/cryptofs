@@ -31,7 +31,7 @@ abstract sealed class AbstractCryptoFileAttributeView implements FileAttributeVi
 	private final Symlinks symlinks;
 	private final OpenCryptoFiles openCryptoFiles;
 
-	public AbstractCryptoFileAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, LinkOption[] linkOptions, Symlinks symlinks, OpenCryptoFiles openCryptoFiles) {
+	protected AbstractCryptoFileAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, LinkOption[] linkOptions, Symlinks symlinks, OpenCryptoFiles openCryptoFiles) {
 		this.cleartextPath = cleartextPath;
 		this.pathMapper = pathMapper;
 		this.linkOptions = linkOptions;

@@ -42,7 +42,9 @@ public abstract class SimpleMigrationContinuationListener implements MigrationCo
 		migrationHaltedDueToEvent(event);
 		lock.lock();
 		try {
-			waitForResult.await();
+			while (atomicResult.get() == null) {
+				waitForResult.await();
+			}
 			return atomicResult.get();
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();

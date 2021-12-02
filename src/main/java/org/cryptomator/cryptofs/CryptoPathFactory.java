@@ -30,7 +30,7 @@ class CryptoPathFactory {
 	public CryptoPath getPath(CryptoFileSystemImpl fileSystem, String first, String... more) {
 		boolean isAbsolute = first.startsWith(SEPARATOR);
 		Stream<String> elements = Stream.concat(Stream.of(first), stream(more)).flatMap(this::splitPath).map(this::normalize);
-		return new CryptoPath(fileSystem, symlinks, elements.collect(toList()), isAbsolute);
+		return new CryptoPath(fileSystem, symlinks, elements.toList(), isAbsolute);
 	}
 
 	public CryptoPath emptyFor(CryptoFileSystemImpl fileSystem) {
