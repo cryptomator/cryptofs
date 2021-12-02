@@ -145,8 +145,8 @@ public class CryptoPathTest {
 	@Test
 	public void testEquality() {
 		Path p1 = path("/foo");
-		Assertions.assertNotEquals(p1, null);
-		Assertions.assertNotEquals(p1, "string");
+		Assertions.assertNotNull(p1);
+		Assertions.assertNotEquals("string", p1);
 
 		Path p2 = path("/foo");
 		Assertions.assertEquals(p1.hashCode(), p2.hashCode());

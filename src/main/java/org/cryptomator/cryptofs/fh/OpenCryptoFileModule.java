@@ -2,7 +2,6 @@ package org.cryptomator.cryptofs.fh;
 
 import dagger.Module;
 import dagger.Provides;
-import org.cryptomator.cryptolib.api.Cryptor;
 
 import java.io.IOException;
 import java.nio.file.Files;

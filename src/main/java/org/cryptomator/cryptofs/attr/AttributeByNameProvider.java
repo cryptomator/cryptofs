@@ -86,7 +86,7 @@ public class AttributeByNameProvider {
 
 	public void setAttribute(CryptoPath cleartextPath, String attributeName, Object value, LinkOption... options) throws IOException {
 		String normalizedAttributeName = normalizedAttributeName(attributeName);
-		AttrSetter<?,?> setter = SETTERS.get(normalizedAttributeName);
+		AttrSetter<?, ?> setter = SETTERS.get(normalizedAttributeName);
 		if (setter == null) {
 			throw new IllegalArgumentException("Unrecognized attribute name: " + attributeName);
 		}
@@ -168,12 +168,13 @@ public class AttributeByNameProvider {
 
 		@FunctionalInterface
 		interface Setter<T extends FileAttributeView, V> {
+
 			void set(T attributes, V value) throws IOException;
 		}
 
 		private final Class<T> type;
 		private final Class<V> valueType;
-		private final Setter<T,V> setter;
+		private final Setter<T, V> setter;
 
 		public AttrSetter(Class<T> type, Class<V> valueType, Setter<T, V> setter) {
 			this.type = type;
@@ -199,7 +200,7 @@ public class AttributeByNameProvider {
 			this.getter = getter;
 		}
 
-		public Object get(BasicFileAttributes attrs) throws IOException {
+		public Object get(BasicFileAttributes attrs) {
 			return getter.apply(type.cast(attrs));
 		}
 
