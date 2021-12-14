@@ -113,7 +113,7 @@ public class LongFileNameProvider {
 		private void persistInternal() throws IOException {
 			Path longNameFile = c9sPath.resolve(INFLATED_FILE_NAME);
 			Files.createDirectories(c9sPath);
-			Files.write(longNameFile,UTF_8.encode(longName).array()); //WRITE, CREATE, TRUNCATE_EXISTING
+			Files.writeString(longNameFile, longName, UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
 		}
 	}
 
