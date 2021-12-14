@@ -133,5 +133,20 @@ public class ShortenedNamesCheckTest {
 			MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(LongShortNamesMismatch.class));
 		}
 
+		@Test
+		@DisplayName("dir with non base64url content in name.c9s produces illegal encoding result")
+		public void testNonBase64URLCharsInNameFileProducesIllegalEncodingResult() throws IOException {
+			String longName = "Bug121\0\0\0\0";
+			Path dir = dataRoot.resolve("AA/zzzz/shortName.c9s");
+			Path nameFile = dir.resolve("name.c9s");
+			Files.createDirectories(dir);
+			Files.writeString(nameFile, longName, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+
+			visitor.checkShortenedName(dir);
+			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
+			Mockito.verify(resultsCollector).accept(resultCaptor.capture());
+			MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(TrailingNullBytesInNameFile.class));
+		}
+
 	}
 }

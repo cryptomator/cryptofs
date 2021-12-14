@@ -24,6 +24,7 @@ import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.cryptomator.cryptofs.common.Constants.DEFLATED_FILE_SUFFIX;
@@ -37,6 +38,7 @@ public class ShortenedNamesCheck implements HealthCheck {
 	private static final Logger LOG = LoggerFactory.getLogger(ShortenedNamesCheck.class);
 	private static final int MAX_TRAVERSAL_DEPTH = 3;
 	private static final BaseEncoding BASE64URL = BaseEncoding.base64Url();
+	private static final Pattern VALID_EXCEPT_NULLBYTE_END = Pattern.compile("[^\0]+\0+");
 
 	@Override
 	public String name() {
@@ -95,6 +97,13 @@ public class ShortenedNamesCheck implements HealthCheck {
 			}
 
 			var longName = Files.readString(nameFile, UTF_8);
+
+			//checking for https://github.com/cryptomator/cryptofs/issues/121
+			if(VALID_EXCEPT_NULLBYTE_END.matcher(longName).matches()) {
+				resultCollector.accept(new TrailingNullBytesInNameFile(nameFile, longName));
+				return;
+			}
+
 			var expectedShortName = deflate(longName);
 			if (!dir.getFileName().toString().equals(expectedShortName)) {
 				resultCollector.accept(new LongShortNamesMismatch(dir, expectedShortName));
