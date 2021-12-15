@@ -38,7 +38,7 @@ public class ShortenedNamesCheck implements HealthCheck {
 	private static final Logger LOG = LoggerFactory.getLogger(ShortenedNamesCheck.class);
 	private static final int MAX_TRAVERSAL_DEPTH = 3;
 	private static final BaseEncoding BASE64URL = BaseEncoding.base64Url();
-	private static final Pattern VALID_EXCEPT_NULLBYTE_END = Pattern.compile("[^\0]+\0+");
+	private static final Pattern NULL_BYTES = Pattern.compile("\0+");
 
 	@Override
 	public String name() {
@@ -98,8 +98,11 @@ public class ShortenedNamesCheck implements HealthCheck {
 
 			var longName = Files.readString(nameFile, UTF_8);
 
-			//checking for https://github.com/cryptomator/cryptofs/issues/121
-			if(VALID_EXCEPT_NULLBYTE_END.matcher(longName).matches()) {
+			var result = isValidEncodedName(longName);
+			if (result == NameEncoding.INVALID) {
+				resultCollector.accept(new NotDecodableLongName(nameFile, longName));
+				return;
+			} else if (result == NameEncoding.BUG121) {
 				resultCollector.accept(new TrailingNullBytesInNameFile(nameFile, longName));
 				return;
 			}
@@ -110,6 +113,36 @@ public class ShortenedNamesCheck implements HealthCheck {
 			} else {
 				resultCollector.accept(new ValidShortenedFile(dir));
 			}
+		}
+
+
+		/**
+		 * Checks if the string stored inside the name file is base64url encoded
+		 *
+		 * <em>visible for testing</em>
+		 *
+		 * @return {@link NameEncoding} indicating if it is valid, invalid or affected by https://github.com/cryptomator/cryptofs/issues/121
+		 */
+		NameEncoding isValidEncodedName(String toAnalyse) {
+			int firstNullByte = toAnalyse.indexOf('\0');
+			var beforeFirstNull = firstNullByte == -1 ? toAnalyse : toAnalyse.substring(0, firstNullByte);
+			var afterFirstNull = firstNullByte == -1 ? "" : toAnalyse.substring(firstNullByte);
+
+			boolean isFirstBase64 = BASE64URL.canDecode(beforeFirstNull);
+
+			if (isFirstBase64 && afterFirstNull.isEmpty()) {
+				return NameEncoding.VALID;
+			} else if (isFirstBase64 && NULL_BYTES.matcher(afterFirstNull).matches()) {
+				return NameEncoding.BUG121;
+			} else {
+				return NameEncoding.INVALID;
+			}
+		}
+
+		enum NameEncoding {
+			VALID,
+			INVALID,
+			BUG121;
 		}
 
 		//visible for testing
