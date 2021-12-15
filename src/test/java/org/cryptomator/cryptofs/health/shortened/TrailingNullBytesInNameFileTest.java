@@ -48,6 +48,6 @@ public class TrailingNullBytesInNameFileTest {
 		result.fix(pathToVault, Mockito.mock(VaultConfig.class), Mockito.mock(Masterkey.class), Mockito.mock(Cryptor.class));
 
 		//evaluate
-		Assertions.assertTrue(Files.readString(nameFile,StandardCharsets.UTF_8).indexOf('\0') == -1);
+		Assertions.assertEquals("bar==.c9r", Files.readString(nameFile,StandardCharsets.UTF_8));
 	}
 }
