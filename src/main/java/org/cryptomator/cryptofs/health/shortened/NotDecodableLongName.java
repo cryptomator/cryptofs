@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.health.shortened;
 
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.health.api.CommonDetailKeys;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 
@@ -39,5 +40,10 @@ public class NotDecodableLongName implements DiagnosticResult {
 	public Map<String, String> details() {
 		return Map.of(CommonDetailKeys.ENCRYPTED_PATH, nameFile.toString(), //
 				"Stored String", longName);
+	}
+
+	@Override
+	public String toString() {
+		return String.format("String \"%s\" stored in %s is not a valid Cryptomator filename.", longName, nameFile);
 	}
 }

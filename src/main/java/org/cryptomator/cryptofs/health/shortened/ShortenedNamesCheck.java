@@ -132,7 +132,7 @@ public class ShortenedNamesCheck implements HealthCheck {
 				return SyntaxResult.INVALID;
 			}
 
-			if (toAnalyse.substring(posObligatoryC9rString).length() > Constants.CRYPTOMATOR_FILE_SUFFIX.length()) {
+			if (toAnalyse.length() > posObligatoryC9rString + Constants.CRYPTOMATOR_FILE_SUFFIX.length()) {
 				return SyntaxResult.TRAILING_BYTES;
 			}
 
