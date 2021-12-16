@@ -24,7 +24,6 @@ import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.regex.Pattern;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.cryptomator.cryptofs.common.Constants.DEFLATED_FILE_SUFFIX;
@@ -38,7 +37,6 @@ public class ShortenedNamesCheck implements HealthCheck {
 	private static final Logger LOG = LoggerFactory.getLogger(ShortenedNamesCheck.class);
 	private static final int MAX_TRAVERSAL_DEPTH = 3;
 	private static final BaseEncoding BASE64URL = BaseEncoding.base64Url();
-	private static final Pattern NULL_BYTES = Pattern.compile("\0+");
 
 	@Override
 	public String name() {
@@ -91,7 +89,7 @@ public class ShortenedNamesCheck implements HealthCheck {
 			if (!attrs.isRegularFile()) {
 				resultCollector.accept(new MissingLongName(dir));
 				return;
-			} else if (attrs.size() > LongFileNameProvider.MAX_FILENAME_BUFFER_SIZE) { //TODO: should be revised
+			} else if (attrs.size() > LongFileNameProvider.MAX_FILENAME_BUFFER_SIZE) {
 				resultCollector.accept(new ObeseNameFile(nameFile, attrs.size()));
 				return;
 			}
@@ -125,16 +123,16 @@ public class ShortenedNamesCheck implements HealthCheck {
 		 */
 		SyntaxResult checkSyntax(String toAnalyse) {
 			int posObligatoryC9rString = toAnalyse.indexOf(Constants.CRYPTOMATOR_FILE_SUFFIX);
-			if(posObligatoryC9rString == -1) {
+			if (posObligatoryC9rString == -1) {
 				return SyntaxResult.INVALID;
 			}
 
 			var encryptedFileName = toAnalyse.substring(0, posObligatoryC9rString);
-			if(!BASE64URL.canDecode(encryptedFileName)) {
+			if (!BASE64URL.canDecode(encryptedFileName)) {
 				return SyntaxResult.INVALID;
 			}
 
-			if (toAnalyse.substring(posObligatoryC9rString).length() > Constants.CRYPTOMATOR_FILE_SUFFIX.length() ) {
+			if (toAnalyse.substring(posObligatoryC9rString).length() > Constants.CRYPTOMATOR_FILE_SUFFIX.length()) {
 				return SyntaxResult.TRAILING_BYTES;
 			}
 

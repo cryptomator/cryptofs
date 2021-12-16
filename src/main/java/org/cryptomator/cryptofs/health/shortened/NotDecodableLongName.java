@@ -1,6 +1,5 @@
 package org.cryptomator.cryptofs.health.shortened;
 
-import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.health.api.CommonDetailKeys;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 
@@ -12,7 +11,7 @@ import java.util.Map;
  * <p>
  * A string is only correct if
  * <ul>
- *     <li> it ends with {@value Constants#CRYPTOMATOR_FILE_SUFFIX} and </li>
+ *     <li> it ends with {@value org.cryptomator.cryptofs.common.Constants#CRYPTOMATOR_FILE_SUFFIX} and </li>
  *     <li> excluding the aforementioned suffix, is base64url encoded</li>
  * </ul>
  * <p>
