@@ -91,19 +91,19 @@ public class ShortenedNamesCheck implements HealthCheck {
 			if (!attrs.isRegularFile()) {
 				resultCollector.accept(new MissingLongName(dir));
 				return;
-			} else if (attrs.size() > LongFileNameProvider.MAX_FILENAME_BUFFER_SIZE) {
+			} else if (attrs.size() > LongFileNameProvider.MAX_FILENAME_BUFFER_SIZE) { //TODO: should be revised
 				resultCollector.accept(new ObeseNameFile(nameFile, attrs.size()));
 				return;
 			}
 
 			var longName = Files.readString(nameFile, UTF_8);
 
-			var result = isValidEncodedName(longName);
-			if (result == NameEncoding.INVALID) {
+			var syntaxResult = checkSyntax(longName);
+			if (syntaxResult == SyntaxResult.INVALID) {
 				resultCollector.accept(new NotDecodableLongName(nameFile, longName));
 				return;
-			} else if (result == NameEncoding.BUG121) {
-				resultCollector.accept(new TrailingNullBytesInNameFile(nameFile, longName));
+			} else if (syntaxResult == SyntaxResult.TRAILING_BYTES) {
+				resultCollector.accept(new TrailingBytesInNameFile(nameFile, longName));
 				return;
 			}
 
@@ -117,32 +117,34 @@ public class ShortenedNamesCheck implements HealthCheck {
 
 
 		/**
-		 * Checks if the string stored inside the name file is base64url encoded
+		 * Determines if the string stored inside the name file is a base64url encoded ending with {@value Constants#CRYPTOMATOR_FILE_SUFFIX}.
 		 *
 		 * <em>visible for testing</em>
 		 *
-		 * @return {@link NameEncoding} indicating if it is valid, invalid or affected by https://github.com/cryptomator/cryptofs/issues/121
+		 * @return {@link SyntaxResult} indicating if it is valid, invalid or affected by https://github.com/cryptomator/cryptofs/issues/121
 		 */
-		NameEncoding isValidEncodedName(String toAnalyse) {
-			int firstNullByte = toAnalyse.indexOf('\0');
-			var beforeFirstNull = firstNullByte == -1 ? toAnalyse : toAnalyse.substring(0, firstNullByte);
-			var afterFirstNull = firstNullByte == -1 ? "" : toAnalyse.substring(firstNullByte);
-
-			boolean isFirstBase64 = BASE64URL.canDecode(beforeFirstNull);
-
-			if (isFirstBase64 && afterFirstNull.isEmpty()) {
-				return NameEncoding.VALID;
-			} else if (isFirstBase64 && NULL_BYTES.matcher(afterFirstNull).matches()) {
-				return NameEncoding.BUG121;
-			} else {
-				return NameEncoding.INVALID;
+		SyntaxResult checkSyntax(String toAnalyse) {
+			int posObligatoryC9rString = toAnalyse.indexOf(Constants.CRYPTOMATOR_FILE_SUFFIX);
+			if(posObligatoryC9rString == -1) {
+				return SyntaxResult.INVALID;
 			}
+
+			var encryptedFileName = toAnalyse.substring(0, posObligatoryC9rString);
+			if(!BASE64URL.canDecode(encryptedFileName)) {
+				return SyntaxResult.INVALID;
+			}
+
+			if (toAnalyse.substring(posObligatoryC9rString).length() > Constants.CRYPTOMATOR_FILE_SUFFIX.length() ) {
+				return SyntaxResult.TRAILING_BYTES;
+			}
+
+			return SyntaxResult.VALID;
 		}
 
-		enum NameEncoding {
+		enum SyntaxResult {
 			VALID,
 			INVALID,
-			BUG121;
+			TRAILING_BYTES; //to indicate issue https://github.com/cryptomator/cryptofs/issues/121
 		}
 
 		//visible for testing

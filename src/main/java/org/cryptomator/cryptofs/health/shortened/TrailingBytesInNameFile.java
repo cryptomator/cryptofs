@@ -13,15 +13,17 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
 
+import static org.cryptomator.cryptofs.common.Constants.CRYPTOMATOR_FILE_SUFFIX;
+
 /**
  * Result and fix for bug https://github.com/cryptomator/cryptofs/issues/121
  */
-public class TrailingNullBytesInNameFile implements DiagnosticResult {
+public class TrailingBytesInNameFile implements DiagnosticResult {
 
 	private final Path nameFile;
 	private final String longName;
 
-	public TrailingNullBytesInNameFile(Path nameFile, String longName) {
+	public TrailingBytesInNameFile(Path nameFile, String longName) {
 		this.nameFile = nameFile;
 		this.longName = longName;
 	}
@@ -33,7 +35,11 @@ public class TrailingNullBytesInNameFile implements DiagnosticResult {
 
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
-		Files.writeString(pathToVault.resolve(nameFile), longName.substring(0, longName.indexOf('\0')), StandardCharsets.UTF_8, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+		var startIndexTrailingBytes = longName.indexOf(CRYPTOMATOR_FILE_SUFFIX) + CRYPTOMATOR_FILE_SUFFIX.length();
+		Files.writeString(pathToVault.resolve(nameFile), //
+				longName.substring(0, startIndexTrailingBytes), //
+				StandardCharsets.UTF_8, //
+				StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
 	}
 
 	@Override

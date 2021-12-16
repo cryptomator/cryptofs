@@ -21,7 +21,7 @@ public class TrailingNullBytesInNameFileTest {
 	@TempDir
 	public Path pathToVault;
 
-	private TrailingNullBytesInNameFile result;
+	private TrailingBytesInNameFile result;
 	private Path dataDir;
 	private Path cipherDir;
 
@@ -39,7 +39,7 @@ public class TrailingNullBytesInNameFileTest {
 		Path c9sDir = cipherDir.resolve("foo==.c9s");
 		Path nameFile = c9sDir.resolve("name.c9s");
 		var longName = "bar==.c9r\0\0\0";
-		result = new TrailingNullBytesInNameFile(nameFile, longName );
+		result = new TrailingBytesInNameFile(nameFile, longName );
 
 		Files.createDirectory(c9sDir);
 		Files.writeString(nameFile, longName, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);

@@ -23,7 +23,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Set;
 import java.util.function.Consumer;
 
-import static org.cryptomator.cryptofs.health.shortened.ShortenedNamesCheck.DirVisitor.NameEncoding.VALID;
+import static org.cryptomator.cryptofs.health.shortened.ShortenedNamesCheck.DirVisitor.SyntaxResult.VALID;
 
 public class ShortenedNamesCheckTest {
 
@@ -78,7 +78,7 @@ public class ShortenedNamesCheckTest {
 
 			var visitorSpy = Mockito.spy(visitor);
 			Mockito.doReturn("shortName.c9s").when(visitorSpy).deflate(longName);
-			Mockito.doReturn(VALID).when(visitorSpy).isValidEncodedName(longName);
+			Mockito.doReturn(VALID).when(visitorSpy).checkSyntax(longName);
 
 			visitorSpy.checkShortenedName(dir);
 			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
@@ -129,7 +129,7 @@ public class ShortenedNamesCheckTest {
 
 			var visitorSpy = Mockito.spy(visitor);
 			Mockito.doReturn("otherName.c9s").when(visitorSpy).deflate(longName);
-			Mockito.doReturn(VALID).when(visitorSpy).isValidEncodedName(longName);
+			Mockito.doReturn(VALID).when(visitorSpy).checkSyntax(longName);
 
 			visitorSpy.checkShortenedName(dir);
 			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
@@ -155,7 +155,8 @@ public class ShortenedNamesCheckTest {
 		@Test
 		@DisplayName("dir with non base64url content in name.c9s produces illegal encoding result")
 		public void testNameFileWithTrailingNullBytesProducesIllegalEncodingResult() throws IOException {
-			String longName = "Bug121\0\0\0\0";
+			String longName = "VGhpc0lzQVRlc3Q.c9r\0\0\u0002\0"; //" base64url("ThisIsATest") + ".c9r" + "\0\0\0"
+
 			Path dir = dataRoot.resolve("AA/zzzz/shortName.c9s");
 			Path nameFile = dir.resolve("name.c9s");
 			Files.createDirectories(dir);
@@ -164,7 +165,7 @@ public class ShortenedNamesCheckTest {
 			visitor.checkShortenedName(dir);
 			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
 			Mockito.verify(resultsCollector).accept(resultCaptor.capture());
-			MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(TrailingNullBytesInNameFile.class));
+			MatcherAssert.assertThat(resultCaptor.getValue(), Matchers.instanceOf(TrailingBytesInNameFile.class));
 		}
 
 	}

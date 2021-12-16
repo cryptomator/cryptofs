@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.health.shortened;
 
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.health.api.CommonDetailKeys;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 
@@ -7,7 +8,17 @@ import java.nio.file.Path;
 import java.util.Map;
 
 /**
- * A name.c9s file, which content is _not_ a base64url encoded string.
+ * A name.c9s file with a syntactical <em>incorrect</em> string.
+ * <p>
+ * A string is only correct if
+ * <ul>
+ *     <li> it ends with {@value Constants#CRYPTOMATOR_FILE_SUFFIX} and </li>
+ *     <li> excluding the aforementioned suffix, is base64url encoded</li>
+ * </ul>
+ * <p>
+ * A special case represents the diagnostic result {@link TrailingBytesInNameFile}.
+ *
+ * @see TrailingBytesInNameFile
  */
 public class NotDecodableLongName implements DiagnosticResult {
 
@@ -28,6 +39,6 @@ public class NotDecodableLongName implements DiagnosticResult {
 	@Override
 	public Map<String, String> details() {
 		return Map.of(CommonDetailKeys.ENCRYPTED_PATH, nameFile.toString(), //
-				"Encrypted Long Name", longName);
+				"Stored String", longName);
 	}
 }
