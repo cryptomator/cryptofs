@@ -6,10 +6,9 @@
 package org.cryptomator.cryptofs.migration.v7;
 
 import org.cryptomator.cryptofs.FileNameTooLongException;
+import org.cryptomator.cryptofs.common.BackupHelper;
 import org.cryptomator.cryptofs.common.DeletingFileVisitor;
 import org.cryptomator.cryptofs.common.FileSystemCapabilityChecker;
-import org.cryptomator.cryptofs.common.BackupHelper;
-import org.cryptomator.cryptofs.migration.Migrators;
 import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener;
 import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener.ContinuationEvent;
 import org.cryptomator.cryptofs.migration.api.MigrationContinuationListener.ContinuationResult;

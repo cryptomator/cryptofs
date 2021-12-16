@@ -26,7 +26,7 @@ public abstract class AbstractFileChannel extends FileChannel {
 	private final ReadWriteLock readWriteLock;
 	protected long position;
 
-	public AbstractFileChannel(ReadWriteLock readWriteLock) {
+	protected AbstractFileChannel(ReadWriteLock readWriteLock) {
 		this.readWriteLock = readWriteLock;
 	}
 

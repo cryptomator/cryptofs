@@ -20,13 +20,10 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
-import java.nio.channels.WritableByteChannel;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -116,7 +113,7 @@ public class LongFileNameProvider {
 		private void persistInternal() throws IOException {
 			Path longNameFile = c9sPath.resolve(INFLATED_FILE_NAME);
 			Files.createDirectories(c9sPath);
-			Files.write(longNameFile,UTF_8.encode(longName).array()); //WRITE, CREATE, TRUNCATE_EXISTING
+			Files.writeString(longNameFile, longName, UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
 		}
 	}
 

@@ -47,8 +47,10 @@ public class PathMatcherFactoryTest {
 	public void testSyntaxAndPatternIgnoresCase() {
 		when(globToRegexConverter.convert(anyString())).thenReturn("a");
 
-		inTest.pathMatcherFrom("reGEx:a");
-		inTest.pathMatcherFrom("gLOb:a");
+		Assertions.assertDoesNotThrow(() -> {
+			inTest.pathMatcherFrom("reGEx:a");
+			inTest.pathMatcherFrom("gLOb:a");
+		});
 	}
 
 }

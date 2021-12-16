@@ -132,6 +132,7 @@ public class AsyncDelegatingFileChannel extends AsynchronousFileChannel {
 				completionHandler.failed(e.getCause(), attachment);
 			} catch (CancellationException | InterruptedException e) {
 				completionHandler.failed(e, attachment);
+				Thread.currentThread().interrupt();
 			}
 		}
 

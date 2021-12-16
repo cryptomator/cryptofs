@@ -8,9 +8,9 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.attr;
 
-import com.google.common.base.Predicate;
-import org.cryptomator.cryptofs.CryptoPath;
+import com.google.common.collect.ImmutableSortedMap;
 import org.cryptomator.cryptofs.CryptoFileSystemScoped;
+import org.cryptomator.cryptofs.CryptoPath;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -31,61 +31,52 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 import static java.util.Arrays.stream;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 @CryptoFileSystemScoped
 public class AttributeByNameProvider {
 
-	private static final SortedMap<String, AttributeGetterImpl<?>> GETTERS = new TreeMap<>();
-	private static final SortedMap<String, AttributeSetterImpl<?, ?>> SETTERS = new TreeMap<>();
+	private static final SortedMap<String, AttrGetter<?>> GETTERS = ImmutableSortedMap.<String, AttrGetter<?>>naturalOrder()
+			// basic:
+			.put("basic:lastModifiedTime", new AttrGetter<>("lastModifiedTime", BasicFileAttributes.class, BasicFileAttributes::lastModifiedTime)) //
+			.put("basic:lastAccessTime", new AttrGetter<>("lastAccessTime", BasicFileAttributes.class, BasicFileAttributes::lastAccessTime)) //
+			.put("basic:creationTime", new AttrGetter<>("creationTime", BasicFileAttributes.class, BasicFileAttributes::creationTime)) //
+			.put("basic:isRegularFile", new AttrGetter<>("isRegularFile", BasicFileAttributes.class, BasicFileAttributes::isRegularFile)) //
+			.put("basic:isDirectory", new AttrGetter<>("isDirectory", BasicFileAttributes.class, BasicFileAttributes::isDirectory)) //
+			.put("basic:isSymbolicLink", new AttrGetter<>("isSymbolicLink", BasicFileAttributes.class, BasicFileAttributes::isSymbolicLink)) //
+			.put("basic:isOther", new AttrGetter<>("isOther", BasicFileAttributes.class, BasicFileAttributes::isOther)) //
+			.put("basic:size", new AttrGetter<>("size", BasicFileAttributes.class, BasicFileAttributes::size)) //
+			.put("basic:fileKey", new AttrGetter<>("fileKey", BasicFileAttributes.class, BasicFileAttributes::fileKey)) //
+			// dos:
+			.put("dos:readOnly", new AttrGetter<>("readOnly", DosFileAttributes.class, DosFileAttributes::isReadOnly)) //
+			.put("dos:hidden", new AttrGetter<>("hidden", DosFileAttributes.class, DosFileAttributes::isHidden)) //
+			.put("dos:archive", new AttrGetter<>("archive", DosFileAttributes.class, DosFileAttributes::isArchive)) //
+			.put("dos:system", new AttrGetter<>("system", DosFileAttributes.class, DosFileAttributes::isSystem)) //
+			// posix:
+			.put("posix:owner", new AttrGetter<>("owner", PosixFileAttributes.class, PosixFileAttributes::owner)) //
+			.put("posix:group", new AttrGetter<>("group", PosixFileAttributes.class, PosixFileAttributes::group)) //
+			.put("posix:permissions", new AttrGetter<>("permissions", PosixFileAttributes.class, PosixFileAttributes::permissions)) //
+			.build();
+	private static final Map<String, AttrSetter<?, ?>> SETTERS = Map.of( //
+			"basic:lastModifiedTime", new AttrSetter<>(BasicFileAttributeView.class, FileTime.class, (view, lastModifiedTime) -> view.setTimes(lastModifiedTime, null, null)), //
+			"basic:lastAccessTime", new AttrSetter<>(BasicFileAttributeView.class, FileTime.class, (view, lastAccessTime) -> view.setTimes(null, lastAccessTime, null)), //
+			"basic:creationTime", new AttrSetter<>(BasicFileAttributeView.class, FileTime.class, (view, creationTime) -> view.setTimes(null, null, creationTime)), //
+			"dos:readOnly", new AttrSetter<>(DosFileAttributeView.class, Boolean.class, DosFileAttributeView::setReadOnly), //
+			"dos:hidden", new AttrSetter<>(DosFileAttributeView.class, Boolean.class, DosFileAttributeView::setHidden), //
+			"dos:archive", new AttrSetter<>(DosFileAttributeView.class, Boolean.class, DosFileAttributeView::setArchive), //
+			"dos:system", new AttrSetter<>(DosFileAttributeView.class, Boolean.class, DosFileAttributeView::setSystem), //
+			"posix:owner", new AttrSetter<>(PosixFileAttributeView.class, UserPrincipal.class, PosixFileAttributeView::setOwner), //
+			"posix:group", new AttrSetter<>(PosixFileAttributeView.class, GroupPrincipal.class, PosixFileAttributeView::setGroup), //
+			"posix:permissions", new AttrSetter<>(PosixFileAttributeView.class, Set.class, PosixFileAttributeView::setPermissions) //
+	);
 
 	private final AttributeProvider attributeProvider;
 	private final AttributeViewProvider attributeViewProvider;
 
-	static {
-		// GETTERS:
-		getter("basic:lastModifiedTime", BasicFileAttributes.class, BasicFileAttributes::lastModifiedTime);
-		getter("basic:lastAccessTime", BasicFileAttributes.class, BasicFileAttributes::lastAccessTime);
-		getter("basic:creationTime", BasicFileAttributes.class, BasicFileAttributes::creationTime);
-		getter("basic:isRegularFile", BasicFileAttributes.class, BasicFileAttributes::isRegularFile);
-		getter("basic:isDirectory", BasicFileAttributes.class, BasicFileAttributes::isDirectory);
-		getter("basic:isSymbolicLink", BasicFileAttributes.class, BasicFileAttributes::isSymbolicLink);
-		getter("basic:isOther", BasicFileAttributes.class, BasicFileAttributes::isOther);
-		getter("basic:size", BasicFileAttributes.class, BasicFileAttributes::size);
-		getter("basic:fileKey", BasicFileAttributes.class, BasicFileAttributes::fileKey);
-		getter("dos:readOnly", DosFileAttributes.class, DosFileAttributes::isReadOnly);
-		getter("dos:hidden", DosFileAttributes.class, DosFileAttributes::isHidden);
-		getter("dos:archive", DosFileAttributes.class, DosFileAttributes::isArchive);
-		getter("dos:system", DosFileAttributes.class, DosFileAttributes::isSystem);
-		getter("posix:owner", PosixFileAttributes.class, PosixFileAttributes::owner);
-		getter("posix:group", PosixFileAttributes.class, PosixFileAttributes::group);
-		getter("posix:permissions", PosixFileAttributes.class, PosixFileAttributes::permissions);
-
-		// SETTERS:
-		setter("basic:lastModifiedTime", BasicFileAttributeView.class, FileTime.class, (view, lastModifiedTime) -> view.setTimes(lastModifiedTime, null, null));
-		setter("basic:lastAccessTime", BasicFileAttributeView.class, FileTime.class, (view, lastAccessTime) -> view.setTimes(null, lastAccessTime, null));
-		setter("basic:creationTime", BasicFileAttributeView.class, FileTime.class, (view, creationTime) -> view.setTimes(null, null, creationTime));
-		setter("dos:readOnly", DosFileAttributeView.class, Boolean.class, DosFileAttributeView::setReadOnly);
-		setter("dos:hidden", DosFileAttributeView.class, Boolean.class, DosFileAttributeView::setHidden);
-		setter("dos:archive", DosFileAttributeView.class, Boolean.class, DosFileAttributeView::setArchive);
-		setter("dos:system", DosFileAttributeView.class, Boolean.class, DosFileAttributeView::setSystem);
-		setter("posix:owner", PosixFileAttributeView.class, UserPrincipal.class, PosixFileAttributeView::setOwner);
-		setter("posix:group", PosixFileAttributeView.class, GroupPrincipal.class, PosixFileAttributeView::setGroup);
-		setter("posix:permissions", PosixFileAttributeView.class, Set.class, PosixFileAttributeView::setPermissions);
-	}
-
-	private static <T extends BasicFileAttributes> void getter(String name, Class<T> type, AttributeGetter<T> getter) {
-		String plainName = name.substring(name.indexOf(':') + 1);
-		GETTERS.put(name, AttributeGetter.getter(plainName, type, getter));
-	}
-
-	private static <T extends BasicFileAttributeView, V> void setter(String name, Class<T> type, Class<V> valueType, AttributeSetter<T, V> setter) {
-		SETTERS.put(name, AttributeSetter.setter(type, valueType, setter));
-	}
 
 	@Inject
 	AttributeByNameProvider(AttributeProvider attributeProvider, AttributeViewProvider attributeViewProvider) {
@@ -93,15 +84,13 @@ public class AttributeByNameProvider {
 		this.attributeViewProvider = attributeViewProvider;
 	}
 
-	@SuppressWarnings({"unchecked", "rawtypes"})
 	public void setAttribute(CryptoPath cleartextPath, String attributeName, Object value, LinkOption... options) throws IOException {
 		String normalizedAttributeName = normalizedAttributeName(attributeName);
-		AttributeSetterImpl setter = SETTERS.get(normalizedAttributeName);
+		AttrSetter<?, ?> setter = SETTERS.get(normalizedAttributeName);
 		if (setter == null) {
 			throw new IllegalArgumentException("Unrecognized attribute name: " + attributeName);
 		}
-		FileAttributeView view = attributeViewProvider.getAttributeView(cleartextPath, setter.type(), options);
-		setter.set(view, value);
+		setter.set(attributeViewProvider, cleartextPath, value, options);
 	}
 
 	public Map<String, Object> readAttributes(CryptoPath cleartextPath, String attributesString, LinkOption... options) throws IOException {
@@ -109,24 +98,23 @@ public class AttributeByNameProvider {
 			throw new IllegalArgumentException("No attributes specified");
 		}
 		Predicate<String> getterNameFilter = getterNameFilter(attributesString);
-		@SuppressWarnings("rawtypes")
-		Collection<AttributeGetterImpl> getters = GETTERS.entrySet().stream() //
-				.filter(entry -> getterNameFilter.apply(entry.getKey())) //
-				.map(Entry::getValue) //
-				.collect(toList());
+		Collection<AttrGetter<?>> getters = GETTERS.entrySet().stream() //
+				.filter(entry -> getterNameFilter.test(entry.getKey())) //
+				.<AttrGetter<?>>map(Entry::getValue) //
+				.toList();
 		return readAttributes(cleartextPath, getters, options);
 	}
 
-	@SuppressWarnings({"rawtypes", "unchecked"})
-	private Map<String, Object> readAttributes(CryptoPath cleartextPath, Collection<AttributeGetterImpl> getters, LinkOption... options) throws IOException {
+	private Map<String, Object> readAttributes(CryptoPath cleartextPath, Collection<AttrGetter<?>> getters, LinkOption... options) throws IOException {
 		Map<String, Object> result = new HashMap<>();
 		BasicFileAttributes attributes = null;
-		for (AttributeGetterImpl getter : getters) {
+		for (AttrGetter<?> getter : getters) {
 			if (attributes == null) {
-				attributes = attributeProvider.readAttributes(cleartextPath, getter.type(), options);
+				attributes = attributeProvider.readAttributes(cleartextPath, getter.type, options);
 			}
-			String name = getter.name();
-			result.put(name, getter.read(attributes));
+			String key = getter.name;
+			Object value = getter.get(attributes);
+			result.put(key, value);
 		}
 		return result;
 	}
@@ -176,74 +164,44 @@ public class AttributeByNameProvider {
 		}).collect(toSet());
 	}
 
-	@FunctionalInterface
-	private interface AttributeSetter<T extends FileAttributeView, V> {
+	private static class AttrSetter<T extends FileAttributeView, V> {
 
-		void set(T attributes, V value) throws IOException;
+		@FunctionalInterface
+		interface Setter<T extends FileAttributeView, V> {
 
-		static <T extends FileAttributeView, V> AttributeSetterImpl<T, V> setter(Class<T> type, Class<V> valueType, AttributeSetter setter) {
-			return new AttributeSetterImpl(type, valueType, setter);
+			void set(T attributes, V value) throws IOException;
 		}
-
-	}
-
-	private static class AttributeSetterImpl<T extends FileAttributeView, V> implements AttributeSetter<T, V> {
 
 		private final Class<T> type;
 		private final Class<V> valueType;
-		private final AttributeSetter<T, V> setter;
+		private final Setter<T, V> setter;
 
-		private AttributeSetterImpl(Class<T> type, Class<V> valueType, AttributeSetter<T, V> setter) {
+		public AttrSetter(Class<T> type, Class<V> valueType, Setter<T, V> setter) {
 			this.type = type;
 			this.valueType = valueType;
 			this.setter = setter;
 		}
 
-		public Class<T> type() {
-			return type;
+		public void set(AttributeViewProvider provider, CryptoPath cleartextPath, Object value, LinkOption... options) throws IOException {
+			T attrs = provider.getAttributeView(cleartextPath, type, options);
+			setter.set(attrs, valueType.cast(value));
 		}
-
-		@Override
-		public void set(T attributes, V value) throws IOException {
-			setter.set(attributes, valueType.cast(value));
-		}
-
 	}
 
-	@FunctionalInterface
-	private interface AttributeGetter<T extends BasicFileAttributes> {
-
-		Object read(T attributes);
-
-		static <T extends BasicFileAttributes> AttributeGetterImpl<T> getter(String name, Class<T> type, AttributeGetter<T> getter) {
-			return new AttributeGetterImpl(name, type, getter);
-		}
-
-	}
-
-	private static class AttributeGetterImpl<T extends BasicFileAttributes> implements AttributeGetter<T> {
+	private static class AttrGetter<T extends BasicFileAttributes> {
 
 		private final String name;
 		private final Class<T> type;
-		private final AttributeGetter<T> getter;
+		private final Function<T, Object> getter;
 
-		private AttributeGetterImpl(String name, Class<T> type, AttributeGetter<T> getter) {
+		public AttrGetter(String name, Class<T> type, Function<T, Object> getter) {
 			this.name = name;
 			this.type = type;
 			this.getter = getter;
 		}
 
-		public String name() {
-			return name;
-		}
-
-		public Class<T> type() {
-			return type;
-		}
-
-		@Override
-		public Object read(T attributes) {
-			return getter.read(attributes);
+		public Object get(BasicFileAttributes attrs) {
+			return getter.apply(type.cast(attrs));
 		}
 
 	}

@@ -98,7 +98,7 @@ public class CryptoBasicFileAttributesTest {
 	public void testSizeSetToZeroIfCryptoHeaderToSmall() {
 		Mockito.when(delegateAttr.size()).thenReturn(88l + 20l);
 		BasicFileAttributes attr = new CryptoBasicFileAttributes(delegateAttr, FILE, ciphertextFilePath, cryptor, Optional.empty());
-		Assertions.assertEquals(attr.size(), 0);
+		Assertions.assertEquals(0, attr.size());
 	}
 
 }

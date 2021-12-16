@@ -69,7 +69,7 @@ public class ReadmeCodeSamplesTest {
 
 		Assertions.assertEquals(1, files.size());
 		Assertions.assertEquals("/foo/bar/test", files.get(0).toString());
-		Assertions.assertEquals(Files.size(testFile), 4);
+		Assertions.assertEquals(4, Files.size(testFile));
 	}
 
 }

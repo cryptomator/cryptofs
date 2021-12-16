@@ -14,6 +14,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -80,14 +81,17 @@ public class LongFileNameProviderTest {
 	public void testDeflateMultipleTimes(@TempDir Path tmpPath) {
 		LongFileNameProvider prov = new LongFileNameProvider(readonlyFlag);
 		Path canonicalFileName = tmpPath.resolve("longName");
-		prov.deflate(canonicalFileName);
-		prov.deflate(canonicalFileName);
-		prov.deflate(canonicalFileName);
-		prov.deflate(canonicalFileName);
+
+		Assertions.assertDoesNotThrow(() -> {
+			prov.deflate(canonicalFileName);
+			prov.deflate(canonicalFileName);
+			prov.deflate(canonicalFileName);
+			prov.deflate(canonicalFileName);
+		});
 	}
 
 	@Test
-	public void testPerstistCachedFailsOnReadOnlyFileSystems(@TempDir Path tmpPath) {
+	public void testPersistCachedFailsOnReadOnlyFileSystems(@TempDir Path tmpPath) {
 		LongFileNameProvider prov = new LongFileNameProvider(readonlyFlag);
 
 		String orig = "longName";
@@ -98,6 +102,18 @@ public class LongFileNameProviderTest {
 		Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
 			deflated.persist();
 		});
+	}
+
+	@Test
+	public void testPersistedStringEqualsLongName(@TempDir Path tmpPath) throws IOException {
+		LongFileNameProvider prov = new LongFileNameProvider(readonlyFlag);
+
+		String orig = "LongNameOf200Chars00_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000";
+		Path canonicalFileName = tmpPath.resolve(orig);
+		LongFileNameProvider.DeflatedFileName deflated = prov.deflate(canonicalFileName);
+
+		deflated.persist();
+		Assertions.assertEquals(Files.readString(deflated.c9sPath.resolve("name.c9s"), StandardCharsets.UTF_8),deflated.longName);
 	}
 
 }
