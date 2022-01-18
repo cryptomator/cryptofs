@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import static org.cryptomator.cryptofs.common.Constants.SEPARATOR;
@@ -125,7 +126,13 @@ public class CryptoPath implements Path {
 	@Override
 	public CryptoPath subpath(int beginIndex, int endIndex) {
 		fileSystem.assertOpen();
-		return new CryptoPath(fileSystem, symlinks, elements.subList(beginIndex, endIndex), false);
+		final List<String> sublist;
+		try {
+			sublist = elements.subList(beginIndex, endIndex);
+		} catch (IndexOutOfBoundsException e) {
+			throw new IllegalArgumentException(e);
+		}
+		return new CryptoPath(fileSystem, symlinks, sublist, false);
 	}
 
 	@Override
@@ -308,7 +315,7 @@ public class CryptoPath implements Path {
 	@Override
 	public Iterator<Path> iterator() {
 		fileSystem.assertOpen();
-		return new Iterator<Path>() {
+		return new Iterator<>() {
 
 			private int idx = 0;
 
@@ -319,7 +326,11 @@ public class CryptoPath implements Path {
 
 			@Override
 			public Path next() {
-				return getName(idx++);
+				try {
+					return getName(idx++);
+				} catch (IllegalArgumentException e) {
+					throw new NoSuchElementException(e);
+				}
 			}
 		};
 	}

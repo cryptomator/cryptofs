@@ -11,15 +11,17 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
-public class LongShortNamesMismatchTest {
+public class TrailingNullBytesInNameFileTest {
 
 	@TempDir
 	public Path pathToVault;
 
-	private LongShortNamesMismatch result;
+	private TrailingBytesInNameFile result;
 	private Path dataDir;
 	private Path cipherDir;
 
@@ -31,21 +33,21 @@ public class LongShortNamesMismatchTest {
 	}
 
 	@Test
-	@DisplayName("a successful fix only renames the c9s directory")
-	public void testSuccessfulFixRenamesResource() throws IOException {
+	@DisplayName("Successful fix only removes trailing null bytes")
+	public void testSuccessfulFixRemovesTrailingNullBytes() throws IOException {
 		//prepare
 		Path c9sDir = cipherDir.resolve("foo==.c9s");
-		result = new LongShortNamesMismatch(c9sDir, "bar==.c9s");
+		Path nameFile = c9sDir.resolve("name.c9s");
+		var longName = "bar==.c9r\0\0\0";
+		result = new TrailingBytesInNameFile(nameFile, longName );
 
 		Files.createDirectory(c9sDir);
+		Files.writeString(nameFile, longName, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 
 		//execute
 		result.fix(pathToVault, Mockito.mock(VaultConfig.class), Mockito.mock(Masterkey.class), Mockito.mock(Cryptor.class));
 
 		//evaluate
-		Path expectedC9sDir = c9sDir.resolveSibling("bar==.c9s");
-		Assertions.assertTrue(Files.exists(expectedC9sDir));
-		Assertions.assertTrue(Files.notExists(c9sDir));
+		Assertions.assertEquals("bar==.c9r", Files.readString(nameFile,StandardCharsets.UTF_8));
 	}
-
 }

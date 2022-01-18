@@ -4,8 +4,6 @@ import org.cryptomator.cryptofs.ch.CleartextFileChannel;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Collector for exceptions that happen during chunk cache invalidation.

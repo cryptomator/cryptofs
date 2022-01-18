@@ -66,7 +66,7 @@ public class FileSystemCapabilityChecker {
 	 * @since 1.9.3
 	 */
 	public void assertReadAccess(Path pathToVault) throws MissingCapabilityException {
-		try (DirectoryStream ds = Files.newDirectoryStream(pathToVault)) {
+		try (DirectoryStream<Path> ds = Files.newDirectoryStream(pathToVault)) {
 			assert ds != null;
 		} catch (IOException e) {
 			throw new MissingCapabilityException(pathToVault, Capability.READ_ACCESS);

@@ -160,7 +160,9 @@ public class CryptoFileSystemUriTest {
 		// The constructor states that a URISyntaxException is thrown if a registry based authority is used.
 		// The implementation tells that it doesn't. Assume it works but ensure that this test tells us if
 		// the implementation changes.
-		new URI("scheme", Paths.get("test").toUri().toString(), "/b", null, null);
+		Assertions.assertDoesNotThrow(() -> {
+			new URI("scheme", Paths.get("test").toUri().toString(), "/b", null, null);
+		});
 	}
 
 }

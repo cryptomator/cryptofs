@@ -114,9 +114,7 @@ public class FileAttributeIntegrationTest {
 		Path file = fileSystem.getPath("/a");
 		Files.write(file, new byte[1]);
 
-		UserPrincipal user = Files.getOwner(file);
-
-		System.out.println(user.getName());
+		Assertions.assertNotNull(Files.getOwner(file));
 	}
 
 	@Test

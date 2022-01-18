@@ -2,8 +2,6 @@ package org.cryptomator.cryptofs.dir;
 
 import dagger.BindsInstance;
 import dagger.Subcomponent;
-import org.cryptomator.cryptofs.CryptoPath;
-import org.cryptomator.cryptofs.CryptoPathMapper;
 
 import javax.inject.Named;
 import java.nio.file.DirectoryStream;
