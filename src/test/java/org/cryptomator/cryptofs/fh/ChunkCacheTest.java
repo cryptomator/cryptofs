@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -15,11 +16,11 @@ import static org.mockito.Mockito.when;
 
 public class ChunkCacheTest {
 
-
 	private final ChunkLoader chunkLoader = mock(ChunkLoader.class);
 	private final ChunkSaver chunkSaver = mock(ChunkSaver.class);
 	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
-	private final ChunkCache inTest = new ChunkCache(chunkLoader, chunkSaver, stats);
+	private final BufferPool bufferPool = mock(BufferPool.class);
+	private final ChunkCache inTest = new ChunkCache(chunkLoader, chunkSaver, stats, bufferPool);
 
 	@Test
 	public void testGetInvokesLoaderIfEntryNotInCache() throws IOException, AuthenticationFailedException {
@@ -68,6 +69,7 @@ public class ChunkCacheTest {
 
 		verify(stats).addChunkCacheAccess();
 		verify(chunkSaver).save(firstIndex, firstData);
+		verify(bufferPool).recycle(firstData.data());
 		verifyNoMoreInteractions(chunkSaver);
 	}
 
@@ -84,6 +86,7 @@ public class ChunkCacheTest {
 		inTest.set(indexNotInCache, mock(ChunkData.class));
 
 		verify(chunkSaver).save(firstIndex, firstData);
+		verify(bufferPool).recycle(firstData.data());
 		verifyNoMoreInteractions(chunkSaver);
 	}
 
@@ -100,6 +103,7 @@ public class ChunkCacheTest {
 		inTest.set(firstIndex, mock(ChunkData.class));
 
 		verify(chunkSaver).save(firstIndex, firstData);
+		verify(bufferPool).recycle(firstData.data());
 		verifyNoMoreInteractions(chunkSaver);
 	}
 
@@ -131,16 +135,20 @@ public class ChunkCacheTest {
 	public void testInvalidateAllInvokesSaverForAllEntriesInCache() throws IOException, AuthenticationFailedException {
 		long index = 42L;
 		long index2 = 43L;
-		ChunkData data = mock(ChunkData.class);
-		ChunkData data2 = mock(ChunkData.class);
-		when(chunkLoader.load(index)).thenReturn(data);
+		ChunkData chunk1 = mock(ChunkData.class);
+		ChunkData chunk2 = mock(ChunkData.class);
+		when(chunk1.data()).thenReturn(ByteBuffer.allocate(42));
+		when(chunk2.data()).thenReturn(ByteBuffer.allocate(23));
+		when(chunkLoader.load(index)).thenReturn(chunk1);
 		inTest.get(index);
-		inTest.set(index2, data2);
+		inTest.set(index2, chunk2);
 
 		inTest.invalidateAll();
 
-		verify(chunkSaver).save(index, data);
-		verify(chunkSaver).save(index2, data2);
+		verify(chunkSaver).save(index, chunk1);
+		verify(bufferPool).recycle(chunk1.data());
+		verify(chunkSaver).save(index2, chunk2);
+		verify(bufferPool).recycle(chunk2.data());
 	}
 
 	@Test

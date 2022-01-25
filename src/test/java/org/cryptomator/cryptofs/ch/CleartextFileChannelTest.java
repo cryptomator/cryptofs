@@ -74,7 +74,7 @@ public class CleartextFileChannelTest {
 	public void setUp() throws IOException {
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
 		when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
-		when(chunkCache.get(Mockito.anyLong())).then(invocation -> ChunkData.wrap(ByteBuffer.allocate(100)));
+		when(chunkCache.get(Mockito.anyLong())).then(invocation -> new ChunkData(ByteBuffer.allocate(100), false));
 		when(fileHeaderCryptor.headerSize()).thenReturn(50);
 		when(fileContentCryptor.cleartextChunkSize()).thenReturn(100);
 		when(fileContentCryptor.ciphertextChunkSize()).thenReturn(110);
@@ -134,7 +134,6 @@ public class CleartextFileChannelTest {
 			when(options.writable()).thenReturn(true);
 
 			inTest.truncate(newSize);
-
 
 			MatcherAssert.assertThat(inTest.position(), is(currentPosition));
 		}

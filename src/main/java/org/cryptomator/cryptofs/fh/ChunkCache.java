@@ -19,13 +19,15 @@ public class ChunkCache {
 	private final ChunkLoader chunkLoader;
 	private final ChunkSaver chunkSaver;
 	private final CryptoFileSystemStats stats;
+	private final BufferPool bufferPool;
 	private final Cache<Long, ChunkData> chunks;
 
 	@Inject
-	public ChunkCache(ChunkLoader chunkLoader, ChunkSaver chunkSaver, CryptoFileSystemStats stats) {
+	public ChunkCache(ChunkLoader chunkLoader, ChunkSaver chunkSaver, CryptoFileSystemStats stats, BufferPool bufferPool) {
 		this.chunkLoader = chunkLoader;
 		this.chunkSaver = chunkSaver;
 		this.stats = stats;
+		this.bufferPool = bufferPool;
 		this.chunks = CacheBuilder.newBuilder() //
 				.maximumSize(MAX_CACHED_CLEARTEXT_CHUNKS) //
 				.removalListener(this::removeChunk) //
@@ -45,6 +47,7 @@ public class ChunkCache {
 	private void removeChunk(RemovalNotification<Long, ChunkData> removal) {
 		try {
 			chunkSaver.save(removal.getKey(), removal.getValue());
+			bufferPool.recycle(removal.getValue().data());
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}

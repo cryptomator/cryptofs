@@ -9,93 +9,33 @@
 package org.cryptomator.cryptofs.fh;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import static java.lang.Math.max;
-import static java.lang.Math.min;
 import static java.lang.String.format;
 
-public class ChunkData {
+/**
+ * A chunk of plaintext data. It has these rules:
+ * <ol>
+ *     <li>Capacity of {@code data} is always the cleartext chunk size</li>
+ *     <li>During creation, {@code data}'s limit is the chunk's size (last chunk of a file may be smaller)</li>
+ *     <li>Writes need to adjust the limit and mark this chunk dirty</li>
+ *     <li>Reads need to respec the limit and must not change it</li>
+ *     <li>When no longer used, the cleartext ByteBuffer may be recycled</li>
+ * </ol>
+ */
+public record ChunkData(ByteBuffer data, AtomicBoolean dirty) {
 
-	private final ByteBuffer bytes;
-	private boolean dirty;
-	private int length;
-
-	public static ChunkData wrap(ByteBuffer bytes) {
-		return new ChunkData(bytes, bytes.limit());
-	}
-
-	public static ChunkData emptyWithSize(int size) {
-		return new ChunkData(ByteBuffer.allocate(size), 0);
-	}
-
-	private ChunkData(ByteBuffer bytes, int length) {
-		this.bytes = bytes;
-		this.dirty = false;
-		this.length = length;
+	public ChunkData(ByteBuffer data, boolean dirty) {
+		this(data, new AtomicBoolean(dirty));
 	}
 
 	public boolean isDirty() {
-		return dirty;
-	}
-
-	public void truncate(int length) {
-		if (this.length > length) {
-			this.length = length;
-			this.dirty = true;
-		}
-	}
-
-	public CopyWithoutDirection copyData() {
-		return copyDataStartingAt(0);
-	}
-
-	public CopyWithoutDirection copyDataStartingAt(int offset) {
-		return new CopyWithoutDirection() {
-			@Override
-			public void to(ByteBuffer target) {
-				ByteBuffer buf = bytes.asReadOnlyBuffer();
-				buf.limit(min(length, target.remaining() + offset));
-				buf.position(offset);
-				target.put(buf);
-			}
-
-			@Override
-			public void from(ByteBuffer source) {
-				from(ByteSource.from(source));
-			}
-
-			@Override
-			public void from(ByteSource source) {
-				ByteBuffer buf = bytes.duplicate();
-				buf.limit(buf.capacity());
-				buf.position(offset);
-				source.copyTo(buf);
-				dirty = true;
-				length = max(length, buf.position());
-			}
-		};
-	}
-
-	public ByteBuffer asReadOnlyBuffer() {
-		ByteBuffer readOnlyBuffer = bytes.asReadOnlyBuffer();
-		readOnlyBuffer.position(0);
-		readOnlyBuffer.limit(length);
-		return readOnlyBuffer;
-	}
-
-	public interface CopyWithoutDirection {
-
-		void to(ByteBuffer target);
-
-		void from(ByteBuffer source);
-
-		void from(ByteSource source);
-
+		return dirty.get();
 	}
 
 	@Override
 	public String toString() {
-		return format("ChunkData(dirty: %s, length: %d, capacity: %d)", dirty, length, bytes.capacity());
+		return format("ChunkData(dirty: %s, length: %d)", dirty, data.limit());
 	}
 
 }
