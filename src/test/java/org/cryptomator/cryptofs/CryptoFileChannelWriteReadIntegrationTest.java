@@ -144,7 +144,7 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
 			var properties = cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
 			CryptoFileSystemProvider.initialize(vaultPath, properties, URI.create("test:key"));
-			fileSystem = new CryptoFileSystemProvider().newFileSystem(vaultPath, properties);
+			fileSystem = CryptoFileSystemProvider.newFileSystem(vaultPath, properties);
 			file = fileSystem.getPath("/test.txt");
 		}
 
@@ -179,7 +179,7 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 
 		// tests https://github.com/cryptomator/cryptofs/issues/55
 		@Test
-		public void testCreateNewFileSetsLastModifiedToNow() throws IOException, InterruptedException {
+		public void testCreateNewFileSetsLastModifiedToNow() throws IOException {
 			Instant t0, t1, t2;
 			t0 = Instant.now().truncatedTo(ChronoUnit.SECONDS);
 
