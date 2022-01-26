@@ -154,16 +154,8 @@ class C9rConflictResolver {
 		if (!Files.isDirectory(conflictingPath.getParent()) || !Files.isDirectory(canonicalPath.getParent())) {
 			return false;
 		}
-		// TODO replace by Files.mismatch() when using JDK > 12
-		try (ReadableByteChannel in1 = Files.newByteChannel(conflictingPath, StandardOpenOption.READ); //
-			 ReadableByteChannel in2 = Files.newByteChannel(canonicalPath, StandardOpenOption.READ)) {
-			ByteBuffer buf1 = ByteBuffer.allocate(numBytesToCompare);
-			ByteBuffer buf2 = ByteBuffer.allocate(numBytesToCompare);
-			int read1 = in1.read(buf1);
-			int read2 = in2.read(buf2);
-			buf1.flip();
-			buf2.flip();
-			return read1 == read2 && buf1.compareTo(buf2) == 0;
+		try {
+			return -1L == Files.mismatch(conflictingPath, canonicalPath);
 		} catch (NoSuchFileException e) {
 			return false;
 		}
