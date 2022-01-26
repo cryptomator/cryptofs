@@ -5,7 +5,7 @@ import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.fh.ByteSource;
 import org.cryptomator.cryptofs.fh.ChunkCache;
-import org.cryptomator.cryptofs.fh.ChunkData;
+import org.cryptomator.cryptofs.fh.Chunk;
 import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptofs.fh.OpenFileModifiedDate;
 import org.cryptomator.cryptofs.fh.OpenFileSize;
@@ -151,18 +151,18 @@ public class CleartextFileChannel extends AbstractFileChannel {
 				ByteBuffer cleartextChunk = ByteBuffer.allocate(cleartextChunkSize); // TODO: use BufferPool
 				src.copyTo(cleartextChunk);
 				cleartextChunk.flip();
-				ChunkData chunkData = new ChunkData(cleartextChunk, true);
-				chunkCache.set(chunkIndex, chunkData);
+				Chunk chunk = new Chunk(cleartextChunk, true);
+				chunkCache.set(chunkIndex, chunk);
 			} else {
 				/*
 				 * TODO performance:
 				 * We don't actually need to read the current data into the cache.
 				 * It would suffice if store the written data and do reading when storing the chunk.
 				 */
-				ChunkData chunkData = chunkCache.get(chunkIndex);
-				chunkData.data().limit(Math.max(chunkData.data().limit(), offsetInChunk + len)); // increase limit (if needed)
-				src.copyTo(chunkData.data().duplicate().position(offsetInChunk)); // work on duplicate using correct offset
-				chunkData.dirty().set(true);
+				Chunk chunk = chunkCache.get(chunkIndex);
+				chunk.data().limit(Math.max(chunk.data().limit(), offsetInChunk + len)); // increase limit (if needed)
+				src.copyTo(chunk.data().duplicate().position(offsetInChunk)); // work on duplicate using correct offset
+				chunk.dirty().set(true);
 			}
 			written += len;
 		}

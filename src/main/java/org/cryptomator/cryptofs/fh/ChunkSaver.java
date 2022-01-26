@@ -27,7 +27,7 @@ class ChunkSaver {
 		this.bufferPool = bufferPool;
 	}
 
-	public void save(long chunkIndex, ChunkData chunkData) throws IOException {
+	public void save(long chunkIndex, Chunk chunkData) throws IOException {
 		if (chunkData.isDirty()) {
 			long ciphertextPos = chunkIndex * cryptor.fileContentCryptor().ciphertextChunkSize() + cryptor.fileHeaderCryptor().headerSize();
 			ByteBuffer cleartextBuf = chunkData.data().duplicate();

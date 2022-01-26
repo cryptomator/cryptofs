@@ -58,14 +58,14 @@ public class ChunkSaverTest {
 		long expectedPosition = HEADER_SIZE + chunkIndex * CIPHERTEXT_CHUNK_SIZE;
 		Supplier<ByteBuffer> cleartext = () -> repeat(42).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer();
 		Supplier<ByteBuffer> ciphertext = () -> repeat(50).times(CIPHERTEXT_CHUNK_SIZE).asByteBuffer();
-		ChunkData chunkData = new ChunkData(cleartext.get(), true);
+		Chunk chunk = new Chunk(cleartext.get(), true);
 		doAnswer(invocation -> {
 			ByteBuffer ciphertextBuf = invocation.getArgument(1);
 			ciphertextBuf.put(ciphertext.get());
 			return null;
 		}).when(fileContentCryptor).encryptChunk(argThat(contains(cleartext.get())), Mockito.any(), eq(chunkIndex), eq(header));
 
-		inTest.save(chunkIndex, chunkData);
+		inTest.save(chunkIndex, chunk);
 
 		verify(chunkIO).write(argThat(contains(ciphertext.get())), eq(expectedPosition));
 		verify(stats).addBytesEncrypted(Mockito.anyLong());
@@ -77,14 +77,14 @@ public class ChunkSaverTest {
 		long expectedPosition = HEADER_SIZE + chunkIndex * CIPHERTEXT_CHUNK_SIZE;
 		Supplier<ByteBuffer> cleartext = () -> repeat(42).times(CLEARTEXT_CHUNK_SIZE - 10).asByteBuffer();
 		Supplier<ByteBuffer> ciphertext = () -> repeat(50).times(CIPHERTEXT_CHUNK_SIZE - 10).asByteBuffer();
-		ChunkData chunkData = new ChunkData(cleartext.get(), true);
+		Chunk chunk = new Chunk(cleartext.get(), true);
 		doAnswer(invocation -> {
 			ByteBuffer ciphertextBuf = invocation.getArgument(1);
 			ciphertextBuf.put(ciphertext.get());
 			return null;
 		}).when(fileContentCryptor).encryptChunk(argThat(contains(cleartext.get())), Mockito.any(), eq(chunkIndex), eq(header));
 
-		inTest.save(chunkIndex, chunkData);
+		inTest.save(chunkIndex, chunk);
 
 		verify(chunkIO).write(argThat(contains(ciphertext.get())), eq(expectedPosition));
 		verify(stats).addBytesEncrypted(Mockito.anyLong());
@@ -93,9 +93,9 @@ public class ChunkSaverTest {
 	@Test
 	public void testChunkThatWasNotWrittenIsNotWritten() throws IOException {
 		Long chunkIndex = 43L;
-		ChunkData chunkData = new ChunkData(ByteBuffer.allocate(CLEARTEXT_CHUNK_SIZE), false);
+		Chunk chunk = new Chunk(ByteBuffer.allocate(CLEARTEXT_CHUNK_SIZE), false);
 
-		inTest.save(chunkIndex, chunkData);
+		inTest.save(chunkIndex, chunk);
 
 		verifyNoInteractions(chunkIO);
 		verifyNoInteractions(stats);
@@ -108,7 +108,7 @@ public class ChunkSaverTest {
 		long expectedPosition = HEADER_SIZE + chunkIndex * CIPHERTEXT_CHUNK_SIZE;
 		Supplier<ByteBuffer> cleartext = () -> repeat(42).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer();
 		Supplier<ByteBuffer> ciphertext = () -> repeat(50).times(CIPHERTEXT_CHUNK_SIZE).asByteBuffer();
-		ChunkData chunkData = new ChunkData(cleartext.get(), true);
+		Chunk chunk = new Chunk(cleartext.get(), true);
 		doAnswer(invocation -> {
 			ByteBuffer ciphertextBuf = invocation.getArgument(1);
 			ciphertextBuf.put(ciphertext.get());
@@ -116,7 +116,7 @@ public class ChunkSaverTest {
 		}).when(fileContentCryptor).encryptChunk(argThat(contains(cleartext.get())), Mockito.any(), eq(chunkIndex), eq(header));
 		when(chunkIO.write(argThat(contains(ciphertext.get())), eq(expectedPosition))).thenThrow(ioException);
 
-		inTest.save(chunkIndex, chunkData);
+		inTest.save(chunkIndex, chunk);
 
 		verify(exceptionsDuringWrite).add(ioException);
 	}

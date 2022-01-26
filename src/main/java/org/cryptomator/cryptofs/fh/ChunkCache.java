@@ -20,7 +20,7 @@ public class ChunkCache {
 	private final ChunkSaver chunkSaver;
 	private final CryptoFileSystemStats stats;
 	private final BufferPool bufferPool;
-	private final Cache<Long, ChunkData> chunks;
+	private final Cache<Long, Chunk> chunks;
 
 	@Inject
 	public ChunkCache(ChunkLoader chunkLoader, ChunkSaver chunkSaver, CryptoFileSystemStats stats, BufferPool bufferPool) {
@@ -34,7 +34,7 @@ public class ChunkCache {
 				.build();
 	}
 
-	private ChunkData loadChunk(long chunkIndex) throws IOException {
+	private Chunk loadChunk(long chunkIndex) throws IOException {
 		stats.addChunkCacheMiss();
 		try {
 			return chunkLoader.load(chunkIndex);
@@ -44,7 +44,7 @@ public class ChunkCache {
 		}
 	}
 
-	private void removeChunk(RemovalNotification<Long, ChunkData> removal) {
+	private void removeChunk(RemovalNotification<Long, Chunk> removal) {
 		try {
 			chunkSaver.save(removal.getKey(), removal.getValue());
 			bufferPool.recycle(removal.getValue().data());
@@ -53,7 +53,7 @@ public class ChunkCache {
 		}
 	}
 
-	public ChunkData get(long chunkIndex) throws IOException {
+	public Chunk get(long chunkIndex) throws IOException {
 		try {
 			stats.addChunkCacheAccess();
 			return chunks.get(chunkIndex, () -> loadChunk(chunkIndex));
@@ -63,7 +63,7 @@ public class ChunkCache {
 		}
 	}
 
-	public void set(long chunkIndex, ChunkData data) {
+	public void set(long chunkIndex, Chunk data) {
 		chunks.put(chunkIndex, data);
 	}
 

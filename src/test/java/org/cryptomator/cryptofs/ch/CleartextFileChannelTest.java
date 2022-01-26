@@ -3,7 +3,7 @@ package org.cryptomator.cryptofs.ch;
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.fh.ChunkCache;
-import org.cryptomator.cryptofs.fh.ChunkData;
+import org.cryptomator.cryptofs.fh.Chunk;
 import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
@@ -74,7 +74,7 @@ public class CleartextFileChannelTest {
 	public void setUp() throws IOException {
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
 		when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
-		when(chunkCache.get(Mockito.anyLong())).then(invocation -> new ChunkData(ByteBuffer.allocate(100), false));
+		when(chunkCache.get(Mockito.anyLong())).then(invocation -> new Chunk(ByteBuffer.allocate(100), false));
 		when(fileHeaderCryptor.headerSize()).thenReturn(50);
 		when(fileContentCryptor.cleartextChunkSize()).thenReturn(100);
 		when(fileContentCryptor.ciphertextChunkSize()).thenReturn(110);

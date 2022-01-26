@@ -13,13 +13,13 @@ import java.util.concurrent.atomic.LongAdder;
 
 import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
 
-public class ChunkDataTest {
+public class ChunkTest {
 
 	@Test
 	public void testChunkDataWrappingBufferIsNotDirty() {
 		ByteBuffer buffer = repeat(3).times(200).asByteBuffer();
 
-		ChunkData inTest = new ChunkData(buffer, false);
+		Chunk inTest = new Chunk(buffer, false);
 
 		Assertions.assertFalse(inTest.isDirty());
 	}
@@ -28,7 +28,7 @@ public class ChunkDataTest {
 	public void testEmptyChunkDataIsNotDirty() {
 		ByteBuffer buffer = ByteBuffer.allocate(0);
 
-		ChunkData inTest = new ChunkData(buffer, false);
+		Chunk inTest = new Chunk(buffer, false);
 
 		Assertions.assertFalse(inTest.isDirty());
 	}
@@ -37,7 +37,7 @@ public class ChunkDataTest {
 	public void testToString() {
 		ByteBuffer buffer = ByteBuffer.allocate(100);
 
-		ChunkData inTest = new ChunkData(buffer, true);
+		Chunk inTest = new Chunk(buffer, true);
 
 		Assertions.assertEquals("ChunkData(dirty: true, length: 100)", inTest.toString());
 	}
@@ -45,7 +45,7 @@ public class ChunkDataTest {
 	@Test // https://github.com/cryptomator/cryptofs/issues/85
 	public void testRaceConditionsDuringRead() {
 		ByteBuffer src = StandardCharsets.US_ASCII.encode("abcdefg");
-		ChunkData inTest = new ChunkData(src, false);
+		Chunk inTest = new Chunk(src, false);
 		int attempts = 4000;
 		int threads = 6;
 

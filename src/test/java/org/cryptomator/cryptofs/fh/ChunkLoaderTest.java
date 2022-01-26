@@ -64,7 +64,7 @@ public class ChunkLoaderTest {
 		long chunkOffset = chunkIndex * CIPHERTEXT_CHUNK_SIZE + HEADER_SIZE;
 		when(chunkIO.read(argThat(hasAtLeastRemaining(CIPHERTEXT_CHUNK_SIZE)), eq(chunkOffset))).thenReturn(-1);
 
-		ChunkData chunk = inTest.load(chunkIndex);
+		Chunk chunk = inTest.load(chunkIndex);
 
 		verify(stats).addChunkCacheMiss();
 		Assertions.assertEquals(0, chunk.data().remaining());
@@ -87,7 +87,7 @@ public class ChunkLoaderTest {
 				Mockito.any(), eq(chunkIndex), eq(header), eq(true) //
 		);
 
-		ChunkData chunk = inTest.load(chunkIndex);
+		Chunk chunk = inTest.load(chunkIndex);
 
 		verify(stats).addChunkCacheMiss();
 		verify(stats).addBytesDecrypted(chunk.data().remaining());
@@ -112,7 +112,7 @@ public class ChunkLoaderTest {
 				any(ByteBuffer.class), eq(chunkIndex), eq(header), eq(true) //
 		);
 
-		ChunkData chunk = inTest.load(chunkIndex);
+		Chunk chunk = inTest.load(chunkIndex);
 
 		verify(stats).addChunkCacheMiss();
 		verify(stats).addBytesDecrypted(chunk.data().remaining());

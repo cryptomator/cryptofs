@@ -23,9 +23,9 @@ import static java.lang.String.format;
  *     <li>When no longer used, the cleartext ByteBuffer may be recycled</li>
  * </ol>
  */
-public record ChunkData(ByteBuffer data, AtomicBoolean dirty) {
+public record Chunk(ByteBuffer data, AtomicBoolean dirty) {
 
-	public ChunkData(ByteBuffer data, boolean dirty) {
+	public Chunk(ByteBuffer data, boolean dirty) {
 		this(data, new AtomicBoolean(dirty));
 	}
 
