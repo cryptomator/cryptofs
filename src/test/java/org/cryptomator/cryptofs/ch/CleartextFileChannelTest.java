@@ -61,7 +61,7 @@ public class CleartextFileChannelTest {
 	private boolean mustWriteHeader = true;
 	private EffectiveOpenOptions options = mock(EffectiveOpenOptions.class);
 	private AtomicLong fileSize = new AtomicLong(100);
-	private AtomicReference<Instant> lastModified = new AtomicReference(Instant.ofEpochMilli(0));
+	private AtomicReference<Instant> lastModified = new AtomicReference<>(Instant.ofEpochMilli(0));
 	private Supplier<BasicFileAttributeView> attributeViewSupplier = mock(Supplier.class);
 	private BasicFileAttributeView attributeView = mock(BasicFileAttributeView.class);
 	private ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);

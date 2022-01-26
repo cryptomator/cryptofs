@@ -27,10 +27,9 @@ public class ByteBufferMatcher {
 
 	public static Matcher<ByteBuffer> contains(byte[] data) {
 		return matcher("remaining data", is(data), buffer -> {
-			int position = buffer.position();
-			byte[] remaining = new byte[buffer.remaining()];
-			buffer.get(remaining);
-			buffer.position(position);
+			ByteBuffer buf = buffer.asReadOnlyBuffer();
+			byte[] remaining = new byte[buf.remaining()];
+			buf.get(remaining);
 			return remaining;
 		});
 	}
