@@ -168,7 +168,7 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 
 	private boolean isEmptyDirectory(Path path) {
 		try (Stream<Path> files = Files.list(path)) {
-			return files.count() == 0;
+			return files.filter(p -> p.getFileName().toString().equals(Constants.DIR_ID_FILE)).count() == 0;
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}

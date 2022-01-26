@@ -89,6 +89,7 @@ public class CryptoFileSystemImplTest {
 	private final Symlinks symlinks = mock(Symlinks.class);
 	private final CryptoPathMapper cryptoPathMapper = mock(CryptoPathMapper.class);
 	private final DirectoryIdProvider dirIdProvider = mock(DirectoryIdProvider.class);
+	private final DirectoryIdBackup dirIdBackup = mock(DirectoryIdBackup.class);
 	private final AttributeProvider fileAttributeProvider = mock(AttributeProvider.class);
 	private final AttributeByNameProvider fileAttributeByNameProvider = mock(AttributeByNameProvider.class);
 	private final AttributeViewProvider fileAttributeViewProvider = mock(AttributeViewProvider.class);
@@ -119,7 +120,7 @@ public class CryptoFileSystemImplTest {
 
 		inTest = new CryptoFileSystemImpl(provider, cryptoFileSystems, pathToVault, cryptor,
 				fileStore, stats, cryptoPathMapper, cryptoPathFactory,
-				pathMatcherFactory, directoryStreamFactory, dirIdProvider,
+				pathMatcherFactory, directoryStreamFactory, dirIdProvider, dirIdBackup,
 				fileAttributeProvider, fileAttributeByNameProvider, fileAttributeViewProvider,
 				openCryptoFiles, symlinks, finallyUtil, ciphertextDirDeleter, readonlyFlag,
 				fileSystemProperties);
