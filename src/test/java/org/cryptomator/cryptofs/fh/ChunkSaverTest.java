@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs.fh;
 
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
+import org.cryptomator.cryptofs.matchers.ByteBufferMatcher;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
@@ -69,7 +70,7 @@ public class ChunkSaverTest {
 
 		verify(chunkIO).write(argThat(contains(ciphertext.get())), eq(expectedPosition));
 		verify(stats).addBytesEncrypted(Mockito.anyLong());
-		verify(bufferPool).recycle(chunk.data());
+		verify(bufferPool).recycle(argThat(ByteBufferMatcher.hasCapacity(CIPHERTEXT_CHUNK_SIZE)));
 	}
 
 	@Test
@@ -89,7 +90,7 @@ public class ChunkSaverTest {
 
 		verify(chunkIO).write(argThat(contains(ciphertext.get())), eq(expectedPosition));
 		verify(stats).addBytesEncrypted(Mockito.anyLong());
-		verify(bufferPool).recycle(chunk.data());
+		verify(bufferPool).recycle(argThat(ByteBufferMatcher.hasCapacity(CIPHERTEXT_CHUNK_SIZE)));
 	}
 
 	@Test
@@ -122,7 +123,7 @@ public class ChunkSaverTest {
 		inTest.save(chunkIndex, chunk);
 
 		verify(exceptionsDuringWrite).add(ioException);
-		verify(bufferPool).recycle(chunk.data());
+		verify(bufferPool).recycle(argThat(ByteBufferMatcher.hasCapacity(CIPHERTEXT_CHUNK_SIZE)));
 	}
 
 }
