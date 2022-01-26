@@ -33,9 +33,4 @@ public record Chunk(ByteBuffer data, AtomicBoolean dirty) {
 		return dirty.get();
 	}
 
-	@Override
-	public String toString() {
-		return format("ChunkData(dirty: %s, length: %d)", dirty, data.limit());
-	}
-
 }

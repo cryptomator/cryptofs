@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs.fh;
 
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
+import org.cryptomator.cryptofs.matchers.ByteBufferMatcher;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
@@ -67,6 +68,7 @@ public class ChunkLoaderTest {
 		Chunk chunk = inTest.load(chunkIndex);
 
 		verify(stats).addChunkCacheMiss();
+		verify(bufferPool).recycle(argThat(ByteBufferMatcher.hasCapacity(CIPHERTEXT_CHUNK_SIZE)));
 		Assertions.assertEquals(0, chunk.data().remaining());
 		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE, chunk.data().capacity());
 	}
@@ -91,6 +93,7 @@ public class ChunkLoaderTest {
 
 		verify(stats).addChunkCacheMiss();
 		verify(stats).addBytesDecrypted(chunk.data().remaining());
+		verify(bufferPool).recycle(argThat(ByteBufferMatcher.hasCapacity(CIPHERTEXT_CHUNK_SIZE)));
 		assertThat(chunk.data(), contains(decryptedData.get()));
 		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE, chunk.data().remaining());
 		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE, chunk.data().capacity());
@@ -116,6 +119,7 @@ public class ChunkLoaderTest {
 
 		verify(stats).addChunkCacheMiss();
 		verify(stats).addBytesDecrypted(chunk.data().remaining());
+		verify(bufferPool).recycle(argThat(ByteBufferMatcher.hasCapacity(CIPHERTEXT_CHUNK_SIZE)));
 		assertThat(chunk.data(), contains(decryptedData.get()));
 		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE - 3, chunk.data().remaining());
 		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE, chunk.data().capacity());

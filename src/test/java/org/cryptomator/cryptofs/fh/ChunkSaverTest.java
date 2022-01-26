@@ -69,6 +69,7 @@ public class ChunkSaverTest {
 
 		verify(chunkIO).write(argThat(contains(ciphertext.get())), eq(expectedPosition));
 		verify(stats).addBytesEncrypted(Mockito.anyLong());
+		verify(bufferPool).recycle(chunk.data());
 	}
 
 	@Test
@@ -88,6 +89,7 @@ public class ChunkSaverTest {
 
 		verify(chunkIO).write(argThat(contains(ciphertext.get())), eq(expectedPosition));
 		verify(stats).addBytesEncrypted(Mockito.anyLong());
+		verify(bufferPool).recycle(chunk.data());
 	}
 
 	@Test
@@ -99,6 +101,7 @@ public class ChunkSaverTest {
 
 		verifyNoInteractions(chunkIO);
 		verifyNoInteractions(stats);
+		verifyNoInteractions(bufferPool);
 	}
 
 	@Test
@@ -119,6 +122,7 @@ public class ChunkSaverTest {
 		inTest.save(chunkIndex, chunk);
 
 		verify(exceptionsDuringWrite).add(ioException);
+		verify(bufferPool).recycle(chunk.data());
 	}
 
 }

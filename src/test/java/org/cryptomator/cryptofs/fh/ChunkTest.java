@@ -33,15 +33,6 @@ public class ChunkTest {
 		Assertions.assertFalse(inTest.isDirty());
 	}
 
-	@Test
-	public void testToString() {
-		ByteBuffer buffer = ByteBuffer.allocate(100);
-
-		Chunk inTest = new Chunk(buffer, true);
-
-		Assertions.assertEquals("ChunkData(dirty: true, length: 100)", inTest.toString());
-	}
-
 	@Test // https://github.com/cryptomator/cryptofs/issues/85
 	public void testRaceConditionsDuringRead() {
 		ByteBuffer src = StandardCharsets.US_ASCII.encode("abcdefg");
