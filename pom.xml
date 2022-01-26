@@ -20,12 +20,12 @@
 		<!-- dependencies -->
 		<cryptolib.version>2.0.3</cryptolib.version>
 		<jwt.version>3.18.3</jwt.version>
-		<dagger.version>2.37</dagger.version>
-		<guava.version>30.1.1-jre</guava.version>
-		<slf4j.version>1.7.31</slf4j.version>
+		<dagger.version>2.40.5</dagger.version>
+		<guava.version>31.0.1-jre</guava.version>
+		<slf4j.version>1.7.33</slf4j.version>
 
 		<!-- test dependencies -->
-		<junit.jupiter.version>5.7.2</junit.jupiter.version>
+		<junit.jupiter.version>5.8.2</junit.jupiter.version>
 		<mockito.version>3.11.2</mockito.version>
 		<hamcrest.version>2.2</hamcrest.version>
 
@@ -115,7 +115,7 @@
 		<dependency>
 			<groupId>com.google.jimfs</groupId>
 			<artifactId>jimfs</artifactId>
-			<version>1.1</version>
+			<version>1.2</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
