@@ -316,9 +316,8 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		}
 	}
 
-	//TODO: where should the filter decorator be placed? Here or DirectoryStreamFactory?
 	DirectoryStream<Path> newDirectoryStream(CryptoPath cleartextDir, Filter<? super Path> filter) throws IOException {
-		return directoryStreamFactory.newDirectoryStream(cleartextDir, entry -> !entry.getFileName().equals(Constants.DIR_ID_FILE) && filter.accept(entry));
+		return directoryStreamFactory.newDirectoryStream(cleartextDir, filter);
 	}
 
 	FileChannel newFileChannel(CryptoPath cleartextPath, Set<? extends OpenOption> optionsSet, FileAttribute<?>... attrs) throws IOException {
