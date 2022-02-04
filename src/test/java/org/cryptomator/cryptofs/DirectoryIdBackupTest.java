@@ -6,12 +6,9 @@ import org.cryptomator.cryptolib.common.EncryptingWritableByteChannel;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
-import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -19,7 +16,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-@ExtendWith(MockitoExtension.class)
 public class DirectoryIdBackupTest {
 
 	@TempDir
@@ -27,9 +23,7 @@ public class DirectoryIdBackupTest {
 
 	private String dirId = "12345678";
 	private CryptoPathMapper.CiphertextDirectory cipherDirObject;
-	@Mock
 	private EncryptingWritableByteChannel encChannel;
-	@Mock
 	private Cryptor cryptor;
 
 	private DirectoryIdBackup dirIdBackup;
@@ -38,6 +32,9 @@ public class DirectoryIdBackupTest {
 	@BeforeEach
 	public void init() {
 		cipherDirObject = new CryptoPathMapper.CiphertextDirectory(dirId, contentPath);
+		cryptor = Mockito.mock(Cryptor.class);
+		encChannel = Mockito.mock(EncryptingWritableByteChannel.class);
+
 		dirIdBackup = new DirectoryIdBackup(cryptor);
 	}
 
