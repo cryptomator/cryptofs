@@ -11,8 +11,6 @@ import java.nio.channels.ByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 
 /**
  * Single purpose class to backup the directory id of an encrypted directory when it is created.
@@ -38,7 +36,7 @@ public class DirectoryIdBackup {
 	 */
 	public void execute(CryptoPathMapper.CiphertextDirectory ciphertextDirectory) throws IOException {
 		try (var channel = Files.newByteChannel(ciphertextDirectory.path.resolve(Constants.DIR_ID_FILE), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE); //
-			 var encryptingChannel = wrapEncryptionAround(channel,cryptor)) {
+			 var encryptingChannel = wrapEncryptionAround(channel, cryptor)) {
 			encryptingChannel.write(ByteBuffer.wrap(ciphertextDirectory.dirId.getBytes(StandardCharsets.UTF_8)));
 		}
 	}

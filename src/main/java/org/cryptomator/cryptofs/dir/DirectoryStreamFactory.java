@@ -22,7 +22,7 @@ public class DirectoryStreamFactory {
 
 	private final CryptoPathMapper cryptoPathMapper;
 	private final DirectoryStreamComponent.Builder directoryStreamComponentBuilder; // sharing reusable builder via synchronized
-	private final Map<CryptoDirectoryStream, DirectoryStream> streams = new HashMap<>();
+	private final Map<CryptoDirectoryStream, DirectoryStream<Path>> streams = new HashMap<>();
 
 	private volatile boolean closed = false;
 
@@ -61,9 +61,9 @@ public class DirectoryStreamFactory {
 	public synchronized void close() throws IOException {
 		closed = true;
 		IOException exception = new IOException("Close failed");
-		Iterator<Map.Entry<CryptoDirectoryStream, DirectoryStream>> iter = streams.entrySet().iterator();
+		Iterator<Map.Entry<CryptoDirectoryStream, DirectoryStream<Path>>> iter = streams.entrySet().iterator();
 		while (iter.hasNext()) {
-			Map.Entry<CryptoDirectoryStream, DirectoryStream> entry = iter.next();
+			Map.Entry<CryptoDirectoryStream, DirectoryStream<Path>> entry = iter.next();
 			iter.remove();
 			try {
 				entry.getKey().close();
