@@ -353,24 +353,32 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		}
 		CiphertextFilePath ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextFilePath);
 		Path ciphertextFilePath = ciphertextPath.getFilePath();
+
 		if (options.createNew() && openCryptoFiles.get(ciphertextFilePath).isPresent()) {
 			throw new FileAlreadyExistsException(cleartextFilePath.toString());
-		} else {
-			if (ciphertextPath.isShortened() && options.createNew()) {
-				Files.createDirectory(ciphertextPath.getRawPath()); // might throw FileAlreadyExists
-			} else if (ciphertextPath.isShortened()) {
-				Files.createDirectories(ciphertextPath.getRawPath()); // suppresses FileAlreadyExists
-			}
-			FileChannel ch = openCryptoFiles.getOrCreate(ciphertextFilePath).newFileChannel(options); // might throw FileAlreadyExists
-			if (options.writable()) {
-				ciphertextPath.persistLongFileName();
-				stats.incrementAccessesWritten();
-			}
-			if (options.readable()) {
-				stats.incrementAccessesRead();
-			}
-			return ch;
 		}
+
+		//handle shortened files
+		if (ciphertextPath.isShortened() && options.createNew()) {
+			Files.createDirectory(ciphertextPath.getRawPath()); // might throw FileAlreadyExists
+		} else if (ciphertextPath.isShortened()) {
+			Files.createDirectories(ciphertextPath.getRawPath()); // suppresses FileAlreadyExists
+		}
+
+		FileChannel ch = openCryptoFiles.getOrCreate(ciphertextFilePath).newFileChannel(options); // might throw FileAlreadyExists
+		if (options.writable()) {
+			try {
+				ciphertextPath.persistLongFileName();
+			} catch (IOException e) {
+				ch.close();
+				throw e;
+			}
+			stats.incrementAccessesWritten();
+		}
+		if (options.readable()) {
+			stats.incrementAccessesRead();
+		}
+		return ch;
 	}
 
 	void delete(CryptoPath cleartextPath) throws IOException {
