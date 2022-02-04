@@ -3,7 +3,6 @@ package org.cryptomator.cryptofs.dir;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
-import org.cryptomator.cryptofs.DirectoryIdBackup;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,9 +30,8 @@ public class DirectoryStreamFactoryTest {
 	private final CryptoPathMapper cryptoPathMapper = mock(CryptoPathMapper.class);
 	private final DirectoryStreamComponent directoryStreamComp = mock(DirectoryStreamComponent.class);
 	private final DirectoryStreamComponent.Builder directoryStreamBuilder = mock(DirectoryStreamComponent.Builder.class);
-	private final DirectoryIdBackup directoryIdBackup = mock(DirectoryIdBackup.class);
 
-	private final DirectoryStreamFactory inTest = new DirectoryStreamFactory(cryptoPathMapper, directoryStreamBuilder, directoryIdBackup);
+	private final DirectoryStreamFactory inTest = new DirectoryStreamFactory(cryptoPathMapper, directoryStreamBuilder);
 
 	@SuppressWarnings("unchecked")
 
