@@ -38,10 +38,10 @@ class C9sInflator {
 			node.cleartextName = cryptor.fileNameCryptor().decryptFilename(BaseEncoding.base64Url(), node.extractedCiphertext, dirId);
 			return Stream.of(node);
 		} catch (AuthenticationFailedException e) {
-			LOG.warn(node.ciphertextPath + "'s inflated filename could not be decrypted.");
+			LOG.warn("{}'s inflated filename could not be decrypted.", node.ciphertextPath);
 			return Stream.empty();
 		} catch (IOException e) {
-			LOG.warn(node.ciphertextPath + " could not be inflated.");
+			LOG.warn("{} could not be inflated.",node.ciphertextPath);
 			return Stream.empty();
 		}
 	}
