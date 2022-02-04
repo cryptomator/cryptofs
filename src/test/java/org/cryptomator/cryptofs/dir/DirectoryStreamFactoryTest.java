@@ -5,7 +5,11 @@ import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -15,6 +19,7 @@ import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -95,12 +100,33 @@ public class DirectoryStreamFactoryTest {
 	public void testNewDirectoryStreamAfterClosedThrowsClosedFileSystemException() throws IOException {
 		CryptoPath path = mock(CryptoPath.class);
 		Filter<? super Path> filter = mock(Filter.class);
-		
+
 		inTest.close();
-		
+
 		Assertions.assertThrows(ClosedFileSystemException.class, () -> {
 			inTest.newDirectoryStream(path, filter);
 		});
+	}
+
+	@DisplayName("CiphertextDirStream only contains files with names at least 26 chars long and ending with .c9r or .c9s")
+	@ParameterizedTest()
+	@MethodSource("provideFilterExamples")
+	public void testCiphertextDirStreamFilter(String fileName, boolean expected) {
+		Path p = Mockito.mock(Path.class);
+		Mockito.when(p.getFileName()).thenReturn(p);
+		Mockito.when(p.toString()).thenReturn(fileName);
+
+		boolean actual = inTest.cryptofsEncryptedDataFilter(p);
+
+		Assertions.assertEquals(expected, actual);
+	}
+
+	private static Stream<Arguments> provideFilterExamples() {
+		return Stream.of( //
+				Arguments.of("foo25____25chars_____.c9r", false), //
+				Arguments.of("bar25____25chars_____.c9s", false), //
+				Arguments.of("foo26____26chars______.c9r", true), //
+				Arguments.of("bar26____26chars______.c9s", true));
 	}
 
 }

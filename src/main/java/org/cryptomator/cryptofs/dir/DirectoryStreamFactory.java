@@ -4,10 +4,7 @@ import org.cryptomator.cryptofs.CryptoFileSystemScoped;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
-import org.cryptomator.cryptofs.DirectoryIdBackup;
 import org.cryptomator.cryptofs.common.Constants;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
@@ -22,8 +19,6 @@ import java.util.Map;
 
 @CryptoFileSystemScoped
 public class DirectoryStreamFactory {
-
-	private static final Logger LOG = LoggerFactory.getLogger(DirectoryStreamFactory.class);
 
 	private final CryptoPathMapper cryptoPathMapper;
 	private final DirectoryStreamComponent.Builder directoryStreamComponentBuilder; // sharing reusable builder via synchronized
@@ -42,7 +37,8 @@ public class DirectoryStreamFactory {
 			throw new ClosedFileSystemException();
 		}
 		CiphertextDirectory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
-		DirectoryStream<Path> ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path);
+		//TODO:	use HealthCheck with warning and suggest fix to create one
+		DirectoryStream<Path> ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path, this::cryptofsEncryptedDataFilter);
 		CryptoDirectoryStream cleartextDirStream = directoryStreamComponentBuilder //
 				.dirId(ciphertextDir.dirId) //
 				.ciphertextDirectoryStream(ciphertextDirStream) //
@@ -53,6 +49,13 @@ public class DirectoryStreamFactory {
 				.directoryStream();
 		streams.put(cleartextDirStream, ciphertextDirStream);
 		return cleartextDirStream;
+	}
+
+	//visible for testing
+	boolean cryptofsEncryptedDataFilter(Path path) {
+		var tmp = path.getFileName().toString();
+		return tmp.length() >= Constants.MIN_CIPHER_NAME_LENGTH //
+				&& (tmp.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX) || tmp.endsWith(Constants.DEFLATED_FILE_SUFFIX));
 	}
 
 	public synchronized void close() throws IOException {
