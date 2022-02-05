@@ -30,7 +30,7 @@
 		<hamcrest.version>2.2</hamcrest.version>
 
 		<!-- build plugin dependencies -->
-		<dependency-check.version>6.2.2</dependency-check.version>
+		<dependency-check.version>6.5.3</dependency-check.version>
 		<jacoco.version>0.8.7</jacoco.version>
 		<nexus-staging.version>1.6.8</nexus-staging.version>
 	</properties>
