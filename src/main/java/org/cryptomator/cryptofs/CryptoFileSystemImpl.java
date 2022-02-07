@@ -366,19 +366,19 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		}
 
 		FileChannel ch = openCryptoFiles.getOrCreate(ciphertextFilePath).newFileChannel(options); // might throw FileAlreadyExists
-		if (options.writable()) {
-			try {
+		try {
+			if (options.writable()) {
 				ciphertextPath.persistLongFileName();
-			} catch (IOException e) {
-				ch.close();
-				throw e;
+				stats.incrementAccessesWritten();
 			}
-			stats.incrementAccessesWritten();
+			if (options.readable()) {
+				stats.incrementAccessesRead();
+			}
+			return ch;
+		} catch (Exception e){
+			ch.close();
+			throw e;
 		}
-		if (options.readable()) {
-			stats.incrementAccessesRead();
-		}
-		return ch;
 	}
 
 	void delete(CryptoPath cleartextPath) throws IOException {
