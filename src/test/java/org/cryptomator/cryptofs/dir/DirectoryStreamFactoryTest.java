@@ -109,14 +109,14 @@ public class DirectoryStreamFactoryTest {
 	}
 
 	@DisplayName("CiphertextDirStream only contains files with names at least 26 chars long and ending with .c9r or .c9s")
-	@ParameterizedTest()
+	@ParameterizedTest
 	@MethodSource("provideFilterExamples")
 	public void testCiphertextDirStreamFilter(String fileName, boolean expected) {
 		Path p = Mockito.mock(Path.class);
 		Mockito.when(p.getFileName()).thenReturn(p);
 		Mockito.when(p.toString()).thenReturn(fileName);
 
-		boolean actual = inTest.cryptofsEncryptedDataFilter(p);
+		boolean actual = inTest.matchesEncryptedContentPattern(p);
 
 		Assertions.assertEquals(expected, actual);
 	}

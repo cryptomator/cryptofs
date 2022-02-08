@@ -14,7 +14,6 @@ import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 @CryptoFileSystemScoped
@@ -38,7 +37,7 @@ public class DirectoryStreamFactory {
 		}
 		CiphertextDirectory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
 		//TODO:	use HealthCheck with warning and suggest fix to create one
-		DirectoryStream<Path> ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path, this::cryptofsEncryptedDataFilter);
+		DirectoryStream<Path> ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path, this::matchesEncryptedContentPattern);
 		CryptoDirectoryStream cleartextDirStream = directoryStreamComponentBuilder //
 				.dirId(ciphertextDir.dirId) //
 				.ciphertextDirectoryStream(ciphertextDirStream) //
@@ -52,7 +51,7 @@ public class DirectoryStreamFactory {
 	}
 
 	//visible for testing
-	boolean cryptofsEncryptedDataFilter(Path path) {
+	boolean matchesEncryptedContentPattern(Path path) {
 		var tmp = path.getFileName().toString();
 		return tmp.length() >= Constants.MIN_CIPHER_NAME_LENGTH //
 				&& (tmp.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX) || tmp.endsWith(Constants.DEFLATED_FILE_SUFFIX));
@@ -61,9 +60,9 @@ public class DirectoryStreamFactory {
 	public synchronized void close() throws IOException {
 		closed = true;
 		IOException exception = new IOException("Close failed");
-		Iterator<Map.Entry<CryptoDirectoryStream, DirectoryStream<Path>>> iter = streams.entrySet().iterator();
+		var iter = streams.entrySet().iterator();
 		while (iter.hasNext()) {
-			Map.Entry<CryptoDirectoryStream, DirectoryStream<Path>> entry = iter.next();
+			var entry = iter.next();
 			iter.remove();
 			try {
 				entry.getKey().close();
