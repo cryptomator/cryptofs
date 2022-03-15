@@ -422,6 +422,15 @@ public class CryptoFileSystemImplTest {
 		}
 
 		@Test
+		@DisplayName("newFileChannel read-write with long filename closed on failed long name persistence")
+		public void testNewFileChannelClosedOnErrorAfterCreation() throws IOException {
+			Mockito.doThrow(new IOException("ERROR")).when(ciphertextPath).persistLongFileName();
+
+			Assertions.assertThrows(IOException.class, () -> inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.WRITE)));
+			Mockito.verify(fileChannel).close();
+		}
+
+		@Test
 		@DisplayName("newFileChannel read-only with long filename")
 		public void testNewFileChannelReadOnlyShortened() throws IOException {
 			FileChannel ch = inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.READ));

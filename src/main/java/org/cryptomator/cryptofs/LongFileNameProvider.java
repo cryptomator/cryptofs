@@ -101,16 +101,9 @@ public class LongFileNameProvider {
 			this.readonlyFlag = readonlyFlag;
 		}
 
-		public void persist() {
+		public void persist() throws IOException {
 			readonlyFlag.assertWritable();
-			try {
-				persistInternal();
-			} catch (IOException e) {
-				throw new UncheckedIOException(e);
-			}
-		}
 
-		private void persistInternal() throws IOException {
 			Path longNameFile = c9sPath.resolve(INFLATED_FILE_NAME);
 			Files.createDirectories(c9sPath);
 			Files.writeString(longNameFile, longName, UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);

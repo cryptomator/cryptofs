@@ -104,7 +104,7 @@ public class DirIdCheck implements HealthCheck {
 				LOG.warn("Encountered dir.c9r file of size {}", attrs.size());
 				resultCollector.accept(new ObeseDirFile(file, attrs.size()));
 			} else if (attrs.size() == 0) {
-				LOG.warn("Empty dir.c9r file.", file);
+				LOG.warn("Empty dir.c9r file at {}.", file);
 				resultCollector.accept(new EmptyDirFile(file));
 			} else {
 				byte[] bytes = Files.readAllBytes(file);
