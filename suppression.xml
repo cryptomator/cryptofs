@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- This file lists false positives found by org.owasp:dependency-check-maven build plugin -->
 <suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.2.xsd">
+	<suppress>
+		<notes><![CDATA[
+        Does not affect any library
+        ]]></notes>
+		<packageUrl regex="true">^pkg:maven/org\.cryptomator/.*$</packageUrl>
+		<cpe>cpe:/a:cryptomator:cryptomator</cpe>
+		<vulnerabilityName>CVE-2022-25366</vulnerabilityName>
+	</suppress>
 </suppressions>
