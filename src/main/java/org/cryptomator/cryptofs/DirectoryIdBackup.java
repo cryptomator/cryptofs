@@ -18,7 +18,6 @@ import java.nio.file.StandardOpenOption;
 @CryptoFileSystemScoped
 public class DirectoryIdBackup {
 
-	//visible and existing for testing
 	private Cryptor cryptor;
 
 	@Inject

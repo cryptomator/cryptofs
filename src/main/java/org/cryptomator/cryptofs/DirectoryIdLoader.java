@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -24,6 +25,7 @@ class DirectoryIdLoader extends CacheLoader<Path, String> {
 
 	@Override
 	public String load(Path dirFilePath) throws IOException {
+		//TODO: replace by Files.readString(StandardCharsets.UTF_8)
 		try (FileChannel ch = FileChannel.open(dirFilePath, StandardOpenOption.READ);
 			 InputStream in = Channels.newInputStream(ch)) {
 			long size = ch.size();
