@@ -171,7 +171,7 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 	private boolean isEmptyCryptoFsDirectory(Path path) {
 		Predicate<Path> isIgnoredFile = p -> Constants.DIR_ID_FILE.equals(p.getFileName().toString());
 		try (Stream<Path> files = Files.list(path)) {
-			return files.noneMatch(isIgnoredFile.negate());
+			return files.filter(isIgnoredFile.negate()).findFirst().isEmpty();
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
@@ -187,7 +187,7 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 
 		boolean result = isEmptyCryptoFsDirectory(emptiness);
 
-		Assertions.assertTrue(result, "Directory containing only dir id file is not considered empty");
+		Assertions.assertTrue(result, "Ciphertext directory containing only dirId-file should be accepted as an empty dir");
 	}
 
 	private boolean isEncryptedDirectory(Path pathInVault) {
