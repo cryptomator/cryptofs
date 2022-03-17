@@ -3,6 +3,7 @@ package org.cryptomator.cryptofs.ch;
 import com.google.common.base.Preconditions;
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
+import org.cryptomator.cryptofs.fh.BufferPool;
 import org.cryptomator.cryptofs.fh.ByteSource;
 import org.cryptomator.cryptofs.fh.ChunkCache;
 import org.cryptomator.cryptofs.fh.Chunk;
@@ -42,6 +43,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private final FileHeader fileHeader;
 	private final Cryptor cryptor;
 	private final ChunkCache chunkCache;
+	private final BufferPool bufferPool;
 	private final EffectiveOpenOptions options;
 	private final AtomicLong fileSize;
 	private final AtomicReference<Instant> lastModified;
@@ -52,12 +54,13 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private boolean mustWriteHeader;
 
 	@Inject
-	public CleartextFileChannel(FileChannel ciphertextFileChannel, FileHeader fileHeader, @MustWriteHeader boolean mustWriteHeader, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, Supplier<BasicFileAttributeView> attrViewProvider, ExceptionsDuringWrite exceptionsDuringWrite, ChannelCloseListener closeListener, CryptoFileSystemStats stats) {
+	public CleartextFileChannel(FileChannel ciphertextFileChannel, FileHeader fileHeader, @MustWriteHeader boolean mustWriteHeader, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, BufferPool bufferPool, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, Supplier<BasicFileAttributeView> attrViewProvider, ExceptionsDuringWrite exceptionsDuringWrite, ChannelCloseListener closeListener, CryptoFileSystemStats stats) {
 		super(readWriteLock);
 		this.ciphertextFileChannel = ciphertextFileChannel;
 		this.fileHeader = fileHeader;
 		this.cryptor = cryptor;
 		this.chunkCache = chunkCache;
+		this.bufferPool = bufferPool;
 		this.options = options;
 		this.fileSize = fileSize;
 		this.lastModified = lastModified;
@@ -148,7 +151,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			assert len <= cleartextChunkSize;
 			if (offsetInChunk == 0 && len == cleartextChunkSize) {
 				// complete chunk, no need to load and decrypt from file
-				ByteBuffer cleartextChunk = ByteBuffer.allocate(cleartextChunkSize); // TODO: use BufferPool
+				ByteBuffer cleartextChunk = bufferPool.getCleartextBuffer();
 				src.copyTo(cleartextChunk);
 				cleartextChunk.flip();
 				Chunk chunk = new Chunk(cleartextChunk, true);
