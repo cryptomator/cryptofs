@@ -151,10 +151,10 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			assert len <= cleartextChunkSize;
 			if (offsetInChunk == 0 && len == cleartextChunkSize) {
 				// complete chunk, no need to load and decrypt from file
-				ByteBuffer cleartextChunk = bufferPool.getCleartextBuffer();
-				src.copyTo(cleartextChunk);
-				cleartextChunk.flip();
-				Chunk chunk = new Chunk(cleartextChunk, true);
+				ByteBuffer cleartextChunkData = bufferPool.getCleartextBuffer();
+				src.copyTo(cleartextChunkData);
+				cleartextChunkData.flip();
+				Chunk chunk = new Chunk(cleartextChunkData, true);
 				chunkCache.set(chunkIndex, chunk);
 			} else {
 				/*
