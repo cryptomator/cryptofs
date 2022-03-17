@@ -171,7 +171,7 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 	private boolean isEmptyCryptoFsDirectory(Path path) {
 		Predicate<Path> isIgnoredFile = p -> Constants.DIR_ID_FILE.equals(p.getFileName().toString());
 		try (Stream<Path> files = Files.list(path)) {
-			return files.filter(isIgnoredFile.negate()).findFirst().isEmpty();
+			return files.noneMatch(isIgnoredFile.negate());
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
