@@ -15,38 +15,36 @@ class ChunkLoader {
 	private final ChunkIO ciphertext;
 	private final FileHeaderHolder headerHolder;
 	private final CryptoFileSystemStats stats;
+	private final BufferPool bufferPool;
 
 	@Inject
-	public ChunkLoader(Cryptor cryptor, ChunkIO ciphertext, FileHeaderHolder headerHolder, CryptoFileSystemStats stats) {
+	public ChunkLoader(Cryptor cryptor, ChunkIO ciphertext, FileHeaderHolder headerHolder, CryptoFileSystemStats stats, BufferPool bufferPool) {
 		this.cryptor = cryptor;
 		this.ciphertext = ciphertext;
 		this.headerHolder = headerHolder;
 		this.stats = stats;
+		this.bufferPool = bufferPool;
 	}
 
-	public ChunkData load(Long chunkIndex) throws IOException, AuthenticationFailedException {
+	public Chunk load(Long chunkIndex) throws IOException, AuthenticationFailedException {
 		stats.addChunkCacheMiss();
-		int payloadSize = cryptor.fileContentCryptor().cleartextChunkSize();
 		int chunkSize = cryptor.fileContentCryptor().ciphertextChunkSize();
 		long ciphertextPos = chunkIndex * chunkSize + cryptor.fileHeaderCryptor().headerSize();
-		ByteBuffer ciphertextBuf = ByteBuffer.allocate(chunkSize);
-		int read = ciphertext.read(ciphertextBuf, ciphertextPos);
-		if (read == -1) {
-			// append
-			return ChunkData.emptyWithSize(payloadSize);
-		} else {
-			ciphertextBuf.flip();
-			ByteBuffer cleartextBuf = cryptor.fileContentCryptor().decryptChunk(ciphertextBuf, chunkIndex, headerHolder.get(), true);
-			stats.addBytesDecrypted(cleartextBuf.remaining());
-			ByteBuffer cleartextBufWhichCanHoldFullChunk;
-			if (cleartextBuf.capacity() < payloadSize) {
-				cleartextBufWhichCanHoldFullChunk = ByteBuffer.allocate(payloadSize);
-				cleartextBufWhichCanHoldFullChunk.put(cleartextBuf);
-				cleartextBufWhichCanHoldFullChunk.flip();
+		ByteBuffer ciphertextBuf = bufferPool.getCiphertextBuffer();
+		ByteBuffer cleartextBuf = bufferPool.getCleartextBuffer();
+		try {
+			int read = ciphertext.read(ciphertextBuf, ciphertextPos);
+			if (read == -1) {
+				cleartextBuf.limit(0);
 			} else {
-				cleartextBufWhichCanHoldFullChunk = cleartextBuf;
+				ciphertextBuf.flip();
+				cryptor.fileContentCryptor().decryptChunk(ciphertextBuf, cleartextBuf, chunkIndex, headerHolder.get(), true);
+				cleartextBuf.flip();
+				stats.addBytesDecrypted(cleartextBuf.remaining());
 			}
-			return ChunkData.wrap(cleartextBufWhichCanHoldFullChunk);
+			return new Chunk(cleartextBuf, false);
+		} finally {
+			bufferPool.recycle(ciphertextBuf);
 		}
 	}
 

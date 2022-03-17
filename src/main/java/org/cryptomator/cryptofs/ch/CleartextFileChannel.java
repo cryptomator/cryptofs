@@ -3,9 +3,10 @@ package org.cryptomator.cryptofs.ch;
 import com.google.common.base.Preconditions;
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
+import org.cryptomator.cryptofs.fh.BufferPool;
 import org.cryptomator.cryptofs.fh.ByteSource;
 import org.cryptomator.cryptofs.fh.ChunkCache;
-import org.cryptomator.cryptofs.fh.ChunkData;
+import org.cryptomator.cryptofs.fh.Chunk;
 import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptofs.fh.OpenFileModifiedDate;
 import org.cryptomator.cryptofs.fh.OpenFileSize;
@@ -42,6 +43,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private final FileHeader fileHeader;
 	private final Cryptor cryptor;
 	private final ChunkCache chunkCache;
+	private final BufferPool bufferPool;
 	private final EffectiveOpenOptions options;
 	private final AtomicLong fileSize;
 	private final AtomicReference<Instant> lastModified;
@@ -52,12 +54,13 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private boolean mustWriteHeader;
 
 	@Inject
-	public CleartextFileChannel(FileChannel ciphertextFileChannel, FileHeader fileHeader, @MustWriteHeader boolean mustWriteHeader, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, Supplier<BasicFileAttributeView> attrViewProvider, ExceptionsDuringWrite exceptionsDuringWrite, ChannelCloseListener closeListener, CryptoFileSystemStats stats) {
+	public CleartextFileChannel(FileChannel ciphertextFileChannel, FileHeader fileHeader, @MustWriteHeader boolean mustWriteHeader, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, BufferPool bufferPool, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, Supplier<BasicFileAttributeView> attrViewProvider, ExceptionsDuringWrite exceptionsDuringWrite, ChannelCloseListener closeListener, CryptoFileSystemStats stats) {
 		super(readWriteLock);
 		this.ciphertextFileChannel = ciphertextFileChannel;
 		this.fileHeader = fileHeader;
 		this.cryptor = cryptor;
 		this.chunkCache = chunkCache;
+		this.bufferPool = bufferPool;
 		this.options = options;
 		this.fileSize = fileSize;
 		this.lastModified = lastModified;
@@ -104,9 +107,9 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			long pos = position + read;
 			long chunkIndex = pos / payloadSize; // floor by int-truncation
 			int offsetInChunk = (int) (pos % payloadSize); // known to fit in int, because payloadSize is int
-			int len = min(dst.remaining(), payloadSize - offsetInChunk); // known to fit in int, because second argument is int
-			final ChunkData chunkData = chunkCache.get(chunkIndex);
-			chunkData.copyDataStartingAt(offsetInChunk).to(dst);
+			ByteBuffer data = chunkCache.get(chunkIndex).data().duplicate().position(offsetInChunk);
+			int len = min(dst.remaining(), data.remaining()); // known to fit in int, because second argument is int
+			dst.put(data.limit(data.position() + len));
 			read += len;
 		}
 		dst.limit(origLimit);
@@ -148,17 +151,21 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			assert len <= cleartextChunkSize;
 			if (offsetInChunk == 0 && len == cleartextChunkSize) {
 				// complete chunk, no need to load and decrypt from file
-				ChunkData chunkData = ChunkData.emptyWithSize(cleartextChunkSize);
-				chunkData.copyData().from(src);
-				chunkCache.set(chunkIndex, chunkData);
+				ByteBuffer cleartextChunkData = bufferPool.getCleartextBuffer();
+				src.copyTo(cleartextChunkData);
+				cleartextChunkData.flip();
+				Chunk chunk = new Chunk(cleartextChunkData, true);
+				chunkCache.set(chunkIndex, chunk);
 			} else {
 				/*
 				 * TODO performance:
 				 * We don't actually need to read the current data into the cache.
 				 * It would suffice if store the written data and do reading when storing the chunk.
 				 */
-				ChunkData chunkData = chunkCache.get(chunkIndex);
-				chunkData.copyDataStartingAt(offsetInChunk).from(src);
+				Chunk chunk = chunkCache.get(chunkIndex);
+				chunk.data().limit(Math.max(chunk.data().limit(), offsetInChunk + len)); // increase limit (if needed)
+				src.copyTo(chunk.data().duplicate().position(offsetInChunk)); // work on duplicate using correct offset
+				chunk.dirty().set(true);
 			}
 			written += len;
 		}
@@ -190,7 +197,9 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			long indexOfLastChunk = (newSize + cleartextChunkSize - 1) / cleartextChunkSize - 1;
 			int sizeOfIncompleteChunk = (int) (newSize % cleartextChunkSize); // known to fit in int, because cleartextChunkSize is int
 			if (sizeOfIncompleteChunk > 0) {
-				chunkCache.get(indexOfLastChunk).truncate(sizeOfIncompleteChunk);
+				var chunk = chunkCache.get(indexOfLastChunk);
+				chunk.data().limit(sizeOfIncompleteChunk);
+				chunk.dirty().set(true);
 			}
 			long ciphertextFileSize = cryptor.fileHeaderCryptor().headerSize() + cryptor.fileContentCryptor().ciphertextSize(newSize);
 			chunkCache.invalidateAll(); // make sure no chunks _after_ newSize exist that would otherwise be written during the next cache eviction
