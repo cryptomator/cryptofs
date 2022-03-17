@@ -353,15 +353,20 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		}
 		CiphertextFilePath ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextFilePath);
 		Path ciphertextFilePath = ciphertextPath.getFilePath();
+
 		if (options.createNew() && openCryptoFiles.get(ciphertextFilePath).isPresent()) {
 			throw new FileAlreadyExistsException(cleartextFilePath.toString());
-		} else {
-			if (ciphertextPath.isShortened() && options.createNew()) {
-				Files.createDirectory(ciphertextPath.getRawPath()); // might throw FileAlreadyExists
-			} else if (ciphertextPath.isShortened()) {
-				Files.createDirectories(ciphertextPath.getRawPath()); // suppresses FileAlreadyExists
-			}
-			FileChannel ch = openCryptoFiles.getOrCreate(ciphertextFilePath).newFileChannel(options); // might throw FileAlreadyExists
+		}
+
+		//handle shortened files
+		if (ciphertextPath.isShortened() && options.createNew()) {
+			Files.createDirectory(ciphertextPath.getRawPath()); // might throw FileAlreadyExists
+		} else if (ciphertextPath.isShortened()) {
+			Files.createDirectories(ciphertextPath.getRawPath()); // suppresses FileAlreadyExists
+		}
+
+		FileChannel ch = openCryptoFiles.getOrCreate(ciphertextFilePath).newFileChannel(options); // might throw FileAlreadyExists
+		try {
 			if (options.writable()) {
 				ciphertextPath.persistLongFileName();
 				stats.incrementAccessesWritten();
@@ -370,6 +375,9 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 				stats.incrementAccessesRead();
 			}
 			return ch;
+		} catch (Exception e){
+			ch.close();
+			throw e;
 		}
 	}
 

@@ -6,7 +6,6 @@ import org.cryptomator.cryptofs.attr.AttributeProvider;
 import org.cryptomator.cryptofs.attr.AttributeViewProvider;
 import org.cryptomator.cryptofs.attr.AttributeViewType;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
-import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FinallyUtil;
 import org.cryptomator.cryptofs.common.RunnableThrowingException;
 import org.cryptomator.cryptofs.dir.CiphertextDirectoryDeleter;
@@ -114,7 +113,7 @@ public class CryptoFileSystemImplTest {
 			Path other = invocation.getArgument(0);
 			return other;
 		});
-		
+
 		when(fileSystemProperties.maxCleartextNameLength()).thenReturn(32768);
 
 		inTest = new CryptoFileSystemImpl(provider, cryptoFileSystems, pathToVault, cryptor,
@@ -419,6 +418,15 @@ public class CryptoFileSystemImplTest {
 
 			Assertions.assertSame(fileChannel, ch);
 			verify(readonlyFlag, Mockito.never()).assertWritable();
+		}
+
+		@Test
+		@DisplayName("newFileChannel read-write with long filename closed on failed long name persistence")
+		public void testNewFileChannelClosedOnErrorAfterCreation() throws IOException {
+			Mockito.doThrow(new IOException("ERROR")).when(ciphertextPath).persistLongFileName();
+
+			Assertions.assertThrows(IOException.class, () -> inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.WRITE)));
+			Mockito.verify(fileChannel).close();
 		}
 
 		@Test

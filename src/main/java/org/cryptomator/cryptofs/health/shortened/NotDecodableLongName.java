@@ -1,6 +1,5 @@
 package org.cryptomator.cryptofs.health.shortened;
 
-import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.health.api.CommonDetailKeys;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 

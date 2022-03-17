@@ -2,6 +2,7 @@ package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.common.Constants;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Optional;
@@ -59,7 +60,9 @@ public class CiphertextFilePath {
 		return path.toString();
 	}
 
-	public void persistLongFileName() {
-		deflatedFileName.ifPresent(LongFileNameProvider.DeflatedFileName::persist);
+	public void persistLongFileName() throws IOException {
+		if( deflatedFileName.isPresent()) {
+			deflatedFileName.get().persist();
+		}
 	}
 }

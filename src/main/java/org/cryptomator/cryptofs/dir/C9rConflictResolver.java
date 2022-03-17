@@ -13,14 +13,11 @@ import org.slf4j.LoggerFactory;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
 import java.util.stream.Stream;
 
 import static org.cryptomator.cryptofs.common.Constants.DIR_FILE_NAME;
@@ -49,7 +46,7 @@ class C9rConflictResolver {
 	public Stream<Node> process(Node node) {
 		Preconditions.checkArgument(node.extractedCiphertext != null, "Can only resolve conflicts if extractedCiphertext is set");
 		Preconditions.checkArgument(node.cleartextName != null, "Can only resolve conflicts if cleartextName is set");
-		
+
 		String canonicalCiphertextFileName = node.extractedCiphertext + Constants.CRYPTOMATOR_FILE_SUFFIX;
 		if (node.fullCiphertextFileName.equals(canonicalCiphertextFileName)) {
 			// not a conflict:
@@ -85,9 +82,9 @@ class C9rConflictResolver {
 	/**
 	 * Resolves a conflict by renaming the conflicting file.
 	 *
-	 * @param canonicalPath   The path to the original (conflict-free) file.
+	 * @param canonicalPath The path to the original (conflict-free) file.
 	 * @param conflictingPath The path to the potentially conflicting file.
-	 * @param cleartext       The cleartext name of the conflicting file.
+	 * @param cleartext The cleartext name of the conflicting file.
 	 * @return The newly created Node after renaming the conflicting file.
 	 * @throws IOException
 	 */
@@ -121,7 +118,7 @@ class C9rConflictResolver {
 	/**
 	 * Tries to resolve a conflicting file without renaming the file. If successful, only the file with the canonical path will exist afterwards.
 	 *
-	 * @param canonicalPath   The path to the original (conflict-free) resource (must not exist).
+	 * @param canonicalPath The path to the original (conflict-free) resource (must not exist).
 	 * @param conflictingPath The path to the potentially conflicting file (known to exist).
 	 * @return <code>true</code> if the conflict has been resolved.
 	 * @throws IOException
@@ -144,8 +141,8 @@ class C9rConflictResolver {
 	}
 
 	/**
-	 * @param conflictingPath   Path to a potentially conflicting file supposedly containing a directory id
-	 * @param canonicalPath     Path to the canonical file containing a directory id
+	 * @param conflictingPath Path to a potentially conflicting file supposedly containing a directory id
+	 * @param canonicalPath Path to the canonical file containing a directory id
 	 * @param numBytesToCompare Number of bytes to read from each file and compare to each other.
 	 * @return <code>true</code> if the first <code>numBytesToCompare</code> bytes are equal in both files.
 	 * @throws IOException If an I/O exception occurs while reading either file.
@@ -154,16 +151,8 @@ class C9rConflictResolver {
 		if (!Files.isDirectory(conflictingPath.getParent()) || !Files.isDirectory(canonicalPath.getParent())) {
 			return false;
 		}
-		// TODO replace by Files.mismatch() when using JDK > 12
-		try (ReadableByteChannel in1 = Files.newByteChannel(conflictingPath, StandardOpenOption.READ); //
-			 ReadableByteChannel in2 = Files.newByteChannel(canonicalPath, StandardOpenOption.READ)) {
-			ByteBuffer buf1 = ByteBuffer.allocate(numBytesToCompare);
-			ByteBuffer buf2 = ByteBuffer.allocate(numBytesToCompare);
-			int read1 = in1.read(buf1);
-			int read2 = in2.read(buf2);
-			buf1.flip();
-			buf2.flip();
-			return read1 == read2 && buf1.compareTo(buf2) == 0;
+		try {
+			return -1L == Files.mismatch(conflictingPath, canonicalPath);
 		} catch (NoSuchFileException e) {
 			return false;
 		}
