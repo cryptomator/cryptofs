@@ -19,7 +19,7 @@ import static java.lang.String.format;
  *     <li>Capacity of {@code data} is always the cleartext chunk size</li>
  *     <li>During creation, {@code data}'s limit is the chunk's size (last chunk of a file may be smaller)</li>
  *     <li>Writes need to adjust the limit and mark this chunk dirty</li>
- *     <li>Reads need to respec the limit and must not change it</li>
+ *     <li>Reads need to respect the limit and must not change it</li>
  *     <li>When no longer used, the cleartext ByteBuffer may be recycled</li>
  * </ol>
  */
