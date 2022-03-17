@@ -142,6 +142,9 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>3.0.0-M5</version>
 				<configuration>
+					<systemPropertyVariables>
+						<org.slf4j.simpleLogger.defaultLogLevel>ERROR</org.slf4j.simpleLogger.defaultLogLevel>
+					</systemPropertyVariables>
 					<!-- JPMS blocks Mockito from deep reflection unless opening the module... -->
 					<useModulePath>false</useModulePath>
 				</configuration>

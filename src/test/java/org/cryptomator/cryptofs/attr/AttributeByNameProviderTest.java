@@ -89,8 +89,6 @@ public class AttributeByNameProviderTest {
 
 		Map<String, Object> values = inTest.readAttributes(path, "basic:creationTime");
 
-		System.out.println(values);
-
 		MatcherAssert.assertThat(values.entrySet(), contains(entry(is("creationTime"), is(creationTime))));
 	}
 
@@ -119,8 +117,6 @@ public class AttributeByNameProviderTest {
 		when(fileAttributeProvider.readAttributes(path, BasicFileAttributes.class)).thenReturn(basicAttributes);
 
 		Map<String, Object> values = inTest.readAttributes(path, "basic:*");
-
-		System.out.println(values);
 
 		MatcherAssert.assertThat(values.entrySet(),
 				containsInAnyOrder( //
@@ -161,8 +157,6 @@ public class AttributeByNameProviderTest {
 
 		Map<String, Object> values = inTest.readAttributes(path, "*");
 
-		System.out.println(values);
-
 		MatcherAssert.assertThat(values.entrySet(),
 				containsInAnyOrder( //
 						entry(is("creationTime"), is(creationTime)), //
@@ -191,8 +185,6 @@ public class AttributeByNameProviderTest {
 		when(fileAttributeProvider.readAttributes(path, DosFileAttributes.class)).thenReturn(dosAttributes);
 
 		Map<String, Object> values = inTest.readAttributes(path, "dos:readOnly,hidden");
-
-		System.out.println(values);
 
 		MatcherAssert.assertThat(values.entrySet(),
 				containsInAnyOrder( //
