@@ -1,8 +1,8 @@
 ![cryptomator](cryptomator.png)
 
 [![Build](https://github.com/cryptomator/cryptofs/workflows/Build/badge.svg)](https://github.com/cryptomator/cryptofs/actions?query=workflow%3ABuild)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/7248ca7d466843f785f79f33374302c2)](https://www.codacy.com/gh/cryptomator/cryptofs/dashboard)
-[![Codacy Badge](https://api.codacy.com/project/badge/Coverage/7248ca7d466843f785f79f33374302c2)](https://www.codacy.com/gh/cryptomator/cryptofs/dashboard)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=cryptomator_cryptofs&metric=alert_status)](https://sonarcloud.io/dashboard?id=cryptomator_cryptofs)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=cryptomator_cryptofs&metric=coverage)](https://sonarcloud.io/dashboard?id=cryptomator_cryptofs)
 [![Known Vulnerabilities](https://snyk.io/test/github/cryptomator/cryptofs/badge.svg)](https://snyk.io/test/github/cryptomator/cryptofs)
 
 **CryptoFS:** Implementation of the [Cryptomator](https://github.com/cryptomator/cryptomator) encryption scheme.
