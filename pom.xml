@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.cryptomator</groupId>
 	<artifactId>cryptofs</artifactId>
-	<version>2.3.1</version>
+	<version>2.4.0</version>
 	<name>Cryptomator Crypto Filesystem</name>
 	<description>This library provides the Java filesystem provider used by Cryptomator.</description>
 	<url>https://github.com/cryptomator/cryptofs</url>
@@ -19,23 +19,20 @@
 
 		<!-- dependencies -->
 		<cryptolib.version>2.0.3</cryptolib.version>
-		<jwt.version>3.18.1</jwt.version>
-		<dagger.version>2.37</dagger.version>
-		<guava.version>30.1.1-jre</guava.version>
-		<slf4j.version>1.7.31</slf4j.version>
+		<jwt.version>3.19.1</jwt.version>
+		<dagger.version>2.41</dagger.version>
+		<guava.version>31.1-jre</guava.version>
+		<slf4j.version>1.7.36</slf4j.version>
 
 		<!-- test dependencies -->
-		<junit.jupiter.version>5.7.2</junit.jupiter.version>
-		<mockito.version>3.11.2</mockito.version>
+		<junit.jupiter.version>5.8.2</junit.jupiter.version>
+		<mockito.version>4.4.0</mockito.version>
 		<hamcrest.version>2.2</hamcrest.version>
 
 		<!-- build plugin dependencies -->
-		<dependency-check.version>6.2.2</dependency-check.version>
+		<dependency-check.version>7.0.3</dependency-check.version>
 		<jacoco.version>0.8.7</jacoco.version>
-		<nexus-staging.version>1.6.8</nexus-staging.version>
-
-		<!-- empty default needed to not break testing due to maven-surefire-plugin config -->
-		<argLine></argLine>
+		<nexus-staging.version>1.6.12</nexus-staging.version>
 	</properties>
 
 	<licenses>
@@ -118,7 +115,7 @@
 		<dependency>
 			<groupId>com.google.jimfs</groupId>
 			<artifactId>jimfs</artifactId>
-			<version>1.1</version>
+			<version>1.2</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
@@ -145,11 +142,12 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>3.0.0-M5</version>
 				<configuration>
-					<!-- Allow reflection for Mockito, so it can properly mock non-public classes -->
-					<argLine>${argLine} --add-opens=org.cryptomator.cryptofs/org.cryptomator.cryptofs.health.dirid=ALL-UNNAMED
-						--add-opens=org.cryptomator.cryptofs/org.cryptomator.cryptofs.health.type=ALL-UNNAMED
-						--add-opens=org.cryptomator.cryptofs/org.cryptomator.cryptofs.health.shortened=ALL-UNNAMED</argLine>
-			</configuration>
+					<systemPropertyVariables>
+						<org.slf4j.simpleLogger.defaultLogLevel>ERROR</org.slf4j.simpleLogger.defaultLogLevel>
+					</systemPropertyVariables>
+					<!-- JPMS blocks Mockito from deep reflection unless opening the module... -->
+					<useModulePath>false</useModulePath>
+				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

@@ -19,6 +19,10 @@ public class ByteBufferMatcher {
 		return matcher("bytes remaining", is(remaining), ByteBuffer::remaining);
 	}
 
+	public static Matcher<ByteBuffer> hasCapacity(int capacity) {
+		return matcher("capacity", is(capacity), ByteBuffer::capacity);
+	}
+
 	public static Matcher<ByteBuffer> contains(ByteBuffer data) {
 		byte[] arrayData = new byte[data.remaining()];
 		data.get(arrayData);
@@ -27,10 +31,9 @@ public class ByteBufferMatcher {
 
 	public static Matcher<ByteBuffer> contains(byte[] data) {
 		return matcher("remaining data", is(data), buffer -> {
-			int position = buffer.position();
-			byte[] remaining = new byte[buffer.remaining()];
-			buffer.get(remaining);
-			buffer.position(position);
+			ByteBuffer buf = buffer.asReadOnlyBuffer();
+			byte[] remaining = new byte[buf.remaining()];
+			buf.get(remaining);
 			return remaining;
 		});
 	}

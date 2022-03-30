@@ -47,4 +47,9 @@ public class TrailingBytesInNameFile implements DiagnosticResult {
 		return Map.of(CommonDetailKeys.ENCRYPTED_PATH, nameFile.toString(), //
 				"Encrypted Long Name", longName);
 	}
+
+	@Override
+	public String toString() {
+		return String.format("Encrypted filename \"%s\" stored in %s contains trailing bytes.", longName, nameFile);
+	}
 }

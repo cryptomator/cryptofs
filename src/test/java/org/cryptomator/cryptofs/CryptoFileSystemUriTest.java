@@ -63,7 +63,6 @@ public class CryptoFileSystemUriTest {
 		Path absolutePathToVault = Paths.get("c").toAbsolutePath();
 
 		URI uri = CryptoFileSystemUri.create(absolutePathToVault, "a", "b", "c");
-		System.out.println(uri);
 		CryptoFileSystemUri parsed = CryptoFileSystemUri.parse(uri);
 
 		Assertions.assertEquals(absolutePathToVault, parsed.pathToVault());

@@ -40,4 +40,9 @@ public class NotDecodableLongName implements DiagnosticResult {
 		return Map.of(CommonDetailKeys.ENCRYPTED_PATH, nameFile.toString(), //
 				"Stored String", longName);
 	}
+
+	@Override
+	public String toString() {
+		return String.format("String \"%s\" stored in %s is not a valid Cryptomator filename.", longName, nameFile);
+	}
 }

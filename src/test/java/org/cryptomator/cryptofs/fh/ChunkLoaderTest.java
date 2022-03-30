@@ -1,13 +1,17 @@
 package org.cryptomator.cryptofs.fh;
 
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
+import org.cryptomator.cryptofs.matchers.ByteBufferMatcher;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
@@ -18,7 +22,9 @@ import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
 import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.hasAtLeastRemaining;
 import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -37,7 +43,8 @@ public class ChunkLoaderTest {
 	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
 	private final FileHeader header = mock(FileHeader.class);
 	private final FileHeaderHolder headerHolder = mock(FileHeaderHolder.class);
-	private final ChunkLoader inTest = new ChunkLoader(cryptor, chunkIO, headerHolder, stats);
+	private final BufferPool bufferPool = mock(BufferPool.class);
+	private final ChunkLoader inTest = new ChunkLoader(cryptor, chunkIO, headerHolder, stats, bufferPool);
 
 	@BeforeEach
 	public void setup() throws IOException {
@@ -47,58 +54,75 @@ public class ChunkLoaderTest {
 		when(fileContentCryptor.ciphertextChunkSize()).thenReturn(CIPHERTEXT_CHUNK_SIZE);
 		when(fileContentCryptor.cleartextChunkSize()).thenReturn(CLEARTEXT_CHUNK_SIZE);
 		when(fileHeaderCryptor.headerSize()).thenReturn(HEADER_SIZE);
+		when(bufferPool.getCiphertextBuffer()).thenAnswer(invocation -> ByteBuffer.allocate(CIPHERTEXT_CHUNK_SIZE));
+		when(bufferPool.getCleartextBuffer()).thenAnswer(invocation -> ByteBuffer.allocate(CLEARTEXT_CHUNK_SIZE));
 	}
 
 	@Test
-	public void testChunkLoaderReturnsEmptyDataOfChunkAfterEndOfFile() throws IOException, AuthenticationFailedException {
+	@DisplayName("load() returns empty chunk when hitting EOF")
+	public void testLoadReturnsEmptyChunkAfterEOF() throws IOException, AuthenticationFailedException {
 		long chunkIndex = 482L;
 		long chunkOffset = chunkIndex * CIPHERTEXT_CHUNK_SIZE + HEADER_SIZE;
 		when(chunkIO.read(argThat(hasAtLeastRemaining(CIPHERTEXT_CHUNK_SIZE)), eq(chunkOffset))).thenReturn(-1);
 
-		ChunkData data = inTest.load(chunkIndex);
+		Chunk chunk = inTest.load(chunkIndex);
 
 		verify(stats).addChunkCacheMiss();
-		assertThat(data.asReadOnlyBuffer(), contains(ByteBuffer.allocate(0)));
-		data.copyData().from(repeat(9).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer());
-		assertThat(data.asReadOnlyBuffer(), contains(repeat(9).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer())); // asserts that data has at least CLEARTEXT_CHUNK_SIZE capacity
+		verify(bufferPool).recycle(argThat(ByteBufferMatcher.hasCapacity(CIPHERTEXT_CHUNK_SIZE)));
+		Assertions.assertEquals(0, chunk.data().remaining());
+		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE, chunk.data().capacity());
 	}
 
 	@Test
-	public void testChunkLoaderReturnsDecryptedDataOfChunkInsideFile() throws IOException, AuthenticationFailedException {
+	@DisplayName("load() returns full chunk when in middle of file")
+	public void testLoadReturnsDecryptedDataInsideFile() throws IOException, AuthenticationFailedException {
 		long chunkIndex = 482L;
 		long chunkOffset = chunkIndex * CIPHERTEXT_CHUNK_SIZE + HEADER_SIZE;
 		Supplier<ByteBuffer> decryptedData = () -> repeat(9).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer();
 		when(chunkIO.read(argThat(hasAtLeastRemaining(CIPHERTEXT_CHUNK_SIZE)), eq(chunkOffset))).then(fillBufferWith((byte) 3, CIPHERTEXT_CHUNK_SIZE));
-		when(fileContentCryptor.decryptChunk( //
+		doAnswer(invocation -> {
+			ByteBuffer cleartextBuf = invocation.getArgument(1);
+			cleartextBuf.put(decryptedData.get());
+			return null;
+		}).when(fileContentCryptor).decryptChunk(
 				argThat(contains(repeat(3).times(CIPHERTEXT_CHUNK_SIZE).asByteBuffer())), //
-				eq(chunkIndex), eq(header), eq(true)) //
-		).thenReturn(decryptedData.get());
+				Mockito.any(), eq(chunkIndex), eq(header), eq(true) //
+		);
 
-		ChunkData data = inTest.load(chunkIndex);
+		Chunk chunk = inTest.load(chunkIndex);
 
 		verify(stats).addChunkCacheMiss();
-		verify(stats).addBytesDecrypted(data.asReadOnlyBuffer().remaining());
-		assertThat(data.asReadOnlyBuffer(), contains(decryptedData.get()));
+		verify(stats).addBytesDecrypted(chunk.data().remaining());
+		verify(bufferPool).recycle(argThat(ByteBufferMatcher.hasCapacity(CIPHERTEXT_CHUNK_SIZE)));
+		assertThat(chunk.data(), contains(decryptedData.get()));
+		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE, chunk.data().remaining());
+		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE, chunk.data().capacity());
 	}
 
 	@Test
-	public void testChunkLoaderReturnsDecrytedDataOfChunkContainingEndOfFile() throws IOException, AuthenticationFailedException {
+	@DisplayName("load() returns partial chunk near EOF")
+	public void testLoadReturnsDecrytedDataNearEOF() throws IOException, AuthenticationFailedException {
 		long chunkIndex = 482L;
 		long chunkOffset = chunkIndex * CIPHERTEXT_CHUNK_SIZE + HEADER_SIZE;
 		Supplier<ByteBuffer> decryptedData = () -> repeat(9).times(CLEARTEXT_CHUNK_SIZE - 3).asByteBuffer();
 		when(chunkIO.read(argThat(hasAtLeastRemaining(CIPHERTEXT_CHUNK_SIZE)), eq(chunkOffset))).then(fillBufferWith((byte) 3, CIPHERTEXT_CHUNK_SIZE - 10));
-		when(fileContentCryptor.decryptChunk( //
+		doAnswer(invocation -> {
+			ByteBuffer cleartextBuf = invocation.getArgument(1);
+			cleartextBuf.put(decryptedData.get());
+			return null;
+		}).when(fileContentCryptor).decryptChunk(
 				argThat(contains(repeat(3).times(CIPHERTEXT_CHUNK_SIZE - 10).asByteBuffer())), //
-				eq(chunkIndex), eq(header), eq(true)) //
-		).thenReturn(decryptedData.get());
+				any(ByteBuffer.class), eq(chunkIndex), eq(header), eq(true) //
+		);
 
-		ChunkData data = inTest.load(chunkIndex);
+		Chunk chunk = inTest.load(chunkIndex);
 
 		verify(stats).addChunkCacheMiss();
-		verify(stats).addBytesDecrypted(data.asReadOnlyBuffer().remaining());
-		assertThat(data.asReadOnlyBuffer(), contains(decryptedData.get()));
-		data.copyData().from(repeat(9).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer());
-		assertThat(data.asReadOnlyBuffer(), contains(repeat(9).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer())); // asserts that data has at least CLEARTEXT_CHUNK_SIZE capacity
+		verify(stats).addBytesDecrypted(chunk.data().remaining());
+		verify(bufferPool).recycle(argThat(ByteBufferMatcher.hasCapacity(CIPHERTEXT_CHUNK_SIZE)));
+		assertThat(chunk.data(), contains(decryptedData.get()));
+		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE - 3, chunk.data().remaining());
+		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE, chunk.data().capacity());
 	}
 
 	private Answer<Integer> fillBufferWith(byte value, int amount) {
