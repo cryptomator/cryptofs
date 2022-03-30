@@ -19,7 +19,7 @@
 
 		<!-- dependencies -->
 		<cryptolib.version>2.0.3</cryptolib.version>
-		<jwt.version>3.19.0</jwt.version>
+		<jwt.version>3.19.1</jwt.version>
 		<dagger.version>2.41</dagger.version>
 		<guava.version>31.1-jre</guava.version>
 		<slf4j.version>1.7.36</slf4j.version>
