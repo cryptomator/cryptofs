@@ -88,6 +88,7 @@ public class CryptoFileSystemImplTest {
 	private final Symlinks symlinks = mock(Symlinks.class);
 	private final CryptoPathMapper cryptoPathMapper = mock(CryptoPathMapper.class);
 	private final DirectoryIdProvider dirIdProvider = mock(DirectoryIdProvider.class);
+	private final DirectoryIdBackup dirIdBackup = mock(DirectoryIdBackup.class);
 	private final AttributeProvider fileAttributeProvider = mock(AttributeProvider.class);
 	private final AttributeByNameProvider fileAttributeByNameProvider = mock(AttributeByNameProvider.class);
 	private final AttributeViewProvider fileAttributeViewProvider = mock(AttributeViewProvider.class);
@@ -118,7 +119,7 @@ public class CryptoFileSystemImplTest {
 
 		inTest = new CryptoFileSystemImpl(provider, cryptoFileSystems, pathToVault, cryptor,
 				fileStore, stats, cryptoPathMapper, cryptoPathFactory,
-				pathMatcherFactory, directoryStreamFactory, dirIdProvider,
+				pathMatcherFactory, directoryStreamFactory, dirIdProvider, dirIdBackup,
 				fileAttributeProvider, fileAttributeByNameProvider, fileAttributeViewProvider,
 				openCryptoFiles, symlinks, finallyUtil, ciphertextDirDeleter, readonlyFlag,
 				fileSystemProperties);
@@ -1102,6 +1103,37 @@ public class CryptoFileSystemImplTest {
 			verify(dirIdProvider).delete(ciphertextDirFile);
 			verify(cryptoPathMapper).invalidatePathMapping(path);
 		}
+
+		@Test
+		public void createDirectoryBackupsDirIdInCiphertextDirPath() throws IOException {
+			Path ciphertextParent = mock(Path.class, "ciphertextParent");
+			Path ciphertextRawPath = mock(Path.class, "d/00/00/path.c9r");
+			Path ciphertextDirFile = mock(Path.class, "d/00/00/path.c9r/dir.c9r");
+			Path ciphertextDirPath = mock(Path.class, "d/FF/FF/");
+			CiphertextFilePath ciphertextPath = mock(CiphertextFilePath.class, "ciphertext");
+			String dirId = "DirId1234ABC";
+			CiphertextDirectory cipherDirObject = new CiphertextDirectory(dirId, ciphertextDirPath);
+			FileChannelMock channel = new FileChannelMock(100);
+			when(ciphertextRawPath.resolve("dir.c9r")).thenReturn(ciphertextDirFile);
+			when(cryptoPathMapper.getCiphertextFilePath(path)).thenReturn(ciphertextPath);
+			when(cryptoPathMapper.getCiphertextDir(path)).thenReturn(cipherDirObject);
+			when(cryptoPathMapper.getCiphertextDir(parent)).thenReturn(new CiphertextDirectory("parentDirId", ciphertextDirPath));
+			when(cryptoPathMapper.getCiphertextFileType(path)).thenThrow(NoSuchFileException.class);
+			when(ciphertextPath.getRawPath()).thenReturn(ciphertextRawPath);
+			when(ciphertextPath.getDirFilePath()).thenReturn(ciphertextDirFile);
+			when(ciphertextParent.getFileSystem()).thenReturn(fileSystem);
+			when(ciphertextRawPath.getFileSystem()).thenReturn(fileSystem);
+			when(ciphertextDirFile.getFileSystem()).thenReturn(fileSystem);
+			when(ciphertextDirPath.getFileSystem()).thenReturn(fileSystem);
+			when(ciphertextDirFile.getName(3)).thenReturn(mock(Path.class, "path.c9r"));
+			when(provider.newFileChannel(ciphertextDirFile, EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))).thenReturn(channel);
+
+			inTest.createDirectory(path);
+
+			verify(readonlyFlag).assertWritable();
+			verify(dirIdBackup, Mockito.times(1)).execute(cipherDirObject);
+		}
+
 
 	}
 

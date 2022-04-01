@@ -11,7 +11,6 @@ package org.cryptomator.cryptofs.dir;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentMatcher;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -32,7 +31,7 @@ public class CryptoDirectoryStreamTest {
 	private static final Consumer<CryptoDirectoryStream> DO_NOTHING_ON_CLOSE = ignored -> {
 	};
 	private static final Filter<? super Path> ACCEPT_ALL = ignored -> true;
-	
+
 	private NodeProcessor nodeProcessor;
 	private DirectoryStream<Path> dirStream;
 
@@ -70,7 +69,7 @@ public class CryptoDirectoryStreamTest {
 		Mockito.doAnswer(invocation -> {
 			return Stream.empty();
 		}).when(nodeProcessor).process(Mockito.argThat(node -> node.fullCiphertextFileName.equals("invalidCiphertext")));
-		
+
 		try (CryptoDirectoryStream stream = new CryptoDirectoryStream("foo", dirStream, cleartextPath, ACCEPT_ALL, DO_NOTHING_ON_CLOSE, nodeProcessor)) {
 			Iterator<Path> iter = stream.iterator();
 			Assertions.assertTrue(iter.hasNext());
