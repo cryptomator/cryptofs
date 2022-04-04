@@ -53,8 +53,9 @@ public class OrphanDirTest {
 		Files.createDirectories(cipherOrphan);
 
 		cryptor = Mockito.mock(Cryptor.class);
-		Mockito.doReturn(fileNameCryptor).when(cryptor).fileNameCryptor();
 		fileNameCryptor = Mockito.mock(FileNameCryptor.class);
+		Mockito.doReturn(fileNameCryptor).when(cryptor).fileNameCryptor();
+		Mockito.doReturn(fileNameCryptor).when(cryptor).fileNameCryptor();
 	}
 
 
@@ -147,7 +148,7 @@ public class OrphanDirTest {
 		public void testPrepareStepParent() throws IOException {
 			try (var uuidClass = Mockito.mockStatic(UUID.class)) {
 				UUID uuid = Mockito.mock(UUID.class);
-				uuidClass.when(() -> UUID.randomUUID()).thenReturn(uuid);
+				uuidClass.when(UUID::randomUUID).thenReturn(uuid);
 				Mockito.doReturn("aaaaaa").when(uuid).toString();
 
 				result.prepareStepParent(dataDir, cipherRecovery, fileNameCryptor, clearStepParentName);
@@ -168,7 +169,7 @@ public class OrphanDirTest {
 
 			try (var uuidClass = Mockito.mockStatic(UUID.class)) {
 				UUID uuid = Mockito.mock(UUID.class);
-				uuidClass.when(() -> UUID.randomUUID()).thenReturn(uuid);
+				uuidClass.when(UUID::randomUUID).thenReturn(uuid);
 				Mockito.doReturn("aaaaaa").when(uuid).toString();
 
 				result.prepareStepParent(dataDir, cipherRecovery, fileNameCryptor, clearStepParentName);
@@ -189,7 +190,7 @@ public class OrphanDirTest {
 
 			try (var uuidClass = Mockito.mockStatic(UUID.class)) {
 				UUID uuid = Mockito.mock(UUID.class);
-				uuidClass.when(() -> UUID.randomUUID()).thenReturn(uuid);
+				uuidClass.when(UUID::randomUUID).thenReturn(uuid);
 				Mockito.doReturn("aaaaaa").when(uuid).toString();
 
 				result.prepareStepParent(dataDir, cipherRecovery, fileNameCryptor, clearStepParentName);
@@ -202,49 +203,6 @@ public class OrphanDirTest {
 
 
 	@Nested
-	class RestoreFilenameTests {
-
-		@Test
-		@DisplayName("restoring filename of not-shortened resource is successful")
-		void testRestoreFilenameNormalSuccess() throws IOException {
-			Path oldCipherPath = cipherOrphan.resolve("orphan.c9r");
-			Files.createFile(oldCipherPath);
-			//by using Mockito.eq() in filename parameter Mockito.verfiy() not necessary
-			Mockito.when(fileNameCryptor.decryptFilename(Mockito.any(), Mockito.eq("orphan"), Mockito.any())).thenReturn("theTrueName.txt");
-
-			String decryptedFile = result.restoreFileName(oldCipherPath, false, "someDirId", fileNameCryptor);
-
-			Assertions.assertEquals("theTrueName.txt", decryptedFile);
-		}
-
-		@Test
-		@DisplayName("restoring filename of shortened resource is successful")
-		void testRestoreFilenameShortenedSuccess() throws IOException {
-			String inflatedEncryptedName = "OrphanWithLongestName.c9r";
-			Path oldCipherPath = cipherOrphan.resolve("hashOfOrphanWithLongestName.c9r");
-			Path oldCipherPathNameFile = oldCipherPath.resolve(Constants.INFLATED_FILE_NAME);
-			Files.createDirectory(oldCipherPath);
-			Files.writeString(oldCipherPathNameFile, inflatedEncryptedName);
-			//by using Mockito.eq() in filename parameter Mockito.verfiy() not necessary
-			Mockito.when(fileNameCryptor.decryptFilename(Mockito.any(), Mockito.eq("OrphanWithLongestName"), Mockito.any())).thenReturn("theRealLongName.txt");
-
-			String decryptedFile = result.restoreFileName(oldCipherPath, true, "someDirId", fileNameCryptor);
-
-			Assertions.assertEquals("theRealLongName.txt", decryptedFile);
-		}
-
-		@Test
-		@DisplayName("restoreFilename with shortened resource throws IO exception when name.c9s cannot be read")
-		void testRestoreFilenameShortenedIOException() throws IOException {
-			Path oldCipherPath = cipherOrphan.resolve("hashOfOrphanWithLongestName.c9r");
-			Files.createDirectory(oldCipherPath);
-
-			Assertions.assertThrows(IOException.class, () -> result.restoreFileName(oldCipherPath, true, "someDirId", fileNameCryptor));
-		}
-	}
-
-
-	@Nested
 	class RetrieveDirIdTests {
 
 		private OrphanDir resultSpy;
@@ -252,7 +210,6 @@ public class OrphanDirTest {
 		@BeforeEach
 		public void init() {
 			resultSpy = Mockito.spy(result);
-			Mockito.doReturn(fileNameCryptor).when(cryptor).fileNameCryptor();
 		}
 
 		@Test
@@ -312,6 +269,49 @@ public class OrphanDirTest {
 
 
 	@Nested
+	class RestoreFilenameTests {
+
+		@Test
+		@DisplayName("restoring filename of not-shortened resource is successful")
+		void testRestoreFilenameNormalSuccess() throws IOException {
+			Path oldCipherPath = cipherOrphan.resolve("orphan.c9r");
+			Files.createFile(oldCipherPath);
+			//by using Mockito.eq() in filename parameter Mockito.verfiy() not necessary
+			Mockito.when(fileNameCryptor.decryptFilename(Mockito.any(), Mockito.eq("orphan"), Mockito.any())).thenReturn("theTrueName.txt");
+
+			String decryptedFile = result.restoreFileName(oldCipherPath, false, "someDirId", fileNameCryptor);
+
+			Assertions.assertEquals("theTrueName.txt", decryptedFile);
+		}
+
+		@Test
+		@DisplayName("restoring filename of shortened resource is successful")
+		void testRestoreFilenameShortenedSuccess() throws IOException {
+			String inflatedEncryptedName = "OrphanWithLongestName.c9r";
+			Path oldCipherPath = cipherOrphan.resolve("hashOfOrphanWithLongestName.c9r");
+			Path oldCipherPathNameFile = oldCipherPath.resolve(Constants.INFLATED_FILE_NAME);
+			Files.createDirectory(oldCipherPath);
+			Files.writeString(oldCipherPathNameFile, inflatedEncryptedName);
+			//by using Mockito.eq() in filename parameter Mockito.verfiy() not necessary
+			Mockito.when(fileNameCryptor.decryptFilename(Mockito.any(), Mockito.eq("OrphanWithLongestName"), Mockito.any())).thenReturn("theRealLongName.txt");
+
+			String decryptedFile = result.restoreFileName(oldCipherPath, true, "someDirId", fileNameCryptor);
+
+			Assertions.assertEquals("theRealLongName.txt", decryptedFile);
+		}
+
+		@Test
+		@DisplayName("restoreFilename with shortened resource throws IO exception when name.c9s cannot be read")
+		void testRestoreFilenameShortenedIOException() throws IOException {
+			Path oldCipherPath = cipherOrphan.resolve("hashOfOrphanWithLongestName.c9r");
+			Files.createDirectory(oldCipherPath);
+
+			Assertions.assertThrows(IOException.class, () -> result.restoreFileName(oldCipherPath, true, "someDirId", fileNameCryptor));
+		}
+	}
+
+
+	@Nested
 	class AdoptOrphanedTests {
 
 		@Test
@@ -352,7 +352,7 @@ public class OrphanDirTest {
 				Mockito.doReturn(new byte[]{}).when(sha1).digest(Mockito.any());
 
 				BaseEncoding base64url = Mockito.mock(BaseEncoding.class);
-				baseEncodingClass.when(() -> BaseEncoding.base64Url()).thenReturn(base64url);
+				baseEncodingClass.when(BaseEncoding::base64Url).thenReturn(base64url);
 				Mockito.doReturn("adopted_shortened").when(base64url).encode(Mockito.any());
 
 				result.adoptOrphanedResource(oldCipherPath, newClearName, true, stepParentDir, fileNameCryptor, sha1);
@@ -380,7 +380,7 @@ public class OrphanDirTest {
 				Mockito.doReturn(new byte[]{}).when(sha1).digest(Mockito.any());
 
 				BaseEncoding base64url = Mockito.mock(BaseEncoding.class);
-				baseEncodingClass.when(() -> BaseEncoding.base64Url()).thenReturn(base64url);
+				baseEncodingClass.when(BaseEncoding::base64Url).thenReturn(base64url);
 				Mockito.doReturn("adopted_shortened").when(base64url).encode(Mockito.any());
 
 				result.adoptOrphanedResource(oldCipherPath, newClearName, true, stepParentDir, fileNameCryptor, sha1);
@@ -395,8 +395,8 @@ public class OrphanDirTest {
 
 
 	@Test
-	@DisplayName("fix() prepares vault, process every resource in orphanDir and deletes orphanDir")
-	public void testFix() throws IOException {
+	@DisplayName("fix() prepares vault, process every resource in orphanDir and deletes orphanDir (dirId not present)")
+	public void testFixNoDirId() throws IOException {
 		result = new OrphanDir(dataDir.relativize(cipherOrphan));
 		var resultSpy = Mockito.spy(result);
 
@@ -410,8 +410,6 @@ public class OrphanDirTest {
 		VaultConfig config = Mockito.mock(VaultConfig.class);
 		Mockito.doReturn(170).when(config).getShorteningThreshold();
 		Masterkey masterkey = Mockito.mock(Masterkey.class);
-		Cryptor generalCryptor = Mockito.mock(Cryptor.class);
-		Mockito.doReturn(fileNameCryptor).when(generalCryptor).fileNameCryptor();
 
 		Mockito.doReturn(cipherRecovery).when(resultSpy).prepareRecoveryDir(pathToVault, fileNameCryptor);
 		Mockito.doReturn(stepParentDir).when(resultSpy).prepareStepParent(Mockito.eq(dataDir), Mockito.eq(cipherRecovery), Mockito.eq(fileNameCryptor), Mockito.any());
@@ -420,7 +418,7 @@ public class OrphanDirTest {
 			return null;
 		}).when(resultSpy).adoptOrphanedResource(Mockito.any(), Mockito.any(), Mockito.anyBoolean(), Mockito.eq(stepParentDir), Mockito.eq(fileNameCryptor), Mockito.any());
 
-		resultSpy.fix(pathToVault, config, masterkey, generalCryptor);
+		resultSpy.fix(pathToVault, config, masterkey, cryptor);
 
 		Mockito.verify(resultSpy, Mockito.times(2)).adoptOrphanedResource(Mockito.any(), Mockito.any(), Mockito.anyBoolean(), Mockito.eq(stepParentDir), Mockito.eq(fileNameCryptor), Mockito.any());
 		Assertions.assertTrue(Files.notExists(cipherOrphan));
@@ -428,13 +426,11 @@ public class OrphanDirTest {
 
 
 	@Test
-	@DisplayName("results with same orphan have write to same cleartext stepparent")
+	@DisplayName("results with same orphan write to same cleartext stepparent")
 	public void testFixRepeated() throws IOException {
 		VaultConfig config = Mockito.mock(VaultConfig.class);
 		Mockito.doReturn(170).when(config).getShorteningThreshold();
 		Masterkey masterkey = Mockito.mock(Masterkey.class);
-		Cryptor generalCryptor = Mockito.mock(Cryptor.class);
-		Mockito.doReturn(fileNameCryptor).when(generalCryptor).fileNameCryptor();
 
 		AtomicReference<String> clearStepparentNameRef = new AtomicReference<>("");
 
@@ -451,8 +447,8 @@ public class OrphanDirTest {
 		Mockito.doReturn(cipherRecovery).when(continuedSpy).prepareRecoveryDir(pathToVault, fileNameCryptor);
 		Mockito.doThrow(IOException.class).when(continuedSpy).prepareStepParent(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
 
-		Assertions.assertThrows(IOException.class, () -> interruptedSpy.fix(pathToVault, config, masterkey, generalCryptor));
-		Assertions.assertThrows(IOException.class, () -> continuedSpy.fix(pathToVault, config, masterkey, generalCryptor));
+		Assertions.assertThrows(IOException.class, () -> interruptedSpy.fix(pathToVault, config, masterkey, cryptor));
+		Assertions.assertThrows(IOException.class, () -> continuedSpy.fix(pathToVault, config, masterkey, cryptor));
 
 		Mockito.verify(continuedSpy).prepareStepParent(dataDir, cipherRecovery, fileNameCryptor, clearStepparentNameRef.get());
 	}
@@ -474,11 +470,9 @@ public class OrphanDirTest {
 		VaultConfig config = Mockito.mock(VaultConfig.class);
 		Mockito.doReturn(170).when(config).getShorteningThreshold();
 		Masterkey masterkey = Mockito.mock(Masterkey.class);
-		Cryptor generalCryptor = Mockito.mock(Cryptor.class);
-		Mockito.doReturn(fileNameCryptor).when(generalCryptor).fileNameCryptor();
 		Mockito.doReturn(cipherRecovery).when(resultSpy).prepareRecoveryDir(pathToVault, fileNameCryptor);
 
-		resultSpy.fix(pathToVault, config, masterkey, generalCryptor);
+		resultSpy.fix(pathToVault, config, masterkey, cryptor);
 
 		Mockito.verify(resultSpy, Mockito.never()).prepareStepParent(Mockito.eq(dataDir), Mockito.eq(cipherRecovery), Mockito.eq(fileNameCryptor), Mockito.any());
 		Mockito.verify(resultSpy, Mockito.never()).adoptOrphanedResource(Mockito.any(), Mockito.any(), Mockito.anyBoolean(), Mockito.any(), Mockito.eq(fileNameCryptor), Mockito.any());
