@@ -10,7 +10,7 @@ import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
-import org.cryptomator.cryptolib.common.EncryptingReadableByteChannel;
+import org.cryptomator.cryptolib.common.DecryptingReadableByteChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -161,29 +161,31 @@ public class OrphanDir implements DiagnosticResult {
 	//visible for testing
 	Optional<String> retrieveDirId(Path orphanedDir, Cryptor cryptor) {
 		var dirIdFile = orphanedDir.resolve(Constants.DIR_ID_FILE);
-		var dirIdBuffer = new byte[36]; //a dir id contains at most 36 ascii chars, in this impl encoded in utf8
+		var dirIdBuffer = ByteBuffer.allocate(36); //a dir id contains at most 36 ascii chars, in this impl encoded in utf8
+
 		try (var channel = Files.newByteChannel(dirIdFile, StandardOpenOption.READ); //
 			 var decryptingChannel = wrapDecryptionAround(channel, cryptor)) {
-			decryptingChannel.read(ByteBuffer.wrap(dirIdBuffer));
+			decryptingChannel.read(dirIdBuffer);
+			dirIdBuffer.flip();
 		} catch (IOException e) {
 			LOG.info("Unable to read dirIdFile of {}.", orphanedDir, e);
 			return Optional.empty();
 		}
 
-		var allegedDirId = new String(dirIdBuffer, StandardCharsets.UTF_8).trim();
+		var allegedDirId = StandardCharsets.UTF_8.decode(dirIdBuffer).toString();
 
 		var dirIdHash = orphanedDir.getParent().getFileName().toString() + orphanedDir.getFileName().toString();
 		if (dirIdHash.equals(cryptor.fileNameCryptor().hashDirectoryId(allegedDirId))) {
-			LOG.info("Hash of read directory id {} does not match actual cipher dir hash.", allegedDirId);
 			return Optional.of(allegedDirId);
 		} else {
+			LOG.info("Hash of read directory id {} does not match actual cipher dir hash {}.", allegedDirId, dirIdHash);
 			return Optional.empty();
 		}
 	}
 
 	//exists and visible for testability
-	EncryptingReadableByteChannel wrapDecryptionAround(ByteChannel channel, Cryptor cryptor) {
-		return new EncryptingReadableByteChannel(channel, cryptor);
+	DecryptingReadableByteChannel wrapDecryptionAround(ByteChannel channel, Cryptor cryptor) {
+		return new DecryptingReadableByteChannel(channel, cryptor, true);
 	}
 
 	//visible for testing

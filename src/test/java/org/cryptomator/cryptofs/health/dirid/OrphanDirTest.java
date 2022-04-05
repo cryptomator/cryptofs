@@ -8,7 +8,7 @@ import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
-import org.cryptomator.cryptolib.common.EncryptingReadableByteChannel;
+import org.cryptomator.cryptolib.common.DecryptingReadableByteChannel;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,6 +18,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
@@ -219,13 +220,15 @@ public class OrphanDirTest {
 		public void testRetrieveDirIdSuccess() throws IOException {
 			var dirIdFile = cipherOrphan.resolve(Constants.DIR_ID_FILE);
 			var dirId = "random-uuid-with-at-most-36chars";
+
 			Files.writeString(dirIdFile, dirId, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
-			EncryptingReadableByteChannel dirIdReadChannel = Mockito.mock(EncryptingReadableByteChannel.class);
+			DecryptingReadableByteChannel dirIdReadChannel = Mockito.mock(DecryptingReadableByteChannel.class);
 
 			Mockito.doReturn(dirIdReadChannel).when(resultSpy).wrapDecryptionAround(Mockito.any(), Mockito.eq(cryptor));
 			Mockito.doAnswer(invocationOnMock -> {
+				ByteBuffer buf = invocationOnMock.getArgument(0);
 				try (ReadableByteChannel channel = Files.newByteChannel(dirIdFile, StandardOpenOption.READ)) {
-					return channel.read(invocationOnMock.getArgument(0));
+					return channel.read(buf);
 				}
 			}).when(dirIdReadChannel).read(Mockito.any());
 
@@ -252,7 +255,7 @@ public class OrphanDirTest {
 			var dirIdFile = cipherOrphan.resolve(Constants.DIR_ID_FILE);
 			var dirId = "anOverlyComplexAndCompletelyRandomExampleOfHowAnDirectoryIdIsTooLong";
 			Files.writeString(dirIdFile, dirId, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
-			EncryptingReadableByteChannel dirIdReadChannel = Mockito.mock(EncryptingReadableByteChannel.class);
+			DecryptingReadableByteChannel dirIdReadChannel = Mockito.mock(DecryptingReadableByteChannel.class);
 
 			Mockito.doReturn(dirIdReadChannel).when(resultSpy).wrapDecryptionAround(Mockito.any(), Mockito.eq(cryptor));
 			Mockito.doAnswer(invocationOnMock -> {
