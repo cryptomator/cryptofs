@@ -224,7 +224,7 @@ public class OrphanDirTest {
 			Files.writeString(dirIdFile, dirId, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 			DecryptingReadableByteChannel dirIdReadChannel = Mockito.mock(DecryptingReadableByteChannel.class);
 
-			Mockito.doReturn(dirIdReadChannel).when(resultSpy).wrapDecryptionAround(Mockito.any(), Mockito.eq(cryptor));
+			Mockito.doReturn(dirIdReadChannel).when(resultSpy).createDecryptingReadableByteChannel(Mockito.any(), Mockito.eq(cryptor));
 			Mockito.doAnswer(invocationOnMock -> {
 				ByteBuffer buf = invocationOnMock.getArgument(0);
 				try (ReadableByteChannel channel = Files.newByteChannel(dirIdFile, StandardOpenOption.READ)) {
@@ -232,7 +232,7 @@ public class OrphanDirTest {
 				}
 			}).when(dirIdReadChannel).read(Mockito.any());
 
-			Mockito.when(fileNameCryptor.hashDirectoryId(Mockito.eq(dirId))).thenReturn("333333");
+			Mockito.when(fileNameCryptor.hashDirectoryId(dirId)).thenReturn("333333");
 
 			var maybeDirId = resultSpy.retrieveDirId(cipherOrphan, cryptor);
 
@@ -257,13 +257,13 @@ public class OrphanDirTest {
 			Files.writeString(dirIdFile, dirId, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 			DecryptingReadableByteChannel dirIdReadChannel = Mockito.mock(DecryptingReadableByteChannel.class);
 
-			Mockito.doReturn(dirIdReadChannel).when(resultSpy).wrapDecryptionAround(Mockito.any(), Mockito.eq(cryptor));
+			Mockito.doReturn(dirIdReadChannel).when(resultSpy).createDecryptingReadableByteChannel(Mockito.any(), Mockito.eq(cryptor));
 			Mockito.doAnswer(invocationOnMock -> {
 				try (ReadableByteChannel channel = Files.newByteChannel(dirIdFile, StandardOpenOption.READ)) {
 					return channel.read(invocationOnMock.getArgument(0));
 				}
 			}).when(dirIdReadChannel).read(Mockito.any());
-			Mockito.when(fileNameCryptor.hashDirectoryId(Mockito.eq(dirId.substring(0, 36)))).thenReturn("123456");
+			Mockito.when(fileNameCryptor.hashDirectoryId(dirId.substring(0, 36))).thenReturn("123456");
 
 			var maybeDirId = resultSpy.retrieveDirId(cipherOrphan, cryptor);
 
@@ -284,7 +284,7 @@ public class OrphanDirTest {
 			//by using Mockito.eq() in filename parameter Mockito.verfiy() not necessary
 			Mockito.when(fileNameCryptor.decryptFilename(Mockito.any(), Mockito.eq("orphan"), Mockito.any())).thenReturn("theTrueName.txt");
 
-			String decryptedFile = result.restoreFileName(oldCipherPath, false, "someDirId", fileNameCryptor);
+			String decryptedFile = result.decryptFileName(oldCipherPath, false, "someDirId", fileNameCryptor);
 
 			Assertions.assertEquals("theTrueName.txt", decryptedFile);
 		}
@@ -300,7 +300,7 @@ public class OrphanDirTest {
 			//by using Mockito.eq() in filename parameter Mockito.verfiy() not necessary
 			Mockito.when(fileNameCryptor.decryptFilename(Mockito.any(), Mockito.eq("OrphanWithLongestName"), Mockito.any())).thenReturn("theRealLongName.txt");
 
-			String decryptedFile = result.restoreFileName(oldCipherPath, true, "someDirId", fileNameCryptor);
+			String decryptedFile = result.decryptFileName(oldCipherPath, true, "someDirId", fileNameCryptor);
 
 			Assertions.assertEquals("theRealLongName.txt", decryptedFile);
 		}
@@ -311,7 +311,7 @@ public class OrphanDirTest {
 			Path oldCipherPath = cipherOrphan.resolve("hashOfOrphanWithLongestName.c9r");
 			Files.createDirectory(oldCipherPath);
 
-			Assertions.assertThrows(IOException.class, () -> result.restoreFileName(oldCipherPath, true, "someDirId", fileNameCryptor));
+			Assertions.assertThrows(IOException.class, () -> result.decryptFileName(oldCipherPath, true, "someDirId", fileNameCryptor));
 		}
 	}
 
@@ -452,8 +452,8 @@ public class OrphanDirTest {
 		Mockito.doReturn(cipherRecovery).when(resultSpy).prepareRecoveryDir(pathToVault, fileNameCryptor);
 		Mockito.doReturn(stepParentDir).when(resultSpy).prepareStepParent(Mockito.eq(dataDir), Mockito.eq(cipherRecovery), Mockito.eq(fileNameCryptor), Mockito.any());
 		Mockito.doReturn(dirId).when(resultSpy).retrieveDirId(cipherOrphan, cryptor);
-		Mockito.doThrow(new IOException("4cc3ss d3n13d")).when(resultSpy).restoreFileName(Mockito.eq(orphan1), Mockito.anyBoolean(), Mockito.eq(dirId.get()), Mockito.eq(fileNameCryptor));
-		Mockito.doThrow(new AuthenticationFailedException("d0 y0u kn0w m3")).when(resultSpy).restoreFileName(Mockito.eq(orphan2), Mockito.anyBoolean(), Mockito.eq(dirId.get()), Mockito.eq(fileNameCryptor));
+		Mockito.doThrow(new IOException("4cc3ss d3n13d")).when(resultSpy).decryptFileName(Mockito.eq(orphan1), Mockito.anyBoolean(), Mockito.eq(dirId.get()), Mockito.eq(fileNameCryptor));
+		Mockito.doThrow(new AuthenticationFailedException("d0 y0u kn0w m3")).when(resultSpy).decryptFileName(Mockito.eq(orphan2), Mockito.anyBoolean(), Mockito.eq(dirId.get()), Mockito.eq(fileNameCryptor));
 		Mockito.doAnswer(invocationOnMock -> {
 			Files.delete((Path) invocationOnMock.getArgument(0));
 			return null;
@@ -467,7 +467,7 @@ public class OrphanDirTest {
 	}
 
 	@Test
-	@DisplayName("fix() prepares vault, process every resource in orphanDir and deletes orphanDir (dirId present)")
+	@DisplayName("fix() prepares vault, process every resource (except dirId file) in orphanDir and deletes orphanDir (dirId present)")
 	public void testFixWithDirId() throws IOException {
 		result = new OrphanDir(dataDir.relativize(cipherOrphan));
 		var resultSpy = Mockito.spy(result);
@@ -491,15 +491,17 @@ public class OrphanDirTest {
 		Mockito.doReturn(cipherRecovery).when(resultSpy).prepareRecoveryDir(pathToVault, fileNameCryptor);
 		Mockito.doReturn(stepParentDir).when(resultSpy).prepareStepParent(Mockito.eq(dataDir), Mockito.eq(cipherRecovery), Mockito.eq(fileNameCryptor), Mockito.any());
 		Mockito.doReturn(dirId).when(resultSpy).retrieveDirId(cipherOrphan, cryptor);
-		Mockito.doReturn(lostName1).when(resultSpy).restoreFileName(Mockito.eq(orphan1), Mockito.anyBoolean(), Mockito.eq(dirId.get()), Mockito.eq(fileNameCryptor));
-		Mockito.doReturn(lostName2).when(resultSpy).restoreFileName(Mockito.eq(orphan2), Mockito.anyBoolean(), Mockito.eq(dirId.get()), Mockito.eq(fileNameCryptor));
+		Mockito.doReturn(lostName1).when(resultSpy).decryptFileName(Mockito.eq(orphan1), Mockito.anyBoolean(), Mockito.eq(dirId.get()), Mockito.eq(fileNameCryptor));
+		Mockito.doReturn(lostName2).when(resultSpy).decryptFileName(Mockito.eq(orphan2), Mockito.anyBoolean(), Mockito.eq(dirId.get()), Mockito.eq(fileNameCryptor));
 		Mockito.doAnswer(invocationOnMock -> {
-			Files.delete((Path) invocationOnMock.getArgument(0));
+			Path orphanedResource = invocationOnMock.getArgument(0);
+			Files.delete(orphanedResource);
 			return null;
 		}).when(resultSpy).adoptOrphanedResource(Mockito.any(), Mockito.any(), Mockito.anyBoolean(), Mockito.eq(stepParentDir), Mockito.eq(fileNameCryptor), Mockito.any());
 
 		resultSpy.fix(pathToVault, config, masterkey, cryptor);
 
+		Mockito.verify(resultSpy, Mockito.never()).adoptOrphanedResource(Mockito.eq(cipherOrphan.resolve(Constants.DIR_ID_FILE)), Mockito.any(), Mockito.anyBoolean(), Mockito.eq(stepParentDir), Mockito.eq(fileNameCryptor), Mockito.any());
 		Mockito.verify(resultSpy, Mockito.times(1)).adoptOrphanedResource(Mockito.eq(orphan1), Mockito.eq(lostName1), Mockito.anyBoolean(), Mockito.eq(stepParentDir), Mockito.eq(fileNameCryptor), Mockito.any());
 		Mockito.verify(resultSpy, Mockito.times(1)).adoptOrphanedResource(Mockito.eq(orphan2), Mockito.eq(lostName2), Mockito.anyBoolean(), Mockito.eq(stepParentDir), Mockito.eq(fileNameCryptor), Mockito.any());
 		Assertions.assertTrue(Files.notExists(cipherOrphan));

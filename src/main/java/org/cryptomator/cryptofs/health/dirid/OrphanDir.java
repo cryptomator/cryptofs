@@ -85,24 +85,23 @@ public class OrphanDir implements DiagnosticResult {
 		String longNameSuffix = createClearnameToBeShortened(config.getShorteningThreshold());
 		Optional<String> dirId = retrieveDirId(orphanedDir, cryptor);
 
-		try (var orphanedContentStream = Files.newDirectoryStream(orphanedDir, p -> !p.getFileName().toString().equals(Constants.DIR_ID_FILE))) { //TODO: test the filter
+		try (var orphanedContentStream = Files.newDirectoryStream(orphanedDir, p -> !Constants.DIR_ID_FILE.equals(p.getFileName().toString()))) {
 			for (Path orphanedResource : orphanedContentStream) {
 				boolean isShortened = orphanedResource.toString().endsWith(Constants.DEFLATED_FILE_SUFFIX);
 				//@formatter:off
 				var newClearName = dirId.map(id -> {
-						try {
-							return restoreFileName(orphanedResource, isShortened, id, cryptor.fileNameCryptor());
-						} catch (IOException | AuthenticationFailedException e) {
-							LOG.warn("Unable to read and decrypt (long) file name of {}:",orphanedResource,e);
-							return null;
-						}
-					}).orElseGet(() ->
-						switch (determineCiphertextFileType(orphanedResource)) {
-							case FILE -> FILE_PREFIX + fileCounter.getAndIncrement();
-							case DIRECTORY -> DIR_PREFIX + dirCounter.getAndIncrement();
-							case SYMLINK -> SYMLINK_PREFIX + symlinkCounter.getAndIncrement();
-						} + "_" + runId + (isShortened ? longNameSuffix : "")
-					);
+							try {
+								return decryptFileName(orphanedResource, isShortened, id, cryptor.fileNameCryptor());
+							} catch (IOException | AuthenticationFailedException e) {
+								LOG.warn("Unable to read and decrypt (long) file name of {}:", orphanedResource, e);
+								return null;
+							}})
+						.orElseGet(() ->
+							switch (determineCiphertextFileType(orphanedResource)) {
+								case FILE -> FILE_PREFIX + fileCounter.getAndIncrement();
+								case DIRECTORY -> DIR_PREFIX + dirCounter.getAndIncrement();
+								case SYMLINK -> SYMLINK_PREFIX + symlinkCounter.getAndIncrement();
+							} + "_" + runId + (isShortened ? longNameSuffix : ""));
 				//@formatter:on
 				adoptOrphanedResource(orphanedResource, newClearName, isShortened, stepParentDir, cryptor.fileNameCryptor(), sha1);
 			}
@@ -121,7 +120,7 @@ public class OrphanDir implements DiagnosticResult {
 		Path vaultCipherRootPath = dataDir.resolve(rootDirHash.substring(0, 2)).resolve(rootDirHash.substring(2)).toAbsolutePath();
 
 		//check if recovery dir exists and has unique recovery id
-		String cipherRecoveryDirName = convertClearToCiphertext(cryptor, Constants.RECOVERY_DIR_NAME, Constants.ROOT_DIR_ID);
+		String cipherRecoveryDirName = encrypt(cryptor, Constants.RECOVERY_DIR_NAME, Constants.ROOT_DIR_ID);
 		Path cipherRecoveryDirFile = vaultCipherRootPath.resolve(cipherRecoveryDirName + "/" + Constants.DIR_FILE_NAME);
 		if (Files.notExists(cipherRecoveryDirFile, LinkOption.NOFOLLOW_LINKS)) {
 			Files.createDirectories(cipherRecoveryDirFile.getParent());
@@ -142,7 +141,7 @@ public class OrphanDir implements DiagnosticResult {
 	// visible for testing
 	CryptoPathMapper.CiphertextDirectory prepareStepParent(Path dataDir, Path cipherRecoveryDir, FileNameCryptor cryptor, String clearStepParentDirName) throws IOException {
 		//create "step-parent" directory to move orphaned files to
-		String cipherStepParentDirName = convertClearToCiphertext(cryptor, clearStepParentDirName, Constants.RECOVERY_DIR_ID);
+		String cipherStepParentDirName = encrypt(cryptor, clearStepParentDirName, Constants.RECOVERY_DIR_ID);
 		Path cipherStepParentDirFile = cipherRecoveryDir.resolve(cipherStepParentDirName + "/" + Constants.DIR_FILE_NAME);
 		final String stepParentUUID;
 		if (Files.exists(cipherStepParentDirFile, LinkOption.NOFOLLOW_LINKS)) {
@@ -164,7 +163,7 @@ public class OrphanDir implements DiagnosticResult {
 		var dirIdBuffer = ByteBuffer.allocate(36); //a dir id contains at most 36 ascii chars, in this impl encoded in utf8
 
 		try (var channel = Files.newByteChannel(dirIdFile, StandardOpenOption.READ); //
-			 var decryptingChannel = wrapDecryptionAround(channel, cryptor)) {
+			 var decryptingChannel = createDecryptingReadableByteChannel(channel, cryptor)) {
 			decryptingChannel.read(dirIdBuffer);
 			dirIdBuffer.flip();
 		} catch (IOException e) {
@@ -184,12 +183,12 @@ public class OrphanDir implements DiagnosticResult {
 	}
 
 	//exists and visible for testability
-	DecryptingReadableByteChannel wrapDecryptionAround(ByteChannel channel, Cryptor cryptor) {
+	DecryptingReadableByteChannel createDecryptingReadableByteChannel(ByteChannel channel, Cryptor cryptor) {
 		return new DecryptingReadableByteChannel(channel, cryptor, true);
 	}
 
 	//visible for testing
-	String restoreFileName(Path orphanedResource, boolean isShortened, String dirId, FileNameCryptor cryptor) throws IOException, AuthenticationFailedException {
+	String decryptFileName(Path orphanedResource, boolean isShortened, String dirId, FileNameCryptor cryptor) throws IOException, AuthenticationFailedException {
 		final String filenameWithExtension;
 		if (isShortened) {
 			filenameWithExtension = Files.readString(orphanedResource.resolve(Constants.INFLATED_FILE_NAME));
@@ -202,9 +201,9 @@ public class OrphanDir implements DiagnosticResult {
 	}
 
 	// visible for testing
-	void adoptOrphanedResource(Path oldCipherPath, String newClearname, boolean isShortend, CryptoPathMapper.CiphertextDirectory stepParentDir, FileNameCryptor cryptor, MessageDigest sha1) throws IOException {
-		var newCipherName = convertClearToCiphertext(cryptor, newClearname, stepParentDir.dirId);
-		if (isShortend) {
+	void adoptOrphanedResource(Path oldCipherPath, String newClearName, boolean isShortened, CryptoPathMapper.CiphertextDirectory stepParentDir, FileNameCryptor cryptor, MessageDigest sha1) throws IOException {
+		var newCipherName = encrypt(cryptor, newClearName, stepParentDir.dirId);
+		if (isShortened) {
 			var deflatedName = BaseEncoding.base64Url().encode(sha1.digest(newCipherName.getBytes(StandardCharsets.UTF_8))) + Constants.DEFLATED_FILE_SUFFIX;
 			Path targetPath = stepParentDir.path.resolve(deflatedName);
 			Files.move(oldCipherPath, targetPath);
@@ -224,7 +223,7 @@ public class OrphanDir implements DiagnosticResult {
 		return LONG_NAME_SUFFIX_BASE.repeat((neededLength % LONG_NAME_SUFFIX_BASE.length()) + 1);
 	}
 
-	private static String convertClearToCiphertext(FileNameCryptor cryptor, String clearTextName, String dirId) {
+	private static String encrypt(FileNameCryptor cryptor, String clearTextName, String dirId) {
 		return cryptor.encryptFilename(BaseEncoding.base64Url(), clearTextName, dirId.getBytes(StandardCharsets.UTF_8)) + Constants.CRYPTOMATOR_FILE_SUFFIX;
 	}
 
