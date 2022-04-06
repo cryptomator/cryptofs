@@ -20,6 +20,7 @@ import org.mockito.Mockito;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -28,6 +29,7 @@ import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class OrphanDirTest {
@@ -225,10 +227,14 @@ public class OrphanDirTest {
 			DecryptingReadableByteChannel dirIdReadChannel = Mockito.mock(DecryptingReadableByteChannel.class);
 
 			Mockito.doReturn(dirIdReadChannel).when(resultSpy).createDecryptingReadableByteChannel(Mockito.any(), Mockito.eq(cryptor));
+			AtomicInteger readBytesInMockedChannel = new AtomicInteger(0);
+			//in every invocation the channel position is updated, simulating a stateful channel
 			Mockito.doAnswer(invocationOnMock -> {
 				ByteBuffer buf = invocationOnMock.getArgument(0);
-				try (ReadableByteChannel channel = Files.newByteChannel(dirIdFile, StandardOpenOption.READ)) {
-					return channel.read(buf);
+				try (SeekableByteChannel channel = Files.newByteChannel(dirIdFile, StandardOpenOption.READ)) {
+					channel.position(readBytesInMockedChannel.get());
+					readBytesInMockedChannel.getAndSet(channel.read(buf));
+					return readBytesInMockedChannel.get();
 				}
 			}).when(dirIdReadChannel).read(Mockito.any());
 

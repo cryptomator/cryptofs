@@ -10,6 +10,7 @@ import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.common.ByteBuffers;
 import org.cryptomator.cryptolib.common.DecryptingReadableByteChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -164,7 +165,7 @@ public class OrphanDir implements DiagnosticResult {
 
 		try (var channel = Files.newByteChannel(dirIdFile, StandardOpenOption.READ); //
 			 var decryptingChannel = createDecryptingReadableByteChannel(channel, cryptor)) {
-			decryptingChannel.read(dirIdBuffer);
+			ByteBuffers.fill(decryptingChannel, dirIdBuffer);
 			dirIdBuffer.flip();
 		} catch (IOException e) {
 			LOG.info("Unable to read dirIdFile of {}.", orphanedDir, e);
