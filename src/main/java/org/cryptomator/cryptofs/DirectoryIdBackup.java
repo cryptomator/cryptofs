@@ -36,7 +36,7 @@ public class DirectoryIdBackup {
 	public void execute(CryptoPathMapper.CiphertextDirectory ciphertextDirectory) throws IOException {
 		try (var channel = Files.newByteChannel(ciphertextDirectory.path.resolve(Constants.DIR_ID_FILE), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE); //
 			 var encryptingChannel = wrapEncryptionAround(channel, cryptor)) {
-			encryptingChannel.write(ByteBuffer.wrap(ciphertextDirectory.dirId.getBytes(StandardCharsets.UTF_8)));
+			encryptingChannel.write(ByteBuffer.wrap(ciphertextDirectory.dirId.getBytes(StandardCharsets.US_ASCII)));
 		}
 	}
 

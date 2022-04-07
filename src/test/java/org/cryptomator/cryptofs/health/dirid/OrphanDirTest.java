@@ -223,7 +223,7 @@ public class OrphanDirTest {
 			var dirIdFile = cipherOrphan.resolve(Constants.DIR_ID_FILE);
 			var dirId = "random-uuid-with-at-most-36chars";
 
-			Files.writeString(dirIdFile, dirId, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+			Files.writeString(dirIdFile, dirId, StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 			DecryptingReadableByteChannel dirIdReadChannel = Mockito.mock(DecryptingReadableByteChannel.class);
 
 			Mockito.doReturn(dirIdReadChannel).when(resultSpy).createDecryptingReadableByteChannel(Mockito.any(), Mockito.eq(cryptor));
@@ -260,7 +260,7 @@ public class OrphanDirTest {
 		public void testRetrieveDirIdWrongContent() throws IOException {
 			var dirIdFile = cipherOrphan.resolve(Constants.DIR_ID_FILE);
 			var dirId = "anOverlyComplexAndCompletelyRandomExampleOfHowAnDirectoryIdIsTooLong";
-			Files.writeString(dirIdFile, dirId, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+			Files.writeString(dirIdFile, dirId, StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 			DecryptingReadableByteChannel dirIdReadChannel = Mockito.mock(DecryptingReadableByteChannel.class);
 
 			Mockito.doReturn(dirIdReadChannel).when(resultSpy).createDecryptingReadableByteChannel(Mockito.any(), Mockito.eq(cryptor));

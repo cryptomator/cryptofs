@@ -161,7 +161,7 @@ public class OrphanDir implements DiagnosticResult {
 	//visible for testing
 	Optional<String> retrieveDirId(Path orphanedDir, Cryptor cryptor) {
 		var dirIdFile = orphanedDir.resolve(Constants.DIR_ID_FILE);
-		var dirIdBuffer = ByteBuffer.allocate(36); //a dir id contains at most 36 ascii chars, in this impl encoded in utf8
+		var dirIdBuffer = ByteBuffer.allocate(36); //a dir id contains at most 36 ascii chars
 
 		try (var channel = Files.newByteChannel(dirIdFile, StandardOpenOption.READ); //
 			 var decryptingChannel = createDecryptingReadableByteChannel(channel, cryptor)) {
@@ -172,7 +172,7 @@ public class OrphanDir implements DiagnosticResult {
 			return Optional.empty();
 		}
 
-		var allegedDirId = StandardCharsets.UTF_8.decode(dirIdBuffer).toString();
+		var allegedDirId = StandardCharsets.US_ASCII.decode(dirIdBuffer).toString();
 
 		var dirIdHash = orphanedDir.getParent().getFileName().toString() + orphanedDir.getFileName().toString();
 		if (dirIdHash.equals(cryptor.fileNameCryptor().hashDirectoryId(allegedDirId))) {
