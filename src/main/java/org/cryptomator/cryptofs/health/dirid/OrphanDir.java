@@ -2,6 +2,7 @@ package org.cryptomator.cryptofs.health.dirid;
 
 import com.google.common.io.BaseEncoding;
 import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.DirectoryIdBackup;
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.common.Constants;
@@ -79,7 +80,7 @@ public class OrphanDir implements DiagnosticResult {
 			return; //recovery dir was orphaned, already recovered by prepare method
 		}
 
-		var stepParentDir = prepareStepParent(dataDir, recoveryDir, cryptor.fileNameCryptor(), orphanDirIdHash);
+		var stepParentDir = prepareStepParent(dataDir, recoveryDir, cryptor, orphanDirIdHash);
 		AtomicInteger fileCounter = new AtomicInteger(1);
 		AtomicInteger dirCounter = new AtomicInteger(1);
 		AtomicInteger symlinkCounter = new AtomicInteger(1);
@@ -140,9 +141,9 @@ public class OrphanDir implements DiagnosticResult {
 	}
 
 	// visible for testing
-	CryptoPathMapper.CiphertextDirectory prepareStepParent(Path dataDir, Path cipherRecoveryDir, FileNameCryptor cryptor, String clearStepParentDirName) throws IOException {
+	CryptoPathMapper.CiphertextDirectory prepareStepParent(Path dataDir, Path cipherRecoveryDir, Cryptor cryptor, String clearStepParentDirName) throws IOException {
 		//create "step-parent" directory to move orphaned files to
-		String cipherStepParentDirName = encrypt(cryptor, clearStepParentDirName, Constants.RECOVERY_DIR_ID);
+		String cipherStepParentDirName = encrypt(cryptor.fileNameCryptor(), clearStepParentDirName, Constants.RECOVERY_DIR_ID);
 		Path cipherStepParentDirFile = cipherRecoveryDir.resolve(cipherStepParentDirName + "/" + Constants.DIR_FILE_NAME);
 		final String stepParentUUID;
 		if (Files.exists(cipherStepParentDirFile, LinkOption.NOFOLLOW_LINKS)) {
@@ -152,10 +153,17 @@ public class OrphanDir implements DiagnosticResult {
 			stepParentUUID = UUID.randomUUID().toString();
 			Files.writeString(cipherStepParentDirFile, stepParentUUID, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 		}
-		String stepParentDirHash = cryptor.hashDirectoryId(stepParentUUID);
+		String stepParentDirHash = cryptor.fileNameCryptor().hashDirectoryId(stepParentUUID);
 		Path stepParentDir = dataDir.resolve(stepParentDirHash.substring(0, 2)).resolve(stepParentDirHash.substring(2)).toAbsolutePath();
 		Files.createDirectories(stepParentDir);
-		return new CryptoPathMapper.CiphertextDirectory(stepParentUUID, stepParentDir);
+		var stepParentCipherDir = new CryptoPathMapper.CiphertextDirectory(stepParentUUID, stepParentDir);
+		//only if it does not exist
+		try {
+			DirectoryIdBackup.backupManually(cryptor, stepParentCipherDir);
+		} catch (FileAlreadyExistsException e) {
+			// already exists due to a previous recovery attempt
+		}
+		return stepParentCipherDir;
 	}
 
 	//visible for testing
