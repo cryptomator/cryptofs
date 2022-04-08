@@ -109,9 +109,7 @@ public class OrphanDir implements DiagnosticResult {
 			}
 		}
 
-		if (dirId.isPresent()) {
-			Files.delete(orphanedDir.resolve(Constants.DIR_ID_FILE));
-		}
+		Files.deleteIfExists(orphanedDir.resolve(Constants.DIR_ID_FILE));
 		Files.delete(orphanedDir);
 	}
 
