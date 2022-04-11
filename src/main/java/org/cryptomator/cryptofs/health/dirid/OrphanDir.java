@@ -2,16 +2,23 @@ package org.cryptomator.cryptofs.health.dirid;
 
 import com.google.common.io.BaseEncoding;
 import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.DirectoryIdBackup;
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
+import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
+import org.cryptomator.cryptolib.common.ByteBuffers;
+import org.cryptomator.cryptolib.common.DecryptingReadableByteChannel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -21,6 +28,7 @@ import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -30,6 +38,8 @@ import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.ENCRYPTED_PAT
  * An orphan directory is a detached node, not referenced by any dir.c9r file.
  */
 public class OrphanDir implements DiagnosticResult {
+
+	private static final Logger LOG = LoggerFactory.getLogger(OrphanDir.class);
 
 	private static final String FILE_PREFIX = "file";
 	private static final String DIR_PREFIX = "directory";
@@ -70,23 +80,36 @@ public class OrphanDir implements DiagnosticResult {
 			return; //recovery dir was orphaned, already recovered by prepare method
 		}
 
-		var stepParentDir = prepareStepParent(dataDir, recoveryDir, cryptor.fileNameCryptor(), orphanDirIdHash);
+		var stepParentDir = prepareStepParent(dataDir, recoveryDir, cryptor, orphanDirIdHash);
 		AtomicInteger fileCounter = new AtomicInteger(1);
 		AtomicInteger dirCounter = new AtomicInteger(1);
 		AtomicInteger symlinkCounter = new AtomicInteger(1);
 		String longNameSuffix = createClearnameToBeShortened(config.getShorteningThreshold());
-		try (var orphanedContentStream = Files.newDirectoryStream(orphanedDir)) {
+		Optional<String> dirId = retrieveDirId(orphanedDir, cryptor);
+
+		try (var orphanedContentStream = Files.newDirectoryStream(orphanedDir, p -> !Constants.DIR_ID_FILE.equals(p.getFileName().toString()))) {
 			for (Path orphanedResource : orphanedContentStream) {
+				boolean isShortened = orphanedResource.toString().endsWith(Constants.DEFLATED_FILE_SUFFIX);
 				//@formatter:off
-				var newClearName = switch (determineCiphertextFileType(orphanedResource)) {
-						case FILE -> FILE_PREFIX + fileCounter.getAndIncrement();
-						case DIRECTORY -> DIR_PREFIX + dirCounter.getAndIncrement();
-						case SYMLINK -> SYMLINK_PREFIX + symlinkCounter.getAndIncrement();
-					} + "_" + runId;
+				var newClearName = dirId.map(id -> {
+							try {
+								return decryptFileName(orphanedResource, isShortened, id, cryptor.fileNameCryptor());
+							} catch (IOException | AuthenticationFailedException e) {
+								LOG.warn("Unable to read and decrypt (long) file name of {}:", orphanedResource, e);
+								return null;
+							}})
+						.orElseGet(() ->
+							switch (determineCiphertextFileType(orphanedResource)) {
+								case FILE -> FILE_PREFIX + fileCounter.getAndIncrement();
+								case DIRECTORY -> DIR_PREFIX + dirCounter.getAndIncrement();
+								case SYMLINK -> SYMLINK_PREFIX + symlinkCounter.getAndIncrement();
+							} + "_" + runId + (isShortened ? longNameSuffix : ""));
 				//@formatter:on
-				adoptOrphanedResource(orphanedResource, newClearName, stepParentDir, cryptor.fileNameCryptor(), longNameSuffix, sha1);
+				adoptOrphanedResource(orphanedResource, newClearName, isShortened, stepParentDir, cryptor.fileNameCryptor(), sha1);
 			}
 		}
+
+		Files.deleteIfExists(orphanedDir.resolve(Constants.DIR_ID_FILE));
 		Files.delete(orphanedDir);
 	}
 
@@ -97,7 +120,7 @@ public class OrphanDir implements DiagnosticResult {
 		Path vaultCipherRootPath = dataDir.resolve(rootDirHash.substring(0, 2)).resolve(rootDirHash.substring(2)).toAbsolutePath();
 
 		//check if recovery dir exists and has unique recovery id
-		String cipherRecoveryDirName = convertClearToCiphertext(cryptor, Constants.RECOVERY_DIR_NAME, Constants.ROOT_DIR_ID);
+		String cipherRecoveryDirName = encrypt(cryptor, Constants.RECOVERY_DIR_NAME, Constants.ROOT_DIR_ID);
 		Path cipherRecoveryDirFile = vaultCipherRootPath.resolve(cipherRecoveryDirName + "/" + Constants.DIR_FILE_NAME);
 		if (Files.notExists(cipherRecoveryDirFile, LinkOption.NOFOLLOW_LINKS)) {
 			Files.createDirectories(cipherRecoveryDirFile.getParent());
@@ -116,9 +139,9 @@ public class OrphanDir implements DiagnosticResult {
 	}
 
 	// visible for testing
-	CryptoPathMapper.CiphertextDirectory prepareStepParent(Path dataDir, Path cipherRecoveryDir, FileNameCryptor cryptor, String clearStepParentDirName) throws IOException {
+	CryptoPathMapper.CiphertextDirectory prepareStepParent(Path dataDir, Path cipherRecoveryDir, Cryptor cryptor, String clearStepParentDirName) throws IOException {
 		//create "step-parent" directory to move orphaned files to
-		String cipherStepParentDirName = convertClearToCiphertext(cryptor, clearStepParentDirName, Constants.RECOVERY_DIR_ID);
+		String cipherStepParentDirName = encrypt(cryptor.fileNameCryptor(), clearStepParentDirName, Constants.RECOVERY_DIR_ID);
 		Path cipherStepParentDirFile = cipherRecoveryDir.resolve(cipherStepParentDirName + "/" + Constants.DIR_FILE_NAME);
 		final String stepParentUUID;
 		if (Files.exists(cipherStepParentDirFile, LinkOption.NOFOLLOW_LINKS)) {
@@ -128,16 +151,66 @@ public class OrphanDir implements DiagnosticResult {
 			stepParentUUID = UUID.randomUUID().toString();
 			Files.writeString(cipherStepParentDirFile, stepParentUUID, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 		}
-		String stepParentDirHash = cryptor.hashDirectoryId(stepParentUUID);
+		String stepParentDirHash = cryptor.fileNameCryptor().hashDirectoryId(stepParentUUID);
 		Path stepParentDir = dataDir.resolve(stepParentDirHash.substring(0, 2)).resolve(stepParentDirHash.substring(2)).toAbsolutePath();
 		Files.createDirectories(stepParentDir);
-		return new CryptoPathMapper.CiphertextDirectory(stepParentUUID, stepParentDir);
+		var stepParentCipherDir = new CryptoPathMapper.CiphertextDirectory(stepParentUUID, stepParentDir);
+		//only if it does not exist
+		try {
+			DirectoryIdBackup.backupManually(cryptor, stepParentCipherDir);
+		} catch (FileAlreadyExistsException e) {
+			// already exists due to a previous recovery attempt
+		}
+		return stepParentCipherDir;
+	}
+
+	//visible for testing
+	Optional<String> retrieveDirId(Path orphanedDir, Cryptor cryptor) {
+		var dirIdFile = orphanedDir.resolve(Constants.DIR_ID_FILE);
+		var dirIdBuffer = ByteBuffer.allocate(36); //a dir id contains at most 36 ascii chars
+
+		try (var channel = Files.newByteChannel(dirIdFile, StandardOpenOption.READ); //
+			 var decryptingChannel = createDecryptingReadableByteChannel(channel, cryptor)) {
+			ByteBuffers.fill(decryptingChannel, dirIdBuffer);
+			dirIdBuffer.flip();
+		} catch (IOException e) {
+			LOG.info("Unable to read dirIdFile of {}.", orphanedDir, e);
+			return Optional.empty();
+		}
+
+		var allegedDirId = StandardCharsets.US_ASCII.decode(dirIdBuffer).toString();
+
+		var dirIdHash = orphanedDir.getParent().getFileName().toString() + orphanedDir.getFileName().toString();
+		if (dirIdHash.equals(cryptor.fileNameCryptor().hashDirectoryId(allegedDirId))) {
+			return Optional.of(allegedDirId);
+		} else {
+			LOG.info("Hash of read directory id {} does not match actual cipher dir hash {}.", allegedDirId, dirIdHash);
+			return Optional.empty();
+		}
+	}
+
+	//exists and visible for testability
+	DecryptingReadableByteChannel createDecryptingReadableByteChannel(ByteChannel channel, Cryptor cryptor) {
+		return new DecryptingReadableByteChannel(channel, cryptor, true);
+	}
+
+	//visible for testing
+	String decryptFileName(Path orphanedResource, boolean isShortened, String dirId, FileNameCryptor cryptor) throws IOException, AuthenticationFailedException {
+		final String filenameWithExtension;
+		if (isShortened) {
+			filenameWithExtension = Files.readString(orphanedResource.resolve(Constants.INFLATED_FILE_NAME));
+		} else {
+			filenameWithExtension = orphanedResource.getFileName().toString();
+		}
+
+		final String filename = filenameWithExtension.substring(0, filenameWithExtension.length() - Constants.CRYPTOMATOR_FILE_SUFFIX.length());
+		return cryptor.decryptFilename(BaseEncoding.base64Url(), filename, dirId.getBytes(StandardCharsets.UTF_8));
 	}
 
 	// visible for testing
-	void adoptOrphanedResource(Path oldCipherPath, String newClearname, CryptoPathMapper.CiphertextDirectory stepParentDir, FileNameCryptor cryptor, String longNameSuffix, MessageDigest sha1) throws IOException {
-		if (oldCipherPath.toString().endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
-			var newCipherName = convertClearToCiphertext(cryptor, newClearname + longNameSuffix, stepParentDir.dirId);
+	void adoptOrphanedResource(Path oldCipherPath, String newClearName, boolean isShortened, CryptoPathMapper.CiphertextDirectory stepParentDir, FileNameCryptor cryptor, MessageDigest sha1) throws IOException {
+		var newCipherName = encrypt(cryptor, newClearName, stepParentDir.dirId);
+		if (isShortened) {
 			var deflatedName = BaseEncoding.base64Url().encode(sha1.digest(newCipherName.getBytes(StandardCharsets.UTF_8))) + Constants.DEFLATED_FILE_SUFFIX;
 			Path targetPath = stepParentDir.path.resolve(deflatedName);
 			Files.move(oldCipherPath, targetPath);
@@ -147,7 +220,6 @@ public class OrphanDir implements DiagnosticResult {
 				fc.write(ByteBuffer.wrap(newCipherName.getBytes(StandardCharsets.UTF_8)));
 			}
 		} else {
-			var newCipherName = convertClearToCiphertext(cryptor, newClearname, stepParentDir.dirId);
 			Path targetPath = stepParentDir.path.resolve(newCipherName);
 			Files.move(oldCipherPath, targetPath);
 		}
@@ -158,7 +230,7 @@ public class OrphanDir implements DiagnosticResult {
 		return LONG_NAME_SUFFIX_BASE.repeat((neededLength % LONG_NAME_SUFFIX_BASE.length()) + 1);
 	}
 
-	private static String convertClearToCiphertext(FileNameCryptor cryptor, String clearTextName, String dirId) {
+	private static String encrypt(FileNameCryptor cryptor, String clearTextName, String dirId) {
 		return cryptor.encryptFilename(BaseEncoding.base64Url(), clearTextName, dirId.getBytes(StandardCharsets.UTF_8)) + Constants.CRYPTOMATOR_FILE_SUFFIX;
 	}
 

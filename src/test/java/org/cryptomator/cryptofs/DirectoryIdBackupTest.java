@@ -53,7 +53,7 @@ public class DirectoryIdBackupTest {
 	@Test
 	public void testContentIsWritten() throws IOException {
 		Mockito.when(encChannel.write(Mockito.any())).thenReturn(0);
-		var expectedWrittenContent = ByteBuffer.wrap(dirId.getBytes(StandardCharsets.UTF_8));
+		var expectedWrittenContent = ByteBuffer.wrap(dirId.getBytes(StandardCharsets.US_ASCII));
 
 		try (MockedStatic<DirectoryIdBackup> backupMock = Mockito.mockStatic(DirectoryIdBackup.class)) {
 			backupMock.when(() -> DirectoryIdBackup.wrapEncryptionAround(Mockito.any(), Mockito.eq(cryptor))).thenReturn(encChannel);

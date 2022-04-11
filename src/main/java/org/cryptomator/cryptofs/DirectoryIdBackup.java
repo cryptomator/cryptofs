@@ -36,9 +36,21 @@ public class DirectoryIdBackup {
 	public void execute(CryptoPathMapper.CiphertextDirectory ciphertextDirectory) throws IOException {
 		try (var channel = Files.newByteChannel(ciphertextDirectory.path.resolve(Constants.DIR_ID_FILE), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE); //
 			 var encryptingChannel = wrapEncryptionAround(channel, cryptor)) {
-			encryptingChannel.write(ByteBuffer.wrap(ciphertextDirectory.dirId.getBytes(StandardCharsets.UTF_8)));
+			encryptingChannel.write(ByteBuffer.wrap(ciphertextDirectory.dirId.getBytes(StandardCharsets.US_ASCII)));
 		}
 	}
+
+	/**
+	 * Static method to explicitly backup the directory id for a specified ciphertext directory.
+	 *
+	 * @param cryptor The cryptor to be used
+	 * @param ciphertextDirectory A {@link org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory} for which the dirId should be back up'd.
+	 * @throws IOException when the dirId file already exists, or it cannot be written to.
+	 */
+	public static void backupManually(Cryptor cryptor, CryptoPathMapper.CiphertextDirectory ciphertextDirectory) throws IOException {
+		new DirectoryIdBackup(cryptor).execute(ciphertextDirectory);
+	}
+
 
 	static EncryptingWritableByteChannel wrapEncryptionAround(ByteChannel channel, Cryptor cryptor) {
 		return new EncryptingWritableByteChannel(channel, cryptor);
