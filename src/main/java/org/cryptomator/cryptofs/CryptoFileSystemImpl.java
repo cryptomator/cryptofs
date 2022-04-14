@@ -377,6 +377,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			if (options.readable()) {
 				stats.incrementAccessesRead();
 			}
+			stats.incrementAccesses();
 			return ch;
 		} catch (Exception e){
 			ch.close();
