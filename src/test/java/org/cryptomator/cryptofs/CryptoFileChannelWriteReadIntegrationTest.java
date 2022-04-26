@@ -9,6 +9,7 @@
 package org.cryptomator.cryptofs;
 
 import com.google.common.jimfs.Jimfs;
+import org.cryptomator.cryptofs.util.ByteBuffers;
 import org.cryptomator.cryptolib.api.Masterkey;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
 import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
@@ -24,12 +25,14 @@ import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
@@ -39,6 +42,8 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.stream.Stream;
 
 import static java.lang.Math.min;
 import static java.lang.String.format;
@@ -49,7 +54,6 @@ import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
-import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
 
 public class CryptoFileChannelWriteReadIntegrationTest {
@@ -258,6 +262,54 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			}
 
 			Assertions.assertEquals(10, Files.size(file));
+		}
+
+
+		// tests https://github.com/cryptomator/cryptofs/issues/129
+		@ParameterizedTest
+		@MethodSource
+		public void testSkipBeyondEofAndWrite(List<SparseContent> contentRanges) throws IOException {
+			// write sparse file
+			try (var ch = FileChannel.open(file, CREATE, WRITE)) {
+				for (var range : contentRanges) {
+					var buf = ByteBuffers.repeat(range.pattern).times(range.len).asByteBuffer();
+					ch.write(buf, range.pos);
+				}
+			}
+
+			// read and compare to expected
+			try (var ch = FileChannel.open(file, READ); var in = Channels.newInputStream(ch)) {
+				int pos = 0;
+				for (var range : contentRanges) {
+					// verify gaps are zeroes:
+					for (int p = pos; p < range.pos; p++) {
+						if (in.read() != 0) {
+							Assertions.fail("Expected NIL byte at pos " + p);
+						}
+					}
+					// verify expected values
+					for (int p = 0; p < range.len; p++) {
+						if (in.read() != range.pattern) {
+							Assertions.fail("Expected byte at pos " + (pos + p) + " to be " + range.pattern);
+						}
+					}
+					pos = range.pos + range.len;
+				}
+			}
+		}
+
+		private record SparseContent(byte pattern, int pos, int len) {
+
+		}
+
+		public Stream<List<SparseContent>> testSkipBeyondEofAndWrite() {
+			return Stream.of( //
+					List.of(new SparseContent((byte) 0x01, 50, 100)), //
+					List.of(new SparseContent((byte) 0x01, 0, 1000), new SparseContent((byte) 0x02, 20_000, 1000)), //
+					List.of(new SparseContent((byte) 0x01, 0, 1000), new SparseContent((byte) 0x02, 36_000, 1000)), //
+					List.of(new SparseContent((byte) 0x01, 2_000_000, 84_000), new SparseContent((byte) 0x02, 3_000_000, 10_000)), //
+					List.of(new SparseContent((byte) 0x01, 50, 100), new SparseContent((byte) 0x02, 250, 100), new SparseContent((byte) 0x03, 450, 100), new SparseContent((byte) 0x04, 20_000, 1000), new SparseContent((byte) 0x05, 3_000_000, 10_000)) //
+			);
 		}
 
 		@Test
