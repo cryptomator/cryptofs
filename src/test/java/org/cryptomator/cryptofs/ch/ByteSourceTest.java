@@ -6,7 +6,7 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs.fh;
+package org.cryptomator.cryptofs.ch;
 
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Nested;
