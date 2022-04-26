@@ -8,9 +8,11 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.ch;
 
-import static java.lang.Math.min;
+import org.cryptomator.cryptolib.common.ByteBuffers;
 
 import java.nio.ByteBuffer;
+
+import static java.lang.Math.min;
 
 interface ByteSource {
 
@@ -76,6 +78,8 @@ interface ByteSource {
 
 	class ZeroPrefixedByteSource implements ByteSource {
 
+		private static final ByteBuffer ZEROES = ByteBuffer.allocate(4069);
+
 		private long amountOfZeroes;
 		private final ByteBuffer source;
 
@@ -96,7 +100,7 @@ interface ByteSource {
 
 		@Override
 		public void copyTo(ByteBuffer target) {
-			if (amountOfZeroes > 0) {
+			while (amountOfZeroes > 0) {
 				copyZeroesTo(target);
 			}
 			if (target.hasRemaining()) {
@@ -105,11 +109,10 @@ interface ByteSource {
 		}
 
 		private void copyZeroesTo(ByteBuffer target) {
-			int amountOfZeroesAsInt = (int) min(amountOfZeroes, Integer.MAX_VALUE);
-			int amountOfZeroesToCopy = min(amountOfZeroesAsInt, target.remaining());
-			ByteBuffer zeroes = ByteBuffer.allocate(amountOfZeroesToCopy);
-			target.put(zeroes);
-			amountOfZeroes -= amountOfZeroesToCopy;
+			var zeroes = ZEROES.asReadOnlyBuffer(); // use a view to protect original pos/limit
+			int amountOfZeroesToCopy = (int) min(amountOfZeroes, zeroes.remaining());
+			zeroes.limit(amountOfZeroesToCopy);
+			amountOfZeroes -= ByteBuffers.copy(zeroes, target);
 		}
 
 		private void copySourceTo(ByteBuffer target) {

@@ -107,6 +107,19 @@ public class ByteSourceTest {
 			Assertions.assertEquals(0x77, target[41]);
 		}
 
+		@Test
+		public void testCopyToWritesLotsOfZeros() {
+			ByteBuffer buffer = ByteBuffer.wrap(new byte[]{(byte) 0x77});
+			ByteSource inTest = ByteSource.repeatingZeroes(9999).followedBy(buffer);
+			byte[] target = new byte[10_000];
+			Arrays.fill(target, (byte) 0xFF); // pre-fill target to check whether data gets zero'ed
+
+			inTest.copyTo(ByteBuffer.wrap(target));
+
+			Assertions.assertArrayEquals(new byte[9999], Arrays.copyOf(target, 9999));
+			Assertions.assertEquals(0x77, target[9999]);
+		}
+
 	}
 
 }
