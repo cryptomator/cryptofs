@@ -4,7 +4,6 @@ import com.google.common.base.Preconditions;
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.fh.BufferPool;
-import org.cryptomator.cryptofs.fh.ByteSource;
 import org.cryptomator.cryptofs.fh.ChunkCache;
 import org.cryptomator.cryptofs.fh.Chunk;
 import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
@@ -124,7 +123,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		if (position > oldFileSize) {
 			// we need to fill the gap:
 			long gapLen = position - oldFileSize;
-			final ByteSource byteSource = ByteSource.undefinedNoise(gapLen).followedBy(src); // prepend zeros to the original src
+			final ByteSource byteSource = ByteSource.repeatingZeroes(gapLen).followedBy(src); // prepend zeros to the original src
 			written = writeLockedInternal(byteSource, oldFileSize) - gapLen; // fill the gap by beginning to write from old EOF
 		} else {
 			final ByteSource byteSource = ByteSource.from(src);
