@@ -97,7 +97,7 @@ interface ByteSource {
 
 		@Override
 		public void copyTo(ByteBuffer target) {
-			while (amountOfZeroes > 0) {
+			while (amountOfZeroes > 0 && target.hasRemaining()) {
 				copyZeroesTo(target);
 			}
 			if (target.hasRemaining()) {
