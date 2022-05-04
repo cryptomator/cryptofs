@@ -6,13 +6,15 @@
  * Contributors:
  *     Sebastian Stenzel - initial API and implementation
  *******************************************************************************/
-package org.cryptomator.cryptofs.fh;
+package org.cryptomator.cryptofs.ch;
 
 import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import static org.hamcrest.CoreMatchers.is;
 
@@ -76,6 +78,46 @@ public class ByteSourceTest {
 			MatcherAssert.assertThat(sourceBuffer.limit(), is(20));
 			MatcherAssert.assertThat(targetBuffer.position(), is(10));
 			MatcherAssert.assertThat(targetBuffer.limit(), is(10));
+		}
+
+	}
+
+	@Nested
+	public class RepeatingZeros {
+
+		@Test
+		public void testRemainingCombinesZerosWithBuffer() {
+			ByteBuffer buffer = ByteBuffer.wrap(new byte[]{(byte) 0xFF});
+			ByteSource inTest = ByteSource.repeatingZeroes(41).followedBy(buffer);
+
+			Assertions.assertTrue(inTest.hasRemaining());
+			Assertions.assertEquals(42, inTest.remaining());
+		}
+
+		@Test
+		public void testCopyToWritesZeros() {
+			ByteBuffer buffer = ByteBuffer.wrap(new byte[]{(byte) 0x77});
+			ByteSource inTest = ByteSource.repeatingZeroes(41).followedBy(buffer);
+			byte[] target = new byte[50];
+			Arrays.fill(target, (byte) 0xFF); // pre-fill target to check whether data gets zero'ed
+
+			inTest.copyTo(ByteBuffer.wrap(target));
+
+			Assertions.assertArrayEquals(new byte[41], Arrays.copyOf(target, 41));
+			Assertions.assertEquals(0x77, target[41]);
+		}
+
+		@Test
+		public void testCopyToWritesLotsOfZeros() {
+			ByteBuffer buffer = ByteBuffer.wrap(new byte[]{(byte) 0x77});
+			ByteSource inTest = ByteSource.repeatingZeroes(9999).followedBy(buffer);
+			byte[] target = new byte[10_000];
+			Arrays.fill(target, (byte) 0xFF); // pre-fill target to check whether data gets zero'ed
+
+			inTest.copyTo(ByteBuffer.wrap(target));
+
+			Assertions.assertArrayEquals(new byte[9999], Arrays.copyOf(target, 9999));
+			Assertions.assertEquals(0x77, target[9999]);
 		}
 
 	}
