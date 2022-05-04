@@ -18,18 +18,17 @@ public class CryptoFileSystemStats {
 	private final LongAdder bytesWritten = new LongAdder();
 	private final LongAdder bytesDecrypted = new LongAdder();
 	private final LongAdder bytesEncrypted = new LongAdder();
-	private final LongAdder bytesAccessed = new LongAdder();
 	private final LongAdder totalBytesRead = new LongAdder();
 	private final LongAdder totalBytesWritten = new LongAdder();
 	private final LongAdder totalBytesDecrypted = new LongAdder();
 	private final LongAdder totalBytesEncrypted = new LongAdder();
-	private final LongAdder totalBytesAccessed = new LongAdder();
 	private final LongAdder chunkCacheAccesses = new LongAdder();
 	private final LongAdder chunkCacheMisses = new LongAdder();
 	private final LongAdder chunkCacheHits = new LongAdder();
 	private final LongAdder amountOfAccessesRead = new LongAdder();
 	private final LongAdder amountOfAccessesWritten = new LongAdder();
 	private final LongAdder amountOfAccesses = new LongAdder();
+	private final LongAdder totalAmountOfAccessed = new LongAdder();
 
 	@Inject
 	CryptoFileSystemStats() {
@@ -87,18 +86,6 @@ public class CryptoFileSystemStats {
 		totalBytesEncrypted.add(numBytes);
 	}
 
-	public long pollBytesAccessed(){
-		return  bytesAccessed.sumThenReset();
-	}
-	public long pollTotalBytesAccessed() {
-		return totalBytesAccessed.sum();
-	}
-
-	public void addBytesAccessed(long numBytes) {
-		bytesAccessed.add(numBytes);
-		totalBytesAccessed.add(numBytes);
-	}
-
 	public long pollChunkCacheAccesses() {
 		return chunkCacheAccesses.sumThenReset();
 	}
@@ -138,10 +125,15 @@ public class CryptoFileSystemStats {
 	}
 
 	public long pollAmountOfAccesses() {
-		return amountOfAccesses.sum();
+		return amountOfAccesses.sumThenReset();
+	}
+
+	public long pollTotalAmountOfAccesses() {
+		return totalAmountOfAccessed.sum();
 	}
 
 	public void incrementAccesses() {
+		totalAmountOfAccessed.increment();
 		amountOfAccesses.increment();
 	}
 

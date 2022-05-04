@@ -56,18 +56,6 @@ public class CryptoFileSystemStatsTest {
 	}
 
 	@Test
-	public void testPollBytesAccessed() {
-		Assertions.assertEquals(0l, inTest.pollBytesAccessed());
-
-		inTest.addBytesAccessed(17L);
-		Assertions.assertEquals(17l, inTest.pollBytesAccessed());
-
-		inTest.addBytesAccessed(17L);
-		inTest.addBytesAccessed(25L);
-		Assertions.assertEquals(42l, inTest.pollBytesAccessed());
-	}
-
-	@Test
 	public void testPollChunkCacheAccesses() {
 		Assertions.assertEquals(0l, inTest.pollChunkCacheAccesses());
 
@@ -146,15 +134,6 @@ public class CryptoFileSystemStatsTest {
 	}
 
 	@Test
-	public void testPollTotalBytesAccessed() {
-		Assertions.assertEquals(0l, inTest.pollTotalBytesAccessed());
-		inTest.addBytesAccessed(1l);
-		Assertions.assertEquals(1l, inTest.pollTotalBytesAccessed());
-		inTest.addBytesAccessed(5l);
-		Assertions.assertEquals(6l, inTest.pollTotalBytesAccessed());
-	}
-
-	@Test
 	public void testPollAmountOfFilesRead() {
 		Assertions.assertEquals(0l, inTest.pollAmountOfAccessesRead());
 		inTest.incrementAccessesRead();
@@ -169,10 +148,20 @@ public class CryptoFileSystemStatsTest {
 	}
 
 	@Test
-	public void testPollAmountOfFilesAccessed() {
-		Assertions.assertEquals(0l, inTest.pollAmountOfAccesses());
+	public void testPollTotalAmountOfAccess(){
+		Assertions.assertEquals(0L, inTest.pollTotalAmountOfAccesses());
 		inTest.incrementAccesses();
-		Assertions.assertEquals(1l, inTest.pollAmountOfAccesses());
+		Assertions.assertEquals(1L, inTest.pollTotalAmountOfAccesses());
+
+	}
+
+	@Test
+	public void testPollAmountOfFilesAccessed() {
+		Assertions.assertEquals(0L, inTest.pollAmountOfAccesses());
+		inTest.incrementAccesses();
+		Assertions.assertEquals(1L, inTest.pollAmountOfAccesses());
+		Assertions.assertEquals(0L, inTest.pollAmountOfAccesses());
+
 	}
 
 }
