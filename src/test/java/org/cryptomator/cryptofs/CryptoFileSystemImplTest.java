@@ -1138,6 +1138,34 @@ public class CryptoFileSystemImplTest {
 	}
 
 	@Nested
+	public class GetFileAttributeView {
+
+		@Test
+		public void getFileAttributeViewReturnsViewIfSupported() {
+			CryptoPath path = mock(CryptoPath.class);
+			PosixFileAttributeView view = mock(PosixFileAttributeView.class);
+			when(fileStore.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(true);
+			when(fileAttributeViewProvider.getAttributeView(path, PosixFileAttributeView.class)).thenReturn(view);
+
+			var result = inTest.getFileAttributeView(path, PosixFileAttributeView.class);
+
+			Assertions.assertSame(view, result);
+		}
+
+		@Test
+		public void getFileAttributeViewReturnsNullIfViewNotSupported() {
+			CryptoPath path = mock(CryptoPath.class);
+			when(fileStore.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(false);
+
+			var result = inTest.getFileAttributeView(path, PosixFileAttributeView.class);
+
+			Assertions.assertNull(result);
+			Mockito.verifyNoInteractions(fileAttributeViewProvider);
+		}
+
+	}
+
+	@Nested
 	public class IsHidden {
 
 		private final CryptoFileSystemProvider provider = mock(CryptoFileSystemProvider.class);
@@ -1165,6 +1193,7 @@ public class CryptoFileSystemImplTest {
 			DosFileAttributes fileAttributes = mock(DosFileAttributes.class);
 			when(fileAttributeView.readAttributes()).thenReturn(fileAttributes);
 			when(fileAttributes.isHidden()).thenReturn(true);
+			when(fileStore.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(true);
 			when(fileAttributeViewProvider.getAttributeView(path, DosFileAttributeView.class)).thenReturn(fileAttributeView);
 
 			MatcherAssert.assertThat(inTest.isHidden(path), is(true));
@@ -1176,6 +1205,7 @@ public class CryptoFileSystemImplTest {
 			DosFileAttributes fileAttributes = mock(DosFileAttributes.class);
 			when(fileAttributeView.readAttributes()).thenReturn(fileAttributes);
 			when(fileAttributes.isHidden()).thenReturn(false);
+			when(fileStore.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(true);
 			when(fileAttributeViewProvider.getAttributeView(path, DosFileAttributeView.class)).thenReturn(fileAttributeView);
 
 			MatcherAssert.assertThat(inTest.isHidden(path), is(false));

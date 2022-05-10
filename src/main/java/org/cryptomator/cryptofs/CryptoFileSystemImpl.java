@@ -243,7 +243,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	 * @see AttributeViewProvider#getAttributeView(CryptoPath, Class, LinkOption...)
 	 */
 	<V extends FileAttributeView> V getFileAttributeView(CryptoPath cleartextPath, Class<V> type, LinkOption... options) {
-		return fileAttributeViewProvider.getAttributeView(cleartextPath, type, options);
+		if (fileStore.supportsFileAttributeView(type)) {
+			return fileAttributeViewProvider.getAttributeView(cleartextPath, type, options);
+		} else {
+			return null;
+		}
 	}
 
 	void checkAccess(CryptoPath cleartextPath, AccessMode... modes) throws IOException {
