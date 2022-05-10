@@ -32,6 +32,6 @@ public final class Constants {
 	public static final int MIN_CIPHER_NAME_LENGTH = 26; //rounded up base64url encoded (16 bytes IV + 0 bytes empty string) + file suffix = 26 ASCII chars
 
 	public static final String SEPARATOR = "/";
-	public static final String RECOVERY_DIR_NAME = "CRYPTOMATOR_RECOVERY";
+	public static final String RECOVERY_DIR_NAME = "LOST+FOUND";
 	public static final String DIR_ID_FILE = "dirid.c9r";
 }
