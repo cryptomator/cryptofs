@@ -37,6 +37,7 @@ import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystem;
+import java.nio.file.FileSystemException;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -482,6 +483,11 @@ public class CryptoFileSystemImplTest {
 		}
 
 		@Test
+		public void testDeleteRootFails() {
+			Assertions.assertThrows(FileSystemException.class, () -> inTest.delete(root));
+		}
+
+		@Test
 		public void testDeleteExistingFile() throws IOException {
 			when(cryptoPathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
 			when(physicalFsProv.deleteIfExists(ciphertextRawPath)).thenReturn(true);
@@ -605,6 +611,16 @@ public class CryptoFileSystemImplTest {
 
 				verify(readonlyFlag).assertWritable();
 				verifyNoInteractions(cryptoPathMapper);
+			}
+
+			@Test
+			public void moveFilesystemRootFails() {
+				Assertions.assertThrows(FileSystemException.class, () -> inTest.move(root, cleartextDestination));
+			}
+
+			@Test
+			public void moveToFilesystemRootFails() {
+				Assertions.assertThrows(FileSystemException.class, () -> inTest.move(cleartextSource, root));
 			}
 
 			@Test
@@ -763,6 +779,11 @@ public class CryptoFileSystemImplTest {
 
 				verify(readonlyFlag).assertWritable();
 				verifyNoInteractions(cryptoPathMapper);
+			}
+
+			@Test
+			public void copyToRootWithReplacingFails() {
+				Assertions.assertThrows(FileSystemException.class, () -> inTest.copy(cleartextSource, root, StandardCopyOption.REPLACE_EXISTING));
 			}
 
 			@Test
@@ -999,6 +1020,11 @@ public class CryptoFileSystemImplTest {
 			when(fileSystem.provider()).thenReturn(provider);
 			when(path.getFileName()).thenReturn(path);
 			when(path.getParent()).thenReturn(parent);
+		}
+
+		@Test
+		public void createFilesystemRootFails() {
+			Assertions.assertThrows(FileAlreadyExistsException.class, () -> inTest.createDirectory(root));
 		}
 
 		@Test
@@ -1452,6 +1478,37 @@ public class CryptoFileSystemImplTest {
 			verify(fileAttributeByNameProvider).setAttribute(path, name, value);
 		}
 
+	}
+
+	@Nested
+	public class AssertFileNameLength {
+
+		CryptoPath p = Mockito.mock(CryptoPath.class);
+
+		@BeforeEach
+		public void init() {
+			when(p.getFileName()).thenReturn(p);
+			when(p.toString()).thenReturn("takatuka");
+		}
+
+		@Test
+		public void testFittingPath() {
+			when(fileSystemProperties.maxCleartextNameLength()).thenReturn(20);
+			Assertions.assertDoesNotThrow(() -> inTest.assertCleartextNameLengthAllowed(p));
+		}
+
+		@Test
+		public void testTooLongPath() {
+			when(fileSystemProperties.maxCleartextNameLength()).thenReturn(4);
+			Assertions.assertThrows(FileNameTooLongException.class, () -> inTest.assertCleartextNameLengthAllowed(p));
+		}
+
+		@Test
+		public void testRootPath() {
+			when(fileSystemProperties.maxCleartextNameLength()).thenReturn(0);
+			when(p.getFileName()).thenReturn(null);
+			Assertions.assertDoesNotThrow(() -> inTest.assertCleartextNameLengthAllowed(p));
+		}
 	}
 
 }

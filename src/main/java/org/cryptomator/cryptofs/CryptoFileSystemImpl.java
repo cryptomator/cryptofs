@@ -35,6 +35,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileStore;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
@@ -59,6 +60,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -288,6 +290,10 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	void createDirectory(CryptoPath cleartextDir, FileAttribute<?>... attrs) throws IOException {
 		readonlyFlag.assertWritable();
 		assertCleartextNameLengthAllowed(cleartextDir);
+		if (rootPath.equals(cleartextDir)) {
+			throw new FileAlreadyExistsException(rootPath.toString());
+		}
+
 		CryptoPath cleartextParentDir = cleartextDir.getParent();
 		if (cleartextParentDir == null) {
 			return;
@@ -382,7 +388,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 				stats.incrementAccessesRead();
 			}
 			return ch;
-		} catch (Exception e){
+		} catch (Exception e) {
 			ch.close();
 			throw e;
 		}
@@ -390,6 +396,9 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	void delete(CryptoPath cleartextPath) throws IOException {
 		readonlyFlag.assertWritable();
+		if (rootPath.equals(cleartextPath)) {
+			throw new FileSystemException("The filesystem root cannot be deleted.");
+		}
 		CiphertextFileType ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextPath);
 		CiphertextFilePath ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextPath);
 		switch (ciphertextFileType) {
@@ -421,6 +430,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		if (cleartextSource.equals(cleartextTarget)) {
 			return;
 		}
+
+		if (rootPath.equals(cleartextTarget) && ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
+			throw new FileSystemException("The filesystem root cannot be replaced.");
+		}
+
 		CiphertextFileType ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextSource);
 		if (!ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
 			cryptoPathMapper.assertNonExisting(cleartextTarget);
@@ -515,6 +529,16 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	void move(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption... options) throws IOException {
 		readonlyFlag.assertWritable();
 		assertCleartextNameLengthAllowed(cleartextTarget);
+
+		if (rootPath.equals(cleartextSource)) {
+			throw new FileSystemException("Filesystem root cannot be moved.");
+
+		}
+
+		if (rootPath.equals(cleartextTarget)) {
+			throw new FileAlreadyExistsException(rootPath.toString());
+		}
+
 		if (cleartextSource.equals(cleartextTarget)) {
 			return;
 		}
@@ -628,7 +652,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	void assertCleartextNameLengthAllowed(CryptoPath cleartextPath) throws FileNameTooLongException {
-		String filename = cleartextPath.getFileName().toString();
+		String filename = Optional.ofNullable(cleartextPath.getFileName()).map(CryptoPath::toString).orElse(""); //fs root has no explicit name
 		if (filename.length() > fileSystemProperties.maxCleartextNameLength()) {
 			throw new FileNameTooLongException(cleartextPath.toString(), fileSystemProperties.maxCleartextNameLength());
 		}
