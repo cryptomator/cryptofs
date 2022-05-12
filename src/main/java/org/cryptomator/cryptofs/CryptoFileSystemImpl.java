@@ -524,6 +524,15 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	void move(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption... options) throws IOException {
 		readonlyFlag.assertWritable();
 		assertCleartextNameLengthAllowed(cleartextTarget);
+
+		if(rootPath.equals(cleartextSource)) {
+			throw new FileSystemException("Filesystem root cannot be deleted.");
+		}
+
+		if(rootPath.equals(cleartextTarget)) {
+			throw new FileAlreadyExistsException(rootPath.toString());
+		}
+
 		if (cleartextSource.equals(cleartextTarget)) {
 			return;
 		}

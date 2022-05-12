@@ -614,6 +614,16 @@ public class CryptoFileSystemImplTest {
 			}
 
 			@Test
+			public void moveFilesystemRootFails() {
+				Assertions.assertThrows(FileSystemException.class, () -> inTest.move(root, cleartextDestination));
+			}
+
+			@Test
+			public void moveToFilesystemRootFails() {
+				Assertions.assertThrows(FileSystemException.class, () -> inTest.move(cleartextSource, root));
+			}
+
+			@Test
 			public void moveNonExistingFile() throws IOException {
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenThrow(NoSuchFileException.class);
 
