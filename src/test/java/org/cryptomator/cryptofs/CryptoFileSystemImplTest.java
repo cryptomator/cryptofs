@@ -782,6 +782,11 @@ public class CryptoFileSystemImplTest {
 			}
 
 			@Test
+			public void copyToRootWithReplacingFails() {
+				Assertions.assertThrows(FileSystemException.class, () -> inTest.copy(cleartextSource, root, StandardCopyOption.REPLACE_EXISTING));
+			}
+
+			@Test
 			public void copyNonExistingFile() throws IOException {
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenThrow(NoSuchFileException.class);
 

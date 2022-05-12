@@ -430,6 +430,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		if (cleartextSource.equals(cleartextTarget)) {
 			return;
 		}
+
+		if (rootPath.equals(cleartextTarget) && ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
+			throw new FileSystemException("The filesystem root cannot be replaced.");
+		}
+
 		CiphertextFileType ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextSource);
 		if (!ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
 			cryptoPathMapper.assertNonExisting(cleartextTarget);
