@@ -290,7 +290,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	void createDirectory(CryptoPath cleartextDir, FileAttribute<?>... attrs) throws IOException {
 		readonlyFlag.assertWritable();
 		assertCleartextNameLengthAllowed(cleartextDir);
-		if(rootPath.equals(cleartextDir)) {
+		if (rootPath.equals(cleartextDir)) {
 			throw new FileAlreadyExistsException(rootPath.toString());
 		}
 
@@ -388,7 +388,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 				stats.incrementAccessesRead();
 			}
 			return ch;
-		} catch (Exception e){
+		} catch (Exception e) {
 			ch.close();
 			throw e;
 		}
@@ -396,7 +396,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	void delete(CryptoPath cleartextPath) throws IOException {
 		readonlyFlag.assertWritable();
-		if(rootPath.equals(cleartextPath)) {
+		if (rootPath.equals(cleartextPath)) {
 			throw new FileSystemException("The filesystem root cannot be deleted.");
 		}
 		CiphertextFileType ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextPath);
@@ -530,11 +530,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		readonlyFlag.assertWritable();
 		assertCleartextNameLengthAllowed(cleartextTarget);
 
-		if(rootPath.equals(cleartextSource)) {
+		if (rootPath.equals(cleartextSource)) {
 			throw new FileSystemException("Filesystem root cannot be deleted.");
 		}
 
-		if(rootPath.equals(cleartextTarget)) {
+		if (rootPath.equals(cleartextTarget)) {
 			throw new FileAlreadyExistsException(rootPath.toString());
 		}
 

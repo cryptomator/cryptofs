@@ -1490,6 +1490,7 @@ public class CryptoFileSystemImplTest {
 			when(p.getFileName()).thenReturn(p);
 			when(p.toString()).thenReturn("takatuka");
 		}
+
 		@Test
 		public void testFittingPath() {
 			when(fileSystemProperties.maxCleartextNameLength()).thenReturn(20);
