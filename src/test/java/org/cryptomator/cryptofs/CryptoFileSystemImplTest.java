@@ -1008,6 +1008,11 @@ public class CryptoFileSystemImplTest {
 		}
 
 		@Test
+		public void createFilesystemRootFails() {
+			Assertions.assertThrows(FileAlreadyExistsException.class, () -> inTest.createDirectory(root));
+		}
+
+		@Test
 		public void createDirectoryIfPathHasNoParentDoesNothing() throws IOException {
 			when(path.getParent()).thenReturn(null);
 

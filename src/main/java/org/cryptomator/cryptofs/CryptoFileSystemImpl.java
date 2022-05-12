@@ -290,6 +290,10 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	void createDirectory(CryptoPath cleartextDir, FileAttribute<?>... attrs) throws IOException {
 		readonlyFlag.assertWritable();
 		assertCleartextNameLengthAllowed(cleartextDir);
+		if(rootPath.equals(cleartextDir)) {
+			throw new FileAlreadyExistsException(rootPath.toString());
+		}
+
 		CryptoPath cleartextParentDir = cleartextDir.getParent();
 		if (cleartextParentDir == null) {
 			return;
