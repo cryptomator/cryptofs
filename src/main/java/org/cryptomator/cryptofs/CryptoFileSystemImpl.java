@@ -531,7 +531,8 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		assertCleartextNameLengthAllowed(cleartextTarget);
 
 		if (rootPath.equals(cleartextSource)) {
-			throw new FileSystemException("Filesystem root cannot be deleted.");
+			throw new FileSystemException("Filesystem root cannot be moved.");
+
 		}
 
 		if (rootPath.equals(cleartextTarget)) {
