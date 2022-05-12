@@ -157,7 +157,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		} finally {
 			Arrays.fill(rawKey, (byte) 0x00);
 		}
-		assert checkDirStructureForVault(pathToVault, properties.vaultConfigFilename(), properties.masterkeyFilename()) == DirStructure.VAULT;
+		assert checkDirStructureForVault(pathToVault, properties.vaultConfigFilename(), null) == DirStructure.VAULT;
 	}
 
 	/**
