@@ -37,6 +37,7 @@ import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystem;
+import java.nio.file.FileSystemException;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -479,6 +480,11 @@ public class CryptoFileSystemImplTest {
 			when(physicalFsProv.readAttributes(ciphertextRawPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(ciphertextPathAttr);
 			when(physicalFsProv.readAttributes(ciphertextDirFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(ciphertextDirFilePathAttr);
 
+		}
+
+		@Test
+		public void testDeleteRootFails() {
+			Assertions.assertThrows(FileSystemException.class, () -> inTest.delete(root));
 		}
 
 		@Test
