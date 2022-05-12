@@ -59,6 +59,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -628,7 +629,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	void assertCleartextNameLengthAllowed(CryptoPath cleartextPath) throws FileNameTooLongException {
-		String filename = cleartextPath.getFileName().toString();
+		String filename = Optional.ofNullable(cleartextPath.getFileName()).map(CryptoPath::toString).orElse(""); //fs root has no explicit name
 		if (filename.length() > fileSystemProperties.maxCleartextNameLength()) {
 			throw new FileNameTooLongException(cleartextPath.toString(), fileSystemProperties.maxCleartextNameLength());
 		}

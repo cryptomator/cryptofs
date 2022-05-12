@@ -1454,4 +1454,34 @@ public class CryptoFileSystemImplTest {
 
 	}
 
+	@Nested
+	public class AssertFileNameLength {
+
+		CryptoPath p = Mockito.mock(CryptoPath.class);
+
+		@BeforeEach
+		public void init() {
+			when(p.getFileName()).thenReturn(p);
+			when(p.toString()).thenReturn("takatuka");
+		}
+		@Test
+		public void testFittingPath() {
+			when(fileSystemProperties.maxCleartextNameLength()).thenReturn(20);
+			Assertions.assertDoesNotThrow(() -> inTest.assertCleartextNameLengthAllowed(p));
+		}
+
+		@Test
+		public void testTooLongPath() {
+			when(fileSystemProperties.maxCleartextNameLength()).thenReturn(4);
+			Assertions.assertThrows(FileNameTooLongException.class, () -> inTest.assertCleartextNameLengthAllowed(p));
+		}
+
+		@Test
+		public void testRootPath() {
+			when(fileSystemProperties.maxCleartextNameLength()).thenReturn(0);
+			when(p.getFileName()).thenReturn(null);
+			Assertions.assertDoesNotThrow(() -> inTest.assertCleartextNameLengthAllowed(p));
+		}
+	}
+
 }
