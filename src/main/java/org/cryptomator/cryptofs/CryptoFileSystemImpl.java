@@ -35,6 +35,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileStore;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
@@ -59,6 +60,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -68,7 +70,7 @@ import static org.cryptomator.cryptofs.common.Constants.SEPARATOR;
 
 @CryptoFileSystemScoped
 class CryptoFileSystemImpl extends CryptoFileSystem {
-	
+
 	private final CryptoFileSystemProvider provider;
 	private final CryptoFileSystems cryptoFileSystems;
 	private final Path pathToVault;
@@ -80,6 +82,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	private final PathMatcherFactory pathMatcherFactory;
 	private final DirectoryStreamFactory directoryStreamFactory;
 	private final DirectoryIdProvider dirIdProvider;
+	private final DirectoryIdBackup dirIdBackup;
 	private final AttributeProvider fileAttributeProvider;
 	private final AttributeByNameProvider fileAttributeByNameProvider;
 	private final AttributeViewProvider fileAttributeViewProvider;
@@ -98,7 +101,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	@Inject
 	public CryptoFileSystemImpl(CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, @PathToVault Path pathToVault, Cryptor cryptor,
 								CryptoFileStore fileStore, CryptoFileSystemStats stats, CryptoPathMapper cryptoPathMapper, CryptoPathFactory cryptoPathFactory,
-								PathMatcherFactory pathMatcherFactory, DirectoryStreamFactory directoryStreamFactory, DirectoryIdProvider dirIdProvider,
+								PathMatcherFactory pathMatcherFactory, DirectoryStreamFactory directoryStreamFactory, DirectoryIdProvider dirIdProvider, DirectoryIdBackup dirIdBackup,
 								AttributeProvider fileAttributeProvider, AttributeByNameProvider fileAttributeByNameProvider, AttributeViewProvider fileAttributeViewProvider,
 								OpenCryptoFiles openCryptoFiles, Symlinks symlinks, FinallyUtil finallyUtil, CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag,
 								CryptoFileSystemProperties fileSystemProperties) {
@@ -113,6 +116,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		this.pathMatcherFactory = pathMatcherFactory;
 		this.directoryStreamFactory = directoryStreamFactory;
 		this.dirIdProvider = dirIdProvider;
+		this.dirIdBackup = dirIdBackup;
 		this.fileAttributeProvider = fileAttributeProvider;
 		this.fileAttributeByNameProvider = fileAttributeByNameProvider;
 		this.fileAttributeViewProvider = fileAttributeViewProvider;
@@ -235,13 +239,17 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	/**
 	 * @param cleartextPath the path to the file
-	 * @param type          the Class object corresponding to the file attribute view
-	 * @param options       future use
+	 * @param type the Class object corresponding to the file attribute view
+	 * @param options future use
 	 * @return a file attribute view of the specified type, or <code>null</code> if the attribute view type is not available
 	 * @see AttributeViewProvider#getAttributeView(CryptoPath, Class, LinkOption...)
 	 */
 	<V extends FileAttributeView> V getFileAttributeView(CryptoPath cleartextPath, Class<V> type, LinkOption... options) {
-		return fileAttributeViewProvider.getAttributeView(cleartextPath, type, options);
+		if (fileStore.supportsFileAttributeView(type)) {
+			return fileAttributeViewProvider.getAttributeView(cleartextPath, type, options);
+		} else {
+			return null;
+		}
 	}
 
 	void checkAccess(CryptoPath cleartextPath, AccessMode... modes) throws IOException {
@@ -282,6 +290,10 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	void createDirectory(CryptoPath cleartextDir, FileAttribute<?>... attrs) throws IOException {
 		readonlyFlag.assertWritable();
 		assertCleartextNameLengthAllowed(cleartextDir);
+		if (rootPath.equals(cleartextDir)) {
+			throw new FileAlreadyExistsException(rootPath.toString());
+		}
+
 		CryptoPath cleartextParentDir = cleartextDir.getParent();
 		if (cleartextParentDir == null) {
 			return;
@@ -302,6 +314,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		// create dir if and only if the dirFile has been created right now (not if it has been created before):
 		try {
 			Files.createDirectories(ciphertextDir.path);
+			dirIdBackup.execute(ciphertextDir);
 			ciphertextPath.persistLongFileName();
 		} catch (IOException e) {
 			// make sure there is no orphan dir file:
@@ -375,7 +388,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 				stats.incrementAccessesRead();
 			}
 			return ch;
-		} catch (Exception e){
+		} catch (Exception e) {
 			ch.close();
 			throw e;
 		}
@@ -383,6 +396,9 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	void delete(CryptoPath cleartextPath) throws IOException {
 		readonlyFlag.assertWritable();
+		if (rootPath.equals(cleartextPath)) {
+			throw new FileSystemException("The filesystem root cannot be deleted.");
+		}
 		CiphertextFileType ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextPath);
 		CiphertextFilePath ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextPath);
 		switch (ciphertextFileType) {
@@ -414,6 +430,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		if (cleartextSource.equals(cleartextTarget)) {
 			return;
 		}
+
+		if (rootPath.equals(cleartextTarget) && ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
+			throw new FileSystemException("The filesystem root cannot be replaced.");
+		}
+
 		CiphertextFileType ciphertextFileType = cryptoPathMapper.getCiphertextFileType(cleartextSource);
 		if (!ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING)) {
 			cryptoPathMapper.assertNonExisting(cleartextTarget);
@@ -508,6 +529,16 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	void move(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption... options) throws IOException {
 		readonlyFlag.assertWritable();
 		assertCleartextNameLengthAllowed(cleartextTarget);
+
+		if (rootPath.equals(cleartextSource)) {
+			throw new FileSystemException("Filesystem root cannot be moved.");
+
+		}
+
+		if (rootPath.equals(cleartextTarget)) {
+			throw new FileAlreadyExistsException(rootPath.toString());
+		}
+
 		if (cleartextSource.equals(cleartextTarget)) {
 			return;
 		}
@@ -582,7 +613,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			}
 			Files.walkFileTree(ciphertextTarget.getRawPath(), DeletingFileVisitor.INSTANCE);
 		}
-		
+
 		// no exceptions until this point, so MOVE:
 		Files.move(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath(), options);
 		if (ciphertextTarget.isShortened()) {
@@ -621,7 +652,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	void assertCleartextNameLengthAllowed(CryptoPath cleartextPath) throws FileNameTooLongException {
-		String filename = cleartextPath.getFileName().toString();
+		String filename = Optional.ofNullable(cleartextPath.getFileName()).map(CryptoPath::toString).orElse(""); //fs root has no explicit name
 		if (filename.length() > fileSystemProperties.maxCleartextNameLength()) {
 			throw new FileNameTooLongException(cleartextPath.toString(), fileSystemProperties.maxCleartextNameLength());
 		}

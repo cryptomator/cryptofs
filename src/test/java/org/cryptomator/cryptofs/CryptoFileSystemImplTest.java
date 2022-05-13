@@ -37,6 +37,7 @@ import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystem;
+import java.nio.file.FileSystemException;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -88,6 +89,7 @@ public class CryptoFileSystemImplTest {
 	private final Symlinks symlinks = mock(Symlinks.class);
 	private final CryptoPathMapper cryptoPathMapper = mock(CryptoPathMapper.class);
 	private final DirectoryIdProvider dirIdProvider = mock(DirectoryIdProvider.class);
+	private final DirectoryIdBackup dirIdBackup = mock(DirectoryIdBackup.class);
 	private final AttributeProvider fileAttributeProvider = mock(AttributeProvider.class);
 	private final AttributeByNameProvider fileAttributeByNameProvider = mock(AttributeByNameProvider.class);
 	private final AttributeViewProvider fileAttributeViewProvider = mock(AttributeViewProvider.class);
@@ -118,7 +120,7 @@ public class CryptoFileSystemImplTest {
 
 		inTest = new CryptoFileSystemImpl(provider, cryptoFileSystems, pathToVault, cryptor,
 				fileStore, stats, cryptoPathMapper, cryptoPathFactory,
-				pathMatcherFactory, directoryStreamFactory, dirIdProvider,
+				pathMatcherFactory, directoryStreamFactory, dirIdProvider, dirIdBackup,
 				fileAttributeProvider, fileAttributeByNameProvider, fileAttributeViewProvider,
 				openCryptoFiles, symlinks, finallyUtil, ciphertextDirDeleter, readonlyFlag,
 				fileSystemProperties);
@@ -481,6 +483,11 @@ public class CryptoFileSystemImplTest {
 		}
 
 		@Test
+		public void testDeleteRootFails() {
+			Assertions.assertThrows(FileSystemException.class, () -> inTest.delete(root));
+		}
+
+		@Test
 		public void testDeleteExistingFile() throws IOException {
 			when(cryptoPathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
 			when(physicalFsProv.deleteIfExists(ciphertextRawPath)).thenReturn(true);
@@ -604,6 +611,16 @@ public class CryptoFileSystemImplTest {
 
 				verify(readonlyFlag).assertWritable();
 				verifyNoInteractions(cryptoPathMapper);
+			}
+
+			@Test
+			public void moveFilesystemRootFails() {
+				Assertions.assertThrows(FileSystemException.class, () -> inTest.move(root, cleartextDestination));
+			}
+
+			@Test
+			public void moveToFilesystemRootFails() {
+				Assertions.assertThrows(FileSystemException.class, () -> inTest.move(cleartextSource, root));
 			}
 
 			@Test
@@ -762,6 +779,11 @@ public class CryptoFileSystemImplTest {
 
 				verify(readonlyFlag).assertWritable();
 				verifyNoInteractions(cryptoPathMapper);
+			}
+
+			@Test
+			public void copyToRootWithReplacingFails() {
+				Assertions.assertThrows(FileSystemException.class, () -> inTest.copy(cleartextSource, root, StandardCopyOption.REPLACE_EXISTING));
 			}
 
 			@Test
@@ -1001,6 +1023,11 @@ public class CryptoFileSystemImplTest {
 		}
 
 		@Test
+		public void createFilesystemRootFails() {
+			Assertions.assertThrows(FileAlreadyExistsException.class, () -> inTest.createDirectory(root));
+		}
+
+		@Test
 		public void createDirectoryIfPathHasNoParentDoesNothing() throws IOException {
 			when(path.getParent()).thenReturn(null);
 
@@ -1103,6 +1130,65 @@ public class CryptoFileSystemImplTest {
 			verify(cryptoPathMapper).invalidatePathMapping(path);
 		}
 
+		@Test
+		public void createDirectoryBackupsDirIdInCiphertextDirPath() throws IOException {
+			Path ciphertextParent = mock(Path.class, "ciphertextParent");
+			Path ciphertextRawPath = mock(Path.class, "d/00/00/path.c9r");
+			Path ciphertextDirFile = mock(Path.class, "d/00/00/path.c9r/dir.c9r");
+			Path ciphertextDirPath = mock(Path.class, "d/FF/FF/");
+			CiphertextFilePath ciphertextPath = mock(CiphertextFilePath.class, "ciphertext");
+			String dirId = "DirId1234ABC";
+			CiphertextDirectory cipherDirObject = new CiphertextDirectory(dirId, ciphertextDirPath);
+			FileChannelMock channel = new FileChannelMock(100);
+			when(ciphertextRawPath.resolve("dir.c9r")).thenReturn(ciphertextDirFile);
+			when(cryptoPathMapper.getCiphertextFilePath(path)).thenReturn(ciphertextPath);
+			when(cryptoPathMapper.getCiphertextDir(path)).thenReturn(cipherDirObject);
+			when(cryptoPathMapper.getCiphertextDir(parent)).thenReturn(new CiphertextDirectory("parentDirId", ciphertextDirPath));
+			when(cryptoPathMapper.getCiphertextFileType(path)).thenThrow(NoSuchFileException.class);
+			when(ciphertextPath.getRawPath()).thenReturn(ciphertextRawPath);
+			when(ciphertextPath.getDirFilePath()).thenReturn(ciphertextDirFile);
+			when(ciphertextParent.getFileSystem()).thenReturn(fileSystem);
+			when(ciphertextRawPath.getFileSystem()).thenReturn(fileSystem);
+			when(ciphertextDirFile.getFileSystem()).thenReturn(fileSystem);
+			when(ciphertextDirPath.getFileSystem()).thenReturn(fileSystem);
+			when(ciphertextDirFile.getName(3)).thenReturn(mock(Path.class, "path.c9r"));
+			when(provider.newFileChannel(ciphertextDirFile, EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))).thenReturn(channel);
+
+			inTest.createDirectory(path);
+
+			verify(readonlyFlag).assertWritable();
+			verify(dirIdBackup, Mockito.times(1)).execute(cipherDirObject);
+		}
+
+
+	}
+
+	@Nested
+	public class GetFileAttributeView {
+
+		@Test
+		public void getFileAttributeViewReturnsViewIfSupported() {
+			CryptoPath path = mock(CryptoPath.class);
+			PosixFileAttributeView view = mock(PosixFileAttributeView.class);
+			when(fileStore.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(true);
+			when(fileAttributeViewProvider.getAttributeView(path, PosixFileAttributeView.class)).thenReturn(view);
+
+			var result = inTest.getFileAttributeView(path, PosixFileAttributeView.class);
+
+			Assertions.assertSame(view, result);
+		}
+
+		@Test
+		public void getFileAttributeViewReturnsNullIfViewNotSupported() {
+			CryptoPath path = mock(CryptoPath.class);
+			when(fileStore.supportsFileAttributeView(PosixFileAttributeView.class)).thenReturn(false);
+
+			var result = inTest.getFileAttributeView(path, PosixFileAttributeView.class);
+
+			Assertions.assertNull(result);
+			Mockito.verifyNoInteractions(fileAttributeViewProvider);
+		}
+
 	}
 
 	@Nested
@@ -1133,6 +1219,7 @@ public class CryptoFileSystemImplTest {
 			DosFileAttributes fileAttributes = mock(DosFileAttributes.class);
 			when(fileAttributeView.readAttributes()).thenReturn(fileAttributes);
 			when(fileAttributes.isHidden()).thenReturn(true);
+			when(fileStore.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(true);
 			when(fileAttributeViewProvider.getAttributeView(path, DosFileAttributeView.class)).thenReturn(fileAttributeView);
 
 			MatcherAssert.assertThat(inTest.isHidden(path), is(true));
@@ -1144,6 +1231,7 @@ public class CryptoFileSystemImplTest {
 			DosFileAttributes fileAttributes = mock(DosFileAttributes.class);
 			when(fileAttributeView.readAttributes()).thenReturn(fileAttributes);
 			when(fileAttributes.isHidden()).thenReturn(false);
+			when(fileStore.supportsFileAttributeView(DosFileAttributeView.class)).thenReturn(true);
 			when(fileAttributeViewProvider.getAttributeView(path, DosFileAttributeView.class)).thenReturn(fileAttributeView);
 
 			MatcherAssert.assertThat(inTest.isHidden(path), is(false));
@@ -1390,6 +1478,37 @@ public class CryptoFileSystemImplTest {
 			verify(fileAttributeByNameProvider).setAttribute(path, name, value);
 		}
 
+	}
+
+	@Nested
+	public class AssertFileNameLength {
+
+		CryptoPath p = Mockito.mock(CryptoPath.class);
+
+		@BeforeEach
+		public void init() {
+			when(p.getFileName()).thenReturn(p);
+			when(p.toString()).thenReturn("takatuka");
+		}
+
+		@Test
+		public void testFittingPath() {
+			when(fileSystemProperties.maxCleartextNameLength()).thenReturn(20);
+			Assertions.assertDoesNotThrow(() -> inTest.assertCleartextNameLengthAllowed(p));
+		}
+
+		@Test
+		public void testTooLongPath() {
+			when(fileSystemProperties.maxCleartextNameLength()).thenReturn(4);
+			Assertions.assertThrows(FileNameTooLongException.class, () -> inTest.assertCleartextNameLengthAllowed(p));
+		}
+
+		@Test
+		public void testRootPath() {
+			when(fileSystemProperties.maxCleartextNameLength()).thenReturn(0);
+			when(p.getFileName()).thenReturn(null);
+			Assertions.assertDoesNotThrow(() -> inTest.assertCleartextNameLengthAllowed(p));
+		}
 	}
 
 }

@@ -46,7 +46,7 @@ public enum DirStructure {
 	 *
 	 * @param pathToVault A directory path
 	 * @param vaultConfigFilename Name of the vault config file
-	 * @param masterkeyFilename Name of the masterkey file
+	 * @param masterkeyFilename Name of the masterkey file (may be null to skip detection of legacy vaults)
 	 * @return enum indicating what this directory might be
 	 * @throws IOException if the provided path is not a directory, does not exist or cannot be read
 	 */
@@ -54,13 +54,11 @@ public enum DirStructure {
 		if(! Files.readAttributes(pathToVault, BasicFileAttributes.class).isDirectory()) {
 			throw new NotDirectoryException(pathToVault.toString());
 		}
-		Path vaultConfigPath = pathToVault.resolve(vaultConfigFilename);
-		Path masterkeyPath = pathToVault.resolve(masterkeyFilename);
 		Path dataDirPath = pathToVault.resolve(Constants.DATA_DIR_NAME);
 		if (Files.isDirectory(dataDirPath)) {
-			if (Files.isReadable(vaultConfigPath)) {
+			if (Files.isReadable(pathToVault.resolve(vaultConfigFilename))) {
 				return VAULT;
-			} else if (Files.isReadable(masterkeyPath)) {
+			} else if (masterkeyFilename != null &&  Files.isReadable(pathToVault.resolve(masterkeyFilename))) {
 				return MAYBE_LEGACY;
 			}
 		}

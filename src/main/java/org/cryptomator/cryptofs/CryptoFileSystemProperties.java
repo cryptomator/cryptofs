@@ -64,7 +64,9 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 * Key identifying the name of the masterkey file located inside the vault directory.
 	 *
 	 * @since 1.1.0
+	 * @deprecated Replaced with {@link #PROPERTY_KEYLOADER external keyloader} API
 	 */
+	@Deprecated
 	public static final String PROPERTY_MASTERKEY_FILENAME = "masterkeyFilename";
 
 	static final String DEFAULT_MASTERKEY_FILENAME = "masterkey.cryptomator";
@@ -128,6 +130,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		return (String) get(PROPERTY_VAULTCONFIG_FILENAME);
 	}
 
+	@Deprecated
 	String masterkeyFilename() {
 		return (String) get(PROPERTY_MASTERKEY_FILENAME);
 	}
@@ -295,7 +298,9 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		 * @param masterkeyFilename the filename of the json file containing configuration to decrypt the masterkey
 		 * @return this
 		 * @since 1.1.0
+		 * @deprecated Supply a {@link #withKeyLoader(MasterkeyLoader) keyloader} instead.
 		 */
+		@Deprecated
 		public Builder withMasterkeyFilename(String masterkeyFilename) {
 			this.masterkeyFilename = masterkeyFilename;
 			return this;
