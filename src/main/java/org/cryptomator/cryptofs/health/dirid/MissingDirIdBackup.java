@@ -11,26 +11,23 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 /**
- * TODO: adjust DirIdCheck
+ * The dir id backup file is missing.
  */
-public class MissingDirIdBackup implements DiagnosticResult {
-
-	private final Path cipherDir;
-	private final String dirId;
-
-	MissingDirIdBackup(String dirId, Path cipherDir)  {
-		this.cipherDir = cipherDir;
-		this.dirId = dirId;
-	}
+public record MissingDirIdBackup(String dirId, Path cipherDir) implements DiagnosticResult {
 
 	@Override
 	public Severity getSeverity() {
-		return Severity.WARN; //TODO: decide severity
+		return Severity.WARN;
+	}
+
+	@Override
+	public String toString() {
+		return String.format("Directory ID backup for directory %s is missing.", cipherDir);
 	}
 
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
 		DirectoryIdBackup dirIdBackup = new DirectoryIdBackup(cryptor);
-		dirIdBackup.execute(new CryptoPathMapper.CiphertextDirectory(dirId,cipherDir));
+		dirIdBackup.execute(new CryptoPathMapper.CiphertextDirectory(dirId, cipherDir));
 	}
 }
