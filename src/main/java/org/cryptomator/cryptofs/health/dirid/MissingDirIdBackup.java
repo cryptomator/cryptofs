@@ -13,12 +13,12 @@ import java.nio.file.Path;
 /**
  * TODO: adjust DirIdCheck
  */
-public class MissingDirIdFile implements DiagnosticResult {
+public class MissingDirIdBackup implements DiagnosticResult {
 
 	private final Path cipherDir;
 	private final String dirId;
 
-	MissingDirIdFile(String dirId, Path cipherDir)  {
+	MissingDirIdBackup(String dirId, Path cipherDir)  {
 		this.cipherDir = cipherDir;
 		this.dirId = dirId;
 	}

@@ -64,7 +64,7 @@ public class DirIdCheck implements HealthCheck {
 				if(Files.exists(expectedDir.resolve(Constants.DIR_ID_FILE))) {
 					resultCollector.accept(new HealthyDir(dirId, dirIdFile, expectedDir));
 				} else {
-					resultCollector.accept(new MissingDirIdFile(dirId, expectedDir));
+					resultCollector.accept(new MissingDirIdBackup(dirId, expectedDir));
 				}
 			}
 		}
