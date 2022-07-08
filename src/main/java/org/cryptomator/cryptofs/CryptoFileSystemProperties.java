@@ -52,7 +52,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 */
 	public static final String PROPERTY_SHORTENING_THRESHOLD = "shorteningThreshold";
 
-	static final int DEFAULT_SHORTENING_THRESHOLD = Constants.DEFAULT_SHORTENING_THRESHOLD;
+	static final int DEFAULT_SHORTENING_THRESHOLD = 220;
 
 	/**
 	 * Key identifying the key loader used during initialization.
