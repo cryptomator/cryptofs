@@ -49,6 +49,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
+						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
@@ -60,18 +61,21 @@ public class CryptoFileSystemPropertiesTest {
 		map.put(PROPERTY_KEYLOADER, keyLoader);
 		map.put(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename);
 		map.put(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, 255);
+		map.put(PROPERTY_SHORTENING_THRESHOLD, 221);
 		map.put(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY));
 		CryptoFileSystemProperties inTest = cryptoFileSystemPropertiesFrom(map).build();
 
 		MatcherAssert.assertThat(inTest.masterkeyFilename(), is(masterkeyFilename));
 		MatcherAssert.assertThat(inTest.readonly(), is(true));
 		MatcherAssert.assertThat(inTest.maxCleartextNameLength(), is(255));
+		MatcherAssert.assertThat(inTest.shorteningThreshold(), is(221));
 		MatcherAssert.assertThat(inTest.entrySet(),
 				containsInAnyOrder( //
 						anEntry(PROPERTY_KEYLOADER, keyLoader), //
 						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, 255), //
+						anEntry(PROPERTY_SHORTENING_THRESHOLD, 221), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
@@ -93,6 +97,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
+						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
 	}
@@ -114,6 +119,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, masterkeyFilename), //
 						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
+						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class))));
 	}
@@ -165,6 +171,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_VAULTCONFIG_FILENAME, DEFAULT_VAULTCONFIG_FILENAME), //
 						anEntry(PROPERTY_MASTERKEY_FILENAME, DEFAULT_MASTERKEY_FILENAME), //
 						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
+						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class))
 				)
