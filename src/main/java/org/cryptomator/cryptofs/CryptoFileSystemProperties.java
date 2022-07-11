@@ -9,7 +9,6 @@
 package org.cryptomator.cryptofs;
 
 import com.google.common.base.Strings;
-import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
 
