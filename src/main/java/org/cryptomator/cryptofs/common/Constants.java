@@ -26,7 +26,6 @@ public final class Constants {
 	public static final String CONTENTS_FILE_NAME = "contents.c9r";
 	public static final String INFLATED_FILE_NAME = "name.c9s";
 
-	public static final int DEFAULT_SHORTENING_THRESHOLD = 220;
 	public static final int MAX_SYMLINK_LENGTH = 32767; // max path length on NTFS and FAT32: 32k-1
 	public static final int MAX_DIR_FILE_LENGTH = 36; // UUIDv4: hex-encoded 16 byte int + 4 hyphens = 36 ASCII chars
 	public static final int MIN_CIPHER_NAME_LENGTH = 26; //rounded up base64url encoded (16 bytes IV + 0 bytes empty string) + file suffix = 26 ASCII chars
