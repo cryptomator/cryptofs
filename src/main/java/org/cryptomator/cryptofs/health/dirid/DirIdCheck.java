@@ -108,10 +108,14 @@ public class DirIdCheck implements HealthCheck {
 		private FileVisitResult visitDirFile(Path file, BasicFileAttributes attrs) throws IOException {
 			assert Constants.DIR_FILE_NAME.equals(file.getFileName().toString());
 			var parentDirName = file.getParent().getFileName().toString();
+
 			if (!(parentDirName.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX) || parentDirName.endsWith(Constants.DEFLATED_FILE_SUFFIX))) {
 				LOG.warn("Encountered loose dir.c9r file.", attrs.size());
 				resultCollector.accept(new LooseDirIdFile(file));
-			} else if (attrs.size() > Constants.MAX_DIR_FILE_LENGTH) {
+				return FileVisitResult.CONTINUE;
+			}
+
+			if (attrs.size() > Constants.MAX_DIR_FILE_LENGTH) {
 				LOG.warn("Encountered dir.c9r file of size {}", attrs.size());
 				resultCollector.accept(new ObeseDirFile(file, attrs.size()));
 			} else if (attrs.size() == 0) {
