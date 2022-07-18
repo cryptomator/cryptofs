@@ -12,17 +12,22 @@ import java.util.Map;
 
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID_FILE;
 
-public class LooseDirIdFile implements DiagnosticResult {
+public class LooseDirFile implements DiagnosticResult {
 
 	final Path dirFile;
 
-	LooseDirIdFile(Path dirFile) {
+	LooseDirFile(Path dirFile) {
 		this.dirFile = dirFile;
 	}
 
 	@Override
 	public Severity getSeverity() {
 		return Severity.INFO;
+	}
+
+	@Override
+	public String toString() {
+		return String.format("A dir.c9r without proper parent found: (%s). .", dirFile);
 	}
 
 	@Override

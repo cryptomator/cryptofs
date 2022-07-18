@@ -129,10 +129,10 @@ public class DirIdCheckTest {
 		public void testVisitorDetectsLooseDirId() throws IOException {
 			Files.walkFileTree(dataRoot, Set.of(), 4, visitor);
 
-			Predicate<LooseDirIdFile> expectedLooseFile = looseDirIdFile -> "/d/BB/bbbb/dir.c9r".equals(looseDirIdFile.dirFile.toString());
+			Predicate<LooseDirFile> expectedLooseFile = looseDirIdFile -> "/d/BB/bbbb/dir.c9r".equals(looseDirIdFile.dirFile.toString());
 			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
 			Mockito.verify(resultsCollector, Mockito.atLeastOnce()).accept(resultCaptor.capture());
-			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(LooseDirIdFile.class, expectedLooseFile, "Obese dir file: /d/BB/bbbb/bar=.c9r/dir.c9r")));
+			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(LooseDirFile.class, expectedLooseFile, "Obese dir file: /d/BB/bbbb/bar=.c9r/dir.c9r")));
 		}
 
 		@Test
@@ -151,10 +151,10 @@ public class DirIdCheckTest {
 		public void testVisitorDetectsMissingDirId() throws IOException {
 			Files.walkFileTree(dataRoot, Set.of(), 4, visitor);
 
-			Predicate<MissingDirIdFile> expectedMissingFile = missingDirIdFile -> "/d/BB/bbbb/missing=.c9r".equals(missingDirIdFile.c9rDirectory.toString());
+			Predicate<MissingDirFile> expectedMissingFile = missingDirIdFile -> "/d/BB/bbbb/missing=.c9r".equals(missingDirIdFile.c9rDirectory.toString());
 			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
 			Mockito.verify(resultsCollector, Mockito.atLeastOnce()).accept(resultCaptor.capture());
-			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(MissingDirIdFile.class, expectedMissingFile, "Missing dirId file for: /d/BB/bbbb/missing=.c9r")));
+			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(MissingDirFile.class, expectedMissingFile, "Missing dirId file for: /d/BB/bbbb/missing=.c9r")));
 		}
 
 	}

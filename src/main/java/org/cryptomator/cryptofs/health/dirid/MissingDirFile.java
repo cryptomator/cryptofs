@@ -14,17 +14,22 @@ import java.util.Map;
 /**
  *  A c9r directory without a dirId file.
  */
-public class MissingDirIdFile implements DiagnosticResult {
+public class MissingDirFile implements DiagnosticResult {
 
 	final Path c9rDirectory;
 
-	public MissingDirIdFile(Path c9rDirectory) {
+	public MissingDirFile(Path c9rDirectory) {
 		this.c9rDirectory = c9rDirectory;
 	}
 
 	@Override
 	public Severity getSeverity() {
 		return Severity.WARN;
+	}
+
+	@Override
+	public String toString() {
+		return String.format("Directory to contain dir.c9r exists (%s), but dir.c9r file is missing.", c9rDirectory);
 	}
 
 	@Override
