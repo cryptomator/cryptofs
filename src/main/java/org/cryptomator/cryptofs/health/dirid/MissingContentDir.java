@@ -48,7 +48,7 @@ public class MissingContentDir implements DiagnosticResult {
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
 		var dirIdHash = cryptor.fileNameCryptor().hashDirectoryId(dirId);
-		Path dirPath = pathToVault.resolve(Constants.DATA_DIR_NAME + "/" + dirIdHash.substring(0, 2) + "/" + dirIdHash.substring(2, 30));
+		Path dirPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(dirIdHash.substring(0, 2)).resolve(dirIdHash.substring(2, 30));
 		Files.createDirectories(dirPath);
 		createDirIdFile(cryptor, new CryptoPathMapper.CiphertextDirectory(dirId, dirPath));
 	}
