@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs.health.dirid;
 
 import org.cryptomator.cryptofs.VaultConfig;
+import org.cryptomator.cryptofs.health.api.CommonDetailKeys;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
@@ -10,33 +11,35 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
-import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID_FILE;
+/**
+ *  A c9r directory without a dirId file.
+ */
+public class MissingDirIdFile implements DiagnosticResult {
 
-public class LooseDirFile implements DiagnosticResult {
+	final Path c9rDirectory;
 
-	final Path dirFile;
-
-	LooseDirFile(Path dirFile) {
-		this.dirFile = dirFile;
+	public MissingDirIdFile(Path c9rDirectory) {
+		this.c9rDirectory = c9rDirectory;
 	}
 
 	@Override
 	public Severity getSeverity() {
-		return Severity.INFO;
+		return Severity.WARN;
 	}
 
 	@Override
 	public String toString() {
-		return String.format("A dir.c9r without proper parent found: (%s). .", dirFile);
+		return String.format("Directory to contain dir.c9r exists (%s), but dir.c9r file is missing.", c9rDirectory);
 	}
 
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
-		Files.deleteIfExists(dirFile);
+		Files.deleteIfExists(c9rDirectory);
 	}
 
 	@Override
 	public Map<String, String> details() {
-		return Map.of(DIR_ID_FILE, dirFile.toString());
+		return Map.of(CommonDetailKeys.ENCRYPTED_PATH, c9rDirectory.toString());
 	}
+
 }
