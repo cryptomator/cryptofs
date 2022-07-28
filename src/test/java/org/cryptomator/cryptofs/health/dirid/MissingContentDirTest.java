@@ -47,13 +47,13 @@ public class MissingContentDirTest {
 		var dirIdHash = "ridiculous-30-char-pseudo-hash";
 		Mockito.doReturn(dirIdHash).when(fileNameCryptor).hashDirectoryId(dirId);
 		var resultSpy = Mockito.spy(result);
-		Mockito.doNothing().when(resultSpy).createDirIdFile(Mockito.any(), Mockito.any());
+		Mockito.doNothing().when(resultSpy).createDirIdBackupFile(Mockito.any(), Mockito.any());
 
 		resultSpy.fix(pathToVault, Mockito.mock(VaultConfig.class), Mockito.mock(Masterkey.class), cryptor);
 
 		var expectedPath = pathToVault.resolve("d/ri/diculous-30-char-pseudo-hash");
 		ArgumentMatcher<CryptoPathMapper.CiphertextDirectory> cipherDirMatcher = obj -> obj.dirId.equals(dirId) && obj.path.endsWith(expectedPath);
-		Mockito.verify(resultSpy, Mockito.times(1)).createDirIdFile(Mockito.eq(cryptor), Mockito.argThat(cipherDirMatcher));
+		Mockito.verify(resultSpy, Mockito.times(1)).createDirIdBackupFile(Mockito.eq(cryptor), Mockito.argThat(cipherDirMatcher));
 		var attr = Assertions.assertDoesNotThrow(() -> Files.readAttributes(expectedPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS));
 		Assertions.assertTrue(attr.isDirectory());
 	}
@@ -64,7 +64,7 @@ public class MissingContentDirTest {
 		var dirIdHash = "ridiculous-30-char-pseudo-hash";
 		Mockito.doReturn(dirIdHash).when(fileNameCryptor).hashDirectoryId(dirId);
 		var resultSpy = Mockito.spy(result);
-		Mockito.doThrow(new IOException("Access denied")).when(resultSpy).createDirIdFile(Mockito.any(), Mockito.any());
+		Mockito.doThrow(new IOException("Access denied")).when(resultSpy).createDirIdBackupFile(Mockito.any(), Mockito.any());
 
 		Assertions.assertThrows(IOException.class, () -> resultSpy.fix(pathToVault, Mockito.mock(VaultConfig.class), Mockito.mock(Masterkey.class), cryptor));
 	}

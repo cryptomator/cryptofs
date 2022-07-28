@@ -22,11 +22,11 @@ import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID_FILE;
 public class MissingContentDir implements DiagnosticResult {
 
 	final String dirId;
-	final Path file;
+	final Path dirIdFile;
 
-	MissingContentDir(String dirId, Path file) {
+	MissingContentDir(String dirId, Path dirIdFile) {
 		this.dirId = dirId;
-		this.file = file;
+		this.dirIdFile = dirIdFile;
 	}
 
 	@Override
@@ -36,13 +36,13 @@ public class MissingContentDir implements DiagnosticResult {
 
 	@Override
 	public String toString() {
-		return String.format("dir.c9r file (%s) points to non-existing directory.", file);
+		return String.format("dir.c9r file (%s) points to non-existing directory.", dirIdFile);
 	}
 
 	@Override
 	public Map<String, String> details() {
 		return Map.of(DIR_ID, dirId, //
-				DIR_ID_FILE, file.toString());
+				DIR_ID_FILE, dirIdFile.toString());
 	}
 
 	@Override
@@ -50,11 +50,11 @@ public class MissingContentDir implements DiagnosticResult {
 		var dirIdHash = cryptor.fileNameCryptor().hashDirectoryId(dirId);
 		Path dirPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(dirIdHash.substring(0, 2)).resolve(dirIdHash.substring(2, 30));
 		Files.createDirectories(dirPath);
-		createDirIdFile(cryptor, new CryptoPathMapper.CiphertextDirectory(dirId, dirPath));
+		createDirIdBackupFile(cryptor, new CryptoPathMapper.CiphertextDirectory(dirId, dirPath));
 	}
 
 	//visible for testing
-	void createDirIdFile(Cryptor cryptor, CryptoPathMapper.CiphertextDirectory cipherDirObj) throws IOException {
+	void createDirIdBackupFile(Cryptor cryptor, CryptoPathMapper.CiphertextDirectory cipherDirObj) throws IOException {
 		new DirectoryIdBackup(cryptor).execute(cipherDirObj);
 	}
 }
