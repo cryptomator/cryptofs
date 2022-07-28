@@ -71,7 +71,7 @@ public class DirIdCheck implements HealthCheck {
 
 		// remaining dirIds (i.e. missing dirs):
 		dirVisitor.dirIds.forEach((dirId, dirIdFile) -> {
-			resultCollector.accept(new MissingDirectory(dirId, dirIdFile));
+			resultCollector.accept(new MissingContentDir(dirId, dirIdFile));
 		});
 
 		// remaining folders (i.e. missing dir.c9r files):
