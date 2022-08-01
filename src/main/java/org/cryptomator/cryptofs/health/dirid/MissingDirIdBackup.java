@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 /**
- * The dir id backup file is missing.
+ * The dir id backup file {@value org.cryptomator.cryptofs.common.Constants#DIR_ID_FILE} is missing.
  */
 public record MissingDirIdBackup(String dirId, Path cipherDir) implements DiagnosticResult {
 
