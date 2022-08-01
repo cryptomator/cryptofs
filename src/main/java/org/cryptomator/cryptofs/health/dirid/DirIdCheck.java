@@ -110,7 +110,7 @@ public class DirIdCheck implements HealthCheck {
 			var parentDirName = file.getParent().getFileName().toString();
 
 			if (!(parentDirName.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX) || parentDirName.endsWith(Constants.DEFLATED_FILE_SUFFIX))) {
-				LOG.warn("Encountered loose dir.c9r file.", attrs.size());
+				LOG.warn("Encountered loose dir.c9r file.");
 				resultCollector.accept(new LooseDirIdFile(file));
 				return FileVisitResult.CONTINUE;
 			}
@@ -148,11 +148,9 @@ public class DirIdCheck implements HealthCheck {
 		@Override
 		public FileVisitResult postVisitDirectory(Path dir, IOException e) {
 			var dirName = dir.getFileName().toString();
-			if (dirName.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX)) {
-				if (!c9rDirsWithDirId.contains(dir)) {
-					LOG.warn("Missing dirId file for c9r directory {}.", dir);
-					resultCollector.accept(new MissingDirIdFile(dir));
-				}
+			if (dirName.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX) && !c9rDirsWithDirId.contains(dir)) {
+				LOG.warn("Missing dirId file for c9r directory {}.", dir);
+				resultCollector.accept(new MissingDirIdFile(dir));
 			}
 			return FileVisitResult.CONTINUE;
 		}
