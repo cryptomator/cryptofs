@@ -38,7 +38,7 @@ public class OrphanDirTest {
 	@TempDir
 	public Path pathToVault;
 
-	private OrphanDir result;
+	private OrphanContentDir result;
 	private Path dataDir;
 	private Path cipherRoot;
 	private Path cipherRecovery;
@@ -49,7 +49,7 @@ public class OrphanDirTest {
 	@BeforeEach
 	public void init() throws IOException {
 		Path p = Mockito.mock(Path.class, "ignored");
-		result = new OrphanDir(p);
+		result = new OrphanContentDir(p);
 
 		dataDir = pathToVault.resolve("d");
 		cipherRoot = dataDir.resolve("00/0000");
@@ -220,7 +220,7 @@ public class OrphanDirTest {
 	@Nested
 	class RetrieveDirIdTests {
 
-		private OrphanDir resultSpy;
+		private OrphanContentDir resultSpy;
 
 		@BeforeEach
 		public void init() {
@@ -418,7 +418,7 @@ public class OrphanDirTest {
 	@Test
 	@DisplayName("fix() prepares vault, process every resource in orphanDir and deletes orphanDir (dirId not present)")
 	public void testFixNoDirId() throws IOException {
-		result = new OrphanDir(dataDir.relativize(cipherOrphan));
+		result = new OrphanContentDir(dataDir.relativize(cipherOrphan));
 		var resultSpy = Mockito.spy(result);
 
 		Path orphan1 = cipherOrphan.resolve("orphan1.c9r");
@@ -448,7 +448,7 @@ public class OrphanDirTest {
 	@Test
 	@DisplayName("fix() does not choke when filename cannot be restored")
 	public void testFixContinuesOnNotRecoverableFilename() throws IOException {
-		result = new OrphanDir(dataDir.relativize(cipherOrphan));
+		result = new OrphanContentDir(dataDir.relativize(cipherOrphan));
 		var resultSpy = Mockito.spy(result);
 
 		Path orphan1 = cipherOrphan.resolve("orphan1.c9r");
@@ -485,7 +485,7 @@ public class OrphanDirTest {
 	@Test
 	@DisplayName("fix() prepares vault, process every resource (except dirId file) in orphanDir and deletes orphanDir (dirId present)")
 	public void testFixWithDirId() throws IOException {
-		result = new OrphanDir(dataDir.relativize(cipherOrphan));
+		result = new OrphanContentDir(dataDir.relativize(cipherOrphan));
 		var resultSpy = Mockito.spy(result);
 
 		var lostName1 = "Brother.sibling";
@@ -533,7 +533,7 @@ public class OrphanDirTest {
 
 		AtomicReference<String> clearStepparentNameRef = new AtomicReference<>("");
 
-		var interruptedResult = new OrphanDir(dataDir.relativize(cipherOrphan));
+		var interruptedResult = new OrphanContentDir(dataDir.relativize(cipherOrphan));
 		var interruptedSpy = Mockito.spy(interruptedResult);
 		Mockito.doReturn(cipherRecovery).when(interruptedSpy).prepareRecoveryDir(pathToVault, fileNameCryptor);
 		Mockito.doAnswer(invocation -> {
@@ -541,7 +541,7 @@ public class OrphanDirTest {
 			throw new IOException("Interrupt");
 		}).when(interruptedSpy).prepareStepParent(Mockito.eq(dataDir), Mockito.eq(cipherRecovery), Mockito.eq(cryptor), Mockito.any());
 
-		var continuedResult = new OrphanDir(dataDir.relativize(cipherOrphan));
+		var continuedResult = new OrphanContentDir(dataDir.relativize(cipherOrphan));
 		var continuedSpy = Mockito.spy(continuedResult);
 		Mockito.doReturn(cipherRecovery).when(continuedSpy).prepareRecoveryDir(pathToVault, fileNameCryptor);
 		Mockito.doThrow(IOException.class).when(continuedSpy).prepareStepParent(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
@@ -557,7 +557,7 @@ public class OrphanDirTest {
 	@DisplayName("orphaned recovery dir will only be reintegrated")
 	public void testFixOrphanedRecoveryDir() throws IOException {
 		Path orphanedRecovery = dataDir.resolve("11/1111");
-		result = new OrphanDir(dataDir.relativize(orphanedRecovery));
+		result = new OrphanContentDir(dataDir.relativize(orphanedRecovery));
 		var resultSpy = Mockito.spy(result);
 
 		Path orphan1 = orphanedRecovery.resolve("orphan1.c9r");

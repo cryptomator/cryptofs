@@ -16,11 +16,11 @@ import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID_FILE;
  *
  * @see org.cryptomator.cryptofs.common.Constants#ROOT_DIR_ID
  */
-public class EmptyDirFile implements DiagnosticResult {
+public class EmptyDirIdFile implements DiagnosticResult {
 
-	final Path dirFile;
+	final Path dirIdFile;
 
-	public EmptyDirFile(Path dirFile) {this.dirFile = dirFile;}
+	public EmptyDirIdFile(Path dirIdFile) {this.dirIdFile = dirIdFile;}
 
 	@Override
 	public Severity getSeverity() {
@@ -29,7 +29,7 @@ public class EmptyDirFile implements DiagnosticResult {
 
 	@Override
 	public String toString() {
-		return String.format("File %s is empty, expected content", dirFile);
+		return String.format("File %s is empty, expected content", dirIdFile);
 	}
 
 	/*
@@ -44,6 +44,6 @@ public class EmptyDirFile implements DiagnosticResult {
 
 	@Override
 	public Map<String, String> details() {
-		return Map.of(DIR_ID_FILE, dirFile.toString());
+		return Map.of(DIR_ID_FILE, dirIdFile.toString());
 	}
 }
