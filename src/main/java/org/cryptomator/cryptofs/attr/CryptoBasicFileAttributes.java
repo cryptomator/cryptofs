@@ -34,7 +34,10 @@ sealed class CryptoBasicFileAttributes implements BasicFileAttributes
 
 	public CryptoBasicFileAttributes(BasicFileAttributes delegate, CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile) {
 		this.ciphertextFileType = ciphertextFileType;
-		this.size = ciphertextFileType != DIRECTORY ? getPlaintextFileSize(ciphertextPath, delegate.size(), openCryptoFile, cryptor) : delegate.size();
+		this.size = switch (ciphertextFileType) {
+			case DIRECTORY -> delegate.size();
+			case SYMLINK, FILE -> getPlaintextFileSize(ciphertextPath, delegate.size(), openCryptoFile, cryptor);
+		};
 		this.lastModifiedTime =  openCryptoFile.map(OpenCryptoFile::getLastModifiedTime).orElseGet(delegate::lastModifiedTime);
 		this.lastAccessTime = openCryptoFile.map(openFile -> FileTime.from(Instant.now())).orElseGet(delegate::lastAccessTime);
 		this.creationTime = delegate.creationTime();
