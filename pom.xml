@@ -18,7 +18,7 @@
 		<maven.compiler.release>17</maven.compiler.release>
 
 		<!-- dependencies -->
-		<cryptolib.version>2.0.3</cryptolib.version>
+		<cryptolib.version>2.1.0-rc1</cryptolib.version>
 		<jwt.version>4.0.0</jwt.version>
 		<dagger.version>2.44</dagger.version>
 		<guava.version>31.1-jre</guava.version>

@@ -232,8 +232,10 @@ class FilePathMigration {
 		String inflatedName = getNewInflatedName();
 		if (inflatedName.length() > SHORTENING_THRESHOLD) {
 			byte[] longFileNameBytes = inflatedName.getBytes(UTF_8);
-			byte[] hash = MessageDigestSupplier.SHA1.get().digest(longFileNameBytes);
-			return BASE64.encode(hash) + NEW_SHORTENED_SUFFIX;
+			try (var sha1 = MessageDigestSupplier.SHA1.instance()) {
+				byte[] hash = sha1.get().digest(longFileNameBytes);
+				return BASE64.encode(hash) + NEW_SHORTENED_SUFFIX;
+			}
 		} else {
 			return inflatedName;
 		}
