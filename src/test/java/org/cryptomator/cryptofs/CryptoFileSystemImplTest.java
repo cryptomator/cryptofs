@@ -54,6 +54,7 @@ import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Arrays;
@@ -366,7 +367,7 @@ public class CryptoFileSystemImplTest {
 			when(ciphertextPath.getFilePath()).thenReturn(ciphertextFilePath);
 			when(openCryptoFiles.getOrCreate(ciphertextFilePath)).thenReturn(openCryptoFile);
 			when(ciphertextFilePath.getName(3)).thenReturn(mock(CryptoPath.class, "path.c9r"));
-			when(openCryptoFile.newFileChannel(any())).thenReturn(fileChannel);
+			when(openCryptoFile.newFileChannel(any(), any())).thenReturn(fileChannel);
 		}
 
 		@Nested
@@ -409,6 +410,18 @@ public class CryptoFileSystemImplTest {
 
 				Assertions.assertSame(fileChannel, ch);
 				verify(readonlyFlag, Mockito.never()).assertWritable();
+			}
+
+			@Test
+			@DisplayName("create new succeeds when within limit")
+			public void testNewFileChannelCreate3() throws IOException {
+				Mockito.doReturn(10).when(fileSystemProperties).maxCleartextNameLength();
+				var attrs = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwxr-x---"));
+
+				FileChannel ch = inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), attrs);
+
+				Assertions.assertSame(fileChannel, ch);
+				verify(openCryptoFile).newFileChannel(Mockito.any(), Mockito.eq(attrs));
 			}
 
 		}

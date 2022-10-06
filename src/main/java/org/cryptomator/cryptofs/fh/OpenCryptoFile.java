@@ -21,6 +21,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.Optional;
@@ -65,7 +66,7 @@ public class OpenCryptoFile implements Closeable {
 	 * @return A new file channel. Ideally used in a try-with-resource statement. If the channel is not properly closed, this OpenCryptoFile will stay open indefinite.
 	 * @throws IOException
 	 */
-	public synchronized FileChannel newFileChannel(EffectiveOpenOptions options) throws IOException {
+	public synchronized FileChannel newFileChannel(EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
 		Path path = currentFilePath.get();
 
 		if (options.truncateExisting()) {
@@ -75,7 +76,7 @@ public class OpenCryptoFile implements Closeable {
 		FileChannel ciphertextFileChannel = null;
 		CleartextFileChannel cleartextFileChannel = null;
 		try {
-			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile());
+			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
 			final FileHeader header;
 			final boolean isNewHeader;
 			if (ciphertextFileChannel.size() == 0l) {

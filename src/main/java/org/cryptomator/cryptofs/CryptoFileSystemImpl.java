@@ -378,7 +378,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			Files.createDirectories(ciphertextPath.getRawPath()); // suppresses FileAlreadyExists
 		}
 
-		FileChannel ch = openCryptoFiles.getOrCreate(ciphertextFilePath).newFileChannel(options); // might throw FileAlreadyExists
+		FileChannel ch = openCryptoFiles.getOrCreate(ciphertextFilePath).newFileChannel(options, attrs); // might throw FileAlreadyExists
 		try {
 			if (options.writable()) {
 				ciphertextPath.persistLongFileName();
