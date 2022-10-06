@@ -413,7 +413,7 @@ public class CryptoFileSystemImplTest {
 			}
 
 			@Test
-			@DisplayName("create new succeeds when within limit")
+			@DisplayName("create new and atomically set file attributes")
 			public void testNewFileChannelCreate3() throws IOException {
 				Mockito.doReturn(10).when(fileSystemProperties).maxCleartextNameLength();
 				var attrs = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwxr-x---"));
