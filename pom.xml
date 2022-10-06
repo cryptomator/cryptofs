@@ -20,19 +20,19 @@
 		<!-- dependencies -->
 		<cryptolib.version>2.0.3</cryptolib.version>
 		<jwt.version>3.19.1</jwt.version>
-		<dagger.version>2.41</dagger.version>
+		<dagger.version>2.44</dagger.version>
 		<guava.version>31.1-jre</guava.version>
 		<slf4j.version>1.7.36</slf4j.version>
 
 		<!-- test dependencies -->
 		<junit.jupiter.version>5.8.2</junit.jupiter.version>
-		<mockito.version>4.4.0</mockito.version>
+		<mockito.version>4.8.0</mockito.version>
 		<hamcrest.version>2.2</hamcrest.version>
 
 		<!-- build plugin dependencies -->
-		<dependency-check.version>7.0.3</dependency-check.version>
-		<jacoco.version>0.8.7</jacoco.version>
-		<nexus-staging.version>1.6.12</nexus-staging.version>
+		<dependency-check.version>7.2.1</dependency-check.version>
+		<jacoco.version>0.8.8</jacoco.version>
+		<nexus-staging.version>1.6.13</nexus-staging.version>
 	</properties>
 
 	<licenses>
@@ -125,7 +125,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.8.1</version>
+				<version>3.10.1</version>
 				<configuration>
 					<showWarnings>true</showWarnings>
 					<annotationProcessorPaths>
@@ -140,7 +140,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.0.0-M5</version>
+				<version>3.0.0-M7</version>
 				<configuration>
 					<systemPropertyVariables>
 						<org.slf4j.simpleLogger.defaultLogLevel>ERROR</org.slf4j.simpleLogger.defaultLogLevel>
@@ -152,7 +152,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
-				<version>3.2.0</version>
+				<version>3.3.0</version>
 			</plugin>
 			<plugin>
 				<artifactId>maven-source-plugin</artifactId>
@@ -168,7 +168,7 @@
 			</plugin>
 			<plugin>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.3.0</version>
+				<version>3.4.1</version>
 				<executions>
 					<execution>
 						<id>attach-javadocs</id>
