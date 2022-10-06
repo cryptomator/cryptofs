@@ -3,6 +3,7 @@ package org.cryptomator.cryptofs.health.dirid;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.DirectoryIdBackup;
 import org.cryptomator.cryptofs.VaultConfig;
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
@@ -28,6 +29,7 @@ public record MissingDirIdBackup(String dirId, Path cipherDir) implements Diagno
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
 		DirectoryIdBackup dirIdBackup = new DirectoryIdBackup(cryptor);
-		dirIdBackup.execute(new CryptoPathMapper.CiphertextDirectory(dirId, cipherDir));
+		Path absCipherDir = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(cipherDir);
+		dirIdBackup.execute(new CryptoPathMapper.CiphertextDirectory(dirId, absCipherDir));
 	}
 }
