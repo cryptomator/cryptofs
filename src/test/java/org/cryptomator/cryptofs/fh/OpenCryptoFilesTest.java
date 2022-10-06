@@ -67,13 +67,11 @@ public class OpenCryptoFilesTest {
 	public void testWriteCiphertextFile() throws IOException {
 		Path path = Paths.get("/foo");
 		EffectiveOpenOptions openOptions = Mockito.mock(EffectiveOpenOptions.class);
-		ByteBuffer contents = Mockito.mock(ByteBuffer.class);
+		ByteBuffer contents = StandardCharsets.UTF_8.encode("hello world");
 
 		inTest.writeCiphertextFile(path, openOptions, contents);
 
-		ArgumentCaptor<ByteBuffer> bytesWritten = ArgumentCaptor.forClass(ByteBuffer.class);
-		Mockito.verify(ciphertextFileChannel).write(bytesWritten.capture());
-		Assertions.assertEquals(contents, bytesWritten.getValue());
+		Mockito.verify(ciphertextFileChannel).write(contents);
 	}
 
 	@Test
