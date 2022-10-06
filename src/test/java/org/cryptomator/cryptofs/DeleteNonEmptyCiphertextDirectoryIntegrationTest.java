@@ -139,7 +139,7 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 
 		// a
 		// .. LongNameaaa...
-		String name = "LongName" + Strings.repeat("a", Constants.DEFAULT_SHORTENING_THRESHOLD);
+		String name = "LongName" + Strings.repeat("a", CryptoFileSystemProperties.DEFAULT_SHORTENING_THRESHOLD);
 		createFolder(cleartextDirectory, name);
 
 		Assertions.assertThrows(DirectoryNotEmptyException.class, () -> {

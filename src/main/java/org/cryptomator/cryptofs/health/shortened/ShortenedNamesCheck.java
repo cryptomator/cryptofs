@@ -148,8 +148,10 @@ public class ShortenedNamesCheck implements HealthCheck {
 		//visible for testing
 		String deflate(String longFileName) {
 			byte[] longFileNameBytes = longFileName.getBytes(UTF_8);
-			byte[] hash = MessageDigestSupplier.SHA1.get().digest(longFileNameBytes);
-			return BASE64URL.encode(hash) + DEFLATED_FILE_SUFFIX;
+			try (var sha1 = MessageDigestSupplier.SHA1.instance()) {
+				byte[] hash = sha1.get().digest(longFileNameBytes);
+				return BASE64URL.encode(hash) + DEFLATED_FILE_SUFFIX;
+			}
 		}
 
 	}

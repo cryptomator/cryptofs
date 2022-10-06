@@ -11,13 +11,13 @@ import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID_FILE;
 /**
  * The dir.c9r file's size is too large.
  */
-public class ObeseDirFile implements DiagnosticResult {
+public class ObeseDirIdFile implements DiagnosticResult {
 
-	final Path dirFile;
+	final Path dirIdFile;
 	final long size;
 
-	ObeseDirFile(Path dirFile, long size) {
-		this.dirFile = dirFile;
+	ObeseDirIdFile(Path dirIdFile, long size) {
+		this.dirIdFile = dirIdFile;
 		this.size = size;
 	}
 
@@ -28,12 +28,12 @@ public class ObeseDirFile implements DiagnosticResult {
 
 	@Override
 	public String toString() {
-		return String.format("Unexpected file size of %s: %d should be ≤ %d", dirFile, size, Constants.MAX_DIR_FILE_LENGTH);
+		return String.format("Unexpected file size of %s: %d should be ≤ %d", dirIdFile, size, Constants.MAX_DIR_FILE_LENGTH);
 	}
 
 	@Override
 	public Map<String, String> details() {
-		return Map.of(DIR_ID_FILE, dirFile.toString(), //
+		return Map.of(DIR_ID_FILE, dirIdFile.toString(), //
 				"Size", Long.toString(size));
 	}
 	// potential fix: assign new dir id, move target dir

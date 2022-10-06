@@ -1,5 +1,7 @@
 package org.cryptomator.cryptofs.fh;
 
+import com.google.common.jimfs.Configuration;
+import com.google.common.jimfs.Feature;
 import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ReadonlyFlag;
@@ -28,6 +30,7 @@ import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicLong;
@@ -55,7 +58,7 @@ public class OpenCryptoFileTest {
 
 	@BeforeAll
 	public static void setup() {
-		FS = Jimfs.newFileSystem("OpenCryptoFileTest");
+		FS = Jimfs.newFileSystem("OpenCryptoFileTest", Configuration.unix().toBuilder().setAttributeViews("basic", "posix").build());
 		CURRENT_FILE_PATH = new AtomicReference<>(FS.getPath("currentFile"));
 	}
 
@@ -131,8 +134,9 @@ public class OpenCryptoFileTest {
 		@Order(10)
 		@DisplayName("create first FileChannel")
 		public void createFileChannel() throws IOException {
+			var attrs = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwxr-x---"));
 			EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), readonlyFlag);
-			FileChannel ch = openCryptoFile.newFileChannel(options);
+			FileChannel ch = openCryptoFile.newFileChannel(options, attrs);
 			Assertions.assertSame(cleartextFileChannel, ch);
 			verify(chunkIO).registerChannel(ciphertextChannel.get(), true);
 		}

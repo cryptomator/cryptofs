@@ -82,11 +82,13 @@ public class LongFileNameProvider {
 	public DeflatedFileName deflate(Path c9rPath) {
 		String longFileName = c9rPath.getFileName().toString();
 		byte[] longFileNameBytes = longFileName.getBytes(UTF_8);
-		byte[] hash = MessageDigestSupplier.SHA1.get().digest(longFileNameBytes);
-		String shortName = BASE64.encode(hash) + DEFLATED_FILE_SUFFIX;
-		Path c9sPath = c9rPath.resolveSibling(shortName);
-		longNames.put(c9sPath, longFileName);
-		return new DeflatedFileName(c9sPath, longFileName, readonlyFlag);
+		try (var sha1 = MessageDigestSupplier.SHA1.instance()) {
+			byte[] hash = sha1.get().digest(longFileNameBytes);
+			String shortName = BASE64.encode(hash) + DEFLATED_FILE_SUFFIX;
+			Path c9sPath = c9rPath.resolveSibling(shortName);
+			longNames.put(c9sPath, longFileName);
+			return new DeflatedFileName(c9sPath, longFileName, readonlyFlag);
+		}
 	}
 
 	public static class DeflatedFileName {

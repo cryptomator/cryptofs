@@ -37,19 +37,19 @@ import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.ENCRYPTED_PAT
 /**
  * An orphan directory is a detached node, not referenced by any dir.c9r file.
  */
-public class OrphanDir implements DiagnosticResult {
+public class OrphanContentDir implements DiagnosticResult {
 
-	private static final Logger LOG = LoggerFactory.getLogger(OrphanDir.class);
+	private static final Logger LOG = LoggerFactory.getLogger(OrphanContentDir.class);
 
 	private static final String FILE_PREFIX = "file";
 	private static final String DIR_PREFIX = "directory";
 	private static final String SYMLINK_PREFIX = "symlink";
 	private static final String LONG_NAME_SUFFIX_BASE = "_withVeryLongName";
 
-	final Path dir;
+	final Path contentDir;
 
-	OrphanDir(Path dir) {
-		this.dir = dir;
+	OrphanContentDir(Path contentDir) {
+		this.contentDir = contentDir;
 	}
 
 	@Override
@@ -59,12 +59,12 @@ public class OrphanDir implements DiagnosticResult {
 
 	@Override
 	public String toString() {
-		return String.format("Orphan directory: %s", dir);
+		return String.format("Orphan directory: %s", contentDir);
 	}
 
 	@Override
 	public Map<String, String> details() {
-		return Map.of(ENCRYPTED_PATH, dir.toString());
+		return Map.of(ENCRYPTED_PATH, contentDir.toString());
 	}
 
 	@Override
@@ -72,8 +72,8 @@ public class OrphanDir implements DiagnosticResult {
 		var sha1 = getSha1MessageDigest();
 		String runId = Integer.toString((short) UUID.randomUUID().getMostSignificantBits(), 32);
 		Path dataDir = pathToVault.resolve(Constants.DATA_DIR_NAME);
-		Path orphanedDir = dataDir.resolve(this.dir);
-		String orphanDirIdHash = dir.getParent().getFileName().toString() + dir.getFileName().toString();
+		Path orphanedDir = dataDir.resolve(this.contentDir);
+		String orphanDirIdHash = contentDir.getParent().getFileName().toString() + contentDir.getFileName().toString();
 
 		Path recoveryDir = prepareRecoveryDir(pathToVault, cryptor.fileNameCryptor());
 		if (recoveryDir.toAbsolutePath().equals(orphanedDir.toAbsolutePath())) {
