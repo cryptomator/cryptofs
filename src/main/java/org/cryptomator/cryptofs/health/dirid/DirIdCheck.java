@@ -61,7 +61,7 @@ public class DirIdCheck implements HealthCheck {
 			boolean foundDir = dirVisitor.secondLevelDirs.remove(expectedDir);
 			if (foundDir) {
 				iter.remove();
-				if ( Constants.ROOT_DIR_ID.equals(dirId) || Files.exists(dataDirPath.resolve(expectedDir).resolve(Constants.DIR_ID_FILE))) {
+				if (Files.exists(dataDirPath.resolve(expectedDir).resolve(Constants.DIR_ID_FILE))) {
 					resultCollector.accept(new HealthyDir(dirId, dirIdFile, expectedDir));
 				} else {
 					resultCollector.accept(new MissingDirIdBackup(dirId, expectedDir));
