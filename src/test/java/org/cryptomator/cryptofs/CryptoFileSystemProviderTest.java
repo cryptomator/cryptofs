@@ -3,6 +3,7 @@ package org.cryptomator.cryptofs;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.ch.AsyncDelegatingFileChannel;
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptolib.api.Masterkey;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
 import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
@@ -194,6 +195,11 @@ public class CryptoFileSystemProviderTest {
 		Optional<Path> rootDir = Files.list(preRootDir.get()).findFirst();
 		Assertions.assertTrue(rootDir.isPresent());
 		Assertions.assertTrue(Files.isDirectory(rootDir.get()));
+
+		Optional<Path> dirIdBackup = Files.list(rootDir.get()).findFirst();
+		Assertions.assertTrue(dirIdBackup.isPresent());
+		Assertions.assertTrue(Files.isRegularFile(dirIdBackup.get()));
+		Assertions.assertTrue(dirIdBackup.get().getFileName().toString().equals(Constants.DIR_ID_FILE));
 	}
 
 	@Test

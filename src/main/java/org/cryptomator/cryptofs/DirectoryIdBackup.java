@@ -13,7 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 
 /**
- * Single purpose class to backup the directory id of an encrypted directory when it is created.
+ * Single purpose class to back up the directory id of an encrypted directory when it is created.
  */
 @CryptoFileSystemScoped
 public class DirectoryIdBackup {
