@@ -28,8 +28,7 @@ public record MissingDirIdBackup(String dirId, Path cipherDir) implements Diagno
 
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
-		DirectoryIdBackup dirIdBackup = new DirectoryIdBackup(cryptor);
 		Path absCipherDir = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(cipherDir);
-		dirIdBackup.execute(new CryptoPathMapper.CiphertextDirectory(dirId, absCipherDir));
+		DirectoryIdBackup.backupManually(cryptor, new CryptoPathMapper.CiphertextDirectory(dirId, absCipherDir));
 	}
 }
