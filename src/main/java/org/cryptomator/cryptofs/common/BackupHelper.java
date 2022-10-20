@@ -23,6 +23,8 @@ public final class BackupHelper {
 	private final static long NO_MISMATCH = -1L;
 	private static final Logger LOG = LoggerFactory.getLogger(BackupHelper.class);
 
+	private BackupHelper() {}
+
 	/**
 	 * Computes the SHA-256 digest of the given byte array and returns a file suffix containing the first 4 bytes in hex string format.
 	 *

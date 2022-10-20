@@ -199,7 +199,7 @@ public class CryptoFileSystemProviderTest {
 		Optional<Path> dirIdBackup = Files.list(rootDir.get()).findFirst();
 		Assertions.assertTrue(dirIdBackup.isPresent());
 		Assertions.assertTrue(Files.isRegularFile(dirIdBackup.get()));
-		Assertions.assertTrue(dirIdBackup.get().getFileName().toString().equals(Constants.DIR_ID_FILE));
+		Assertions.assertEquals(Constants.DIR_ID_FILE, dirIdBackup.get().getFileName().toString());
 	}
 
 	@Test
@@ -243,9 +243,10 @@ public class CryptoFileSystemProviderTest {
 	public void testNewAsyncFileChannelFailsIfOptionsContainAppend() {
 		Path irrelevantPath = null;
 		ExecutorService irrelevantExecutor = null;
+		var illegalOpenOptions = Set.of(APPEND);
 
 		Assertions.assertThrows(IllegalArgumentException.class, () -> {
-			inTest.newAsynchronousFileChannel(irrelevantPath, new HashSet<>(asList(APPEND)), irrelevantExecutor);
+			inTest.newAsynchronousFileChannel(irrelevantPath, illegalOpenOptions, irrelevantExecutor);
 		});
 	}
 

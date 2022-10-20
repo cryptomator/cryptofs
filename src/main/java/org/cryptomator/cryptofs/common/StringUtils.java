@@ -5,6 +5,8 @@ package org.cryptomator.cryptofs.common;
  */
 public final class StringUtils {
 
+	private StringUtils() {}
+
 	/**
 	 * Removes the suffix of a string, if the string ends with the suffix.
 	 *
