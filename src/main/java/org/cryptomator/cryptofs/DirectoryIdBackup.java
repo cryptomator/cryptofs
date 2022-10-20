@@ -41,7 +41,7 @@ public class DirectoryIdBackup {
 	}
 
 	/**
-	 * Static method to explicitly backup the directory id for a specified ciphertext directory.
+	 * Static method to explicitly back up the directory id for a specified ciphertext directory.
 	 *
 	 * @param cryptor The cryptor to be used
 	 * @param ciphertextDirectory A {@link org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory} for which the dirId should be back up'd.

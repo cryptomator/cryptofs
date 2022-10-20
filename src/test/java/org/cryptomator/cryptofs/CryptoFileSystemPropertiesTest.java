@@ -194,35 +194,30 @@ public class CryptoFileSystemPropertiesTest {
 
 	@Test
 	public void testMapIsImmutable() {
-		Assertions.assertThrows(UnsupportedOperationException.class, () -> {
-			cryptoFileSystemProperties() //
-					.withKeyLoader(keyLoader) //
-					.build() //
-					.put("test", "test");
-		});
+		var properties = cryptoFileSystemProperties() //
+				.withKeyLoader(keyLoader) //
+				.build();
+		Assertions.assertThrows(UnsupportedOperationException.class, () -> properties.put("test", "test"));
 	}
 
 	@Test
 	public void testEntrySetIsImmutable() {
-		Assertions.assertThrows(UnsupportedOperationException.class, () -> {
-			cryptoFileSystemProperties() //
-					.withKeyLoader(keyLoader) //
-					.build() //
-					.entrySet() //
-					.add(null);
-		});
+		var entryPropertySet = cryptoFileSystemProperties() //
+				.withKeyLoader(keyLoader) //
+				.build() //
+				.entrySet(); //
+		var randomProperty = entryPropertySet.iterator().next();
+		Assertions.assertThrows(UnsupportedOperationException.class, () -> entryPropertySet.add(null));
 	}
 
 	@Test
 	public void testEntryIsImmutable() {
-		Assertions.assertThrows(UnsupportedOperationException.class, () -> {
-			cryptoFileSystemProperties() //
-					.withKeyLoader(keyLoader) //
-					.build() //
-					.entrySet() //
-					.iterator().next() //
-					.setValue(null);
-		});
+		var entryPropertySet = cryptoFileSystemProperties() //
+				.withKeyLoader(keyLoader) //
+				.build() //
+				.entrySet(); //
+		var randomProperty = entryPropertySet.iterator().next();
+		Assertions.assertThrows(UnsupportedOperationException.class, () -> randomProperty.setValue(null));
 	}
 
 	private <K, V> Matcher<Map.Entry<K, V>> anEntry(K key, V value) {

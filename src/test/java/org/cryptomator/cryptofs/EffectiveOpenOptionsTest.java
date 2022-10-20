@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.OpenOption;
 import java.nio.file.ReadOnlyFileSystemException;
-import java.util.HashSet;
+import java.util.Set;
 
 import static java.nio.file.LinkOption.NOFOLLOW_LINKS;
 import static java.nio.file.StandardOpenOption.APPEND;
@@ -20,7 +20,6 @@ import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.SYNC;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
-import static java.util.Arrays.asList;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -42,28 +41,28 @@ public class EffectiveOpenOptionsTest {
 	@Test
 	public void testFailIfAppendIsUsedWithRead() {
 		Assertions.assertThrows(IllegalArgumentException.class, () -> {
-			EffectiveOpenOptions.from(new HashSet<>(asList(APPEND, READ)), falseReadonlyFlag);
+			EffectiveOpenOptions.from(Set.of(APPEND, READ), falseReadonlyFlag);
 		});
 	}
 
 	@Test
 	public void testFailIfAppendIsUsedWithTruncateExisting() {
 		Assertions.assertThrows(IllegalArgumentException.class, () -> {
-			EffectiveOpenOptions.from(new HashSet<>(asList(APPEND, TRUNCATE_EXISTING)), falseReadonlyFlag);
+			EffectiveOpenOptions.from(Set.of(APPEND, TRUNCATE_EXISTING), falseReadonlyFlag);
 		});
 	}
 
 	@Test
 	public void testUnsupportedOption() {
 		Assertions.assertThrows(IllegalArgumentException.class, () -> {
-			EffectiveOpenOptions.from(new HashSet<>(asList(new OpenOption() {
-			})), falseReadonlyFlag);
+			EffectiveOpenOptions.from(Set.of(new OpenOption() {
+			}), falseReadonlyFlag);
 		});
 	}
 
 	@Test
 	public void testEmpty() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList()), falseReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(), falseReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -81,7 +80,7 @@ public class EffectiveOpenOptionsTest {
 
 	@Test
 	public void testNoFollowLinks() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(NOFOLLOW_LINKS)), falseReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(NOFOLLOW_LINKS), falseReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -99,7 +98,7 @@ public class EffectiveOpenOptionsTest {
 
 	@Test
 	public void testAppend() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(APPEND)), falseReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(APPEND), falseReadonlyFlag);
 
 		Assertions.assertTrue(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -117,7 +116,7 @@ public class EffectiveOpenOptionsTest {
 
 	@Test
 	public void testCreate() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE)), falseReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(CREATE), falseReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -135,7 +134,7 @@ public class EffectiveOpenOptionsTest {
 
 	@Test
 	public void testCreateWithWrite() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE, WRITE)), falseReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(CREATE, WRITE), falseReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertTrue(inTest.create());
@@ -153,7 +152,7 @@ public class EffectiveOpenOptionsTest {
 
 	@Test
 	public void testCreateNew() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE_NEW)), falseReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(CREATE_NEW), falseReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -171,7 +170,7 @@ public class EffectiveOpenOptionsTest {
 
 	@Test
 	public void testCreateNewWithWrite() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE_NEW, WRITE)), falseReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(CREATE_NEW, WRITE), falseReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -189,7 +188,7 @@ public class EffectiveOpenOptionsTest {
 
 	@Test
 	public void testCreateNewWithWriteAndCreate() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE, CREATE_NEW, WRITE)), falseReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(CREATE, CREATE_NEW, WRITE), falseReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -207,7 +206,7 @@ public class EffectiveOpenOptionsTest {
 
 	@Test
 	public void testDeleteOnClose() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(DELETE_ON_CLOSE)), falseReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(DELETE_ON_CLOSE), falseReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -225,7 +224,7 @@ public class EffectiveOpenOptionsTest {
 
 	@Test
 	public void testRead() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(READ)), falseReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(READ), falseReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -243,7 +242,7 @@ public class EffectiveOpenOptionsTest {
 
 	@Test
 	public void testSync() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(SYNC)), falseReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(SYNC), falseReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -261,7 +260,7 @@ public class EffectiveOpenOptionsTest {
 
 	@Test
 	public void testDSync() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(DSYNC)), falseReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(DSYNC), falseReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -279,7 +278,7 @@ public class EffectiveOpenOptionsTest {
 
 	@Test
 	public void testTruncateExisting() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(TRUNCATE_EXISTING)), falseReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(TRUNCATE_EXISTING), falseReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -297,7 +296,7 @@ public class EffectiveOpenOptionsTest {
 
 	@Test
 	public void testWrite() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(WRITE)), falseReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(WRITE), falseReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -315,7 +314,7 @@ public class EffectiveOpenOptionsTest {
 
 	@Test
 	public void testEmptyWithTrueReadonlyFlag() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList()), trueReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(), trueReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -334,14 +333,14 @@ public class EffectiveOpenOptionsTest {
 	@Test
 	public void testAppendTrueReadonlyFlag() {
 		ReadOnlyFileSystemException e = Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
-			EffectiveOpenOptions.from(new HashSet<>(asList(APPEND)), trueReadonlyFlag);
+			EffectiveOpenOptions.from(Set.of(APPEND), trueReadonlyFlag);
 		});
 		Assertions.assertSame(readonlyException, e);
 	}
 
 	@Test
 	public void testCreateTrueReadonlyFlag() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE)), trueReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(CREATE), trueReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -360,14 +359,14 @@ public class EffectiveOpenOptionsTest {
 	@Test
 	public void testCreateWithWriteTrueReadonlyFlag() {
 		ReadOnlyFileSystemException e = Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
-			EffectiveOpenOptions.from(new HashSet<>(asList(CREATE, WRITE)), trueReadonlyFlag);
+			EffectiveOpenOptions.from(Set.of(CREATE, WRITE), trueReadonlyFlag);
 		});
 		Assertions.assertSame(readonlyException, e);
 	}
 
 	@Test
 	public void testCreateNewTrueReadonlyFlag() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(CREATE_NEW)), trueReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(CREATE_NEW), trueReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -386,7 +385,7 @@ public class EffectiveOpenOptionsTest {
 	@Test
 	public void testCreateNewWithWriteTrueReadonlyFlag() throws IOException {
 		ReadOnlyFileSystemException e = Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
-			EffectiveOpenOptions.from(new HashSet<>(asList(CREATE_NEW, WRITE)), trueReadonlyFlag);
+			EffectiveOpenOptions.from(Set.of(CREATE_NEW, WRITE), trueReadonlyFlag);
 		});
 		Assertions.assertSame(readonlyException, e);
 	}
@@ -394,7 +393,7 @@ public class EffectiveOpenOptionsTest {
 	@Test
 	public void testCreateNewWithWriteAndCreateTrueReadonlyFlag() throws IOException {
 		ReadOnlyFileSystemException e = Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
-			EffectiveOpenOptions.from(new HashSet<>(asList(CREATE, CREATE_NEW, WRITE)), trueReadonlyFlag);
+			EffectiveOpenOptions.from(Set.of(CREATE, CREATE_NEW, WRITE), trueReadonlyFlag);
 		});
 		Assertions.assertSame(readonlyException, e);
 	}
@@ -402,14 +401,14 @@ public class EffectiveOpenOptionsTest {
 	@Test
 	public void testDeleteOnCloseTrueReadonlyFlag() throws IOException {
 		ReadOnlyFileSystemException e = Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
-			EffectiveOpenOptions.from(new HashSet<>(asList(DELETE_ON_CLOSE)), trueReadonlyFlag);
+			EffectiveOpenOptions.from(Set.of(DELETE_ON_CLOSE), trueReadonlyFlag);
 		});
 		Assertions.assertSame(readonlyException, e);
 	}
 
 	@Test
 	public void testReadTrueReadonlyFlag() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(READ)), trueReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(READ), trueReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -427,7 +426,7 @@ public class EffectiveOpenOptionsTest {
 
 	@Test
 	public void testSyncTrueReadonlyFlag() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(SYNC)), trueReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(SYNC), trueReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -445,7 +444,7 @@ public class EffectiveOpenOptionsTest {
 
 	@Test
 	public void testDSyncTrueReadonlyFlag() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(DSYNC)), trueReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(DSYNC), trueReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -463,7 +462,7 @@ public class EffectiveOpenOptionsTest {
 
 	@Test
 	public void testTruncateExistingTrueReadonlyFlag() throws IOException {
-		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(new HashSet<>(asList(TRUNCATE_EXISTING)), trueReadonlyFlag);
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(TRUNCATE_EXISTING), trueReadonlyFlag);
 
 		Assertions.assertFalse(inTest.append());
 		Assertions.assertFalse(inTest.create());
@@ -482,7 +481,7 @@ public class EffectiveOpenOptionsTest {
 	@Test
 	public void testWriteTrueReadonlyFlag() {
 		ReadOnlyFileSystemException e = Assertions.assertThrows(ReadOnlyFileSystemException.class, () -> {
-			EffectiveOpenOptions.from(new HashSet<>(asList(WRITE)), trueReadonlyFlag);
+			EffectiveOpenOptions.from(Set.of(WRITE), trueReadonlyFlag);
 		});
 		Assertions.assertSame(readonlyException, e);
 	}
