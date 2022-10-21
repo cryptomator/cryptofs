@@ -12,13 +12,13 @@ import java.nio.file.Path;
 import java.util.Map;
 
 /**
- *  A c9r directory without a dirId file.
+ *  A c9r directory without defining content (symlink or dirId file)
  */
-public class MissingDirIdFile implements DiagnosticResult {
+public class MissingContentC9rDir implements DiagnosticResult {
 
 	final Path c9rDirectory;
 
-	public MissingDirIdFile(Path c9rDirectory) {
+	public MissingContentC9rDir(Path c9rDirectory) {
 		this.c9rDirectory = c9rDirectory;
 	}
 
@@ -29,7 +29,7 @@ public class MissingDirIdFile implements DiagnosticResult {
 
 	@Override
 	public String toString() {
-		return String.format("Directory to contain dir.c9r exists (%s), but dir.c9r file is missing.", c9rDirectory);
+		return String.format("C9r Directory without identifier file (smylink or dir) found: {}.", c9rDirectory);
 	}
 
 	@Override

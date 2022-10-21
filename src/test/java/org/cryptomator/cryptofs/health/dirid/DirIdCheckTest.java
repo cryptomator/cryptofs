@@ -147,14 +147,14 @@ public class DirIdCheckTest {
 		}
 
 		@Test
-		@DisplayName("detects missing dirId in /d/BB/bbbb/missing.c9r")
-		public void testVisitorDetectsMissingDirId() throws IOException {
+		@DisplayName("detects c9r dir without identifying file in /d/BB/bbbb/missing.c9r")
+		public void testVisitorDetectsMissingContentC9rDir() throws IOException {
 			Files.walkFileTree(dataRoot, Set.of(), 4, visitor);
 
-			Predicate<MissingDirIdFile> expectedMissingFile = missingDirIdFile -> "/d/BB/bbbb/missing=.c9r".equals(missingDirIdFile.c9rDirectory.toString());
+			Predicate<MissingContentC9rDir> expectedMissingFile = missingFile -> "/d/BB/bbbb/missing=.c9r".equals(missingFile.c9rDirectory.toString());
 			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
 			Mockito.verify(resultsCollector, Mockito.atLeastOnce()).accept(resultCaptor.capture());
-			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(MissingDirIdFile.class, expectedMissingFile, "Missing dirId file for: /d/BB/bbbb/missing=.c9r")));
+			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(MissingContentC9rDir.class, expectedMissingFile, "Missing identifying file for: /d/BB/bbbb/missing=.c9r")));
 		}
 
 	}
