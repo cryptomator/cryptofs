@@ -23,7 +23,7 @@ public interface HealthCheck {
 	}
 
 	/**
-	 * @return A human readable name for this check
+	 * @return A human-readable name for this check
 	 */
 	default String name() {
 		var canonicalName = getClass().getCanonicalName();
