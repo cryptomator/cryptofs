@@ -19,7 +19,7 @@
 
 		<!-- dependencies -->
 		<cryptolib.version>2.1.0-rc1</cryptolib.version>
-		<jwt.version>4.0.0</jwt.version>
+		<jwt.version>4.2.1</jwt.version>
 		<dagger.version>2.44</dagger.version>
 		<guava.version>31.1-jre</guava.version>
 		<slf4j.version>2.0.3</slf4j.version>
@@ -70,12 +70,6 @@
 			<groupId>com.auth0</groupId>
 			<artifactId>java-jwt</artifactId>
 			<version>${jwt.version}</version>
-		</dependency>
-		<dependency>
-			<!-- fix for CVE-2022-42003, CVE-2022-42004 in java-jwt - can be removed when we update java-jwt: -->
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-databind</artifactId>
-			<version>2.14.0-rc1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.dagger</groupId>
