@@ -3,6 +3,7 @@ package org.cryptomator.cryptofs.health.dirid;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID;
@@ -15,12 +16,12 @@ import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.ENCRYPTED_PAT
 public class HealthyDir implements DiagnosticResult {
 
 	final String dirId;
-	final Path dirIdFile;
+	final Path dirFile;
 	final Path dir;
 
-	HealthyDir(String dirId, Path dirIdFile, Path dir) {
+	HealthyDir(String dirId, Path dirFile, Path dir) {
 		this.dirId = dirId;
-		this.dirIdFile = dirIdFile;
+		this.dirFile = dirFile;
 		this.dir = dir;
 	}
 
@@ -31,13 +32,13 @@ public class HealthyDir implements DiagnosticResult {
 
 	@Override
 	public String toString() {
-		return String.format("Good directory %s (%s) -> %s", dirIdFile, dirId, dir);
+		return String.format("Good directory %s (%s) -> %s", dirFile, dirId, dir);
 	}
 
 	@Override
 	public Map<String, String> details() {
 		return Map.of(DIR_ID, dirId, //
-				DIR_FILE, dirIdFile.toString(), //
+				DIR_FILE, dirFile.toString(), //
 				ENCRYPTED_PATH, dir.toString());
 	}
 }

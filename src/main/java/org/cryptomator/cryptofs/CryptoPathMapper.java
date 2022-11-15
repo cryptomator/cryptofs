@@ -161,8 +161,8 @@ public class CryptoPathMapper {
 		} else {
 			try {
 				return ciphertextDirectories.get(cleartextPath, () -> {
-					Path dirIdFile = getCiphertextFilePath(cleartextPath).getDirFilePath();
-					return resolveDirectory(dirIdFile);
+					Path dirFile = getCiphertextFilePath(cleartextPath).getDirFilePath();
+					return resolveDirectory(dirFile);
 				});
 			} catch (ExecutionException e) {
 				Throwables.throwIfInstanceOf(e.getCause(), IOException.class);

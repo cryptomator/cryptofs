@@ -22,11 +22,11 @@ import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_FILE;
 public class MissingContentDir implements DiagnosticResult {
 
 	final String dirId;
-	final Path dirIdFile;
+	final Path dirFile;
 
-	MissingContentDir(String dirId, Path dirIdFile) {
+	MissingContentDir(String dirId, Path dirFile) {
 		this.dirId = dirId;
-		this.dirIdFile = dirIdFile;
+		this.dirFile = dirFile;
 	}
 
 	@Override
@@ -36,13 +36,13 @@ public class MissingContentDir implements DiagnosticResult {
 
 	@Override
 	public String toString() {
-		return String.format("dir.c9r file (%s) points to non-existing directory.", dirIdFile);
+		return String.format("dir.c9r file (%s) points to non-existing directory.", dirFile);
 	}
 
 	@Override
 	public Map<String, String> details() {
 		return Map.of(DIR_ID, dirId, //
-				DIR_FILE, dirIdFile.toString());
+				DIR_FILE, dirFile.toString());
 	}
 
 	@Override

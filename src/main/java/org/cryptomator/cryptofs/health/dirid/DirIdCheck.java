@@ -55,14 +55,14 @@ public class DirIdCheck implements HealthCheck {
 		while (iter.hasNext()) {
 			var entry = iter.next();
 			var dirId = entry.getKey();
-			var dirIdFile = entry.getValue();
+			var dirFile = entry.getValue();
 			var hashedDirId = cryptor.fileNameCryptor().hashDirectoryId(dirId);
 			var expectedDir = Path.of(hashedDirId.substring(0, 2), hashedDirId.substring(2));
 			boolean foundDir = dirVisitor.secondLevelDirs.remove(expectedDir);
 			if (foundDir) {
 				iter.remove();
 				if (Files.exists(dataDirPath.resolve(expectedDir).resolve(Constants.DIR_BACKUP_FILE_NAME))) {
-					resultCollector.accept(new HealthyDir(dirId, dirIdFile, expectedDir));
+					resultCollector.accept(new HealthyDir(dirId, dirFile, expectedDir));
 				} else {
 					resultCollector.accept(new MissingDirIdBackup(dirId, expectedDir));
 				}
@@ -70,8 +70,8 @@ public class DirIdCheck implements HealthCheck {
 		}
 
 		// remaining dirIds (i.e. missing dirs):
-		dirVisitor.dirIds.forEach((dirId, dirIdFile) -> {
-			resultCollector.accept(new MissingContentDir(dirId, dirIdFile));
+		dirVisitor.dirIds.forEach((dirId, dirFile) -> {
+			resultCollector.accept(new MissingContentDir(dirId, dirFile));
 		});
 
 		// remaining folders (i.e. missing dir.c9r files):

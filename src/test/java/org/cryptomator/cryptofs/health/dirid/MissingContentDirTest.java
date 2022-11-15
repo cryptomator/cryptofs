@@ -61,7 +61,7 @@ public class MissingContentDirTest {
 		}
 	}
 
-	@DisplayName("If dirId file creation fails, fix fails ")
+	@DisplayName("If dirid.c9r creation fails, fix fails ")
 	@Test
 	public void testFixFailsOnFailingDirIdFile() throws IOException {
 		var dirIdHash = "ridiculous-30-char-pseudo-hash";

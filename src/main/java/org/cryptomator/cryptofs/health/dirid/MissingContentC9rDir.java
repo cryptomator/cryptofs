@@ -12,7 +12,7 @@ import java.nio.file.Path;
 import java.util.Map;
 
 /**
- *  A c9r directory without defining content (symlink or dirId file)
+ *  A c9r directory without defining content (symlink or dir file)
  */
 public class MissingContentC9rDir implements DiagnosticResult {
 

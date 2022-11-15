@@ -17,10 +17,10 @@ import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_FILE;
  */
 public class LooseDirFile implements DiagnosticResult {
 
-	final Path dirIdFile;
+	final Path dirFile;
 
-	LooseDirFile(Path dirIdFile) {
-		this.dirIdFile = dirIdFile;
+	LooseDirFile(Path dirFile) {
+		this.dirFile = dirFile;
 	}
 
 	@Override
@@ -30,16 +30,16 @@ public class LooseDirFile implements DiagnosticResult {
 
 	@Override
 	public String toString() {
-		return String.format("A dir.c9r without proper parent found: (%s). .", dirIdFile);
+		return String.format("A dir.c9r without proper parent found: (%s). .", dirFile);
 	}
 
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
-		Files.deleteIfExists(dirIdFile);
+		Files.deleteIfExists(dirFile);
 	}
 
 	@Override
 	public Map<String, String> details() {
-		return Map.of(DIR_FILE, dirIdFile.toString());
+		return Map.of(DIR_FILE, dirFile.toString());
 	}
 }
