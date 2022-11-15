@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_FILE;
 
@@ -36,6 +37,11 @@ public class LooseDirFile implements DiagnosticResult {
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
 		Files.deleteIfExists(dirFile);
+	}
+
+	@Override
+	public Optional<Fix> getFix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
+		return Optional.of(() -> fix(pathToVault, config, masterkey, cryptor));
 	}
 
 	@Override

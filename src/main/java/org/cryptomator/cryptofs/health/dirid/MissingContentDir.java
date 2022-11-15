@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID;
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_FILE;
@@ -51,5 +52,10 @@ public class MissingContentDir implements DiagnosticResult {
 		Path dirPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(dirIdHash.substring(0, 2)).resolve(dirIdHash.substring(2, 30));
 		Files.createDirectories(dirPath);
 		DirectoryIdBackup.backupManually(cryptor, new CryptoPathMapper.CiphertextDirectory(dirId, dirPath));
+	}
+
+	@Override
+	public Optional<Fix> getFix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
+		return Optional.of(() -> fix(pathToVault, config, masterkey, cryptor));
 	}
 }

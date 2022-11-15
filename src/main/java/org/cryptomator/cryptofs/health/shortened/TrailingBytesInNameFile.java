@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.cryptomator.cryptofs.common.Constants.CRYPTOMATOR_FILE_SUFFIX;
 
@@ -40,6 +41,11 @@ public class TrailingBytesInNameFile implements DiagnosticResult {
 				longName.substring(0, startIndexTrailingBytes), //
 				StandardCharsets.UTF_8, //
 				StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+	}
+
+	@Override
+	public Optional<Fix> getFix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
+		return Optional.of(() -> fix(pathToVault, config, masterkey, cryptor));
 	}
 
 	@Override

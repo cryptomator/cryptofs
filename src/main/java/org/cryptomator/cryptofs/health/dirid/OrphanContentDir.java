@@ -68,6 +68,11 @@ public class OrphanContentDir implements DiagnosticResult {
 	}
 
 	@Override
+	public Optional<Fix> getFix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
+		return Optional.of(() -> fix(pathToVault, config, masterkey, cryptor));
+	}
+
+	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
 		var sha1 = getSha1MessageDigest();
 		String runId = Integer.toString((short) UUID.randomUUID().getMostSignificantBits(), 32);
