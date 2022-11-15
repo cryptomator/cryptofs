@@ -1,20 +1,28 @@
 package org.cryptomator.cryptofs.health.type;
 
+import org.cryptomator.cryptofs.VaultConfig;
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.health.api.CommonDetailKeys;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
+import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.Masterkey;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
 /**
- * A ciphertext dir ending with c9r or c9s but does not contain a valid type file.
+ * Directory ending with {@value Constants#CRYPTOMATOR_FILE_SUFFIX} or {@value Constants#DEFLATED_FILE_SUFFIX}, but without type defining content (i.e., {@value Constants#SYMLINK_FILE_NAME}, {@value Constants#DIR_FILE_NAME} or {@value Constants#CONTENTS_FILE_NAME}).
+ * <p>
+ * The fix is to delete the directory to free the resource name.
  */
 public class UnknownType implements DiagnosticResult {
 
 	final Path cipherDir;
 
-	UnknownType(Path c9rDir) {
-		this.cipherDir = c9rDir;
+	UnknownType(Path cipherDir) {
+		this.cipherDir = cipherDir;
 	}
 
 	@Override
@@ -22,21 +30,19 @@ public class UnknownType implements DiagnosticResult {
 		return Severity.CRITICAL;
 	}
 
-	/*
-	TODO: remove directory? might cause data loss (for shortened files)
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
-		DiagnosticResult.super.fix(pathToVault, config, masterkey, cryptor);
+		Files.delete(pathToVault.resolve(cipherDir));
 	}
-	 */
 
 	@Override
 	public String toString() {
-		return String.format("Node %s of unknown type.", cipherDir);
+		return String.format("C9r dir %s of unknown type.", cipherDir);
 	}
 
 	@Override
 	public Map<String, String> details() {
 		return Map.of(CommonDetailKeys.ENCRYPTED_PATH, cipherDir.toString());
 	}
+
 }

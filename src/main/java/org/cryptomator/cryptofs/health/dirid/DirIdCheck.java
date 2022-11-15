@@ -145,15 +145,6 @@ public class DirIdCheck implements HealthCheck {
 			return FileVisitResult.CONTINUE;
 		}
 
-		@Override
-		public FileVisitResult postVisitDirectory(Path dir, IOException e) {
-			var dirName = dir.getFileName().toString();
-			if (dirName.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX) && !c9rDirsWithDirId.contains(dir)) {
-				LOG.warn("Missing dirId file for c9r directory {}.", dir);
-				resultCollector.accept(new MissingContentC9rDir(dir));
-			}
-			return FileVisitResult.CONTINUE;
-		}
 	}
 
 }
