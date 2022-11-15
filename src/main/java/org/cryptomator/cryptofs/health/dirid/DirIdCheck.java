@@ -61,7 +61,7 @@ public class DirIdCheck implements HealthCheck {
 			boolean foundDir = dirVisitor.secondLevelDirs.remove(expectedDir);
 			if (foundDir) {
 				iter.remove();
-				if (Files.exists(dataDirPath.resolve(expectedDir).resolve(Constants.DIR_ID_FILE))) {
+				if (Files.exists(dataDirPath.resolve(expectedDir).resolve(Constants.DIR_BACKUP_FILE_NAME))) {
 					resultCollector.accept(new HealthyDir(dirId, dirIdFile, expectedDir));
 				} else {
 					resultCollector.accept(new MissingDirIdBackup(dirId, expectedDir));
@@ -105,32 +105,32 @@ public class DirIdCheck implements HealthCheck {
 			return FileVisitResult.CONTINUE;
 		}
 
-		private FileVisitResult visitDirFile(Path file, BasicFileAttributes attrs) throws IOException {
-			assert Constants.DIR_FILE_NAME.equals(file.getFileName().toString());
-			var parentDirName = file.getParent().getFileName().toString();
+		private FileVisitResult visitDirFile(Path dirFile, BasicFileAttributes attrs) throws IOException {
+			assert Constants.DIR_FILE_NAME.equals(dirFile.getFileName().toString());
+			var parentDirName = dirFile.getParent().getFileName().toString();
 
 			if (!(parentDirName.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX) || parentDirName.endsWith(Constants.DEFLATED_FILE_SUFFIX))) {
 				LOG.warn("Encountered loose dir.c9r file.");
-				resultCollector.accept(new LooseDirIdFile(file));
+				resultCollector.accept(new LooseDirFile(dirFile));
 				return FileVisitResult.CONTINUE;
 			}
 
 			if (attrs.size() > Constants.MAX_DIR_FILE_LENGTH) {
 				LOG.warn("Encountered dir.c9r file of size {}", attrs.size());
-				resultCollector.accept(new ObeseDirIdFile(file, attrs.size()));
+				resultCollector.accept(new ObeseDirFile(dirFile, attrs.size()));
 			} else if (attrs.size() == 0) {
-				LOG.warn("Empty dir.c9r file at {}.", file);
-				resultCollector.accept(new EmptyDirIdFile(file));
+				LOG.warn("Empty dir.c9r file at {}.", dirFile);
+				resultCollector.accept(new EmptyDirFile(dirFile));
 			} else {
-				byte[] bytes = Files.readAllBytes(file);
+				byte[] bytes = Files.readAllBytes(dirFile);
 				String dirId = new String(bytes, StandardCharsets.UTF_8);
 				if (dirIds.containsKey(dirId)) {
 					var otherFile = dirIds.get(dirId);
-					LOG.warn("Same directory ID used by {} and {}", file, otherFile);
-					resultCollector.accept(new DirIdCollision(dirId, file, otherFile));
+					LOG.warn("Same directory ID used by {} and {}", dirFile, otherFile);
+					resultCollector.accept(new DirIdCollision(dirId, dirFile, otherFile));
 				} else {
-					dirIds.put(dirId, file);
-					c9rDirsWithDirId.add(file);
+					dirIds.put(dirId, dirFile);
+					c9rDirsWithDirId.add(dirFile);
 				}
 			}
 			return FileVisitResult.SKIP_SIBLINGS;

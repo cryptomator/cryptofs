@@ -12,9 +12,9 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 /**
- * The dir id backup file {@value org.cryptomator.cryptofs.common.Constants#DIR_ID_FILE} is missing.
+ * The dir id backup file {@value org.cryptomator.cryptofs.common.Constants#DIR_BACKUP_FILE_NAME} is missing.
  */
-public record MissingDirIdBackup(String dirId, Path cipherDir) implements DiagnosticResult {
+public record MissingDirIdBackup(String dirId, Path contentDir) implements DiagnosticResult {
 
 	@Override
 	public Severity getSeverity() {
@@ -23,12 +23,12 @@ public record MissingDirIdBackup(String dirId, Path cipherDir) implements Diagno
 
 	@Override
 	public String toString() {
-		return String.format("Directory ID backup for directory %s is missing.", cipherDir);
+		return String.format("Directory ID backup for directory %s is missing.", contentDir);
 	}
 
 	@Override
 	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
-		Path absCipherDir = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(cipherDir);
+		Path absCipherDir = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(contentDir);
 		DirectoryIdBackup.backupManually(cryptor, new CryptoPathMapper.CiphertextDirectory(dirId, absCipherDir));
 	}
 }

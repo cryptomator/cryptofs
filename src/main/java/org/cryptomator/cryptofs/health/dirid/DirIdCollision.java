@@ -6,7 +6,7 @@ import java.nio.file.Path;
 import java.util.Map;
 
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID;
-import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID_FILE;
+import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_FILE;
 
 /**
  * The directory id is used more than once.
@@ -36,7 +36,7 @@ public class DirIdCollision implements DiagnosticResult {
 	@Override
 	public Map<String, String> details() {
 		return Map.of(DIR_ID, dirId, //
-				DIR_ID_FILE, file.toString(), //
-				"Other " + DIR_ID_FILE, otherFile.toString());
+				DIR_FILE, dirFile.toString(), //
+				"Other " + DIR_FILE, otherDirFile.toString());
 	}
 }

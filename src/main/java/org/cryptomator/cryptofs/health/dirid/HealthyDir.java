@@ -6,7 +6,7 @@ import java.nio.file.Path;
 import java.util.Map;
 
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID;
-import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID_FILE;
+import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_FILE;
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.ENCRYPTED_PATH;
 
 /**
@@ -37,7 +37,7 @@ public class HealthyDir implements DiagnosticResult {
 	@Override
 	public Map<String, String> details() {
 		return Map.of(DIR_ID, dirId, //
-				DIR_ID_FILE, dirIdFile.toString(), //
+				DIR_FILE, dirIdFile.toString(), //
 				ENCRYPTED_PATH, dir.toString());
 	}
 }

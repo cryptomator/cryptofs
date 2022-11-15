@@ -45,7 +45,6 @@ import java.util.stream.Stream;
 
 import static java.nio.file.Paths.get;
 import static java.nio.file.StandardOpenOption.APPEND;
-import static java.util.Arrays.asList;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.instanceOf;
@@ -199,7 +198,7 @@ public class CryptoFileSystemProviderTest {
 		Optional<Path> dirIdBackup = Files.list(rootDir.get()).findFirst();
 		Assertions.assertTrue(dirIdBackup.isPresent());
 		Assertions.assertTrue(Files.isRegularFile(dirIdBackup.get()));
-		Assertions.assertEquals(Constants.DIR_ID_FILE, dirIdBackup.get().getFileName().toString());
+		Assertions.assertEquals(Constants.DIR_BACKUP_FILE_NAME, dirIdBackup.get().getFileName().toString());
 	}
 
 	@Test

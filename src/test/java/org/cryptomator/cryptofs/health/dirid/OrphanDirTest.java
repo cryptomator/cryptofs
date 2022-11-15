@@ -230,7 +230,7 @@ public class OrphanDirTest {
 		@Test
 		@DisplayName("retrieveDirId extracts directory id of cipher-dir/dirId.c9r")
 		public void testRetrieveDirIdSuccess() throws IOException {
-			var dirIdFile = cipherOrphan.resolve(Constants.DIR_ID_FILE);
+			var dirIdFile = cipherOrphan.resolve(Constants.DIR_BACKUP_FILE_NAME);
 			var dirId = "random-uuid-with-at-most-36chars";
 
 			Files.writeString(dirIdFile, dirId, StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
@@ -268,7 +268,7 @@ public class OrphanDirTest {
 		@Test
 		@DisplayName("retrieveDirId returns empty optional if content of dirId.c9r does not match cipher dir hash")
 		public void testRetrieveDirIdWrongContent() throws IOException {
-			var dirIdFile = cipherOrphan.resolve(Constants.DIR_ID_FILE);
+			var dirIdFile = cipherOrphan.resolve(Constants.DIR_BACKUP_FILE_NAME);
 			var dirId = "anOverlyComplexAndCompletelyRandomExampleOfHowAnDirectoryIdIsTooLong";
 			Files.writeString(dirIdFile, dirId, StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 			DecryptingReadableByteChannel dirIdReadChannel = Mockito.mock(DecryptingReadableByteChannel.class);
@@ -455,7 +455,7 @@ public class OrphanDirTest {
 		Path orphan2 = cipherOrphan.resolve("orphan2.c9s");
 		Files.createFile(orphan1);
 		Files.createDirectories(orphan2);
-		Files.createFile(cipherOrphan.resolve(Constants.DIR_ID_FILE));
+		Files.createFile(cipherOrphan.resolve(Constants.DIR_BACKUP_FILE_NAME));
 
 		var dirId = Optional.of("trololo-id");
 
@@ -494,7 +494,7 @@ public class OrphanDirTest {
 		Path orphan2 = cipherOrphan.resolve("orphan2.c9s");
 		Files.createFile(orphan1);
 		Files.createDirectories(orphan2);
-		Files.createFile(cipherOrphan.resolve(Constants.DIR_ID_FILE));
+		Files.createFile(cipherOrphan.resolve(Constants.DIR_BACKUP_FILE_NAME));
 
 		var dirId = Optional.of("trololo-id");
 
@@ -517,7 +517,7 @@ public class OrphanDirTest {
 
 		resultSpy.fix(pathToVault, config, masterkey, cryptor);
 
-		Mockito.verify(resultSpy, Mockito.never()).adoptOrphanedResource(Mockito.eq(cipherOrphan.resolve(Constants.DIR_ID_FILE)), Mockito.any(), Mockito.anyBoolean(), Mockito.eq(stepParentDir), Mockito.eq(fileNameCryptor), Mockito.any());
+		Mockito.verify(resultSpy, Mockito.never()).adoptOrphanedResource(Mockito.eq(cipherOrphan.resolve(Constants.DIR_BACKUP_FILE_NAME)), Mockito.any(), Mockito.anyBoolean(), Mockito.eq(stepParentDir), Mockito.eq(fileNameCryptor), Mockito.any());
 		Mockito.verify(resultSpy, Mockito.times(1)).adoptOrphanedResource(Mockito.eq(orphan1), Mockito.eq(lostName1), Mockito.anyBoolean(), Mockito.eq(stepParentDir), Mockito.eq(fileNameCryptor), Mockito.any());
 		Mockito.verify(resultSpy, Mockito.times(1)).adoptOrphanedResource(Mockito.eq(orphan2), Mockito.eq(lostName2), Mockito.anyBoolean(), Mockito.eq(stepParentDir), Mockito.eq(fileNameCryptor), Mockito.any());
 		Assertions.assertTrue(Files.notExists(cipherOrphan));

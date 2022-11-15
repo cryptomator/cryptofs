@@ -28,13 +28,13 @@ public class DirectoryIdBackup {
 	/**
 	 * Performs the backup operation for the given {@link CryptoPathMapper.CiphertextDirectory} object.
 	 * <p>
-	 * The directory id is written via an encrypting channel to the file {@link CryptoPathMapper.CiphertextDirectory#path}/{@value Constants#DIR_ID_FILE}.
+	 * The directory id is written via an encrypting channel to the file {@link CryptoPathMapper.CiphertextDirectory#path}/{@value Constants#DIR_BACKUP_FILE_NAME}.
 	 *
 	 * @param ciphertextDirectory The cipher dir object containing the dir id and the encrypted content root
 	 * @throws IOException if an IOException is raised during the write operation
 	 */
 	public void execute(CryptoPathMapper.CiphertextDirectory ciphertextDirectory) throws IOException {
-		try (var channel = Files.newByteChannel(ciphertextDirectory.path.resolve(Constants.DIR_ID_FILE), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE); //
+		try (var channel = Files.newByteChannel(ciphertextDirectory.path.resolve(Constants.DIR_BACKUP_FILE_NAME), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE); //
 			 var encryptingChannel = wrapEncryptionAround(channel, cryptor)) {
 			encryptingChannel.write(ByteBuffer.wrap(ciphertextDirectory.dirId.getBytes(StandardCharsets.US_ASCII)));
 		}

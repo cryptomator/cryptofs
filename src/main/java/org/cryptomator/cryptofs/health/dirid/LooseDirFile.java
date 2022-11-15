@@ -10,13 +10,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
-import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID_FILE;
+import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_FILE;
 
-public class LooseDirIdFile implements DiagnosticResult {
+/**
+ *	Diagnostic result of a dir file without the expected parent directories.
+ */
+public class LooseDirFile implements DiagnosticResult {
 
 	final Path dirIdFile;
 
-	LooseDirIdFile(Path dirIdFile) {
+	LooseDirFile(Path dirIdFile) {
 		this.dirIdFile = dirIdFile;
 	}
 
@@ -37,6 +40,6 @@ public class LooseDirIdFile implements DiagnosticResult {
 
 	@Override
 	public Map<String, String> details() {
-		return Map.of(DIR_ID_FILE, dirIdFile.toString());
+		return Map.of(DIR_FILE, dirIdFile.toString());
 	}
 }

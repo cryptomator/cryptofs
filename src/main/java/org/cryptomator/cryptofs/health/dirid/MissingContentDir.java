@@ -14,7 +14,7 @@ import java.nio.file.Path;
 import java.util.Map;
 
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID;
-import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID_FILE;
+import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_FILE;
 
 /**
  * Valid dir.c9r file, nonexisting content dir
@@ -42,7 +42,7 @@ public class MissingContentDir implements DiagnosticResult {
 	@Override
 	public Map<String, String> details() {
 		return Map.of(DIR_ID, dirId, //
-				DIR_ID_FILE, dirIdFile.toString());
+				DIR_FILE, dirIdFile.toString());
 	}
 
 	@Override

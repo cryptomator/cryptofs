@@ -87,7 +87,7 @@ public class OrphanContentDir implements DiagnosticResult {
 		String longNameSuffix = createClearnameToBeShortened(config.getShorteningThreshold());
 		Optional<String> dirId = retrieveDirId(orphanedDir, cryptor);
 
-		try (var orphanedContentStream = Files.newDirectoryStream(orphanedDir, p -> !Constants.DIR_ID_FILE.equals(p.getFileName().toString()))) {
+		try (var orphanedContentStream = Files.newDirectoryStream(orphanedDir, p -> !Constants.DIR_BACKUP_FILE_NAME.equals(p.getFileName().toString()))) {
 			for (Path orphanedResource : orphanedContentStream) {
 				boolean isShortened = orphanedResource.toString().endsWith(Constants.DEFLATED_FILE_SUFFIX);
 				//@formatter:off
@@ -109,7 +109,7 @@ public class OrphanContentDir implements DiagnosticResult {
 			}
 		}
 
-		Files.deleteIfExists(orphanedDir.resolve(Constants.DIR_ID_FILE));
+		Files.deleteIfExists(orphanedDir.resolve(Constants.DIR_BACKUP_FILE_NAME));
 		Files.delete(orphanedDir);
 	}
 
@@ -166,7 +166,7 @@ public class OrphanContentDir implements DiagnosticResult {
 
 	//visible for testing
 	Optional<String> retrieveDirId(Path orphanedDir, Cryptor cryptor) {
-		var dirIdFile = orphanedDir.resolve(Constants.DIR_ID_FILE);
+		var dirIdFile = orphanedDir.resolve(Constants.DIR_BACKUP_FILE_NAME);
 		var dirIdBuffer = ByteBuffer.allocate(36); //a dir id contains at most 36 ascii chars
 
 		try (var channel = Files.newByteChannel(dirIdFile, StandardOpenOption.READ); //
@@ -174,7 +174,7 @@ public class OrphanContentDir implements DiagnosticResult {
 			ByteBuffers.fill(decryptingChannel, dirIdBuffer);
 			dirIdBuffer.flip();
 		} catch (IOException e) {
-			LOG.info("Unable to read dirIdFile of {}.", orphanedDir, e);
+			LOG.info("Unable to read {}.", dirIdFile, e);
 			return Optional.empty();
 		}
 

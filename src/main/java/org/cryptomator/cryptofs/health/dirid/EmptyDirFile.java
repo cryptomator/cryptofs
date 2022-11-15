@@ -5,7 +5,7 @@ import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 import java.nio.file.Path;
 import java.util.Map;
 
-import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID_FILE;
+import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_FILE;
 
 /**
  * A diagnostic result of an empty directory id file (dir.c9r).
@@ -16,11 +16,11 @@ import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID_FILE;
  *
  * @see org.cryptomator.cryptofs.common.Constants#ROOT_DIR_ID
  */
-public class EmptyDirIdFile implements DiagnosticResult {
+public class EmptyDirFile implements DiagnosticResult {
 
-	final Path dirIdFile;
+	final Path dirFile;
 
-	public EmptyDirIdFile(Path dirIdFile) {this.dirIdFile = dirIdFile;}
+	public EmptyDirFile(Path dirFile) {this.dirFile = dirFile;}
 
 	@Override
 	public Severity getSeverity() {
@@ -29,7 +29,7 @@ public class EmptyDirIdFile implements DiagnosticResult {
 
 	@Override
 	public String toString() {
-		return String.format("File %s is empty, expected content", dirIdFile);
+		return String.format("File %s is empty, expected content", dirFile);
 	}
 
 	/*
@@ -44,6 +44,6 @@ public class EmptyDirIdFile implements DiagnosticResult {
 
 	@Override
 	public Map<String, String> details() {
-		return Map.of(DIR_ID_FILE, dirIdFile.toString());
+		return Map.of(DIR_FILE, dirFile.toString());
 	}
 }

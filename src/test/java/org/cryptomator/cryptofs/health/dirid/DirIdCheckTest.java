@@ -118,10 +118,10 @@ public class DirIdCheckTest {
 		public void testVisitorDetectsObeseDirId() throws IOException {
 			Files.walkFileTree(dataRoot, Set.of(), 4, visitor);
 
-			Predicate<ObeseDirIdFile> expectedObeseFile = obeseDirFile -> "/d/BB/bbbb/bar=.c9r/dir.c9r".equals(obeseDirFile.dirIdFile.toString());
+			Predicate<ObeseDirFile> expectedObeseFile = obeseDirFile -> "/d/BB/bbbb/bar=.c9r/dir.c9r".equals(obeseDirFile.dirFile.toString());
 			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
 			Mockito.verify(resultsCollector, Mockito.atLeastOnce()).accept(resultCaptor.capture());
-			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(ObeseDirIdFile.class, expectedObeseFile, "Obese dir file: /d/BB/bbbb/bar=.c9r/dir.c9r")));
+			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(ObeseDirFile.class, expectedObeseFile, "Obese dir file: /d/BB/bbbb/bar=.c9r/dir.c9r")));
 		}
 
 		@Test
@@ -129,10 +129,10 @@ public class DirIdCheckTest {
 		public void testVisitorDetectsLooseDirId() throws IOException {
 			Files.walkFileTree(dataRoot, Set.of(), 4, visitor);
 
-			Predicate<LooseDirIdFile> expectedLooseFile = looseDirIdFile -> "/d/BB/bbbb/dir.c9r".equals(looseDirIdFile.dirIdFile.toString());
+			Predicate<LooseDirFile> expectedLooseFile = looseDirIdFile -> "/d/BB/bbbb/dir.c9r".equals(looseDirIdFile.dirIdFile.toString());
 			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
 			Mockito.verify(resultsCollector, Mockito.atLeastOnce()).accept(resultCaptor.capture());
-			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(LooseDirIdFile.class, expectedLooseFile, "Obese dir file: /d/BB/bbbb/bar=.c9r/dir.c9r")));
+			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(LooseDirFile.class, expectedLooseFile, "Obese dir file: /d/BB/bbbb/bar=.c9r/dir.c9r")));
 		}
 
 		@Test
@@ -140,10 +140,10 @@ public class DirIdCheckTest {
 		public void testVisitorDetectsEmptyDirId() throws IOException {
 			Files.walkFileTree(dataRoot, Set.of(), 4, visitor);
 
-			Predicate<EmptyDirIdFile> expectedEmptyFile = emptyDirFile -> "/d/BB/bbbb/baz=.c9r/dir.c9r".equals(emptyDirFile.dirIdFile.toString());
+			Predicate<EmptyDirFile> expectedEmptyFile = emptyDirFile -> "/d/BB/bbbb/baz=.c9r/dir.c9r".equals(emptyDirFile.dirFile.toString());
 			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
 			Mockito.verify(resultsCollector, Mockito.atLeastOnce()).accept(resultCaptor.capture());
-			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(EmptyDirIdFile.class, expectedEmptyFile, "Empty dir file: /d/BB/bbbb/baz=.c9r/dir.c9r")));
+			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(EmptyDirFile.class, expectedEmptyFile, "Empty dir file: /d/BB/bbbb/baz=.c9r/dir.c9r")));
 		}
 
 		@Test
