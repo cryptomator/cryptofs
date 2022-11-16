@@ -14,7 +14,7 @@ import java.util.Optional;
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_FILE;
 
 /**
- *	Diagnostic result of a dir file without the expected parent directories.
+ * Diagnostic result of a dir file without the expected parent directories.
  */
 public class LooseDirFile implements DiagnosticResult {
 
@@ -35,13 +35,13 @@ public class LooseDirFile implements DiagnosticResult {
 	}
 
 	@Override
-	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
-		Files.deleteIfExists(dirFile);
+	public Optional<Fix> getFix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
+		return Optional.of(() -> fix(pathToVault));
 	}
 
-	@Override
-	public Optional<Fix> getFix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
-		return Optional.of(() -> fix(pathToVault, config, masterkey, cryptor));
+	//visible for testing
+	void fix(Path pathToVault) throws IOException {
+		Files.deleteIfExists(pathToVault.resolve(dirFile));
 	}
 
 	@Override
