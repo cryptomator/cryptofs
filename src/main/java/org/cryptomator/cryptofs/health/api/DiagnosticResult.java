@@ -63,7 +63,9 @@ public interface DiagnosticResult {
 	 */
 	@Deprecated
 	default void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
-		throw new UnsupportedOperationException("Fix for result" + this.getClass() + " not implemented");
+		getFix(pathToVault, config, masterkey, cryptor) //
+				.orElseThrow(() -> new UnsupportedOperationException("Fix for result" + this.getClass() + " not implemented")) //
+				.apply();
 	}
 
 	default Optional<Fix> getFix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
@@ -81,6 +83,7 @@ public interface DiagnosticResult {
 
 	@FunctionalInterface
 	interface Fix {
+
 		void apply() throws IOException;
 	}
 }
