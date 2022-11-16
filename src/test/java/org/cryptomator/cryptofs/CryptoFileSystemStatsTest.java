@@ -147,4 +147,21 @@ public class CryptoFileSystemStatsTest {
 		Assertions.assertEquals(1l, inTest.pollAmountOfAccessesWritten());
 	}
 
+	@Test
+	public void testPollTotalAmountOfAccess(){
+		Assertions.assertEquals(0L, inTest.pollTotalAmountOfAccesses());
+		inTest.incrementAccesses();
+		Assertions.assertEquals(1L, inTest.pollTotalAmountOfAccesses());
+
+	}
+
+	@Test
+	public void testPollAmountOfFilesAccessed() {
+		Assertions.assertEquals(0L, inTest.pollAmountOfAccesses());
+		inTest.incrementAccesses();
+		Assertions.assertEquals(1L, inTest.pollAmountOfAccesses());
+		Assertions.assertEquals(0L, inTest.pollAmountOfAccesses());
+
+	}
+
 }
