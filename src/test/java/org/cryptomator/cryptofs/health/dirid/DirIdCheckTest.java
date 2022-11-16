@@ -38,7 +38,6 @@ public class DirIdCheckTest {
 			BB/bbbb/bar=.c9r/dir.c9r = ffffffffffff-aaaaaaaaaaaa-tttttttttttt
 			BB/bbbb/baz=.c9r/dir.c9r = [EMPTY]
 			BB/bbbb/foo=.c9r/unrelated/dir.c9r = unrelatedfile
-			BB/bbbb/missing=.c9r
 			BB/bbbb/dir.c9r = loose
 			CC/cccc/foo=.c9r = file
 			""";
@@ -144,17 +143,6 @@ public class DirIdCheckTest {
 			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
 			Mockito.verify(resultsCollector, Mockito.atLeastOnce()).accept(resultCaptor.capture());
 			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(EmptyDirFile.class, expectedEmptyFile, "Empty dir file: /d/BB/bbbb/baz=.c9r/dir.c9r")));
-		}
-
-		@Test
-		@DisplayName("detects c9r dir without identifying file in /d/BB/bbbb/missing.c9r")
-		public void testVisitorDetectsMissingContentC9rDir() throws IOException {
-			Files.walkFileTree(dataRoot, Set.of(), 4, visitor);
-
-			Predicate<MissingContentC9rDir> expectedMissingFile = missingFile -> "/d/BB/bbbb/missing=.c9r".equals(missingFile.c9rDirectory.toString());
-			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
-			Mockito.verify(resultsCollector, Mockito.atLeastOnce()).accept(resultCaptor.capture());
-			MatcherAssert.assertThat(resultCaptor.getAllValues(), Matchers.hasItem(CustomMatchers.matching(MissingContentC9rDir.class, expectedMissingFile, "Missing identifying file for: /d/BB/bbbb/missing=.c9r")));
 		}
 
 	}
