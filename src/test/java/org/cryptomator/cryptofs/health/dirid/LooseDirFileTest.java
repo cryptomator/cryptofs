@@ -20,8 +20,7 @@ public class LooseDirFileTest {
 	@DisplayName("LooseDirFile has a fix")
 	@Test
 	public void testGetFix() {
-		Path somePath = Path.of("foo/bar");
-		result = new LooseDirFile(somePath);
+		result = new LooseDirFile(Mockito.mock(Path.class));
 		Assertions.assertTrue(result.getFix(Mockito.mock(Path.class), Mockito.mock(VaultConfig.class), Mockito.mock(Masterkey.class), Mockito.mock(Cryptor.class)).isPresent());
 	}
 

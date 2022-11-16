@@ -69,11 +69,10 @@ public class OrphanContentDir implements DiagnosticResult {
 
 	@Override
 	public Optional<Fix> getFix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
-		return Optional.of(() -> fix(pathToVault, config, masterkey, cryptor));
+		return Optional.of(() -> fix(pathToVault, config, cryptor));
 	}
 
-	@Override
-	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
+	private void fix(Path pathToVault, VaultConfig config, Cryptor cryptor) throws IOException {
 		var sha1 = getSha1MessageDigest();
 		String runId = Integer.toString((short) UUID.randomUUID().getMostSignificantBits(), 32);
 		Path dataDir = pathToVault.resolve(Constants.DATA_DIR_NAME);
@@ -145,7 +144,7 @@ public class OrphanContentDir implements DiagnosticResult {
 
 	// visible for testing
 	CryptoPathMapper.CiphertextDirectory prepareStepParent(Path dataDir, Path cipherRecoveryDir, Cryptor cryptor, String clearStepParentDirName) throws IOException {
-		//create "step-parent" directory to move orphaned files to
+		//create "stepparent" directory to move orphaned files to
 		String cipherStepParentDirName = encrypt(cryptor.fileNameCryptor(), clearStepParentDirName, Constants.RECOVERY_DIR_ID);
 		Path cipherStepParentDirFile = cipherRecoveryDir.resolve(cipherStepParentDirName + "/" + Constants.DIR_FILE_NAME);
 		final String stepParentUUID;

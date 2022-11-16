@@ -5,6 +5,7 @@ import org.cryptomator.cryptofs.DirectoryIdBackup;
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -19,6 +20,14 @@ public class MissingDirIdBackupTest {
 
 	@TempDir
 	public Path pathToVault;
+	private MissingDirIdBackup result;
+
+	@DisplayName("MissingDirIdBackup result has a fix")
+	@Test
+	public void testGetFix() {
+		result = new MissingDirIdBackup("foobar", Mockito.mock(Path.class));
+		Assertions.assertTrue(result.getFix(Mockito.mock(Path.class), Mockito.mock(VaultConfig.class), Mockito.mock(Masterkey.class), Mockito.mock(Cryptor.class)).isPresent());
+	}
 
 
 	@DisplayName("The fix calls dirId backup class with correct parameters")
@@ -30,8 +39,8 @@ public class MissingDirIdBackupTest {
 			dirIdBackupMock.when(() -> DirectoryIdBackup.backupManually(Mockito.any(), Mockito.any())).thenAnswer(Answers.RETURNS_SMART_NULLS);
 			Cryptor cryptor = Mockito.mock(Cryptor.class);
 
-			MissingDirIdBackup result = new MissingDirIdBackup(dirId, cipherDir);
-			result.fix(pathToVault, Mockito.mock(VaultConfig.class), Mockito.mock(Masterkey.class), cryptor);
+			result = new MissingDirIdBackup(dirId, cipherDir);
+			result.fix(pathToVault, cryptor);
 
 			var expectedPath = pathToVault.resolve("d").resolve(cipherDir);
 			ArgumentMatcher<CryptoPathMapper.CiphertextDirectory> cipherDirMatcher = obj -> obj.dirId.equals(dirId) && obj.path.isAbsolute() && obj.path.equals(expectedPath);

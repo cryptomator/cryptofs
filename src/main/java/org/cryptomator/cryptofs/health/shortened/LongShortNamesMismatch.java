@@ -34,14 +34,14 @@ public class LongShortNamesMismatch implements DiagnosticResult {
 	}
 
 	// fix by renaming the parent to the content of name.c9s
-	@Override
-	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
-		Files.move(c9sDir, c9sDir.resolveSibling(expectedShortName));
+	void fix(Path pathToVault) throws IOException {
+		var absPathC9sDir = pathToVault.resolve(c9sDir);
+		Files.move(absPathC9sDir, absPathC9sDir.resolveSibling(expectedShortName));
 	}
 
 	@Override
 	public Optional<Fix> getFix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
-		return Optional.of(() -> fix(pathToVault, config, masterkey, cryptor));
+		return Optional.of(() -> fix(pathToVault));
 	}
 
 }

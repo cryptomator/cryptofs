@@ -64,6 +64,12 @@ public class OrphanDirTest {
 		Mockito.doReturn(fileNameCryptor).when(cryptor).fileNameCryptor();
 	}
 
+	@Test
+	@DisplayName("OrphanDir result has a fix")
+	public void testGetFix() {
+		Assertions.assertTrue(result.getFix(Mockito.mock(Path.class), Mockito.mock(VaultConfig.class), Mockito.mock(Masterkey.class), Mockito.mock(Cryptor.class)).isPresent());
+	}
+
 
 	@Nested
 	class PrepareRecoveryDirTests {

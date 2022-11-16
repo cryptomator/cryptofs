@@ -27,14 +27,14 @@ public record MissingDirIdBackup(String dirId, Path contentDir) implements Diagn
 		return String.format("Directory ID backup for directory %s is missing.", contentDir);
 	}
 
-	@Override
-	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
+	//visible for testing
+	void fix(Path pathToVault, Cryptor cryptor) throws IOException {
 		Path absCipherDir = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(contentDir);
 		DirectoryIdBackup.backupManually(cryptor, new CryptoPathMapper.CiphertextDirectory(dirId, absCipherDir));
 	}
 
 	@Override
 	public Optional<Fix> getFix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
-		return Optional.of(() -> fix(pathToVault, config, masterkey, cryptor));
+		return Optional.of(() -> fix(pathToVault, cryptor));
 	}
 }

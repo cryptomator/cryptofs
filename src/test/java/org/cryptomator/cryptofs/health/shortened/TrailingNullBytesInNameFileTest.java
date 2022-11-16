@@ -32,6 +32,13 @@ public class TrailingNullBytesInNameFileTest {
 		Files.createDirectories(cipherDir);
 	}
 
+	@DisplayName("TrailingNullBytes result has a fix")
+	@Test
+	public void testGetFix() {
+		result = new TrailingBytesInNameFile(Mockito.mock(Path.class), "foobar");
+		Assertions.assertTrue(result.getFix(Mockito.mock(Path.class), Mockito.mock(VaultConfig.class), Mockito.mock(Masterkey.class), Mockito.mock(Cryptor.class)).isPresent());
+	}
+
 	@Test
 	@DisplayName("Successful fix only removes trailing null bytes")
 	public void testSuccessfulFixRemovesTrailingNullBytes() throws IOException {
@@ -39,15 +46,15 @@ public class TrailingNullBytesInNameFileTest {
 		Path c9sDir = cipherDir.resolve("foo==.c9s");
 		Path nameFile = c9sDir.resolve("name.c9s");
 		var longName = "bar==.c9r\0\0\0";
-		result = new TrailingBytesInNameFile(nameFile, longName );
+		result = new TrailingBytesInNameFile(pathToVault.relativize(nameFile), longName);
 
 		Files.createDirectory(c9sDir);
 		Files.writeString(nameFile, longName, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 
 		//execute
-		result.fix(pathToVault, Mockito.mock(VaultConfig.class), Mockito.mock(Masterkey.class), Mockito.mock(Cryptor.class));
+		result.fix(pathToVault);
 
 		//evaluate
-		Assertions.assertEquals("bar==.c9r", Files.readString(nameFile,StandardCharsets.UTF_8));
+		Assertions.assertEquals("bar==.c9r", Files.readString(nameFile, StandardCharsets.UTF_8));
 	}
 }

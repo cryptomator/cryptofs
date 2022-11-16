@@ -43,6 +43,12 @@ public class MissingContentDirTest {
 		Mockito.doReturn(fileNameCryptor).when(cryptor).fileNameCryptor();
 	}
 
+	@DisplayName("Missing ContentDir result has a fix")
+	@Test
+	public void testGetFix() {
+		Assertions.assertTrue(result.getFix(Mockito.mock(Path.class), Mockito.mock(VaultConfig.class), Mockito.mock(Masterkey.class), Mockito.mock(Cryptor.class)).isPresent());
+	}
+
 	@DisplayName("After fix the content dir including dirId file exists ")
 	@Test
 	public void testFix() throws IOException {
@@ -51,7 +57,7 @@ public class MissingContentDirTest {
 		try (var dirIdBackupMock = Mockito.mockStatic(DirectoryIdBackup.class)) {
 			dirIdBackupMock.when(() -> DirectoryIdBackup.backupManually(Mockito.any(), Mockito.any())).thenAnswer(Answers.RETURNS_SMART_NULLS);
 
-			result.fix(pathToVault, Mockito.mock(VaultConfig.class), Mockito.mock(Masterkey.class), cryptor);
+			result.fix(pathToVault, cryptor);
 
 			var expectedPath = pathToVault.resolve("d/ri/diculous-30-char-pseudo-hash");
 			ArgumentMatcher<CryptoPathMapper.CiphertextDirectory> cipherDirMatcher = obj -> obj.dirId.equals(dirId) && obj.path.endsWith(expectedPath);
@@ -69,7 +75,7 @@ public class MissingContentDirTest {
 			Mockito.doReturn(dirIdHash).when(fileNameCryptor).hashDirectoryId(dirId);
 			dirIdBackupMock.when(() -> DirectoryIdBackup.backupManually(Mockito.any(), Mockito.any())).thenThrow(new IOException("Access denied"));
 
-			Assertions.assertThrows(IOException.class, () -> result.fix(pathToVault, Mockito.mock(VaultConfig.class), Mockito.mock(Masterkey.class), cryptor));
+			Assertions.assertThrows(IOException.class, () -> result.fix(pathToVault, cryptor));
 		}
 	}
 }

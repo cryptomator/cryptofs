@@ -34,8 +34,8 @@ public class TrailingBytesInNameFile implements DiagnosticResult {
 		return Severity.WARN;
 	}
 
-	@Override
-	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
+	//visible for testing
+	void fix(Path pathToVault) throws IOException {
 		var startIndexTrailingBytes = longName.indexOf(CRYPTOMATOR_FILE_SUFFIX) + CRYPTOMATOR_FILE_SUFFIX.length();
 		Files.writeString(pathToVault.resolve(nameFile), //
 				longName.substring(0, startIndexTrailingBytes), //
@@ -45,7 +45,7 @@ public class TrailingBytesInNameFile implements DiagnosticResult {
 
 	@Override
 	public Optional<Fix> getFix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
-		return Optional.of(() -> fix(pathToVault, config, masterkey, cryptor));
+		return Optional.of(() -> fix(pathToVault));
 	}
 
 	@Override

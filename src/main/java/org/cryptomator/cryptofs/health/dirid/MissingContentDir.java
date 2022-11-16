@@ -14,8 +14,8 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID;
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_FILE;
+import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID;
 
 /**
  * Valid dir.c9r file, nonexisting content dir
@@ -46,8 +46,8 @@ public class MissingContentDir implements DiagnosticResult {
 				DIR_FILE, dirFile.toString());
 	}
 
-	@Override
-	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
+	//visible for testing
+	void fix(Path pathToVault, Cryptor cryptor) throws IOException {
 		var dirIdHash = cryptor.fileNameCryptor().hashDirectoryId(dirId);
 		Path dirPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(dirIdHash.substring(0, 2)).resolve(dirIdHash.substring(2, 30));
 		Files.createDirectories(dirPath);
@@ -56,6 +56,6 @@ public class MissingContentDir implements DiagnosticResult {
 
 	@Override
 	public Optional<Fix> getFix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
-		return Optional.of(() -> fix(pathToVault, config, masterkey, cryptor));
+		return Optional.of(() -> fix(pathToVault, cryptor));
 	}
 }
