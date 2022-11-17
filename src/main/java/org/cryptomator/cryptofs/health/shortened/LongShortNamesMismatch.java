@@ -8,6 +8,7 @@ import org.cryptomator.cryptolib.api.Masterkey;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 /**
  * A c9s directory where the name of the directory is not a Base64URL encoded SHA1-hash of the contents in {@value org.cryptomator.cryptofs.common.Constants#INFLATED_FILE_NAME}
@@ -33,9 +34,14 @@ public class LongShortNamesMismatch implements DiagnosticResult {
 	}
 
 	// fix by renaming the parent to the content of name.c9s
+	void fix(Path pathToVault) throws IOException {
+		var absPathC9sDir = pathToVault.resolve(c9sDir);
+		Files.move(absPathC9sDir, absPathC9sDir.resolveSibling(expectedShortName));
+	}
+
 	@Override
-	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
-		Files.move(c9sDir, c9sDir.resolveSibling(expectedShortName));
+	public Optional<Fix> getFix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
+		return Optional.of(() -> fix(pathToVault));
 	}
 
 }

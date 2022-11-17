@@ -10,6 +10,7 @@ import org.cryptomator.cryptolib.api.Masterkey;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Optional;
 
 /**
  * The dir id backup file {@value org.cryptomator.cryptofs.common.Constants#DIR_BACKUP_FILE_NAME} is missing.
@@ -18,7 +19,7 @@ public record MissingDirIdBackup(String dirId, Path contentDir) implements Diagn
 
 	@Override
 	public Severity getSeverity() {
-		return Severity.WARN;
+		return Severity.INFO;
 	}
 
 	@Override
@@ -26,9 +27,14 @@ public record MissingDirIdBackup(String dirId, Path contentDir) implements Diagn
 		return String.format("Directory ID backup for directory %s is missing.", contentDir);
 	}
 
-	@Override
-	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
+	//visible for testing
+	void fix(Path pathToVault, Cryptor cryptor) throws IOException {
 		Path absCipherDir = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(contentDir);
 		DirectoryIdBackup.backupManually(cryptor, new CryptoPathMapper.CiphertextDirectory(dirId, absCipherDir));
+	}
+
+	@Override
+	public Optional<Fix> getFix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
+		return Optional.of(() -> fix(pathToVault, cryptor));
 	}
 }

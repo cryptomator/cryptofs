@@ -31,6 +31,13 @@ public class LongShortNamesMismatchTest {
 	}
 
 	@Test
+	@DisplayName("LongShortNamesMismatch result has a fix")
+	public void testGetFix() {
+		result = new LongShortNamesMismatch(Mockito.mock(Path.class), "bar==.c9s");
+		Assertions.assertTrue(result.getFix(Mockito.mock(Path.class), Mockito.mock(VaultConfig.class), Mockito.mock(Masterkey.class), Mockito.mock(Cryptor.class)).isPresent());
+	}
+
+	@Test
 	@DisplayName("a successful fix only renames the c9s directory")
 	public void testSuccessfulFixRenamesResource() throws IOException {
 		//prepare
@@ -40,7 +47,7 @@ public class LongShortNamesMismatchTest {
 		Files.createDirectory(c9sDir);
 
 		//execute
-		result.fix(pathToVault, Mockito.mock(VaultConfig.class), Mockito.mock(Masterkey.class), Mockito.mock(Cryptor.class));
+		result.fix(pathToVault);
 
 		//evaluate
 		Path expectedC9sDir = c9sDir.resolveSibling("bar==.c9s");
