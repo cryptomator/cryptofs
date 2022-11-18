@@ -4,6 +4,7 @@ import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
@@ -15,9 +16,13 @@ import java.nio.file.Path;
 public class UnknownTypeTest {
 
 	UnknownType result;
-	VaultConfig vaultConfig = Mockito.mock(VaultConfig.class);
-	Masterkey masterkey = Mockito.mock(Masterkey.class);
-	Cryptor cryptor = Mockito.mock(Cryptor.class);
+
+	@DisplayName("UnkownType result has a fix")
+	@Test
+	public void testGetFix() {
+		result = new UnknownType(Mockito.mock(Path.class));
+		Assertions.assertTrue(result.getFix(Mockito.mock(Path.class), Mockito.mock(VaultConfig.class), Mockito.mock(Masterkey.class), Mockito.mock(Cryptor.class)).isPresent());
+	}
 
 	@Test
 	public void testFix(@TempDir Path tmpDir) throws IOException {
@@ -26,7 +31,7 @@ public class UnknownTypeTest {
 		Files.createDirectory(absolutePath);
 		result = new UnknownType(c9rDir);
 
-		result.fix(tmpDir, vaultConfig, masterkey, cryptor);
+		result.fix(tmpDir);
 
 		Assertions.assertTrue(Files.notExists(absolutePath));
 	}
