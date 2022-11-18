@@ -61,10 +61,11 @@ public class DirIdCheck implements HealthCheck {
 			boolean foundDir = dirVisitor.secondLevelDirs.remove(expectedDir);
 			if (foundDir) {
 				iter.remove();
-				if (Files.exists(dataDirPath.resolve(expectedDir).resolve(Constants.DIR_BACKUP_FILE_NAME))) {
-					resultCollector.accept(new HealthyDir(dirId, dirFile, expectedDir));
+				var expectedDirVaultRel = Path.of(Constants.DATA_DIR_NAME).resolve(expectedDir);
+				if (Files.exists(pathToVault.resolve(expectedDir).resolve(Constants.DIR_BACKUP_FILE_NAME))) {
+					resultCollector.accept(new HealthyDir(dirId, dirFile, expectedDirVaultRel));
 				} else {
-					resultCollector.accept(new MissingDirIdBackup(dirId, expectedDir));
+					resultCollector.accept(new MissingDirIdBackup(dirId, expectedDirVaultRel));
 				}
 			}
 		}

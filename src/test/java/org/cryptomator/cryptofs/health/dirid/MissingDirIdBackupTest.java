@@ -33,7 +33,7 @@ public class MissingDirIdBackupTest {
 	@DisplayName("The fix calls dirId backup class with correct parameters")
 	@Test
 	public void testFix() throws IOException {
-		Path cipherDir = Path.of("ri/diculous-30-char-pseudo-hash");
+		Path cipherDir = Path.of("d/ri/diculous-30-char-pseudo-hash");
 		String dirId = "1234-456789-1234";
 		try (var dirIdBackupMock = Mockito.mockStatic(DirectoryIdBackup.class)) {
 			dirIdBackupMock.when(() -> DirectoryIdBackup.backupManually(Mockito.any(), Mockito.any())).thenAnswer(Answers.RETURNS_SMART_NULLS);
@@ -42,7 +42,7 @@ public class MissingDirIdBackupTest {
 			result = new MissingDirIdBackup(dirId, cipherDir);
 			result.fix(pathToVault, cryptor);
 
-			var expectedPath = pathToVault.resolve("d").resolve(cipherDir);
+			var expectedPath = pathToVault.resolve(cipherDir);
 			ArgumentMatcher<CryptoPathMapper.CiphertextDirectory> cipherDirMatcher = obj -> obj.dirId.equals(dirId) && obj.path.isAbsolute() && obj.path.equals(expectedPath);
 			dirIdBackupMock.verify(() -> DirectoryIdBackup.backupManually(Mockito.eq(cryptor), Mockito.argThat(cipherDirMatcher)), Mockito.times(1));
 		}

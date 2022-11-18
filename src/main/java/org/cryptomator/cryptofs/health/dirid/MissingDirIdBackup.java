@@ -29,7 +29,7 @@ public record MissingDirIdBackup(String dirId, Path contentDir) implements Diagn
 
 	//visible for testing
 	void fix(Path pathToVault, Cryptor cryptor) throws IOException {
-		Path absCipherDir = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(contentDir);
+		Path absCipherDir = pathToVault.resolve(contentDir);
 		DirectoryIdBackup.backupManually(cryptor, new CryptoPathMapper.CiphertextDirectory(dirId, absCipherDir));
 	}
 
