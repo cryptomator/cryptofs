@@ -41,4 +41,9 @@ public class HealthyDir implements DiagnosticResult {
 				DIR_FILE, dirFile.toString(), //
 				ENCRYPTED_PATH, dir.toString());
 	}
+
+	@Override
+	public List<Path> affectedCiphertextNodes(){
+		return List.of(dirFile, dir);
+	}
 }

@@ -3,13 +3,13 @@ package org.cryptomator.cryptofs.health.dirid;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.DirectoryIdBackup;
 import org.cryptomator.cryptofs.VaultConfig;
-import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -25,6 +25,11 @@ public record MissingDirIdBackup(String dirId, Path contentDir) implements Diagn
 	@Override
 	public String toString() {
 		return String.format("Directory ID backup for directory %s is missing.", contentDir);
+	}
+
+	@Override
+	public List<Path> affectedCiphertextNodes() {
+		return List.of(contentDir);
 	}
 
 	//visible for testing

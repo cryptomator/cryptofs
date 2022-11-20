@@ -4,6 +4,7 @@ import org.cryptomator.cryptofs.LongFileNameProvider;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * A shortend file name file which exceeds the maximum size of {@value org.cryptomator.cryptofs.LongFileNameProvider#MAX_FILENAME_BUFFER_SIZE} bytes.
@@ -28,4 +29,8 @@ public class ObeseNameFile implements DiagnosticResult {
 		return String.format("Long filename file %s with size %d exceeds limit of %d for this type.", nameFile, size, LongFileNameProvider.MAX_FILENAME_BUFFER_SIZE);
 	}
 
+	@Override
+	public List<Path> affectedCiphertextNodes(){
+		return List.of(nameFile);
+	}
 }

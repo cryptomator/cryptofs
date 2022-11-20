@@ -4,6 +4,7 @@ import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * A c9s directory with a missing long name.
@@ -28,6 +29,11 @@ public class MissingLongName implements DiagnosticResult {
 	@Override
 	public String toString() {
 		return String.format("Shortened resource %s either misses %s or the file has invalid content.", c9sDir, Constants.INFLATED_FILE_NAME);
+	}
+
+	@Override
+	public List<Path> affectedCiphertextNodes(){
+		return List.of(c9sDir);
 	}
 
 }

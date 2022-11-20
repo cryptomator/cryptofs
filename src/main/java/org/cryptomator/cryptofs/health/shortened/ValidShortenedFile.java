@@ -3,6 +3,7 @@ package org.cryptomator.cryptofs.health.shortened;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * A valid shortened resource according to the Cryptomator vault specification.
@@ -23,4 +24,8 @@ public class ValidShortenedFile implements DiagnosticResult {
 		return String.format("Found valid shortened resource at %s.", c9sDir);
 	}
 
+	@Override
+	public List<Path> affectedCiphertextNodes(){
+		return List.of(c9sDir);
+	}
 }

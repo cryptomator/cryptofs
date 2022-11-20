@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -70,6 +71,11 @@ public class OrphanContentDir implements DiagnosticResult {
 	@Override
 	public Optional<Fix> getFix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
 		return Optional.of(() -> fix(pathToVault, config, cryptor));
+	}
+
+	@Override
+	public List<Path> affectedCiphertextNodes(){
+		return List.of(contentDir);
 	}
 
 	private void fix(Path pathToVault, VaultConfig config, Cryptor cryptor) throws IOException {

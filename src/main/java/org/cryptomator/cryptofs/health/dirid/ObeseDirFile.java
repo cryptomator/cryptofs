@@ -4,6 +4,7 @@ import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_FILE;
@@ -35,6 +36,11 @@ public class ObeseDirFile implements DiagnosticResult {
 	public Map<String, String> details() {
 		return Map.of(DIR_FILE, dirFile.toString(), //
 				"Size", Long.toString(size));
+	}
+
+	@Override
+	public List<Path> affectedCiphertextNodes(){
+		return List.of(dirFile);
 	}
 	// potential fix: assign new dir id, move target dir
 

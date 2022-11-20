@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -57,5 +58,10 @@ public class TrailingBytesInNameFile implements DiagnosticResult {
 	@Override
 	public String toString() {
 		return String.format("Encrypted filename \"%s\" stored in %s contains trailing bytes.", longName, nameFile);
+	}
+
+	@Override
+	public List<Path> affectedCiphertextNodes(){
+		return List.of(nameFile);
 	}
 }

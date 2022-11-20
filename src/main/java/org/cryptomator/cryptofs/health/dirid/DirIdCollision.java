@@ -3,6 +3,7 @@ package org.cryptomator.cryptofs.health.dirid;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID;
@@ -38,5 +39,10 @@ public class DirIdCollision implements DiagnosticResult {
 		return Map.of(DIR_ID, dirId, //
 				DIR_FILE, dirFile.toString(), //
 				"Other " + DIR_FILE, otherDirFile.toString());
+	}
+
+	@Override
+	public List<Path> affectedCiphertextNodes(){
+		return List.of(dirFile, otherDirFile);
 	}
 }

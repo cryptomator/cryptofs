@@ -11,6 +11,7 @@ import org.cryptomator.cryptolib.api.Masterkey;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -44,6 +45,11 @@ public class MissingContentDir implements DiagnosticResult {
 	public Map<String, String> details() {
 		return Map.of(DIR_ID, dirId, //
 				DIR_FILE, dirFile.toString());
+	}
+
+	@Override
+	public List<Path> affectedCiphertextNodes(){
+		return List.of(dirFile);
 	}
 
 	//visible for testing

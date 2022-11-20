@@ -10,6 +10,7 @@ import org.cryptomator.cryptolib.api.Masterkey;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -50,4 +51,8 @@ public class UnknownType implements DiagnosticResult {
 		return Map.of(CommonDetailKeys.ENCRYPTED_PATH, cipherDir.toString());
 	}
 
+	@Override
+	public List<Path> affectedCiphertextNodes(){
+		return List.of(cipherDir);
+	}
 }

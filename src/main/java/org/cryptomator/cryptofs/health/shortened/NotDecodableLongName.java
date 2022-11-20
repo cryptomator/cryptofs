@@ -4,6 +4,7 @@ import org.cryptomator.cryptofs.health.api.CommonDetailKeys;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -44,5 +45,10 @@ public class NotDecodableLongName implements DiagnosticResult {
 	@Override
 	public String toString() {
 		return String.format("String \"%s\" stored in %s is not a valid Cryptomator filename.", longName, nameFile);
+	}
+
+	@Override
+	public List<Path> affectedCiphertextNodes(){
+		return List.of(nameFile);
 	}
 }

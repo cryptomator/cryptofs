@@ -5,6 +5,7 @@ import org.cryptomator.cryptofs.health.api.CommonDetailKeys;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -35,5 +36,10 @@ public class AmbiguousType implements DiagnosticResult {
 	public Map<String, String> details() {
 		return Map.of(CommonDetailKeys.ENCRYPTED_PATH, cipherDir.toString(),
 				"Possible Types", possibleTypes.toString());
+	}
+
+	@Override
+	public List<Path> affectedCiphertextNodes(){
+		return List.of(cipherDir);
 	}
 }

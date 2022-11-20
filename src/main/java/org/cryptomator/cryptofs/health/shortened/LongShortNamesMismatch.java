@@ -8,6 +8,7 @@ import org.cryptomator.cryptolib.api.Masterkey;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -31,6 +32,12 @@ public class LongShortNamesMismatch implements DiagnosticResult {
 	@Override
 	public String toString() {
 		return String.format("Name of %s is not a base64url encoded SHA1 hash of String inside name.c9s.", c9sDir);
+	}
+
+
+	@Override
+	public List<Path> affectedCiphertextNodes(){
+		return List.of(c9sDir);
 	}
 
 	// fix by renaming the parent to the content of name.c9s

@@ -3,6 +3,7 @@ package org.cryptomator.cryptofs.health.dirid;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_FILE;
@@ -45,5 +46,10 @@ public class EmptyDirFile implements DiagnosticResult {
 	@Override
 	public Map<String, String> details() {
 		return Map.of(DIR_FILE, dirFile.toString());
+	}
+
+	@Override
+	public List<Path> affectedCiphertextNodes(){
+		return List.of(dirFile);
 	}
 }
