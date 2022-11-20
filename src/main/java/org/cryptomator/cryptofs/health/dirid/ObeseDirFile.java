@@ -39,7 +39,7 @@ public class ObeseDirFile implements DiagnosticResult {
 	}
 
 	@Override
-	public List<Path> affectedCiphertextNodes(){
+	public List<Path> getCausingCiphertextNodes(){
 		return List.of(dirFile);
 	}
 	// potential fix: assign new dir id, move target dir

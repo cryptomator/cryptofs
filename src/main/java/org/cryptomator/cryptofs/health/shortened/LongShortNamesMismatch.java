@@ -36,7 +36,7 @@ public class LongShortNamesMismatch implements DiagnosticResult {
 
 
 	@Override
-	public List<Path> affectedCiphertextNodes(){
+	public List<Path> getCausingCiphertextNodes(){
 		return List.of(c9sDir);
 	}
 

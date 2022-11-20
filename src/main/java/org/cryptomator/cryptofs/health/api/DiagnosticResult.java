@@ -87,7 +87,7 @@ public interface DiagnosticResult {
 	 *
 	 * @return a list of  paths pointing to affected fs nodes
 	 */
-	default List<Path> affectedCiphertextNodes() {
+	default List<Path> getCausingCiphertextNodes() {
 		return List.of();
 	}
 

@@ -28,7 +28,7 @@ public record MissingDirIdBackup(String dirId, Path contentDir) implements Diagn
 	}
 
 	@Override
-	public List<Path> affectedCiphertextNodes() {
+	public List<Path> getCausingCiphertextNodes() {
 		return List.of(contentDir);
 	}
 

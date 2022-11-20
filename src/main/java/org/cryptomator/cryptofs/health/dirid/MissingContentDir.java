@@ -48,7 +48,7 @@ public class MissingContentDir implements DiagnosticResult {
 	}
 
 	@Override
-	public List<Path> affectedCiphertextNodes(){
+	public List<Path> getCausingCiphertextNodes(){
 		return List.of(dirFile);
 	}
 

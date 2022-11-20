@@ -52,7 +52,7 @@ public class UnknownType implements DiagnosticResult {
 	}
 
 	@Override
-	public List<Path> affectedCiphertextNodes(){
+	public List<Path> getCausingCiphertextNodes(){
 		return List.of(cipherDir);
 	}
 }

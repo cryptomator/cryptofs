@@ -30,7 +30,7 @@ public class ObeseNameFile implements DiagnosticResult {
 	}
 
 	@Override
-	public List<Path> affectedCiphertextNodes(){
+	public List<Path> getCausingCiphertextNodes(){
 		return List.of(nameFile);
 	}
 }
