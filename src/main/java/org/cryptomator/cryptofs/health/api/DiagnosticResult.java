@@ -6,6 +6,7 @@ import org.cryptomator.cryptolib.api.Masterkey;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -79,6 +80,15 @@ public interface DiagnosticResult {
 	 */
 	default Map<String, String> details() {
 		return Map.of();
+	}
+
+	/**
+	 * List all (ciphertext) filesystem nodes affected by this result
+	 *
+	 * @return a list of  paths pointing to affected fs nodes
+	 */
+	default List<Path> affectedCiphertextNodes() {
+		return List.of();
 	}
 
 	@FunctionalInterface
