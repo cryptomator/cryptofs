@@ -20,17 +20,17 @@
 		<!-- dependencies -->
 		<cryptolib.version>2.1.0</cryptolib.version>
 		<jwt.version>4.2.1</jwt.version>
-		<dagger.version>2.44</dagger.version>
+		<dagger.version>2.44.2</dagger.version>
 		<guava.version>31.1-jre</guava.version>
 		<slf4j.version>2.0.3</slf4j.version>
 
 		<!-- test dependencies -->
 		<junit.jupiter.version>5.9.1</junit.jupiter.version>
-		<mockito.version>4.8.0</mockito.version>
+		<mockito.version>4.9.0</mockito.version>
 		<hamcrest.version>2.2</hamcrest.version>
 
 		<!-- build plugin dependencies -->
-		<dependency-check.version>7.2.1</dependency-check.version>
+		<dependency-check.version>7.3.2</dependency-check.version>
 		<jacoco.version>0.8.8</jacoco.version>
 		<nexus-staging.version>1.6.13</nexus-staging.version>
 	</properties>
