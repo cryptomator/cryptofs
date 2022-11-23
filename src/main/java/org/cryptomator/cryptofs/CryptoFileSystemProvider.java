@@ -143,7 +143,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 		}
 		byte[] rawKey = new byte[0];
 		var config = VaultConfig.createNew().cipherCombo(properties.cipherCombo()).shorteningThreshold(properties.shorteningThreshold()).build();
-		try (Masterkey key = properties.keyLoader().loadKey(keyId);
+		try (Masterkey key = properties.keyLoader().loadKey(keyId); //
 			 Cryptor cryptor = CryptorProvider.forScheme(config.getCipherCombo()).provide(key, strongSecureRandom())) {
 			rawKey = key.getEncoded();
 			// save vault config:
@@ -154,6 +154,8 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 			String dirHash = cryptor.fileNameCryptor().hashDirectoryId(Constants.ROOT_DIR_ID);
 			Path vaultCipherRootPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(dirHash.substring(0, 2)).resolve(dirHash.substring(2));
 			Files.createDirectories(vaultCipherRootPath);
+			// create dirId backup:
+			DirectoryIdBackup.backupManually(cryptor, new CryptoPathMapper.CiphertextDirectory(Constants.ROOT_DIR_ID, vaultCipherRootPath));
 		} finally {
 			Arrays.fill(rawKey, (byte) 0x00);
 		}

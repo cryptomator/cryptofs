@@ -46,7 +46,7 @@ public class DirectoryIdBackupTest {
 
 			dirIdBackup.execute(cipherDirObject);
 
-			Assertions.assertTrue(Files.exists(contentPath.resolve(Constants.DIR_ID_FILE)));
+			Assertions.assertTrue(Files.exists(contentPath.resolve(Constants.DIR_BACKUP_FILE_NAME)));
 		}
 	}
 

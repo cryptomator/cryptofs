@@ -12,9 +12,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.Optional;
 
+import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_FILE;
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID;
-import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID_FILE;
 
 /**
  * Valid dir.c9r file, nonexisting content dir
@@ -22,11 +23,11 @@ import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID_FILE;
 public class MissingContentDir implements DiagnosticResult {
 
 	final String dirId;
-	final Path dirIdFile;
+	final Path dirFile;
 
-	MissingContentDir(String dirId, Path dirIdFile) {
+	MissingContentDir(String dirId, Path dirFile) {
 		this.dirId = dirId;
-		this.dirIdFile = dirIdFile;
+		this.dirFile = dirFile;
 	}
 
 	@Override
@@ -36,25 +37,25 @@ public class MissingContentDir implements DiagnosticResult {
 
 	@Override
 	public String toString() {
-		return String.format("dir.c9r file (%s) points to non-existing directory.", dirIdFile);
+		return String.format("dir.c9r file (%s) points to non-existing directory.", dirFile);
 	}
 
 	@Override
 	public Map<String, String> details() {
 		return Map.of(DIR_ID, dirId, //
-				DIR_ID_FILE, dirIdFile.toString());
-	}
-
-	@Override
-	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
-		var dirIdHash = cryptor.fileNameCryptor().hashDirectoryId(dirId);
-		Path dirPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(dirIdHash.substring(0, 2)).resolve(dirIdHash.substring(2, 30));
-		Files.createDirectories(dirPath);
-		createDirIdBackupFile(cryptor, new CryptoPathMapper.CiphertextDirectory(dirId, dirPath));
+				DIR_FILE, dirFile.toString());
 	}
 
 	//visible for testing
-	void createDirIdBackupFile(Cryptor cryptor, CryptoPathMapper.CiphertextDirectory cipherDirObj) throws IOException {
-		new DirectoryIdBackup(cryptor).execute(cipherDirObj);
+	void fix(Path pathToVault, Cryptor cryptor) throws IOException {
+		var dirIdHash = cryptor.fileNameCryptor().hashDirectoryId(dirId);
+		Path dirPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(dirIdHash.substring(0, 2)).resolve(dirIdHash.substring(2, 30));
+		Files.createDirectories(dirPath);
+		DirectoryIdBackup.backupManually(cryptor, new CryptoPathMapper.CiphertextDirectory(dirId, dirPath));
+	}
+
+	@Override
+	public Optional<Fix> getFix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
+		return Optional.of(() -> fix(pathToVault, cryptor));
 	}
 }

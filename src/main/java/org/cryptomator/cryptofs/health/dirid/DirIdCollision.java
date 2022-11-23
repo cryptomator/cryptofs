@@ -6,7 +6,7 @@ import java.nio.file.Path;
 import java.util.Map;
 
 import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID;
-import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID_FILE;
+import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_FILE;
 
 /**
  * The directory id is used more than once.
@@ -14,13 +14,13 @@ import static org.cryptomator.cryptofs.health.api.CommonDetailKeys.DIR_ID_FILE;
 public class DirIdCollision implements DiagnosticResult {
 
 	final String dirId;
-	final Path file;
-	final Path otherFile;
+	final Path dirFile;
+	final Path otherDirFile;
 
-	DirIdCollision(String dirId, Path file, Path otherFile) {
+	DirIdCollision(String dirId, Path dirFile, Path otherDirFile) {
 		this.dirId = dirId;
-		this.file = file;
-		this.otherFile = otherFile;
+		this.dirFile = dirFile;
+		this.otherDirFile = otherDirFile;
 	}
 
 	@Override
@@ -30,13 +30,13 @@ public class DirIdCollision implements DiagnosticResult {
 
 	@Override
 	public String toString() {
-		return String.format("Directory ID reused: %s found in %s and %s", dirId, file, otherFile);
+		return String.format("Directory ID reused: %s found in %s and %s", dirId, dirFile, otherDirFile);
 	}
 
 	@Override
 	public Map<String, String> details() {
 		return Map.of(DIR_ID, dirId, //
-				DIR_ID_FILE, file.toString(), //
-				"Other " + DIR_ID_FILE, otherFile.toString());
+				DIR_FILE, dirFile.toString(), //
+				"Other " + DIR_FILE, otherDirFile.toString());
 	}
 }

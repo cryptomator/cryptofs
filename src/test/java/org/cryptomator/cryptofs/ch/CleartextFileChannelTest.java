@@ -3,8 +3,8 @@ package org.cryptomator.cryptofs.ch;
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.fh.BufferPool;
-import org.cryptomator.cryptofs.fh.ChunkCache;
 import org.cryptomator.cryptofs.fh.Chunk;
+import org.cryptomator.cryptofs.fh.ChunkCache;
 import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
@@ -325,10 +325,11 @@ public class CleartextFileChannelTest {
 
 		@Test
 		public void testReadFailsIfNotReadable() throws IOException {
+			var buf = ByteBuffer.allocate(10);
 			when(options.readable()).thenReturn(false);
 
 			Assertions.assertThrows(NonReadableChannelException.class, () -> {
-				inTest.read(ByteBuffer.allocate(10));
+				inTest.read(buf);
 			});
 		}
 
@@ -415,10 +416,11 @@ public class CleartextFileChannelTest {
 		@Test
 		@DisplayName("write to non-writable channel")
 		public void testWriteFailsIfNotWritable() {
+			var buf = ByteBuffer.allocate(10);
 			when(options.writable()).thenReturn(false);
 
 			Assertions.assertThrows(NonWritableChannelException.class, () -> {
-				inTest.write(ByteBuffer.allocate(10));
+				inTest.write(buf);
 			});
 		}
 
@@ -528,40 +530,44 @@ public class CleartextFileChannelTest {
 		@Test
 		@DisplayName("read(buf)")
 		public void testRead() {
+			var buf = ByteBuffer.allocate(10);
 			when(options.readable()).thenReturn(true);
 
 			Assertions.assertThrows(ClosedChannelException.class, () -> {
-				inTest.read(ByteBuffer.allocate(10));
+				inTest.read(buf);
 			});
 		}
 
 		@Test
 		@DisplayName("write(buf)")
 		public void testWrite() {
+			var buf = ByteBuffer.allocate(10);
 			when(options.writable()).thenReturn(true);
 
 			Assertions.assertThrows(ClosedChannelException.class, () -> {
-				inTest.write(ByteBuffer.allocate(10));
+				inTest.write(buf);
 			});
 		}
 
 		@Test
 		@DisplayName("read(buf, pos)")
 		public void testReadWithPosition() {
+			var buf = ByteBuffer.allocate(10);
 			when(options.readable()).thenReturn(true);
 
 			Assertions.assertThrows(ClosedChannelException.class, () -> {
-				inTest.read(ByteBuffer.allocate(10), 3727L);
+				inTest.read(buf, 3727L);
 			});
 		}
 
 		@Test
 		@DisplayName("write(buf, pos)")
 		public void testWriteWithPosition() {
+			var buf = ByteBuffer.allocate(10);
 			when(options.writable()).thenReturn(true);
 
 			Assertions.assertThrows(ClosedChannelException.class, () -> {
-				inTest.write(ByteBuffer.allocate(10), 3727L);
+				inTest.write(buf, 3727L);
 			});
 		}
 

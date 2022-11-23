@@ -68,7 +68,11 @@ public class OrphanContentDir implements DiagnosticResult {
 	}
 
 	@Override
-	public void fix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) throws IOException {
+	public Optional<Fix> getFix(Path pathToVault, VaultConfig config, Masterkey masterkey, Cryptor cryptor) {
+		return Optional.of(() -> fix(pathToVault, config, cryptor));
+	}
+
+	private void fix(Path pathToVault, VaultConfig config, Cryptor cryptor) throws IOException {
 		var sha1 = getSha1MessageDigest();
 		String runId = Integer.toString((short) UUID.randomUUID().getMostSignificantBits(), 32);
 		Path dataDir = pathToVault.resolve(Constants.DATA_DIR_NAME);
@@ -87,7 +91,7 @@ public class OrphanContentDir implements DiagnosticResult {
 		String longNameSuffix = createClearnameToBeShortened(config.getShorteningThreshold());
 		Optional<String> dirId = retrieveDirId(orphanedDir, cryptor);
 
-		try (var orphanedContentStream = Files.newDirectoryStream(orphanedDir, p -> !Constants.DIR_ID_FILE.equals(p.getFileName().toString()))) {
+		try (var orphanedContentStream = Files.newDirectoryStream(orphanedDir, p -> !Constants.DIR_BACKUP_FILE_NAME.equals(p.getFileName().toString()))) {
 			for (Path orphanedResource : orphanedContentStream) {
 				boolean isShortened = orphanedResource.toString().endsWith(Constants.DEFLATED_FILE_SUFFIX);
 				//@formatter:off
@@ -109,7 +113,7 @@ public class OrphanContentDir implements DiagnosticResult {
 			}
 		}
 
-		Files.deleteIfExists(orphanedDir.resolve(Constants.DIR_ID_FILE));
+		Files.deleteIfExists(orphanedDir.resolve(Constants.DIR_BACKUP_FILE_NAME));
 		Files.delete(orphanedDir);
 	}
 
@@ -140,7 +144,7 @@ public class OrphanContentDir implements DiagnosticResult {
 
 	// visible for testing
 	CryptoPathMapper.CiphertextDirectory prepareStepParent(Path dataDir, Path cipherRecoveryDir, Cryptor cryptor, String clearStepParentDirName) throws IOException {
-		//create "step-parent" directory to move orphaned files to
+		//create "stepparent" directory to move orphaned files to
 		String cipherStepParentDirName = encrypt(cryptor.fileNameCryptor(), clearStepParentDirName, Constants.RECOVERY_DIR_ID);
 		Path cipherStepParentDirFile = cipherRecoveryDir.resolve(cipherStepParentDirName + "/" + Constants.DIR_FILE_NAME);
 		final String stepParentUUID;
@@ -166,7 +170,7 @@ public class OrphanContentDir implements DiagnosticResult {
 
 	//visible for testing
 	Optional<String> retrieveDirId(Path orphanedDir, Cryptor cryptor) {
-		var dirIdFile = orphanedDir.resolve(Constants.DIR_ID_FILE);
+		var dirIdFile = orphanedDir.resolve(Constants.DIR_BACKUP_FILE_NAME);
 		var dirIdBuffer = ByteBuffer.allocate(36); //a dir id contains at most 36 ascii chars
 
 		try (var channel = Files.newByteChannel(dirIdFile, StandardOpenOption.READ); //
@@ -174,7 +178,7 @@ public class OrphanContentDir implements DiagnosticResult {
 			ByteBuffers.fill(decryptingChannel, dirIdBuffer);
 			dirIdBuffer.flip();
 		} catch (IOException e) {
-			LOG.info("Unable to read dirIdFile of {}.", orphanedDir, e);
+			LOG.info("Unable to read {}.", dirIdFile, e);
 			return Optional.empty();
 		}
 

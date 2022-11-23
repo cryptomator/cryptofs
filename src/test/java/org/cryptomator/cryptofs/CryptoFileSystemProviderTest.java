@@ -3,6 +3,7 @@ package org.cryptomator.cryptofs;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.ch.AsyncDelegatingFileChannel;
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptolib.api.Masterkey;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
 import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
@@ -44,7 +45,6 @@ import java.util.stream.Stream;
 
 import static java.nio.file.Paths.get;
 import static java.nio.file.StandardOpenOption.APPEND;
-import static java.util.Arrays.asList;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.instanceOf;
@@ -194,6 +194,11 @@ public class CryptoFileSystemProviderTest {
 		Optional<Path> rootDir = Files.list(preRootDir.get()).findFirst();
 		Assertions.assertTrue(rootDir.isPresent());
 		Assertions.assertTrue(Files.isDirectory(rootDir.get()));
+
+		Optional<Path> dirIdBackup = Files.list(rootDir.get()).findFirst();
+		Assertions.assertTrue(dirIdBackup.isPresent());
+		Assertions.assertTrue(Files.isRegularFile(dirIdBackup.get()));
+		Assertions.assertEquals(Constants.DIR_BACKUP_FILE_NAME, dirIdBackup.get().getFileName().toString());
 	}
 
 	@Test
@@ -237,9 +242,10 @@ public class CryptoFileSystemProviderTest {
 	public void testNewAsyncFileChannelFailsIfOptionsContainAppend() {
 		Path irrelevantPath = null;
 		ExecutorService irrelevantExecutor = null;
+		var illegalOpenOptions = Set.of(APPEND);
 
 		Assertions.assertThrows(IllegalArgumentException.class, () -> {
-			inTest.newAsynchronousFileChannel(irrelevantPath, new HashSet<>(asList(APPEND)), irrelevantExecutor);
+			inTest.newAsynchronousFileChannel(irrelevantPath, illegalOpenOptions, irrelevantExecutor);
 		});
 	}
 

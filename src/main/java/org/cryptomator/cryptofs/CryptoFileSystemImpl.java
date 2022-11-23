@@ -230,10 +230,12 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	Map<String, Object> readAttributes(CryptoPath cleartextPath, String attributes, LinkOption... options) throws IOException {
+		stats.incrementAccesses();
 		return fileAttributeByNameProvider.readAttributes(cleartextPath, attributes, options);
 	}
 
 	<A extends BasicFileAttributes> A readAttributes(CryptoPath cleartextPath, Class<A> type, LinkOption... options) throws IOException {
+		stats.incrementAccesses();
 		return fileAttributeProvider.readAttributes(cleartextPath, type, options);
 	}
 
@@ -387,6 +389,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			if (options.readable()) {
 				stats.incrementAccessesRead();
 			}
+			stats.incrementAccesses();
 			return ch;
 		} catch (Exception e) {
 			ch.close();

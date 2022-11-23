@@ -9,6 +9,8 @@ import java.util.stream.Stream;
  */
 public final class ArrayUtils {
 
+	private ArrayUtils() {}
+
 	public static boolean contains(Object[] array, Object objectToFind) {
 		return Arrays.stream(Objects.requireNonNull(array)).anyMatch(Objects.requireNonNull(objectToFind)::equals);
 	}

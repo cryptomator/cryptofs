@@ -112,45 +112,51 @@ public class CryptoFileSystemUriTest {
 	}
 
 	@Test
-	public void testParseWithInvalidScheme() {
+	public void testParseWithInvalidScheme() throws URISyntaxException {
 		Path path = Paths.get("a").toAbsolutePath();
+		URI uri = new URI("invalid", path.toUri().toString(), "/b", null, null);
 
 		Assertions.assertThrows(IllegalArgumentException.class, () -> {
-			CryptoFileSystemUri.parse(new URI("invalid", path.toUri().toString(), "/b", null, null));
+			CryptoFileSystemUri.parse(uri);
 		});
 	}
 
 	@Test
-	public void testParseWithoutAuthority() {
+	public void testParseWithoutAuthority() throws URISyntaxException {
+		URI uri = new URI("cryptomator", null, "/b", null, null);
+
 		Assertions.assertThrows(IllegalArgumentException.class, () -> {
-			CryptoFileSystemUri.parse(new URI("cryptomator", null, "/b", null, null));
+			CryptoFileSystemUri.parse(uri);
 		});
 	}
 
 	@Test
-	public void testParseWithoutPath() {
+	public void testParseWithoutPath() throws URISyntaxException {
 		Path path = Paths.get("a").toAbsolutePath();
+		URI uri = new URI("cryptomator", path.toUri().toString(), null, null, null);
 
 		Assertions.assertThrows(IllegalArgumentException.class, () -> {
-			CryptoFileSystemUri.parse(new URI("cryptomator", path.toUri().toString(), null, null, null));
+			CryptoFileSystemUri.parse(uri);
 		});
 	}
 
 	@Test
-	public void testParseWithQuery() {
+	public void testParseWithQuery() throws URISyntaxException {
 		Path path = Paths.get("a").toAbsolutePath();
+		URI uri = new URI("cryptomator", path.toUri().toString(), "/b", "a=b", null);
 
 		Assertions.assertThrows(IllegalArgumentException.class, () -> {
-			CryptoFileSystemUri.parse(new URI("cryptomator", path.toUri().toString(), "/b", "a=b", null));
+			CryptoFileSystemUri.parse(uri);
 		});
 	}
 
 	@Test
-	public void testParseWithFragment() {
+	public void testParseWithFragment() throws URISyntaxException {
 		Path path = Paths.get("a").toAbsolutePath();
+		URI uri = new URI("cryptomator", path.toUri().toString(), "/b", null, "abc");
 
 		Assertions.assertThrows(IllegalArgumentException.class, () -> {
-			CryptoFileSystemUri.parse(new URI("cryptomator", path.toUri().toString(), "/b", null, "abc"));
+			CryptoFileSystemUri.parse(uri);
 		});
 	}
 
