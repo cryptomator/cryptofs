@@ -62,7 +62,7 @@ public class DirIdCheck implements HealthCheck {
 			if (foundDir) {
 				iter.remove();
 				var expectedDirVaultRel = Path.of(Constants.DATA_DIR_NAME).resolve(expectedDir);
-				if (Files.exists(pathToVault.resolve(expectedDir).resolve(Constants.DIR_BACKUP_FILE_NAME))) {
+				if (Files.exists(pathToVault.resolve(expectedDirVaultRel).resolve(Constants.DIR_BACKUP_FILE_NAME))) {
 					resultCollector.accept(new HealthyDir(dirId, dirFile, expectedDirVaultRel));
 				} else {
 					resultCollector.accept(new MissingDirIdBackup(dirId, expectedDirVaultRel));
