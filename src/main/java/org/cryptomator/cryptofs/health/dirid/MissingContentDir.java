@@ -49,7 +49,7 @@ public class MissingContentDir implements DiagnosticResult {
 	//visible for testing
 	void fix(Path pathToVault, Cryptor cryptor) throws IOException {
 		var dirIdHash = cryptor.fileNameCryptor().hashDirectoryId(dirId);
-		Path dirPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(dirIdHash.substring(0, 2)).resolve(dirIdHash.substring(2, 30));
+		Path dirPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(dirIdHash.substring(0, 2)).resolve(dirIdHash.substring(2, 32));
 		Files.createDirectories(dirPath);
 		DirectoryIdBackup.backupManually(cryptor, new CryptoPathMapper.CiphertextDirectory(dirId, dirPath));
 	}
