@@ -99,7 +99,7 @@ public class OrphanContentDir implements DiagnosticResult {
 							try {
 								return decryptFileName(orphanedResource, isShortened, id, cryptor.fileNameCryptor());
 							} catch (IOException | AuthenticationFailedException e) {
-								LOG.warn("Unable to read and decrypt (long) file name of {}:", orphanedResource, e);
+								LOG.warn("Unable to read and decrypt file name of {}:", orphanedResource, e);
 								return null;
 							}})
 						.orElseGet(() ->
@@ -182,15 +182,7 @@ public class OrphanContentDir implements DiagnosticResult {
 			return Optional.empty();
 		}
 
-		var allegedDirId = StandardCharsets.US_ASCII.decode(dirIdBuffer).toString();
-
-		var dirIdHash = orphanedDir.getParent().getFileName().toString() + orphanedDir.getFileName().toString();
-		if (dirIdHash.equals(cryptor.fileNameCryptor().hashDirectoryId(allegedDirId))) {
-			return Optional.of(allegedDirId);
-		} else {
-			LOG.info("Hash of read directory id {} does not match actual cipher dir hash {}.", allegedDirId, dirIdHash);
-			return Optional.empty();
-		}
+		return Optional.of(StandardCharsets.US_ASCII.decode(dirIdBuffer).toString());
 	}
 
 	//exists and visible for testability

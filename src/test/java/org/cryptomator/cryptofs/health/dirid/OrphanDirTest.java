@@ -270,28 +270,6 @@ public class OrphanDirTest {
 			Assertions.assertTrue(notExistingResult.isEmpty());
 		}
 
-
-		@Test
-		@DisplayName("retrieveDirId returns empty optional if content of dirId.c9r does not match cipher dir hash")
-		public void testRetrieveDirIdWrongContent() throws IOException {
-			var dirIdFile = cipherOrphan.resolve(Constants.DIR_BACKUP_FILE_NAME);
-			var dirId = "anOverlyComplexAndCompletelyRandomExampleOfHowAnDirectoryIdIsTooLong";
-			Files.writeString(dirIdFile, dirId, StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
-			DecryptingReadableByteChannel dirIdReadChannel = Mockito.mock(DecryptingReadableByteChannel.class);
-
-			Mockito.doReturn(dirIdReadChannel).when(resultSpy).createDecryptingReadableByteChannel(Mockito.any(), Mockito.eq(cryptor));
-			Mockito.doAnswer(invocationOnMock -> {
-				try (ReadableByteChannel channel = Files.newByteChannel(dirIdFile, StandardOpenOption.READ)) {
-					return channel.read(invocationOnMock.getArgument(0));
-				}
-			}).when(dirIdReadChannel).read(Mockito.any());
-			Mockito.when(fileNameCryptor.hashDirectoryId(dirId.substring(0, 36))).thenReturn("123456");
-
-			var maybeDirId = resultSpy.retrieveDirId(cipherOrphan, cryptor);
-
-			Assertions.assertTrue(maybeDirId.isEmpty());
-		}
-
 	}
 
 
