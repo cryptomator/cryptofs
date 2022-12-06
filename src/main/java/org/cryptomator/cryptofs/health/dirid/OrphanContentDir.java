@@ -91,7 +91,7 @@ public class OrphanContentDir implements DiagnosticResult {
 		String longNameSuffix = createClearnameToBeShortened(config.getShorteningThreshold());
 		Optional<String> dirId = retrieveDirId(orphanedDir, cryptor);
 
-		try (var orphanedContentStream = Files.newDirectoryStream(orphanedDir, p -> !Constants.DIR_BACKUP_FILE_NAME.equals(p.getFileName().toString()))) {
+		try (var orphanedContentStream = Files.newDirectoryStream(orphanedDir, this::matchesEncryptedContentPattern)) {
 			for (Path orphanedResource : orphanedContentStream) {
 				boolean isShortened = orphanedResource.toString().endsWith(Constants.DEFLATED_FILE_SUFFIX);
 				//@formatter:off
@@ -112,9 +112,20 @@ public class OrphanContentDir implements DiagnosticResult {
 				adoptOrphanedResource(orphanedResource, newClearName, isShortened, stepParentDir, cryptor.fileNameCryptor(), sha1);
 			}
 		}
-
 		Files.deleteIfExists(orphanedDir.resolve(Constants.DIR_BACKUP_FILE_NAME));
+		try (var nonCryptomatorFiles = Files.newDirectoryStream(orphanedDir)) {
+			for (Path p : nonCryptomatorFiles) {
+				Files.move(p, stepParentDir.path.resolve(p.getFileName()), LinkOption.NOFOLLOW_LINKS);
+			}
+		}
 		Files.delete(orphanedDir);
+	}
+
+	//see also DirectoryStreamFactory
+	private boolean matchesEncryptedContentPattern(Path path) {
+		var tmp = path.getFileName().toString();
+		return tmp.length() >= Constants.MIN_CIPHER_NAME_LENGTH //
+				&& (tmp.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX) || tmp.endsWith(Constants.DEFLATED_FILE_SUFFIX));
 	}
 
 	//visible for testing

@@ -36,7 +36,6 @@ public class DirectoryStreamFactory {
 			throw new ClosedFileSystemException();
 		}
 		CiphertextDirectory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
-		//TODO:	use HealthCheck with warning and suggest fix to create one
 		DirectoryStream<Path> ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path, this::matchesEncryptedContentPattern);
 		CryptoDirectoryStream cleartextDirStream = directoryStreamComponentBuilder //
 				.dirId(ciphertextDir.dirId) //
