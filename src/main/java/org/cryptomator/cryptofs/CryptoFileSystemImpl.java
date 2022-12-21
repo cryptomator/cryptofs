@@ -137,6 +137,16 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	@Override
+	public Path getPathToCiphertext(Path cleartextPath) throws IOException {
+		var cryptoPath = CryptoPath.cast(cleartextPath);
+		if (Files.isDirectory(cleartextPath)) {
+			return cryptoPathMapper.getCiphertextDir(cryptoPath).path;
+		} else {
+			return cryptoPathMapper.getCiphertextFilePath(cryptoPath).getRawPath();
+		}
+	}
+
+	@Override
 	public CryptoFileSystemStats getStats() {
 		return stats;
 	}
