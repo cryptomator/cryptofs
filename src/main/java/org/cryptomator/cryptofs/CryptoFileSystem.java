@@ -33,7 +33,7 @@ public abstract class CryptoFileSystem extends FileSystem {
 	/**
 	 * Provides the {@link Path} to the (data) ciphertext from a given cleartext path.
 	 *
-	 * @param cleartextPath path to the cleartext file or folder belonging to this {@link CryptoFileSystem}. Internally the path must be an instance of {@link CryptoPath}
+	 * @param cleartextPath absolute path to the cleartext file or folder belonging to this {@link CryptoFileSystem}. Internally the path must be an instance of {@link CryptoPath}
 	 * @return the {@link Path} to ciphertext file or folder containing teh actual encrypted data
 	 * @throws IOException
 	 */
