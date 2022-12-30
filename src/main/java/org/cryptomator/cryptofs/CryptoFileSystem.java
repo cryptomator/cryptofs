@@ -31,13 +31,13 @@ public abstract class CryptoFileSystem extends FileSystem {
 	public abstract Path getPathToVault();
 
 	/**
-	 * Provides the {@link Path} to the ciphertext from a given cleartext path.
+	 * Provides the {@link Path} to the (data) ciphertext from a given cleartext path.
 	 *
-	 * @param cleartextPath the path to the cleartext file or folder belonging to this {@code CryptoFileSystem}, which internally is a {@code CryptoPath}
-	 * @return the {@link Path} to ciphertext file or folder
+	 * @param cleartextPath path to the cleartext file or folder belonging to this {@link CryptoFileSystem}. Internally the path must be an instance of {@link CryptoPath}
+	 * @return the {@link Path} to ciphertext file or folder containing teh actual encrypted data
 	 * @throws IOException
 	 */
-	public abstract Path getPathToCiphertext(Path cleartextPath) throws IOException;
+	public abstract Path getPathToDataCiphertext(Path cleartextPath) throws IOException;
 
 	/**
 	 * Provides file system performance statistics.
