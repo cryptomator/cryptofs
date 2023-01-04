@@ -42,6 +42,12 @@ abstract class AttributeViewModule {
 	@AttributeViewScoped
 	public abstract FileAttributeView provideFileOwnerAttributeView(CryptoFileOwnerAttributeView view);
 
+	@Binds
+	@IntoMap
+	@ClassKey(CryptoUserDefinedAttributeView.class)
+	@AttributeViewScoped
+	public abstract FileAttributeView provideUserDefinedAttributeView(CryptoUserDefinedAttributeView view);
+
 	@Provides
 	@AttributeViewScoped
 	public static Optional<FileAttributeView> provideAttributeView(Map<Class<?>, Provider<FileAttributeView>> providers, Class<? extends FileAttributeView> requestedType) {
