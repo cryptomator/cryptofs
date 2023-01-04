@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs;
 
+import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,6 +29,17 @@ public abstract class CryptoFileSystem extends FileSystem {
 	 * @return the {@link Path} to the directory containing the encrypted files.
 	 */
 	public abstract Path getPathToVault();
+
+	/**
+	 * Provides the {@link Path} to the (data) ciphertext from a given cleartext path.
+	 *
+	 * @param cleartextPath absolute path to the cleartext file or folder belonging to this {@link CryptoFileSystem}. Internally the path must be an instance of {@link CryptoPath}
+	 * @return the {@link Path} to ciphertext file or folder containing teh actual encrypted data
+	 * @throws java.nio.file.ProviderMismatchException if the cleartext path does not belong to this CryptoFileSystem
+	 * @throws java.nio.file.NoSuchFileException if for the cleartext path no ciphertext resource exists
+	 * @throws IOException if an I/O error occurs looking for the ciphertext resource
+	 */
+	public abstract Path getCiphertextPath(Path cleartextPath) throws IOException;
 
 	/**
 	 * Provides file system performance statistics.

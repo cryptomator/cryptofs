@@ -42,6 +42,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
+import java.nio.file.ProviderMismatchException;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributeView;
@@ -119,11 +120,11 @@ public class CryptoFileSystemImplTest {
 
 		when(fileSystemProperties.maxCleartextNameLength()).thenReturn(32768);
 
-		inTest = new CryptoFileSystemImpl(provider, cryptoFileSystems, pathToVault, cryptor,
-				fileStore, stats, cryptoPathMapper, cryptoPathFactory,
-				pathMatcherFactory, directoryStreamFactory, dirIdProvider, dirIdBackup,
-				fileAttributeProvider, fileAttributeByNameProvider, fileAttributeViewProvider,
-				openCryptoFiles, symlinks, finallyUtil, ciphertextDirDeleter, readonlyFlag,
+		inTest = new CryptoFileSystemImpl(provider, cryptoFileSystems, pathToVault, cryptor, //
+				fileStore, stats, cryptoPathMapper, cryptoPathFactory, //
+				pathMatcherFactory, directoryStreamFactory, dirIdProvider, dirIdBackup, //
+				fileAttributeProvider, fileAttributeByNameProvider, fileAttributeViewProvider, //
+				openCryptoFiles, symlinks, finallyUtil, ciphertextDirDeleter, readonlyFlag, //
 				fileSystemProperties);
 	}
 
@@ -186,6 +187,89 @@ public class CryptoFileSystemImplTest {
 	@Test
 	public void testGetFileStoresReturnsFileStore() {
 		Assertions.assertSame(fileStore, inTest.getFileStore());
+	}
+
+	@Nested
+	public class PathToDataCiphertext {
+
+		@Test
+		@DisplayName("Getting data ciphertext path of directory returns ciphertext content dir")
+		public void testCleartextDirectory() throws IOException {
+			Path ciphertext = Mockito.mock(Path.class, "/d/AB/CD...XYZ/");
+			Path cleartext = inTest.getPath("/");
+			try (var cryptoPathMock = Mockito.mockStatic(CryptoPath.class)) {
+				cryptoPathMock.when(() -> CryptoPath.castAndAssertAbsolute(any())).thenReturn(cleartext);
+				when(cryptoPathMapper.getCiphertextFileType(any())).thenReturn(CiphertextFileType.DIRECTORY);
+				when(cryptoPathMapper.getCiphertextDir(any())).thenReturn(new CiphertextDirectory("foo", ciphertext));
+
+				Path result = inTest.getCiphertextPath(cleartext);
+				Assertions.assertEquals(ciphertext, result);
+			}
+		}
+
+		@Test
+		@DisplayName("Getting data ciphertext path of file returns ciphertext file")
+		public void testCleartextFile() throws IOException {
+			Path ciphertext = Mockito.mock(Path.class, "/d/AB/CD..XYZ/foo.c9r");
+			Path cleartext = inTest.getPath("/foo.bar");
+			try (var cryptoPathMock = Mockito.mockStatic(CryptoPath.class)) {
+				CiphertextFilePath p = Mockito.mock(CiphertextFilePath.class);
+				cryptoPathMock.when(() -> CryptoPath.castAndAssertAbsolute(any())).thenReturn(cleartext);
+				when(cryptoPathMapper.getCiphertextFileType(any())).thenReturn(CiphertextFileType.FILE);
+				when(cryptoPathMapper.getCiphertextFilePath(any())).thenReturn(p);
+				when(p.getFilePath()).thenReturn(ciphertext);
+
+				Path result = inTest.getCiphertextPath(cleartext);
+				Assertions.assertEquals(ciphertext, result);
+			}
+		}
+
+		@Test
+		@DisplayName("Getting data ciphertext path of symlink returns ciphertext symlink.c9r")
+		public void testCleartextSymlink() throws IOException {
+			Path ciphertext = Mockito.mock(Path.class, "/d/AB/CD..XYZ/foo.c9s/symlink.c9r");
+			Path cleartext = inTest.getPath("/foo.bar");
+			try (var cryptoPathMock = Mockito.mockStatic(CryptoPath.class)) {
+				CiphertextFilePath p = Mockito.mock(CiphertextFilePath.class);
+				cryptoPathMock.when(() -> CryptoPath.castAndAssertAbsolute(any())).thenReturn(cleartext);
+				when(cryptoPathMapper.getCiphertextFileType(any())).thenReturn(CiphertextFileType.SYMLINK);
+				when(cryptoPathMapper.getCiphertextFilePath(any())).thenReturn(p);
+				when(p.getSymlinkFilePath()).thenReturn(ciphertext);
+
+				Path result = inTest.getCiphertextPath(cleartext);
+				Assertions.assertEquals(ciphertext, result);
+			}
+		}
+
+		@Test
+		@DisplayName("Path not pointing into the vault throws exception")
+		public void testForeignPathThrows() throws IOException {
+			Path cleartext = Mockito.mock(Path.class, "/some.file");
+			Assertions.assertThrows(ProviderMismatchException.class, () -> inTest.getCiphertextPath(cleartext));
+		}
+
+		@Test
+		@DisplayName("Not existing resource throws NoSuchFileException")
+		public void testNoSuchFile() throws IOException {
+			Path cleartext = inTest.getPath("/i-do-not-exist");
+			try (var cryptoPathMock = Mockito.mockStatic(CryptoPath.class)) {
+				cryptoPathMock.when(() -> CryptoPath.castAndAssertAbsolute(any())).thenReturn(cleartext);
+				when(cryptoPathMapper.getCiphertextFileType(any())).thenThrow(new NoSuchFileException("no such file"));
+
+				Assertions.assertThrows(NoSuchFileException.class, () -> inTest.getCiphertextPath(cleartext));
+			}
+		}
+
+		@Test
+		@DisplayName("Relative cleartext path throws exception")
+		public void testRelativePathException() throws IOException {
+			Path cleartext = inTest.getPath("relative/path");
+			try (var cryptoPathMock = Mockito.mockStatic(CryptoPath.class)) {
+				cryptoPathMock.when(() -> CryptoPath.castAndAssertAbsolute(any())).thenThrow(new IllegalArgumentException());
+
+				Assertions.assertThrows(IllegalArgumentException.class, () -> inTest.getCiphertextPath(cleartext));
+			}
+		}
 	}
 
 	@Nested
