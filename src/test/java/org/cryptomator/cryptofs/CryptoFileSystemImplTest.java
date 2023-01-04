@@ -202,7 +202,7 @@ public class CryptoFileSystemImplTest {
 				when(cryptoPathMapper.getCiphertextFileType(any())).thenReturn(CiphertextFileType.DIRECTORY);
 				when(cryptoPathMapper.getCiphertextDir(any())).thenReturn(new CiphertextDirectory("foo", ciphertext));
 
-				Path result = inTest.getPathToDataCiphertext(cleartext);
+				Path result = inTest.getCiphertextPath(cleartext);
 				Assertions.assertEquals(ciphertext, result);
 			}
 		}
@@ -219,7 +219,7 @@ public class CryptoFileSystemImplTest {
 				when(cryptoPathMapper.getCiphertextFilePath(any())).thenReturn(p);
 				when(p.getFilePath()).thenReturn(ciphertext);
 
-				Path result = inTest.getPathToDataCiphertext(cleartext);
+				Path result = inTest.getCiphertextPath(cleartext);
 				Assertions.assertEquals(ciphertext, result);
 			}
 		}
@@ -236,7 +236,7 @@ public class CryptoFileSystemImplTest {
 				when(cryptoPathMapper.getCiphertextFilePath(any())).thenReturn(p);
 				when(p.getSymlinkFilePath()).thenReturn(ciphertext);
 
-				Path result = inTest.getPathToDataCiphertext(cleartext);
+				Path result = inTest.getCiphertextPath(cleartext);
 				Assertions.assertEquals(ciphertext, result);
 			}
 		}
@@ -245,7 +245,7 @@ public class CryptoFileSystemImplTest {
 		@DisplayName("Path not pointing into the vault throws exception")
 		public void testForeignPathThrows() throws IOException {
 			Path cleartext = Mockito.mock(Path.class, "/some.file");
-			Assertions.assertThrows(ProviderMismatchException.class, () -> inTest.getPathToDataCiphertext(cleartext));
+			Assertions.assertThrows(ProviderMismatchException.class, () -> inTest.getCiphertextPath(cleartext));
 		}
 
 		@Test
@@ -256,7 +256,7 @@ public class CryptoFileSystemImplTest {
 				cryptoPathMock.when(() -> CryptoPath.castAndAssertAbsolute(any())).thenReturn(cleartext);
 				when(cryptoPathMapper.getCiphertextFileType(any())).thenThrow(new NoSuchFileException("no such file"));
 
-				Assertions.assertThrows(NoSuchFileException.class, () -> inTest.getPathToDataCiphertext(cleartext));
+				Assertions.assertThrows(NoSuchFileException.class, () -> inTest.getCiphertextPath(cleartext));
 			}
 		}
 
@@ -267,7 +267,7 @@ public class CryptoFileSystemImplTest {
 			try (var cryptoPathMock = Mockito.mockStatic(CryptoPath.class)) {
 				cryptoPathMock.when(() -> CryptoPath.castAndAssertAbsolute(any())).thenThrow(new IllegalArgumentException());
 
-				Assertions.assertThrows(IllegalArgumentException.class, () -> inTest.getPathToDataCiphertext(cleartext));
+				Assertions.assertThrows(IllegalArgumentException.class, () -> inTest.getCiphertextPath(cleartext));
 			}
 		}
 	}

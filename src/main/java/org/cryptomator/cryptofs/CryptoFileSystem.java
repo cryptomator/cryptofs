@@ -35,9 +35,11 @@ public abstract class CryptoFileSystem extends FileSystem {
 	 *
 	 * @param cleartextPath absolute path to the cleartext file or folder belonging to this {@link CryptoFileSystem}. Internally the path must be an instance of {@link CryptoPath}
 	 * @return the {@link Path} to ciphertext file or folder containing teh actual encrypted data
-	 * @throws IOException
+	 * @throws java.nio.file.ProviderMismatchException if the cleartext path does not belong to this CryptoFileSystem
+	 * @throws java.nio.file.NoSuchFileException if for the cleartext path no ciphertext resource exists
+	 * @throws IOException if an I/O error occurs looking for the ciphertext resource
 	 */
-	public abstract Path getPathToDataCiphertext(Path cleartextPath) throws IOException;
+	public abstract Path getCiphertextPath(Path cleartextPath) throws IOException;
 
 	/**
 	 * Provides file system performance statistics.

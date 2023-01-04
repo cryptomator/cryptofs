@@ -137,7 +137,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	@Override
-	public Path getPathToDataCiphertext(Path cleartextPath) throws IOException {
+	public Path getCiphertextPath(Path cleartextPath) throws IOException {
 		var p = CryptoPath.castAndAssertAbsolute(cleartextPath);
 		var nodeType = cryptoPathMapper.getCiphertextFileType(p);
 		var cipherFile = cryptoPathMapper.getCiphertextFilePath(p);
