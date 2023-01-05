@@ -19,14 +19,14 @@ import java.nio.file.attribute.UserDefinedFileAttributeView;
 import java.util.List;
 
 @AttributeViewScoped
-final class CryptoUserDefinedAttributeView extends AbstractCryptoFileAttributeView implements UserDefinedFileAttributeView {
+final class CryptoUserDefinedFileAttributeView extends AbstractCryptoFileAttributeView implements UserDefinedFileAttributeView {
 
 	private static final String PREFIX = "c9r.";
 
 	private final Cryptor cryptor;
 
 	@Inject
-	public CryptoUserDefinedAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, LinkOption[] linkOptions, Symlinks symlinks, Cryptor cryptor) {
+	public CryptoUserDefinedFileAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, LinkOption[] linkOptions, Symlinks symlinks, Cryptor cryptor) {
 		super(cleartextPath, pathMapper, linkOptions, symlinks);
 		this.cryptor = cryptor;
 	}
@@ -45,7 +45,8 @@ final class CryptoUserDefinedAttributeView extends AbstractCryptoFileAttributeVi
 	@Override
 	public int size(String cleartextName) throws IOException {
 		var ciphertextName = encryptName(cleartextName);
-		return getCiphertextAttributeView(UserDefinedFileAttributeView.class).size(ciphertextName);
+		var ciphertextSize = getCiphertextAttributeView(UserDefinedFileAttributeView.class).size(ciphertextName);
+		return (int) cryptor.fileContentCryptor().cleartextSize(ciphertextSize) - cryptor.fileHeaderCryptor().headerSize();
 	}
 
 	@Override

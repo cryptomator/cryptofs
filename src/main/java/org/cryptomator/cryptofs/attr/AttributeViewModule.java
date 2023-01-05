@@ -44,9 +44,9 @@ abstract class AttributeViewModule {
 
 	@Binds
 	@IntoMap
-	@ClassKey(CryptoUserDefinedAttributeView.class)
+	@ClassKey(CryptoUserDefinedFileAttributeView.class)
 	@AttributeViewScoped
-	public abstract FileAttributeView provideUserDefinedAttributeView(CryptoUserDefinedAttributeView view);
+	public abstract FileAttributeView provideUserDefinedAttributeView(CryptoUserDefinedFileAttributeView view);
 
 	@Provides
 	@AttributeViewScoped
