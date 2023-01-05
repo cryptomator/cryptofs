@@ -45,8 +45,9 @@ final class CryptoUserDefinedFileAttributeView extends AbstractCryptoFileAttribu
 	@Override
 	public int size(String cleartextName) throws IOException {
 		var ciphertextName = encryptName(cleartextName);
-		var ciphertextSize = getCiphertextAttributeView(UserDefinedFileAttributeView.class).size(ciphertextName);
-		return (int) cryptor.fileContentCryptor().cleartextSize(ciphertextSize) - cryptor.fileHeaderCryptor().headerSize();
+		var totalCiphertextSize = getCiphertextAttributeView(UserDefinedFileAttributeView.class).size(ciphertextName);
+		var ciphertextBodySize = totalCiphertextSize - cryptor.fileHeaderCryptor().headerSize();
+		return (int) cryptor.fileContentCryptor().cleartextSize(ciphertextBodySize);
 	}
 
 	@Override
@@ -68,14 +69,15 @@ final class CryptoUserDefinedFileAttributeView extends AbstractCryptoFileAttribu
 	@Override
 	public int write(String cleartextName, ByteBuffer src) throws IOException {
 		var ciphertextName = encryptName(cleartextName);
-		try (var out = new ByteArrayOutputStream();
-			 var ciphertextChannel = Channels.newChannel(out); //
+		var out = new ByteArrayOutputStream();
+		final int size;
+		try (var ciphertextChannel = Channels.newChannel(out); //
 			 var cleartextChannel = new EncryptingWritableByteChannel(ciphertextChannel, cryptor)) {
-			int size = cleartextChannel.write(src);
-			var buf = ByteBuffer.wrap(out.toByteArray());
-			getCiphertextAttributeView(UserDefinedFileAttributeView.class).write(ciphertextName, buf);
-			return size;
-		}
+			size = cleartextChannel.write(src);
+		} // close to flush cached ciphertext
+		var buf = ByteBuffer.wrap(out.toByteArray());
+		getCiphertextAttributeView(UserDefinedFileAttributeView.class).write(ciphertextName, buf);
+		return size;
 	}
 
 	@Override
