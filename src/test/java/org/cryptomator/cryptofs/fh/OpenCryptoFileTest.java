@@ -1,7 +1,6 @@
 package org.cryptomator.cryptofs.fh;
 
 import com.google.common.jimfs.Configuration;
-import com.google.common.jimfs.Feature;
 import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ReadonlyFlag;
@@ -53,7 +52,7 @@ public class OpenCryptoFileTest {
 	private AtomicLong fileSize = new AtomicLong(-1l);
 	private AtomicReference<Instant> lastModified = new AtomicReference(Instant.ofEpochMilli(0));
 	private OpenCryptoFileComponent openCryptoFileComponent = mock(OpenCryptoFileComponent.class);
-	private ChannelComponent.Builder channelComponentBuilder = mock(ChannelComponent.Builder.class);
+	private ChannelComponent.Factory channelComponentFactory = mock(ChannelComponent.Factory.class);
 	private ChannelComponent channelComponent = mock(ChannelComponent.class);
 
 	@BeforeAll
@@ -107,19 +106,12 @@ public class OpenCryptoFileTest {
 			listener = new AtomicReference<>();
 			ciphertextChannel = new AtomicReference<>();
 
-			Mockito.when(openCryptoFileComponent.newChannelComponent()).thenReturn(channelComponentBuilder);
-			Mockito.when(channelComponentBuilder.ciphertextChannel(Mockito.any())).thenAnswer(invocation -> {
+			Mockito.when(openCryptoFileComponent.newChannelComponent()).thenReturn(channelComponentFactory);
+			Mockito.when(channelComponentFactory.create(Mockito.any(), Mockito.any(), Mockito.anyBoolean(), Mockito.any(), Mockito.any())).thenAnswer(invocation -> {
 				ciphertextChannel.set(invocation.getArgument(0));
-				return channelComponentBuilder;
+				listener.set(invocation.getArgument(4));
+				return channelComponent;
 			});
-			Mockito.when(channelComponentBuilder.openOptions(Mockito.any())).thenReturn(channelComponentBuilder);
-			Mockito.when(channelComponentBuilder.onClose(Mockito.any())).thenAnswer(invocation -> {
-				listener.set(invocation.getArgument(0));
-				return channelComponentBuilder;
-			});
-			Mockito.when(channelComponentBuilder.fileHeader(Mockito.any())).thenReturn(channelComponentBuilder);
-			Mockito.when(channelComponentBuilder.mustWriteHeader(Mockito.anyBoolean())).thenReturn(channelComponentBuilder);
-			Mockito.when(channelComponentBuilder.build()).thenReturn(channelComponent);
 			Mockito.when(channelComponent.channel()).thenReturn(cleartextFileChannel);
 		}
 

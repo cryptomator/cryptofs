@@ -9,7 +9,6 @@
 package org.cryptomator.cryptofs.fh;
 
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
-import org.cryptomator.cryptofs.ch.ChannelComponent;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
@@ -87,14 +86,9 @@ public class OpenCryptoFile implements Closeable {
 				isNewHeader = false;
 			}
 			initFileSize(ciphertextFileChannel);
-			ChannelComponent channelComponent = component.newChannelComponent() //
-					.ciphertextChannel(ciphertextFileChannel) //
-					.openOptions(options) //
-					.onClose(this::channelClosed) //
-					.mustWriteHeader(isNewHeader) //
-					.fileHeader(header) //
-					.build();
-			cleartextFileChannel = channelComponent.channel();
+			cleartextFileChannel = component.newChannelComponent() //
+					.create(ciphertextFileChannel, header, isNewHeader, options, this::channelClosed) //
+					.channel();
 		} finally {
 			if (cleartextFileChannel == null) { // i.e. something didn't work
 				closeQuietly(ciphertextFileChannel);

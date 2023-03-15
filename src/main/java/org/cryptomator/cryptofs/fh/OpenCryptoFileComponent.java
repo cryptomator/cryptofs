@@ -12,7 +12,7 @@ public interface OpenCryptoFileComponent {
 
 	OpenCryptoFile openCryptoFile();
 
-	ChannelComponent.Builder newChannelComponent();
+	ChannelComponent.Factory newChannelComponent();
 
 	@Subcomponent.Builder
 	interface Builder {
