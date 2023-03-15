@@ -24,18 +24,12 @@ public interface AttributeComponent {
 		}
 	}
 
-	@Subcomponent.Builder
-	interface Builder {
+	@Subcomponent.Factory
+	interface Factory {
 
-		@BindsInstance
-		Builder ciphertextPath(Path ciphertextPath);
+		AttributeComponent create(@BindsInstance Path ciphertextPath, //
+								  @BindsInstance CiphertextFileType ciphertextFileType, //
+								  @BindsInstance @Named("ciphertext") BasicFileAttributes ciphertextAttributes);
 
-		@BindsInstance
-		Builder ciphertextFileType(CiphertextFileType ciphertextFileType);
-
-		@BindsInstance
-		Builder ciphertextAttributes(@Named("ciphertext") BasicFileAttributes ciphertextAttributes);
-
-		AttributeComponent build();
 	}
 }

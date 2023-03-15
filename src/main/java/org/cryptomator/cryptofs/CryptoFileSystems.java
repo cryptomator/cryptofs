@@ -33,13 +33,13 @@ class CryptoFileSystems {
 	private static final Logger LOG = LoggerFactory.getLogger(CryptoFileSystems.class);
 
 	private final ConcurrentMap<Path, CryptoFileSystemImpl> fileSystems = new ConcurrentHashMap<>();
-	private final CryptoFileSystemComponent.Builder cryptoFileSystemComponentBuilder; // sharing reusable builder via synchronized
+	private final CryptoFileSystemComponent.Factory cryptoFileSystemComponentFactory;
 	private final FileSystemCapabilityChecker capabilityChecker;
 	private final SecureRandom csprng;
 
 	@Inject
-	public CryptoFileSystems(CryptoFileSystemComponent.Builder cryptoFileSystemComponentBuilder, FileSystemCapabilityChecker capabilityChecker, SecureRandom csprng) {
-		this.cryptoFileSystemComponentBuilder = cryptoFileSystemComponentBuilder;
+	public CryptoFileSystems(CryptoFileSystemComponent.Factory cryptoFileSystemComponentFactory, FileSystemCapabilityChecker capabilityChecker, SecureRandom csprng) {
+		this.cryptoFileSystemComponentFactory = cryptoFileSystemComponentFactory;
 		this.capabilityChecker = capabilityChecker;
 		this.csprng = csprng;
 	}
@@ -59,7 +59,7 @@ class CryptoFileSystems {
 				checkVaultRootExistence(pathToVault, cryptor);
 				return fileSystems.compute(normalizedPathToVault, (path, fs) -> {
 					if (fs == null) {
-						return create(provider, normalizedPathToVault, adjustedProperties, cryptor, config);
+						return cryptoFileSystemComponentFactory.create(cryptor, config, provider, normalizedPathToVault, adjustedProperties).cryptoFileSystem();
 					} else {
 						throw new FileSystemAlreadyExistsException();
 					}
@@ -84,18 +84,6 @@ class CryptoFileSystems {
 		if (!Files.exists(vaultCipherRootPath)) {
 			throw new ContentRootMissingException("The encrypted root directory of the vault " + pathToVault + " is missing.");
 		}
-	}
-
-	// synchronized access to non-threadsafe cryptoFileSystemComponentBuilder required
-	private synchronized CryptoFileSystemImpl create(CryptoFileSystemProvider provider, Path pathToVault, CryptoFileSystemProperties properties, Cryptor cryptor, VaultConfig config) {
-		return cryptoFileSystemComponentBuilder //
-				.cryptor(cryptor) //
-				.vaultConfig(config) //
-				.pathToVault(pathToVault) //
-				.properties(properties) //
-				.provider(provider) //
-				.build() //
-				.cryptoFileSystem();
 	}
 
 	/**
