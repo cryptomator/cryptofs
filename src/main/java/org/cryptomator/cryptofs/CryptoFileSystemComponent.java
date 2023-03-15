@@ -12,25 +12,13 @@ public interface CryptoFileSystemComponent {
 
 	CryptoFileSystemImpl cryptoFileSystem();
 
-	@Subcomponent.Builder
-	interface Builder {
-
-		@BindsInstance
-		Builder cryptor(Cryptor cryptor);
-
-		@BindsInstance
-		Builder vaultConfig(VaultConfig vaultConfig);
-
-		@BindsInstance
-		Builder provider(CryptoFileSystemProvider provider);
-
-		@BindsInstance
-		Builder pathToVault(@PathToVault Path pathToVault);
-
-		@BindsInstance
-		Builder properties(CryptoFileSystemProperties cryptoFileSystemProperties);
-
-		CryptoFileSystemComponent build();
+	@Subcomponent.Factory
+	interface Factory {
+		CryptoFileSystemComponent create(@BindsInstance Cryptor cryptor, //
+										 @BindsInstance VaultConfig vaultConfig, //
+										 @BindsInstance CryptoFileSystemProvider provider, //
+										 @BindsInstance @PathToVault Path pathToVault, //
+										 @BindsInstance CryptoFileSystemProperties cryptoFileSystemProperties);
 	}
 
 }
