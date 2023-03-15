@@ -57,7 +57,7 @@ public class CryptoFileSystemsTest {
 	private final CryptorProvider cryptorProvider = mock(CryptorProvider.class);
 	private final Cryptor cryptor = mock(Cryptor.class);
 	private final FileNameCryptor fileNameCryptor = mock(FileNameCryptor.class);
-	private final CryptoFileSystemComponent.Builder cryptoFileSystemComponentBuilder = mock(CryptoFileSystemComponent.Builder.class);
+	private final CryptoFileSystemComponent.Factory cryptoFileSystemComponentFactory = mock(CryptoFileSystemComponent.Factory.class);
 
 
 	private MockedStatic<VaultConfig> vaultConficClass;
@@ -65,7 +65,7 @@ public class CryptoFileSystemsTest {
 	private MockedStatic<CryptorProvider> cryptorProviderClass;
 	private MockedStatic<BackupHelper> backupHelperClass;
 
-	private final CryptoFileSystems inTest = new CryptoFileSystems(cryptoFileSystemComponentBuilder, capabilityChecker, csprng);
+	private final CryptoFileSystems inTest = new CryptoFileSystems(cryptoFileSystemComponentFactory, capabilityChecker, csprng);
 
 	@BeforeEach
 	public void setup() throws IOException, MasterkeyLoadingFailedException {
@@ -96,12 +96,7 @@ public class CryptoFileSystemsTest {
 		when(dataDirPath.resolve("AB")).thenReturn(preContenRootPath);
 		when(preContenRootPath.resolve("CDEFGHIJKLMNOP")).thenReturn(contenRootPath);
 		filesClass.when(() -> Files.exists(contenRootPath)).thenReturn(true);
-		when(cryptoFileSystemComponentBuilder.cryptor(any())).thenReturn(cryptoFileSystemComponentBuilder);
-		when(cryptoFileSystemComponentBuilder.vaultConfig(any())).thenReturn(cryptoFileSystemComponentBuilder);
-		when(cryptoFileSystemComponentBuilder.pathToVault(any())).thenReturn(cryptoFileSystemComponentBuilder);
-		when(cryptoFileSystemComponentBuilder.properties(any())).thenReturn(cryptoFileSystemComponentBuilder);
-		when(cryptoFileSystemComponentBuilder.provider(any())).thenReturn(cryptoFileSystemComponentBuilder);
-		when(cryptoFileSystemComponentBuilder.build()).thenReturn(cryptoFileSystemComponent);
+		when(cryptoFileSystemComponentFactory.create(any(),any(),any(),any(),any())).thenReturn(cryptoFileSystemComponent);
 		when(cryptoFileSystemComponent.cryptoFileSystem()).thenReturn(cryptoFileSystem);
 	}
 
@@ -124,12 +119,7 @@ public class CryptoFileSystemsTest {
 
 		Assertions.assertSame(cryptoFileSystem, impl);
 		Assertions.assertTrue(inTest.contains(cryptoFileSystem));
-		verify(cryptoFileSystemComponentBuilder).cryptor(cryptor);
-		verify(cryptoFileSystemComponentBuilder).vaultConfig(vaultConfig);
-		verify(cryptoFileSystemComponentBuilder).pathToVault(normalizedPathToVault);
-		verify(cryptoFileSystemComponentBuilder).properties(properties);
-		verify(cryptoFileSystemComponentBuilder).provider(provider);
-		verify(cryptoFileSystemComponentBuilder).build();
+		verify(cryptoFileSystemComponentFactory,Mockito.times(1)).create(cryptor, vaultConfig, provider, normalizedPathToVault, properties);
 	}
 
 	@Test

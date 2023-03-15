@@ -13,25 +13,14 @@ public interface ChannelComponent {
 
 	CleartextFileChannel channel();
 
-	@Subcomponent.Builder
-	interface Builder {
+	@Subcomponent.Factory
+	interface Factory {
 
-		@BindsInstance
-		Builder openOptions(EffectiveOpenOptions options);
-
-		@BindsInstance
-		Builder onClose(ChannelCloseListener listener);
-
-		@BindsInstance
-		Builder ciphertextChannel(FileChannel ciphertextChannel);
-
-		@BindsInstance
-		Builder mustWriteHeader(@MustWriteHeader boolean mustWriteHeader);
-
-		@BindsInstance
-		Builder fileHeader(FileHeader fileHeader);
-
-		ChannelComponent build();
+		ChannelComponent create(@BindsInstance FileChannel ciphertextChannel, //
+								@BindsInstance FileHeader fileHeader, //
+								@BindsInstance @MustWriteHeader boolean mustWriteHeader, //
+								@BindsInstance EffectiveOpenOptions options, //
+								@BindsInstance ChannelCloseListener listener); //
 	}
 
 }

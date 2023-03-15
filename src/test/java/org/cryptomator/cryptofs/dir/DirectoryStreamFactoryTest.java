@@ -34,20 +34,15 @@ public class DirectoryStreamFactoryTest {
 	private final FileSystemProvider provider = mock(FileSystemProvider.class, "provider");
 	private final CryptoPathMapper cryptoPathMapper = mock(CryptoPathMapper.class);
 	private final DirectoryStreamComponent directoryStreamComp = mock(DirectoryStreamComponent.class);
-	private final DirectoryStreamComponent.Builder directoryStreamBuilder = mock(DirectoryStreamComponent.Builder.class);
+	private final DirectoryStreamComponent.Factory directoryStreamFactory = mock(DirectoryStreamComponent.Factory.class);
 
-	private final DirectoryStreamFactory inTest = new DirectoryStreamFactory(cryptoPathMapper, directoryStreamBuilder);
+	private final DirectoryStreamFactory inTest = new DirectoryStreamFactory(cryptoPathMapper, directoryStreamFactory);
 
 	@SuppressWarnings("unchecked")
 
 	@BeforeEach
 	public void setup() throws IOException {
-		when(directoryStreamBuilder.cleartextPath(Mockito.any())).thenReturn(directoryStreamBuilder);
-		when(directoryStreamBuilder.dirId(Mockito.any())).thenReturn(directoryStreamBuilder);
-		when(directoryStreamBuilder.ciphertextDirectoryStream(Mockito.any())).thenReturn(directoryStreamBuilder);
-		when(directoryStreamBuilder.filter(Mockito.any())).thenReturn(directoryStreamBuilder);
-		when(directoryStreamBuilder.onClose(Mockito.any())).thenReturn(directoryStreamBuilder);
-		when(directoryStreamBuilder.build()).thenReturn(directoryStreamComp);
+		when(directoryStreamFactory.create(any(),any(),any(),any(),any())).thenReturn(directoryStreamComp);
 		when(directoryStreamComp.directoryStream()).then(invocation -> mock(CryptoDirectoryStream.class));
 		when(fileSystem.provider()).thenReturn(provider);
 	}

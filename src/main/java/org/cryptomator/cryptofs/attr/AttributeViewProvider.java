@@ -14,7 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import javax.inject.Provider;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.attribute.FileAttributeView;
@@ -25,27 +24,21 @@ public class AttributeViewProvider {
 
 	private static final Logger LOG = LoggerFactory.getLogger(AttributeViewProvider.class);
 
-	private final Provider<AttributeViewComponent.Builder> attrViewComponentBuilderProvider;
+	private final AttributeViewComponent.Factory attrViewComponentFactory;
 
 	@Inject
-	AttributeViewProvider(Provider<AttributeViewComponent.Builder> attrViewComponentBuilderProvider) {
-		this.attrViewComponentBuilderProvider = attrViewComponentBuilderProvider;
+	AttributeViewProvider(AttributeViewComponent.Factory attrViewComponentFactory) {
+		this.attrViewComponentFactory = attrViewComponentFactory;
 	}
 
 	/**
 	 * @param cleartextPath the unencrypted path to the file
-	 * @param type          the Class object corresponding to the file attribute view
+	 * @param type the Class object corresponding to the file attribute view
 	 * @return a file attribute view of the specified type, or <code>null</code> if the attribute view type is not available
 	 * @see Files#getFileAttributeView(java.nio.file.Path, Class, java.nio.file.LinkOption...)
 	 */
 	public <A extends FileAttributeView> A getAttributeView(CryptoPath cleartextPath, Class<A> type, LinkOption... options) {
-		AttributeViewComponent.Builder builder = attrViewComponentBuilderProvider.get();
-		Optional<FileAttributeView> view = builder //
-				.cleartextPath(cleartextPath) //
-				.viewType(type) //
-				.linkOptions(options) //
-				.build() //
-				.attributeView();
+		Optional<FileAttributeView> view = attrViewComponentFactory.create(cleartextPath, type, options).attributeView();
 		if (view.isPresent() && type.isInstance(view.get())) {
 			return type.cast(view.get());
 		} else {

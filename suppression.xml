@@ -9,4 +9,12 @@
 		<cpe>cpe:/a:cryptomator:cryptomator</cpe>
 		<cve>CVE-2022-25366</cve>
 	</suppress>
+	<suppress>
+		<notes><![CDATA[
+  		Suppress false positive, because com.google.common.io.Files.createTempDir() is not used
+   ]]></notes>
+		<packageUrl regex="true">^pkg:maven/com\.google\.guava/guava@.*$</packageUrl>
+		<vulnerabilityName>CVE-2020-8908</vulnerabilityName>
+		<cve>CVE-2020-8908</cve>
+	</suppress>
 </suppressions>

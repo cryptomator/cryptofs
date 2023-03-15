@@ -14,19 +14,11 @@ public interface AttributeViewComponent {
 
 	Optional<FileAttributeView> attributeView();
 
-	@Subcomponent.Builder
-	interface Builder {
+	@Subcomponent.Factory
+	interface Factory {
 
-		@BindsInstance
-		Builder cleartextPath(CryptoPath cleartextPath);
+		AttributeViewComponent create(@BindsInstance CryptoPath cleartextPath, @BindsInstance Class<? extends FileAttributeView> type, @BindsInstance LinkOption[] linkOptions);
 
-		@BindsInstance
-		Builder viewType(Class<? extends FileAttributeView> type);
-
-		@BindsInstance
-		Builder linkOptions(LinkOption[] linkOptions);
-
-		AttributeViewComponent build();
 	}
 
 }

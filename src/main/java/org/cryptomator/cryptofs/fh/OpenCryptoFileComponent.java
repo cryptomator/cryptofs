@@ -12,18 +12,13 @@ public interface OpenCryptoFileComponent {
 
 	OpenCryptoFile openCryptoFile();
 
-	ChannelComponent.Builder newChannelComponent();
+	ChannelComponent.Factory newChannelComponent();
 
-	@Subcomponent.Builder
-	interface Builder {
+	@Subcomponent.Factory
+	interface Factory {
 
-		@BindsInstance
-		Builder path(@OriginalOpenFilePath Path path);
-
-		@BindsInstance
-		Builder onClose(FileCloseListener listener);
-
-		OpenCryptoFileComponent build();
+		OpenCryptoFileComponent create(@BindsInstance @OriginalOpenFilePath Path path, //
+									   @BindsInstance FileCloseListener onCloseListener);
 	}
 
 }
