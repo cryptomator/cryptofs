@@ -93,7 +93,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	}
 
 	@Override
-	protected int readLocked(ByteBuffer dst, long position) throws IOException {
+	protected synchronized int readLocked(ByteBuffer dst, long position) throws IOException {
 		int origLimit = dst.limit();
 		long limitConsideringEof = fileSize.get() - position;
 		if (limitConsideringEof < 1) {
