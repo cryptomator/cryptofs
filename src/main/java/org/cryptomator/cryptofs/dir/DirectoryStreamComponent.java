@@ -14,25 +14,14 @@ public interface DirectoryStreamComponent {
 
 	CryptoDirectoryStream directoryStream();
 
-	@Subcomponent.Builder
-	interface Builder {
+	@Subcomponent.Factory
+	interface Factory {
 
-		@BindsInstance
-		Builder cleartextPath(@Named("cleartextPath") Path cleartextPath);
-
-		@BindsInstance
-		Builder dirId(@Named("dirId") String dirId);
-
-		@BindsInstance
-		Builder ciphertextDirectoryStream(DirectoryStream<Path> ciphertextDirectoryStream);
-
-		@BindsInstance
-		Builder filter(DirectoryStream.Filter<? super Path> filter);
-
-		@BindsInstance
-		Builder onClose(Consumer<CryptoDirectoryStream> onClose);
-
-		DirectoryStreamComponent build();
+		DirectoryStreamComponent create(@BindsInstance @Named("cleartextPath") Path cleartextPath, //
+										@BindsInstance @Named("dirId") String dirId, //
+										@BindsInstance DirectoryStream<Path> ciphertextDirectoryStream, //
+										@BindsInstance DirectoryStream.Filter<? super Path> filter, //
+										@BindsInstance Consumer<CryptoDirectoryStream> onClose);
 	}
 
 }

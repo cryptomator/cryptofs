@@ -20,31 +20,25 @@ import java.util.Map;
 public class DirectoryStreamFactory {
 
 	private final CryptoPathMapper cryptoPathMapper;
-	private final DirectoryStreamComponent.Builder directoryStreamComponentBuilder; // sharing reusable builder via synchronized
+	private final DirectoryStreamComponent.Factory directoryStreamComponentFactory;
 	private final Map<CryptoDirectoryStream, DirectoryStream<Path>> streams = new HashMap<>();
 
 	private volatile boolean closed = false;
 
 	@Inject
-	public DirectoryStreamFactory(CryptoPathMapper cryptoPathMapper, DirectoryStreamComponent.Builder directoryStreamComponentBuilder) {
+	public DirectoryStreamFactory(CryptoPathMapper cryptoPathMapper, DirectoryStreamComponent.Factory directoryStreamComponentFactory) {
 		this.cryptoPathMapper = cryptoPathMapper;
-		this.directoryStreamComponentBuilder = directoryStreamComponentBuilder;
+		this.directoryStreamComponentFactory = directoryStreamComponentFactory;
 	}
 
+	//TODO: is synchronized still needed? One reason was, that a dagger builder was used (replaced by thread safe factory)
 	public synchronized CryptoDirectoryStream newDirectoryStream(CryptoPath cleartextDir, Filter<? super Path> filter) throws IOException {
 		if (closed) {
 			throw new ClosedFileSystemException();
 		}
 		CiphertextDirectory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
 		DirectoryStream<Path> ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path, this::matchesEncryptedContentPattern);
-		CryptoDirectoryStream cleartextDirStream = directoryStreamComponentBuilder //
-				.dirId(ciphertextDir.dirId) //
-				.ciphertextDirectoryStream(ciphertextDirStream) //
-				.cleartextPath(cleartextDir) //
-				.filter(filter) //
-				.onClose(streams::remove) //
-				.build() //
-				.directoryStream();
+		var cleartextDirStream = directoryStreamComponentFactory.create(cleartextDir, ciphertextDir.dirId, ciphertextDirStream, filter, streams::remove).directoryStream();
 		streams.put(cleartextDirStream, ciphertextDirStream);
 		return cleartextDirStream;
 	}
