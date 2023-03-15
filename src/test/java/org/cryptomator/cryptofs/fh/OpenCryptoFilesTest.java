@@ -16,12 +16,12 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 
 public class OpenCryptoFilesTest {
 
-	private final Provider<OpenCryptoFileComponent.Builder> openCryptoFileComponentBuilderProvider = mock(Provider.class);
-	private final OpenCryptoFileComponent.Builder openCryptoFileComponentBuilder = mock(OpenCryptoFileComponent.Builder.class);
+	private final OpenCryptoFileComponent.Factory openCryptoFileComponentFactory = mock(OpenCryptoFileComponent.Factory.class);
 	private final OpenCryptoFile file = mock(OpenCryptoFile.class, "file");
 	private final FileChannel ciphertextFileChannel = Mockito.mock(FileChannel.class);
 
@@ -32,14 +32,10 @@ public class OpenCryptoFilesTest {
 		OpenCryptoFileComponent subComponent = mock(OpenCryptoFileComponent.class);
 		Mockito.when(subComponent.openCryptoFile()).thenReturn(file);
 
-		Mockito.when(openCryptoFileComponentBuilderProvider.get()).thenReturn(openCryptoFileComponentBuilder);
-		Mockito.when(openCryptoFileComponentBuilder.path(Mockito.any())).thenReturn(openCryptoFileComponentBuilder);
-		Mockito.when(openCryptoFileComponentBuilder.onClose(Mockito.any())).thenReturn(openCryptoFileComponentBuilder);
-		Mockito.when(openCryptoFileComponentBuilder.build()).thenReturn(subComponent);
-
+		Mockito.when(openCryptoFileComponentFactory.create(Mockito.any(), Mockito.any())).thenReturn(subComponent);
 		Mockito.when(file.newFileChannel(Mockito.any())).thenReturn(ciphertextFileChannel);
 
-		inTest = new OpenCryptoFiles(openCryptoFileComponentBuilderProvider);
+		inTest = new OpenCryptoFiles(openCryptoFileComponentFactory);
 	}
 
 	@Test
@@ -52,7 +48,7 @@ public class OpenCryptoFilesTest {
 		OpenCryptoFile file2 = mock(OpenCryptoFile.class);
 		Mockito.when(subComponent2.openCryptoFile()).thenReturn(file2);
 
-		Mockito.when(openCryptoFileComponentBuilder.build()).thenReturn(subComponent1, subComponent2);
+		Mockito.when(openCryptoFileComponentFactory.create(Mockito.any(), Mockito.any())).thenReturn(subComponent1, subComponent2);
 
 		Path p1 = Paths.get("/foo");
 		Path p2 = Paths.get("/bar");
@@ -140,24 +136,18 @@ public class OpenCryptoFilesTest {
 		Path path1 = Mockito.mock(Path.class, "/file1");
 		Mockito.when(path1.toAbsolutePath()).thenReturn(path1);
 		Mockito.when(path1.normalize()).thenReturn(path1);
-		OpenCryptoFileComponent.Builder subComponentBuilder1 = mock(OpenCryptoFileComponent.Builder.class);
 		OpenCryptoFileComponent subComponent1 = mock(OpenCryptoFileComponent.class);
 		OpenCryptoFile file1 = mock(OpenCryptoFile.class, "file1");
-		Mockito.when(openCryptoFileComponentBuilder.path(path1)).thenReturn(subComponentBuilder1);
-		Mockito.when(subComponentBuilder1.onClose(Mockito.any())).thenReturn(subComponentBuilder1);
-		Mockito.when(subComponentBuilder1.build()).thenReturn(subComponent1);
+		Mockito.when(openCryptoFileComponentFactory.create(Mockito.eq(path1), Mockito.any())).thenReturn(subComponent1);
 		Mockito.when(subComponent1.openCryptoFile()).thenReturn(file1);
 		Mockito.when(file1.getCurrentFilePath()).thenReturn(path1);
 
 		Path path2 = Mockito.mock(Path.class, "/file2");
 		Mockito.when(path2.toAbsolutePath()).thenReturn(path2);
 		Mockito.when(path2.normalize()).thenReturn(path2);
-		OpenCryptoFileComponent.Builder subComponentBuilder2 = mock(OpenCryptoFileComponent.Builder.class);
 		OpenCryptoFileComponent subComponent2 = mock(OpenCryptoFileComponent.class);
 		OpenCryptoFile file2 = mock(OpenCryptoFile.class, "file2");
-		Mockito.when(openCryptoFileComponentBuilder.path(path2)).thenReturn(subComponentBuilder2);
-		Mockito.when(subComponentBuilder2.onClose(Mockito.any())).thenReturn(subComponentBuilder2);
-		Mockito.when(subComponentBuilder2.build()).thenReturn(subComponent2);
+		Mockito.when(openCryptoFileComponentFactory.create(Mockito.eq(path2), Mockito.any())).thenReturn(subComponent2);
 		Mockito.when(subComponent2.openCryptoFile()).thenReturn(file2);
 		Mockito.when(file2.getCurrentFilePath()).thenReturn(path2);
 

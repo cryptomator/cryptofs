@@ -12,7 +12,6 @@ import org.cryptomator.cryptofs.CryptoFileSystemScoped;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 
 import javax.inject.Inject;
-import javax.inject.Provider;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
@@ -30,12 +29,12 @@ import java.util.concurrent.ConcurrentMap;
 @CryptoFileSystemScoped
 public class OpenCryptoFiles implements Closeable {
 
-	private final Provider<OpenCryptoFileComponent.Builder> openCryptoFileComponentBuilderProvider;
+	private final OpenCryptoFileComponent.Factory openCryptoFileComponentFactory;
 	private final ConcurrentMap<Path, OpenCryptoFile> openCryptoFiles = new ConcurrentHashMap<>();
 
 	@Inject
-	OpenCryptoFiles(Provider<OpenCryptoFileComponent.Builder> openCryptoFileComponentBuilderProvider) {
-		this.openCryptoFileComponentBuilderProvider = openCryptoFileComponentBuilderProvider;
+	OpenCryptoFiles(OpenCryptoFileComponent.Factory openCryptoFileComponentFactory) {
+		this.openCryptoFileComponentFactory = openCryptoFileComponentFactory;
 	}
 
 	/**
@@ -61,16 +60,7 @@ public class OpenCryptoFiles implements Closeable {
 	 */
 	public OpenCryptoFile getOrCreate(Path ciphertextPath) {
 		Path normalizedPath = ciphertextPath.toAbsolutePath().normalize();
-		return openCryptoFiles.computeIfAbsent(normalizedPath, this::create); // computeIfAbsent is atomic, "create" is called at most once
-	}
-
-	private OpenCryptoFile create(Path normalizedPath) {
-		OpenCryptoFileComponent.Builder builder = openCryptoFileComponentBuilderProvider.get();
-		OpenCryptoFileComponent openCryptoFileComponent = builder //
-				.path(normalizedPath) //
-				.onClose(openCryptoFiles::remove) //
-				.build();
-		return openCryptoFileComponent.openCryptoFile();
+		return openCryptoFiles.computeIfAbsent(normalizedPath, p -> openCryptoFileComponentFactory.create(p, openCryptoFiles::remove).openCryptoFile()); // computeIfAbsent is atomic, "create" is called at most once
 	}
 
 	public void writeCiphertextFile(Path ciphertextPath, EffectiveOpenOptions openOptions, ByteBuffer contents) throws IOException {
