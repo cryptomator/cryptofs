@@ -87,7 +87,7 @@ public class ChunkCacheTest {
 		}
 		when(chunkLoader.load(indexNotInCache)).thenReturn(ByteBuffer.allocate(0));
 
-		inTest.getChunk(indexNotInCache);
+		inTest.getChunk(indexNotInCache).close();
 
 		verify(stats).addChunkCacheAccess();
 		verify(chunkSaver).save(Mockito.eq(firstIndex), Mockito.any());

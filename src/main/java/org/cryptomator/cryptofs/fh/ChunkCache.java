@@ -48,7 +48,7 @@ public class ChunkCache {
 	}
 
 	/**
-	 * Overwrites data at the given index
+	 * Overwrites data at the given index and increments the access counter of the returned chunk
 	 *
 	 * @param chunkIndex Which chunk to overwrite
 	 * @param chunkData The cleartext data
@@ -58,14 +58,15 @@ public class ChunkCache {
 	public Chunk putChunk(long chunkIndex, ByteBuffer chunkData) throws IllegalArgumentException {
 		return activeChunks.compute(chunkIndex, (index, chunk) -> {
 			if (chunk == null) {
-				return new Chunk(chunkData, true, () -> releaseChunk(chunkIndex));
+				chunk = new Chunk(chunkData, true, () -> releaseChunk(chunkIndex));
 			} else {
 				var dst = chunk.data().duplicate().clear();
 				Preconditions.checkArgument(chunkData.remaining() == dst.remaining());
 				dst.put(chunkData);
 				chunk.dirty().set(true);
-				return chunk;
 			}
+			chunk.currentAccesses().incrementAndGet();
+			return chunk;
 		});
 	}
 
