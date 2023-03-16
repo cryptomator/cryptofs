@@ -10,8 +10,7 @@ package org.cryptomator.cryptofs.fh;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static java.lang.String.format;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A chunk of plaintext data. It has these rules:
@@ -23,14 +22,18 @@ import static java.lang.String.format;
  *     <li>When no longer used, the cleartext ByteBuffer may be recycled</li>
  * </ol>
  */
-public record Chunk(ByteBuffer data, AtomicBoolean dirty) {
+public record Chunk(ByteBuffer data, AtomicBoolean dirty, AtomicInteger currentAccesses, Runnable onClose) implements AutoCloseable {
 
-	public Chunk(ByteBuffer data, boolean dirty) {
-		this(data, new AtomicBoolean(dirty));
+	public Chunk(ByteBuffer data, boolean dirty, Runnable onClose) {
+		this(data, new AtomicBoolean(dirty), new AtomicInteger(0), onClose);
 	}
 
 	public boolean isDirty() {
 		return dirty.get();
 	}
 
+	@Override
+	public void close() throws Exception {
+		onClose.run();
+	}
 }

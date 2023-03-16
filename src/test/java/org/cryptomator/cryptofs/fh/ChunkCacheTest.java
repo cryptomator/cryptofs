@@ -8,6 +8,7 @@ import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -23,12 +24,27 @@ public class ChunkCacheTest {
 	private final ChunkCache inTest = new ChunkCache(chunkLoader, chunkSaver, stats, bufferPool);
 
 	@Test
+	public void testGetIncreasesAccessCounter() throws IOException {
+		long index = 42L;
+		Chunk chunk = mock(Chunk.class);
+		AtomicInteger cnt = new AtomicInteger(0);
+		when(chunk.currentAccesses()).thenReturn(cnt);
+		when(chunkLoader.load(index)).thenReturn(chunk);
+
+		var result = inTest.acquireChunk(index);
+
+		Assertions.assertSame(chunk, result);
+		Assertions.assertEquals(1, cnt.get());
+	}
+
+	@Test
 	public void testGetInvokesLoaderIfEntryNotInCache() throws IOException, AuthenticationFailedException {
 		long index = 42L;
 		Chunk chunk = mock(Chunk.class);
+		when(chunk.currentAccesses()).thenReturn(new AtomicInteger());
 		when(chunkLoader.load(index)).thenReturn(chunk);
 
-		Assertions.assertSame(chunk, inTest.get(index));
+		Assertions.assertSame(chunk, inTest.acquireChunk(index));
 		verify(stats).addChunkCacheAccess();
 	}
 
@@ -36,10 +52,11 @@ public class ChunkCacheTest {
 	public void testGetDoesNotInvokeLoaderIfEntryInCacheFromPreviousGet() throws IOException, AuthenticationFailedException {
 		long index = 42L;
 		Chunk chunk = mock(Chunk.class);
+		when(chunk.currentAccesses()).thenReturn(new AtomicInteger());
 		when(chunkLoader.load(index)).thenReturn(chunk);
-		inTest.get(index);
+		inTest.acquireChunk(index);
 
-		Assertions.assertSame(chunk, inTest.get(index));
+		Assertions.assertSame(chunk, inTest.acquireChunk(index));
 		verify(stats, Mockito.times(2)).addChunkCacheAccess();
 		verify(chunkLoader).load(index);
 	}
@@ -48,24 +65,31 @@ public class ChunkCacheTest {
 	public void testGetDoesNotInvokeLoaderIfEntryInCacheFromPreviousSet() throws IOException {
 		long index = 42L;
 		Chunk chunk = mock(Chunk.class);
+		when(chunk.currentAccesses()).thenReturn(new AtomicInteger());
 		inTest.set(index, chunk);
 
-		Assertions.assertSame(chunk, inTest.get(index));
+		Assertions.assertSame(chunk, inTest.acquireChunk(index));
 		verify(stats).addChunkCacheAccess();
 	}
+
+	@Test
+	public void testGetDoesNotRecycleBuffer
 
 	@Test
 	public void testGetInvokesSaverIfMaxEntriesInCacheAreReachedAndAnEntryNotInCacheIsRequested() throws IOException, AuthenticationFailedException {
 		long firstIndex = 42L;
 		long indexNotInCache = 40L;
 		Chunk chunk = mock(Chunk.class);
+		when(chunk.currentAccesses()).thenReturn(new AtomicInteger());
 		inTest.set(firstIndex, chunk);
 		for (int i = 1; i < ChunkCache.MAX_CACHED_CLEARTEXT_CHUNKS; i++) {
 			inTest.set(firstIndex + i, mock(Chunk.class));
 		}
-		when(chunkLoader.load(indexNotInCache)).thenReturn(mock(Chunk.class));
+		Chunk notIndexedChunk = mock(Chunk.class);
+		when(notIndexedChunk.currentAccesses()).thenReturn(new AtomicInteger());
+		when(chunkLoader.load(indexNotInCache)).thenReturn(notIndexedChunk);
 
-		inTest.get(indexNotInCache);
+		inTest.acquireChunk(indexNotInCache);
 
 		verify(stats).addChunkCacheAccess();
 		verify(chunkSaver).save(firstIndex, chunk);
@@ -78,6 +102,7 @@ public class ChunkCacheTest {
 		long firstIndex = 42L;
 		long indexNotInCache = 40L;
 		Chunk chunk = mock(Chunk.class);
+		when(chunk.currentAccesses()).thenReturn(new AtomicInteger());
 		inTest.set(firstIndex, chunk);
 		for (int i = 1; i < ChunkCache.MAX_CACHED_CLEARTEXT_CHUNKS; i++) {
 			inTest.set(firstIndex + i, mock(Chunk.class));
@@ -95,6 +120,7 @@ public class ChunkCacheTest {
 		// TODO markuskreusch: this behaviour isn't actually needed, maybe we can somehow prevent saving in such situations?
 		long firstIndex = 42L;
 		Chunk chunk = mock(Chunk.class);
+		when(chunk.currentAccesses()).thenReturn(new AtomicInteger());
 		inTest.set(firstIndex, chunk);
 		for (int i = 1; i < ChunkCache.MAX_CACHED_CLEARTEXT_CHUNKS; i++) {
 			inTest.set(firstIndex + i, mock(Chunk.class));
@@ -114,7 +140,7 @@ public class ChunkCacheTest {
 		when(chunkLoader.load(index)).thenThrow(authenticationFailedException);
 
 		IOException e = Assertions.assertThrows(IOException.class, () -> {
-			inTest.get(index);
+			inTest.acquireChunk(index);
 		});
 		Assertions.assertSame(authenticationFailedException, e.getCause());
 	}
@@ -126,7 +152,7 @@ public class ChunkCacheTest {
 		when(chunkLoader.load(index)).thenThrow(uncheckedException);
 
 		RuntimeException e = Assertions.assertThrows(RuntimeException.class, () -> {
-			inTest.get(index);
+			inTest.acquireChunk(index);
 		});
 		Assertions.assertSame(uncheckedException, e.getCause());
 	}
@@ -139,8 +165,10 @@ public class ChunkCacheTest {
 		Chunk chunk2 = mock(Chunk.class);
 		when(chunk1.data()).thenReturn(ByteBuffer.allocate(42));
 		when(chunk2.data()).thenReturn(ByteBuffer.allocate(23));
+		when(chunk1.currentAccesses()).thenReturn(new AtomicInteger());
+		when(chunk2.currentAccesses()).thenReturn(new AtomicInteger());
 		when(chunkLoader.load(index)).thenReturn(chunk1);
-		inTest.get(index);
+		inTest.acquireChunk(index);
 		inTest.set(index2, chunk2);
 
 		inTest.invalidateAll();
@@ -158,7 +186,7 @@ public class ChunkCacheTest {
 		when(chunkLoader.load(index)).thenThrow(ioException);
 
 		IOException e = Assertions.assertThrows(IOException.class, () -> {
-			inTest.get(index);
+			inTest.acquireChunk(index);
 		});
 		Assertions.assertSame(ioException, e);
 	}

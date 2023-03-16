@@ -4,8 +4,8 @@ import com.google.common.base.Preconditions;
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.fh.BufferPool;
-import org.cryptomator.cryptofs.fh.ChunkCache;
 import org.cryptomator.cryptofs.fh.Chunk;
+import org.cryptomator.cryptofs.fh.ChunkCache;
 import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptofs.fh.OpenFileModifiedDate;
 import org.cryptomator.cryptofs.fh.OpenFileSize;
@@ -106,7 +106,8 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			long pos = position + read;
 			long chunkIndex = pos / payloadSize; // floor by int-truncation
 			int offsetInChunk = (int) (pos % payloadSize); // known to fit in int, because payloadSize is int
-			ByteBuffer data = chunkCache.get(chunkIndex).data().duplicate().position(offsetInChunk);
+			var chunk = chunkCache.acquireChunk(chunkIndex);
+			ByteBuffer data = chunk.data().duplicate().position(offsetInChunk);
 			int len = min(dst.remaining(), data.remaining()); // known to fit in int, because second argument is int
 			dst.put(data.limit(data.position() + len));
 			read += len;
@@ -161,7 +162,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 				 * We don't actually need to read the current data into the cache.
 				 * It would suffice if store the written data and do reading when storing the chunk.
 				 */
-				Chunk chunk = chunkCache.get(chunkIndex);
+				Chunk chunk = chunkCache.acquireChunk(chunkIndex);
 				chunk.data().limit(Math.max(chunk.data().limit(), offsetInChunk + len)); // increase limit (if needed)
 				src.copyTo(chunk.data().duplicate().position(offsetInChunk)); // work on duplicate using correct offset
 				chunk.dirty().set(true);
@@ -196,7 +197,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			long indexOfLastChunk = (newSize + cleartextChunkSize - 1) / cleartextChunkSize - 1;
 			int sizeOfIncompleteChunk = (int) (newSize % cleartextChunkSize); // known to fit in int, because cleartextChunkSize is int
 			if (sizeOfIncompleteChunk > 0) {
-				var chunk = chunkCache.get(indexOfLastChunk);
+				var chunk = chunkCache.acquireChunk(indexOfLastChunk);
 				chunk.data().limit(sizeOfIncompleteChunk);
 				chunk.dirty().set(true);
 			}

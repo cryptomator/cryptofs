@@ -76,7 +76,7 @@ public class CleartextFileChannelTest {
 	public void setUp() throws IOException {
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
 		when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
-		when(chunkCache.get(Mockito.anyLong())).then(invocation -> new Chunk(ByteBuffer.allocate(100), false));
+		when(chunkCache.acquireChunk(Mockito.anyLong())).then(invocation -> new Chunk(ByteBuffer.allocate(100), false));
 		when(bufferPool.getCleartextBuffer()).thenAnswer(invocation -> ByteBuffer.allocate(100));
 		when(fileHeaderCryptor.headerSize()).thenReturn(50);
 		when(fileContentCryptor.cleartextChunkSize()).thenReturn(100);
@@ -354,10 +354,10 @@ public class CleartextFileChannelTest {
 			inTest.read(buf, 5_000_000_000l);
 
 			InOrder inOrder = Mockito.inOrder(chunkCache, chunkCache, chunkCache, chunkCache);
-			inOrder.verify(chunkCache).get(0l); // A
-			inOrder.verify(chunkCache).get(1l); // B
-			inOrder.verify(chunkCache).get(2l); // B
-			inOrder.verify(chunkCache).get(50_000_000l); // C
+			inOrder.verify(chunkCache).acquireChunk(0l); // A
+			inOrder.verify(chunkCache).acquireChunk(1l); // B
+			inOrder.verify(chunkCache).acquireChunk(2l); // B
+			inOrder.verify(chunkCache).acquireChunk(50_000_000l); // C
 			inOrder.verifyNoMoreInteractions();
 		}
 
@@ -407,7 +407,7 @@ public class CleartextFileChannelTest {
 			inTest.write(buf3, 5000);
 
 			InOrder inOrder = Mockito.inOrder(chunkCache, chunkCache, chunkCache);
-			inOrder.verify(chunkCache).get(0l); // A
+			inOrder.verify(chunkCache).acquireChunk(0l); // A
 			inOrder.verify(chunkCache).set(Mockito.eq(1l), Mockito.any()); // B
 			inOrder.verify(chunkCache).set(Mockito.eq(50l), Mockito.any()); // C
 			inOrder.verifyNoMoreInteractions();
@@ -437,9 +437,9 @@ public class CleartextFileChannelTest {
 			Assertions.assertEquals(110, written);
 			Assertions.assertEquals(205, inTest.size());
 
-			verify(chunkCache).get(0l);
+			verify(chunkCache).acquireChunk(0l);
 			verify(chunkCache).set(Mockito.eq(1l), Mockito.any());
-			verify(chunkCache).get(2l);
+			verify(chunkCache).acquireChunk(2l);
 		}
 
 		@Test
