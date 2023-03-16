@@ -77,6 +77,16 @@ public class ChunkCacheTest {
 	}
 
 	@Test
+	@DisplayName("putChunk returns a dirty chunk")
+	public void testPutChunkReturnsDirtyChunk() throws IOException {
+		long index = 42L;
+		var data = ByteBuffer.allocate(0);
+		var chunk = inTest.putChunk(index, data);
+
+		Assertions.assertTrue(chunk.isDirty());
+	}
+
+	@Test
 	@DisplayName("getChunk() triggers cache eviction if stale cache contains MAX_CACHED_CLEARTEXT_CHUNKS entries")
 	public void testGetInvokesSaverIfMaxEntriesInCacheAreReachedAndAnEntryNotInCacheIsRequested() throws IOException, AuthenticationFailedException {
 		long firstIndex = 42L;

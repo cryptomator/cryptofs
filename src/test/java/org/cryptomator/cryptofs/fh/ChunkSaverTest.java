@@ -6,6 +6,7 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -18,6 +19,7 @@ import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
 import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -51,6 +53,18 @@ public class ChunkSaverTest {
 		when(fileHeaderCryptor.headerSize()).thenReturn(HEADER_SIZE);
 		when(bufferPool.getCiphertextBuffer()).thenAnswer(invocation -> ByteBuffer.allocate(CIPHERTEXT_CHUNK_SIZE));
 		when(bufferPool.getCleartextBuffer()).thenAnswer(invocation -> ByteBuffer.allocate(CLEARTEXT_CHUNK_SIZE));
+	}
+
+	@Test
+	public void testSuccessfullWrittenChunkIsNonDirty() throws IOException {
+		long chunkIndex = 43L;
+		Supplier<ByteBuffer> cleartext = () -> repeat(42).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer();
+		Chunk chunk = new Chunk(cleartext.get(), true, () -> {});
+		doNothing().when(fileContentCryptor).encryptChunk(argThat(contains(cleartext.get())), Mockito.any(), eq(chunkIndex), eq(header));
+
+		inTest.save(chunkIndex, chunk);
+
+		Assertions.assertFalse(chunk.isDirty());
 	}
 
 	@Test
