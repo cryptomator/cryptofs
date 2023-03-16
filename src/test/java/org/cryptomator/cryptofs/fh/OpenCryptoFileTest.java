@@ -171,7 +171,7 @@ public class OpenCryptoFileTest {
 			Files.write(CURRENT_FILE_PATH.get(), new byte[0]);
 			EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE), readonlyFlag);
 			openCryptoFile.newFileChannel(options);
-			verify(chunkCache).invalidateAll();
+			verify(chunkCache).flush();
 		}
 
 		@Test

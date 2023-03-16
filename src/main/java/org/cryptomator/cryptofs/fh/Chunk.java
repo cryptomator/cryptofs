@@ -33,7 +33,7 @@ public record Chunk(ByteBuffer data, AtomicBoolean dirty, AtomicInteger currentA
 	}
 
 	@Override
-	public void close() throws Exception {
+	public void close() {
 		onClose.run();
 	}
 }

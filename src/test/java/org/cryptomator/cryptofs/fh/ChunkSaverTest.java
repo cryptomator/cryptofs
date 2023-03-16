@@ -59,7 +59,7 @@ public class ChunkSaverTest {
 		long expectedPosition = HEADER_SIZE + chunkIndex * CIPHERTEXT_CHUNK_SIZE;
 		Supplier<ByteBuffer> cleartext = () -> repeat(42).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer();
 		Supplier<ByteBuffer> ciphertext = () -> repeat(50).times(CIPHERTEXT_CHUNK_SIZE).asByteBuffer();
-		Chunk chunk = new Chunk(cleartext.get(), true);
+		Chunk chunk = new Chunk(cleartext.get(), true, () -> {});
 		doAnswer(invocation -> {
 			ByteBuffer ciphertextBuf = invocation.getArgument(1);
 			ciphertextBuf.put(ciphertext.get());
@@ -79,7 +79,7 @@ public class ChunkSaverTest {
 		long expectedPosition = HEADER_SIZE + chunkIndex * CIPHERTEXT_CHUNK_SIZE;
 		Supplier<ByteBuffer> cleartext = () -> repeat(42).times(CLEARTEXT_CHUNK_SIZE - 10).asByteBuffer();
 		Supplier<ByteBuffer> ciphertext = () -> repeat(50).times(CIPHERTEXT_CHUNK_SIZE - 10).asByteBuffer();
-		Chunk chunk = new Chunk(cleartext.get(), true);
+		Chunk chunk = new Chunk(cleartext.get(), true, () -> {});
 		doAnswer(invocation -> {
 			ByteBuffer ciphertextBuf = invocation.getArgument(1);
 			ciphertextBuf.put(ciphertext.get());
@@ -96,7 +96,7 @@ public class ChunkSaverTest {
 	@Test
 	public void testChunkThatWasNotWrittenIsNotWritten() throws IOException {
 		Long chunkIndex = 43L;
-		Chunk chunk = new Chunk(ByteBuffer.allocate(CLEARTEXT_CHUNK_SIZE), false);
+		Chunk chunk = new Chunk(ByteBuffer.allocate(CLEARTEXT_CHUNK_SIZE), false, () -> {});
 
 		inTest.save(chunkIndex, chunk);
 
@@ -112,7 +112,7 @@ public class ChunkSaverTest {
 		long expectedPosition = HEADER_SIZE + chunkIndex * CIPHERTEXT_CHUNK_SIZE;
 		Supplier<ByteBuffer> cleartext = () -> repeat(42).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer();
 		Supplier<ByteBuffer> ciphertext = () -> repeat(50).times(CIPHERTEXT_CHUNK_SIZE).asByteBuffer();
-		Chunk chunk = new Chunk(cleartext.get(), true);
+		Chunk chunk = new Chunk(cleartext.get(), true, () -> {});
 		doAnswer(invocation -> {
 			ByteBuffer ciphertextBuf = invocation.getArgument(1);
 			ciphertextBuf.put(ciphertext.get());

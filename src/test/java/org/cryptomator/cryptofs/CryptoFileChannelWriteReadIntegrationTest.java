@@ -18,6 +18,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -30,6 +31,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
@@ -42,7 +44,15 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.lang.Math.min;
@@ -462,6 +472,143 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 				Assertions.assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
 			}
 		}
+
+		@RepeatedTest(100)
+		public void testConcurrentRead() throws IOException, InterruptedException {
+			// prepare test data:
+			var content = new byte[10_000_000];
+			for (int i = 0; i < 100_000; i++) {
+				byte b = (byte) (i % 255);
+				Arrays.fill(content, i * 100, (i + 1) * 100, b);
+			}
+
+			try (var ch = FileChannel.open(file, CREATE, WRITE, TRUNCATE_EXISTING)) {
+				ch.write(ByteBuffer.wrap(content));
+			}
+
+			// read concurrently from same file channel:
+			var numThreads = 100;
+			var rnd = new Random(42L);
+			var results = new int[numThreads];
+			var resultsHandle = MethodHandles.arrayElementVarHandle(int[].class);
+			Arrays.fill(results, 42);
+			var executor = Executors.newCachedThreadPool();
+			try (var ch = FileChannel.open(file, READ)) {
+				for (int i = 0; i < numThreads; i++) {
+					int t = i;
+					int num = rnd.nextInt(50_000);
+					int pos = rnd.nextInt(400_000);
+					executor.submit(() -> {
+						ByteBuffer buf = ByteBuffer.allocate(num);
+						try {
+							System.out.println("thread " + t + " reading " + pos + " - " + (pos + num));
+							int read = ch.read(buf, pos);
+							if (read != num) {
+								resultsHandle.setVolatile(results, t, -1); // ERROR invalid number of bytes
+							} else if (Arrays.equals(content, pos, pos + num, buf.array(), 0, read)) {
+								resultsHandle.setVolatile(results, t, 0); // SUCCESS
+							} else {
+								resultsHandle.setVolatile(results, t, -2); // ERROR invalid content
+							}
+						} catch (IOException e) {
+							e.printStackTrace();
+							resultsHandle.setVolatile(results, t, -3); // ERROR I/O error
+						}
+					});
+				}
+				executor.shutdown();
+				boolean allTasksFinished = executor.awaitTermination(10, TimeUnit.SECONDS);
+				Assertions.assertTrue(allTasksFinished);
+			}
+
+			Assertions.assertAll(IntStream.range(0, numThreads).mapToObj(t -> {
+				return () -> Assertions.assertEquals(0, resultsHandle.getVolatile(results, t), "thread " + t + " unsuccessful");
+			}));
+		}
+
+		@RepeatedTest(10)
+		@SuppressWarnings("PointlessArithmeticExpression")
+		public void testConcurrentChunkReuse() throws IOException, InterruptedException, BrokenBarrierException {
+			// prepare 16 chunks of test data:
+			var content = new byte[16 * 32 * 1024];
+			for (int i = 0; i < 16; i++) {
+				Arrays.fill(content, i * 32 * 1024, (i+1) * 32 * 1024, (byte) (i * 0x11));
+			}
+			try (var ch = FileChannel.open(file, CREATE, WRITE, TRUNCATE_EXISTING)) {
+				ch.write(ByteBuffer.wrap(content));
+			}
+
+			try (var ch = FileChannel.open(file, READ)) {
+				for (int i = 0; i < 5; i++) {
+					int pos1 = i * 3 * 32 * 1024;
+					int pos2 = (i * 3 + 2) * 32 * 1024;
+
+					// read two chunks in this thread
+					ByteBuffer buf1 = ByteBuffer.allocate(2 * 32 * 1024);
+					ch.read(buf1, pos1);
+
+					// read one chunk in other thread:
+					CyclicBarrier barrier1 = new CyclicBarrier(2);
+					var t1 = new Thread(() -> {
+						try {
+							barrier1.await();
+							ByteBuffer buf2 = ByteBuffer.allocate(32 * 1024);
+							ch.read(buf2, pos2);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					});
+					t1.start();
+					barrier1.await();
+
+					// read again in this thread
+					ByteBuffer buf3 = ByteBuffer.allocate(32 * 1024);
+					ch.read(buf3, pos2);
+
+					// check if buf3 contains expected data
+					Assertions.assertArrayEquals(Arrays.copyOfRange(content, pos2, pos2 + buf3.capacity()), buf3.array(), "mismatch at pos2=" + pos2);
+				}
+			}
+		}
+
+
+		@RepeatedTest(1000)
+		public void testConcurrentByteBuffers() throws BrokenBarrierException, InterruptedException {
+			ByteBuffer buf = ByteBuffer.wrap("hello world".getBytes(StandardCharsets.US_ASCII));
+			CyclicBarrier barrier1 = new CyclicBarrier(2);
+			CyclicBarrier barrier2 = new CyclicBarrier(2);
+
+			var t1 = new Thread(() -> {
+				try {
+					buf.put("world hello".getBytes(StandardCharsets.US_ASCII));
+					barrier2.await();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			});
+			t1.start();
+
+			AtomicBoolean result = new AtomicBoolean();
+
+			var t2 = new Thread(() -> {
+				try {
+					barrier2.await();
+					var canSeeT1 = Arrays.equals("world hello".getBytes(StandardCharsets.US_ASCII), buf.array());
+					result.set(canSeeT1);
+					barrier1.await();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			});
+			t2.start();
+
+			barrier1.await();
+
+			Assertions.assertTrue(result.get());
+
+			Assertions.assertArrayEquals("world hello".getBytes(StandardCharsets.US_ASCII), buf.array());
+		}
+
 
 	}
 
