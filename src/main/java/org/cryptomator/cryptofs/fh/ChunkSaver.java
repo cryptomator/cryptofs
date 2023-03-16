@@ -37,6 +37,7 @@ class ChunkSaver {
 				cryptor.fileContentCryptor().encryptChunk(cleartextBuf, ciphertextBuf, chunkIndex, headerHolder.get());
 				ciphertextBuf.flip();
 				ciphertext.write(ciphertextBuf, ciphertextPos);
+				chunkData.dirty().set(false); //TODO: what are the consequences
 			} catch (IOException e) {
 				exceptionsDuringWrite.add(e);
 			} finally {

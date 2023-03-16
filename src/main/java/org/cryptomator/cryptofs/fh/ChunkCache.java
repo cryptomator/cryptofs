@@ -143,7 +143,6 @@ public class ChunkCache {
 		try {
 			activeChunks.replaceAll((index, chunk) -> {
 				saveChunk(index, chunk);
-				chunk.dirty().set(false);
 				return chunk; // keep
 			});
 			staleChunks.asMap().replaceAll((index, chunk) -> {
