@@ -2,7 +2,6 @@ package org.cryptomator.cryptofs.fh;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.google.common.base.Preconditions;
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
@@ -14,6 +13,8 @@ import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @OpenFileScoped
 public class ChunkCache {
@@ -26,6 +27,12 @@ public class ChunkCache {
 	private final BufferPool bufferPool;
 	private final Cache<Long, Chunk> staleChunks;
 	private final ConcurrentMap<Long, Chunk> activeChunks;
+
+	/**
+	 * This lock ensures no chunks are passed between stale and active state while flushing,
+	 * as flushing requires iteration over both sets.
+	 */
+	private final ReadWriteLock flushLock = new ReentrantReadWriteLock();
 
 	@Inject
 	public ChunkCache(ChunkLoader chunkLoader, ChunkSaver chunkSaver, CryptoFileSystemStats stats, BufferPool bufferPool) {
@@ -70,23 +77,25 @@ public class ChunkCache {
 	 * @throws IOException If reading or decrypting the chunk failed
 	 */
 	public Chunk getChunk(long chunkIndex) throws IOException {
+		var lock = flushLock.readLock();
+		lock.lock();
 		try {
 			stats.addChunkCacheAccess();
 			return activeChunks.compute(chunkIndex, this::acquireInternal);
 		} catch (UncheckedIOException | AuthenticationFailedException e) {
 			throw new IOException(e);
+		} finally {
+			lock.unlock();
 		}
 	}
 
 	private Chunk acquireInternal(Long index, Chunk activeChunk) throws AuthenticationFailedException, UncheckedIOException {
 		Chunk result = activeChunk;
 		if (result == null) {
-			//check stale and put into active
 			result = staleChunks.getIfPresent(index);
 			staleChunks.invalidate(index);
 		}
 		if (result == null) {
-			//load chunk
 			result = loadChunk(index);
 		}
 
@@ -106,33 +115,43 @@ public class ChunkCache {
 
 	@SuppressWarnings("resource")
 	private void releaseChunk(long chunkIndex) {
-		activeChunks.compute(chunkIndex, (index, chunk) -> {
-			assert chunk != null;
-			if (chunk.currentAccesses().decrementAndGet() == 0) {
-				staleChunks.put(index, chunk);
-				return null; //chunk is stale, remove from active
-			} else {
-				return chunk; //keep active
-			}
-		});
+		var lock = flushLock.readLock();
+		lock.lock();
+		try {
+			activeChunks.compute(chunkIndex, (index, chunk) -> {
+				assert chunk != null;
+				if (chunk.currentAccesses().decrementAndGet() == 0) {
+					staleChunks.put(index, chunk);
+					return null; //chunk is stale, remove from active
+				} else {
+					return chunk; //keep active
+				}
+			});
+		} finally {
+			lock.unlock();
+		}
 	}
 
 	/**
 	 * Flushes cached data (but keeps them cached).
 	 * @see #invalidateAll()
 	 */
-	//TODO: needs to be synchronized with the activeChunk map?
 	public void flush() {
-		activeChunks.replaceAll((index, chunk) -> {
-			saveChunk(index, chunk);
-			chunk.dirty().set(false);
-			return chunk; // keep
-		});
-		// what happens if this thread is currently "here" and other thread just moved one item from stale to active?
-		staleChunks.asMap().replaceAll((index, chunk) -> {
-			saveChunk(index, chunk);
-			return chunk; // keep
-		});
+		var lock = flushLock.writeLock();
+		lock.lock();
+		try {
+			activeChunks.replaceAll((index, chunk) -> {
+				saveChunk(index, chunk);
+				chunk.dirty().set(false);
+				return chunk; // keep
+			});
+			staleChunks.asMap().replaceAll((index, chunk) -> {
+				saveChunk(index, chunk);
+				return chunk; // keep
+			});
+		} finally {
+			lock.unlock();
+		}
 	}
 
 	/**

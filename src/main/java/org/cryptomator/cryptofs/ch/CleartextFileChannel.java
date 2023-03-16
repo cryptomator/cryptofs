@@ -155,7 +155,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 				ByteBuffer cleartextChunkData = bufferPool.getCleartextBuffer();
 				src.copyTo(cleartextChunkData);
 				cleartextChunkData.flip();
-				chunkCache.putChunk(chunkIndex, cleartextChunkData).close();
+				chunkCache.putChunk(chunkIndex, cleartextChunkData).close(); // TODO can we recycle cleartextChunkData (note: depends on branch in putChunk)?
 			} else {
 				/*
 				 * TODO performance:

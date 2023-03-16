@@ -77,6 +77,7 @@ public class CleartextFileChannelTest {
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
 		when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
 		when(chunkCache.getChunk(Mockito.anyLong())).then(invocation -> new Chunk(ByteBuffer.allocate(100), false, () -> {}));
+		when(chunkCache.putChunk(Mockito.anyLong(), Mockito.any())).thenAnswer(invocation -> new Chunk(invocation.getArgument(1), true, () -> {}));
 		when(bufferPool.getCleartextBuffer()).thenAnswer(invocation -> ByteBuffer.allocate(100));
 		when(fileHeaderCryptor.headerSize()).thenReturn(50);
 		when(fileContentCryptor.cleartextChunkSize()).thenReturn(100);
