@@ -121,11 +121,14 @@ public class ChunkCache {
 		try {
 			activeChunks.compute(chunkIndex, (index, chunk) -> {
 				assert chunk != null;
-				if (chunk.currentAccesses().decrementAndGet() == 0) {
+				var accessCnt = chunk.currentAccesses().decrementAndGet();
+				if (accessCnt == 0) {
 					staleChunks.put(index, chunk);
 					return null; //chunk is stale, remove from active
-				} else {
+				} else if(accessCnt > 0) {
 					return chunk; //keep active
+				} else {
+					throw new IllegalStateException("Chunk access count is below 0");
 				}
 			});
 		} finally {
@@ -158,7 +161,13 @@ public class ChunkCache {
 	 * Removes not currently used chunks from cache.
 	 */
 	public void invalidateAll() {
-		staleChunks.invalidateAll();
+		var lock = flushLock.writeLock();
+		lock.lock();
+		try {
+			staleChunks.invalidateAll();
+		} finally {
+			lock.unlock();
+		}
 	}
 
 	private void evictStaleChunk(Long index, Chunk chunk, RemovalCause removalCause) {

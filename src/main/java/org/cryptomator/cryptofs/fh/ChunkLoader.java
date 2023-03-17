@@ -30,7 +30,9 @@ class ChunkLoader {
 		stats.addChunkCacheMiss();
 		int chunkSize = cryptor.fileContentCryptor().ciphertextChunkSize();
 		long ciphertextPos = chunkIndex * chunkSize + cryptor.fileHeaderCryptor().headerSize();
-		ByteBuffer ciphertextBuf = ByteBuffer.allocate(cryptor.fileContentCryptor().ciphertextChunkSize()); // bufferPool.getCiphertextBuffer();
+		//ByteBuffer ciphertextBuf = ByteBuffer.allocate(cryptor.fileContentCryptor().ciphertextChunkSize());
+		ByteBuffer ciphertextBuf = bufferPool.getCiphertextBuffer();
+		//ByteBuffer cleartextBuf = ByteBuffer.allocate(cryptor.fileContentCryptor().cleartextChunkSize());
 		ByteBuffer cleartextBuf = bufferPool.getCleartextBuffer();
 		try {
 			int read = ciphertext.read(ciphertextBuf, ciphertextPos);
