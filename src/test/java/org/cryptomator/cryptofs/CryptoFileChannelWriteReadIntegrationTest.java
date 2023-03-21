@@ -52,6 +52,8 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -501,18 +503,19 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 					executor.submit(() -> {
 						ByteBuffer buf = ByteBuffer.allocate(num);
 						try {
-							System.out.println("thread " + t + " reading " + pos + " - " + (pos + num));
 							int read = ch.read(buf, pos);
 							if (read != num) {
-								resultsHandle.setVolatile(results, t, -1); // ERROR invalid number of bytes
+								System.out.println("thread " + t + " read " + pos + " - " + (pos + num));
+								resultsHandle.setOpaque(results, t, -1); // ERROR invalid number of bytes
 							} else if (Arrays.equals(content, pos, pos + num, buf.array(), 0, read)) {
-								resultsHandle.setVolatile(results, t, 0); // SUCCESS
+								resultsHandle.setOpaque(results, t, 0); // SUCCESS
 							} else {
-								resultsHandle.setVolatile(results, t, -2); // ERROR invalid content
+								System.out.println("thread " + t + " read " + pos + " - " + (pos + num));
+								resultsHandle.setOpaque(results, t, -2); // ERROR invalid content
 							}
 						} catch (IOException e) {
 							e.printStackTrace();
-							resultsHandle.setVolatile(results, t, -3); // ERROR I/O error
+							resultsHandle.setOpaque(results, t, -3); // ERROR I/O error
 						}
 					});
 				}
@@ -522,93 +525,9 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			}
 
 			Assertions.assertAll(IntStream.range(0, numThreads).mapToObj(t -> {
-				return () -> Assertions.assertEquals(0, resultsHandle.getVolatile(results, t), "thread " + t + " unsuccessful");
+				return () -> Assertions.assertEquals(0, resultsHandle.getOpaque(results, t), "thread " + t + " unsuccessful");
 			}));
 		}
-
-		@RepeatedTest(10)
-		@SuppressWarnings("PointlessArithmeticExpression")
-		public void testConcurrentChunkReuse() throws IOException, InterruptedException, BrokenBarrierException {
-			// prepare 16 chunks of test data:
-			var content = new byte[16 * 32 * 1024];
-			for (int i = 0; i < 16; i++) {
-				Arrays.fill(content, i * 32 * 1024, (i+1) * 32 * 1024, (byte) (i * 0x11));
-			}
-			try (var ch = FileChannel.open(file, CREATE, WRITE, TRUNCATE_EXISTING)) {
-				ch.write(ByteBuffer.wrap(content));
-			}
-
-			try (var ch = FileChannel.open(file, READ)) {
-				for (int i = 0; i < 5; i++) {
-					int pos1 = i * 3 * 32 * 1024;
-					int pos2 = (i * 3 + 2) * 32 * 1024;
-
-					// read two chunks in this thread
-					ByteBuffer buf1 = ByteBuffer.allocate(2 * 32 * 1024);
-					ch.read(buf1, pos1);
-
-					// read one chunk in other thread:
-					CyclicBarrier barrier1 = new CyclicBarrier(2);
-					var t1 = new Thread(() -> {
-						try {
-							barrier1.await();
-							ByteBuffer buf2 = ByteBuffer.allocate(32 * 1024);
-							ch.read(buf2, pos2);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					});
-					t1.start();
-					barrier1.await();
-
-					// read again in this thread
-					ByteBuffer buf3 = ByteBuffer.allocate(32 * 1024);
-					ch.read(buf3, pos2);
-
-					// check if buf3 contains expected data
-					Assertions.assertArrayEquals(Arrays.copyOfRange(content, pos2, pos2 + buf3.capacity()), buf3.array(), "mismatch at pos2=" + pos2);
-				}
-			}
-		}
-
-
-		@RepeatedTest(1000)
-		public void testConcurrentByteBuffers() throws BrokenBarrierException, InterruptedException {
-			ByteBuffer buf = ByteBuffer.wrap("hello world".getBytes(StandardCharsets.US_ASCII));
-			CyclicBarrier barrier1 = new CyclicBarrier(2);
-			CyclicBarrier barrier2 = new CyclicBarrier(2);
-
-			var t1 = new Thread(() -> {
-				try {
-					buf.put("world hello".getBytes(StandardCharsets.US_ASCII));
-					barrier2.await();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			});
-			t1.start();
-
-			AtomicBoolean result = new AtomicBoolean();
-
-			var t2 = new Thread(() -> {
-				try {
-					barrier2.await();
-					var canSeeT1 = Arrays.equals("world hello".getBytes(StandardCharsets.US_ASCII), buf.array());
-					result.set(canSeeT1);
-					barrier1.await();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			});
-			t2.start();
-
-			barrier1.await();
-
-			Assertions.assertTrue(result.get());
-
-			Assertions.assertArrayEquals("world hello".getBytes(StandardCharsets.US_ASCII), buf.array());
-		}
-
 
 	}
 

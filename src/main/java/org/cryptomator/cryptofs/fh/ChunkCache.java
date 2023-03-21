@@ -1,8 +1,9 @@
 package org.cryptomator.cryptofs.fh;
 
-import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.CaffeineSpec;
 import com.github.benmanes.caffeine.cache.RemovalCause;
+import com.github.benmanes.caffeine.cache.Scheduler;
 import com.google.common.base.Preconditions;
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
@@ -11,10 +12,15 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.BiFunction;
 
 @OpenFileScoped
 public class ChunkCache {
@@ -25,7 +31,8 @@ public class ChunkCache {
 	private final ChunkSaver chunkSaver;
 	private final CryptoFileSystemStats stats;
 	private final BufferPool bufferPool;
-	private final Cache<Long, Chunk> staleChunks;
+	private final ExceptionsDuringWrite exceptionsDuringWrite;
+	private final ConcurrentMap<Long, Chunk> staleChunks;
 	private final ConcurrentMap<Long, Chunk> activeChunks;
 
 	/**
@@ -35,15 +42,17 @@ public class ChunkCache {
 	private final ReadWriteLock flushLock = new ReentrantReadWriteLock();
 
 	@Inject
-	public ChunkCache(ChunkLoader chunkLoader, ChunkSaver chunkSaver, CryptoFileSystemStats stats, BufferPool bufferPool) {
+	public ChunkCache(ChunkLoader chunkLoader, ChunkSaver chunkSaver, CryptoFileSystemStats stats, BufferPool bufferPool, ExceptionsDuringWrite exceptionsDuringWrite) {
 		this.chunkLoader = chunkLoader;
 		this.chunkSaver = chunkSaver;
 		this.stats = stats;
 		this.bufferPool = bufferPool;
+		this.exceptionsDuringWrite = exceptionsDuringWrite;
 		this.staleChunks = Caffeine.newBuilder() //
 				.maximumSize(MAX_CACHED_CLEARTEXT_CHUNKS) //
 				.evictionListener(this::evictStaleChunk) //
-				.build();
+				.build() //
+				.asMap();
 		this.activeChunks = new ConcurrentHashMap<>();
 	}
 
@@ -93,8 +102,8 @@ public class ChunkCache {
 	private Chunk acquireInternal(Long index, Chunk activeChunk) throws AuthenticationFailedException, UncheckedIOException {
 		Chunk result = activeChunk;
 		if (result == null) {
-			result = staleChunks.getIfPresent(index);
-			staleChunks.invalidate(index);
+			result = staleChunks.remove(index);
+			assert result == null || result.currentAccesses().get() == 0;
 		}
 		if (result == null) {
 			result = loadChunk(index);
@@ -125,10 +134,9 @@ public class ChunkCache {
 				if (accessCnt == 0) {
 					staleChunks.put(index, chunk);
 					return null; //chunk is stale, remove from active
-				} else if(accessCnt > 0) {
-					return chunk; //keep active
 				} else {
-					throw new IllegalStateException("Chunk access count is below 0");
+					assert accessCnt > 0;
+					return chunk; //keep active
 				}
 			});
 		} finally {
@@ -140,47 +148,49 @@ public class ChunkCache {
 	 * Flushes cached data (but keeps them cached).
 	 * @see #invalidateAll()
 	 */
-	public void flush() {
+	public void flush() throws IOException {
 		var lock = flushLock.writeLock();
 		lock.lock();
+		BiFunction<Long, Chunk, Chunk> saveUnchecked = (index, chunk) -> {
+			try {
+				chunkSaver.save(index, chunk);
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
+			}
+			return chunk;
+		};
 		try {
-			activeChunks.replaceAll((index, chunk) -> {
-				saveChunk(index, chunk);
-				return chunk; // keep
-			});
-			staleChunks.asMap().replaceAll((index, chunk) -> {
-				saveChunk(index, chunk);
-				return chunk; // keep
-			});
+			activeChunks.replaceAll(saveUnchecked);
+			staleChunks.replaceAll(saveUnchecked);
+		} catch (UncheckedIOException e) {
+			throw new IOException(e);
 		} finally {
 			lock.unlock();
 		}
 	}
 
 	/**
-	 * Removes not currently used chunks from cache.
+	 * Removes stale chunks from cache.
 	 */
 	public void invalidateAll() {
 		var lock = flushLock.writeLock();
 		lock.lock();
 		try {
-			staleChunks.invalidateAll();
+			staleChunks.clear();
 		} finally {
 			lock.unlock();
 		}
 	}
 
-	private void evictStaleChunk(Long index, Chunk chunk, RemovalCause removalCause) {
+	// visible for testing
+	void evictStaleChunk(Long index, Chunk chunk, RemovalCause removalCause) {
 		assert removalCause != RemovalCause.EXPLICIT; // as per spec of Caffeine#evictionListener(RemovalListener)
-		saveChunk(index, chunk);
-		bufferPool.recycle(chunk.data());
-	}
-
-	private void saveChunk(long index, Chunk chunk) throws UncheckedIOException {
+		assert chunk.currentAccesses().get() == 0;
 		try {
 			chunkSaver.save(index, chunk);
 		} catch (IOException e) {
-			throw new UncheckedIOException(e);
+			exceptionsDuringWrite.add(e);
 		}
+		bufferPool.recycle(chunk.data());
 	}
 }

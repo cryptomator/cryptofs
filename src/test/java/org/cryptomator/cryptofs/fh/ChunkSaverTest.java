@@ -39,9 +39,8 @@ public class ChunkSaverTest {
 	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
 	private final FileHeader header = mock(FileHeader.class);
 	private final FileHeaderHolder headerHolder = mock(FileHeaderHolder.class);
-	private final ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
 	private final BufferPool bufferPool = mock(BufferPool.class);
-	private final ChunkSaver inTest = new ChunkSaver(cryptor, chunkIO, headerHolder, exceptionsDuringWrite, stats, bufferPool);
+	private final ChunkSaver inTest = new ChunkSaver(cryptor, chunkIO, headerHolder, stats, bufferPool);
 
 	@BeforeEach
 	public void setup() throws IOException {
@@ -117,27 +116,6 @@ public class ChunkSaverTest {
 		verifyNoInteractions(chunkIO);
 		verifyNoInteractions(stats);
 		verifyNoInteractions(bufferPool);
-	}
-
-	@Test
-	public void testIOExceptionsDuringWriteAreAddedToExceptionsDuringWrite() throws IOException {
-		IOException ioException = new IOException();
-		long chunkIndex = 43L;
-		long expectedPosition = HEADER_SIZE + chunkIndex * CIPHERTEXT_CHUNK_SIZE;
-		Supplier<ByteBuffer> cleartext = () -> repeat(42).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer();
-		Supplier<ByteBuffer> ciphertext = () -> repeat(50).times(CIPHERTEXT_CHUNK_SIZE).asByteBuffer();
-		Chunk chunk = new Chunk(cleartext.get(), true, () -> {});
-		doAnswer(invocation -> {
-			ByteBuffer ciphertextBuf = invocation.getArgument(1);
-			ciphertextBuf.put(ciphertext.get());
-			return null;
-		}).when(fileContentCryptor).encryptChunk(argThat(contains(cleartext.get())), Mockito.any(), eq(chunkIndex), eq(header));
-		when(chunkIO.write(argThat(contains(ciphertext.get())), eq(expectedPosition))).thenThrow(ioException);
-
-		inTest.save(chunkIndex, chunk);
-
-		verify(exceptionsDuringWrite).add(ioException);
-		verify(bufferPool).recycle(argThat(ByteBufferMatcher.hasCapacity(CIPHERTEXT_CHUNK_SIZE)));
 	}
 
 }

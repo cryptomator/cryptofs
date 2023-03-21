@@ -1,20 +1,29 @@
 package org.cryptomator.cryptofs.fh;
 
+import com.github.benmanes.caffeine.cache.RemovalCause;
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
+import org.cryptomator.cryptofs.matchers.ByteBufferMatcher;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
+import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
+import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.hamcrest.MockitoHamcrest.argThat;
 
 public class ChunkCacheTest {
 
@@ -22,7 +31,8 @@ public class ChunkCacheTest {
 	private final ChunkSaver chunkSaver = mock(ChunkSaver.class);
 	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
 	private final BufferPool bufferPool = mock(BufferPool.class);
-	private final ChunkCache inTest = new ChunkCache(chunkLoader, chunkSaver, stats, bufferPool);
+	private final ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
+	private final ChunkCache inTest = new ChunkCache(chunkLoader, chunkSaver, stats, bufferPool, exceptionsDuringWrite);
 
 	@Test
 	@DisplayName("getChunk returns chunk with access count == 1")
@@ -78,7 +88,7 @@ public class ChunkCacheTest {
 
 	@Test
 	@DisplayName("putChunk returns a dirty chunk")
-	public void testPutChunkReturnsDirtyChunk() throws IOException {
+	public void testPutChunkReturnsDirtyChunk() {
 		long index = 42L;
 		var data = ByteBuffer.allocate(0);
 		var chunk = inTest.putChunk(index, data);
@@ -166,6 +176,18 @@ public class ChunkCacheTest {
 
 		verify(chunkSaver).save(Mockito.eq(index), Mockito.any());
 		verify(chunkSaver).save(Mockito.eq(index2), Mockito.any());
+	}
+
+
+	@Test
+	public void testIOExceptionsDuringWriteAreAddedToExceptionsDuringWrite() throws IOException {
+		IOException ioException = new IOException();
+		Chunk chunk = new Chunk(ByteBuffer.allocate(0), true, () -> {});
+		Mockito.doThrow(ioException).when(chunkSaver).save(42L, chunk);
+
+		inTest.evictStaleChunk(42L, chunk, RemovalCause.EXPIRED);
+
+		verify(exceptionsDuringWrite).add(ioException);
 	}
 
 }
