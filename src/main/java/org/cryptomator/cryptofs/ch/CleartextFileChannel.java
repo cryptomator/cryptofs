@@ -50,7 +50,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
 	private final ChannelCloseListener closeListener;
 	private final CryptoFileSystemStats stats;
-	private boolean mustWriteHeader;
+	public boolean mustWriteHeader;
 
 	@Inject
 	public CleartextFileChannel(FileChannel ciphertextFileChannel, FileHeader fileHeader, @MustWriteHeader boolean mustWriteHeader, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, BufferPool bufferPool, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, Supplier<BasicFileAttributeView> attrViewProvider, ExceptionsDuringWrite exceptionsDuringWrite, ChannelCloseListener closeListener, CryptoFileSystemStats stats) {

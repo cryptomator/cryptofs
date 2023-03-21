@@ -9,6 +9,7 @@
 package org.cryptomator.cryptofs;
 
 import com.google.common.jimfs.Jimfs;
+import org.cryptomator.cryptofs.ch.CleartextFileChannel;
 import org.cryptomator.cryptofs.util.ByteBuffers;
 import org.cryptomator.cryptolib.api.Masterkey;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
@@ -241,7 +242,12 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			try (FileChannel ch1 = FileChannel.open(file, CREATE_NEW, WRITE)) {
 				ch1.write(StandardCharsets.UTF_8.encode("goodbye world"), 0);
 				ch1.force(true); // will generate a file header
+				System.out.println("opening second channel NOW...");
 				try (FileChannel ch2 = FileChannel.open(file, CREATE, WRITE, TRUNCATE_EXISTING)) { // reuse existing file header, but will not re-write it
+					if (ch2 instanceof CleartextFileChannel cfc) {
+						System.out.println("second channel opened: " + cfc.mustWriteHeader);
+					}
+
 					ch2.write(StandardCharsets.UTF_8.encode("hello world"), 0);
 				}
 			}
