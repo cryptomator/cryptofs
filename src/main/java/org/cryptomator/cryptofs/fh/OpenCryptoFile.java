@@ -79,7 +79,6 @@ public class OpenCryptoFile implements Closeable {
 			final FileHeader header;
 			final boolean isNewHeader;
 			if (ciphertextFileChannel.size() == 0l) {
-				System.out.println("ciphertext file channel size is ZERO");
 				header = headerHolder.createNew();
 				isNewHeader = true;
 			} else {

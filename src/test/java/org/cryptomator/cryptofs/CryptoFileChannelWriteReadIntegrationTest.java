@@ -8,8 +8,8 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
-import org.cryptomator.cryptofs.ch.CleartextFileChannel;
 import org.cryptomator.cryptofs.util.ByteBuffers;
 import org.cryptomator.cryptolib.api.Masterkey;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
@@ -48,13 +48,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -242,12 +237,7 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			try (FileChannel ch1 = FileChannel.open(file, CREATE_NEW, WRITE)) {
 				ch1.write(StandardCharsets.UTF_8.encode("goodbye world"), 0);
 				ch1.force(true); // will generate a file header
-				System.out.println("opening second channel NOW...");
 				try (FileChannel ch2 = FileChannel.open(file, CREATE, WRITE, TRUNCATE_EXISTING)) { // reuse existing file header, but will not re-write it
-					if (ch2 instanceof CleartextFileChannel cfc) {
-						System.out.println("second channel opened: " + cfc.mustWriteHeader);
-					}
-
 					ch2.write(StandardCharsets.UTF_8.encode("hello world"), 0);
 				}
 			}
