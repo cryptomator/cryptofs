@@ -2,7 +2,6 @@ package org.cryptomator.cryptofs.fh;
 
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
-import org.cryptomator.cryptofs.matchers.ByteBufferMatcher;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
@@ -12,18 +11,13 @@ import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
+import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
 
-import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
-import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static org.mockito.hamcrest.MockitoHamcrest.argThat;
 
 public class ChunkCacheTest {
 
@@ -96,19 +90,26 @@ public class ChunkCacheTest {
 		Assertions.assertTrue(chunk.isDirty());
 	}
 
-	@Test
+	@RepeatedTest(100)
 	@DisplayName("getChunk() triggers cache eviction if stale cache contains MAX_CACHED_CLEARTEXT_CHUNKS entries")
 	public void testGetInvokesSaverIfMaxEntriesInCacheAreReachedAndAnEntryNotInCacheIsRequested() throws IOException, AuthenticationFailedException {
 		long firstIndex = 42L;
 		long indexNotInCache = 40L;
-		inTest.putChunk(firstIndex, ByteBuffer.allocate(0)).close();
-		for (int i = 1; i < ChunkCache.MAX_CACHED_CLEARTEXT_CHUNKS; i++) {
-			inTest.putChunk(firstIndex + i, ByteBuffer.allocate(0)).close();
+		for (long i = firstIndex; i < firstIndex + ChunkCache.MAX_CACHED_CLEARTEXT_CHUNKS; i++) {
+			inTest.putChunk(i, ByteBuffer.allocate(0)).close();
 		}
-		when(chunkLoader.load(indexNotInCache)).thenReturn(ByteBuffer.allocate(0));
+		var cdl = new CountDownLatch(1);
+		Mockito.doReturn(ByteBuffer.allocate(0)).when(chunkLoader).load(indexNotInCache);
+		Mockito.doAnswer(invocation -> {
+			cdl.countDown();
+			return null;
+		}).when(chunkSaver).save(Mockito.anyLong(), Mockito.any());
 
 		inTest.getChunk(indexNotInCache).close();
 
+		Assertions.assertTimeoutPreemptively(Duration.ofMillis(100), () -> {
+			cdl.await();
+		});
 		verify(stats).addChunkCacheAccess();
 		verify(chunkSaver).save(Mockito.eq(firstIndex), Mockito.any());
 		verify(bufferPool).recycle(Mockito.any());
