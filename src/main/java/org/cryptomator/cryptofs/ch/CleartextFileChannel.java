@@ -25,6 +25,7 @@ import java.nio.channels.NonWritableChannelException;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -50,7 +51,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
 	private final ChannelCloseListener closeListener;
 	private final CryptoFileSystemStats stats;
-	public boolean mustWriteHeader;
+	private final AtomicBoolean mustWriteHeader;
 
 	@Inject
 	public CleartextFileChannel(FileChannel ciphertextFileChannel, FileHeader fileHeader, @MustWriteHeader boolean mustWriteHeader, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, BufferPool bufferPool, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, Supplier<BasicFileAttributeView> attrViewProvider, ExceptionsDuringWrite exceptionsDuringWrite, ChannelCloseListener closeListener, CryptoFileSystemStats stats) {
@@ -70,7 +71,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		if (options.append()) {
 			position = fileSize.get();
 		}
-		this.mustWriteHeader = mustWriteHeader;
+		this.mustWriteHeader = new AtomicBoolean(mustWriteHeader);
 		if (options.createNew() || options.create()) {
 			lastModified.compareAndSet(Instant.EPOCH, Instant.now());
 		}
@@ -182,11 +183,10 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	}
 
 	private void writeHeaderIfNeeded() throws IOException {
-		if (mustWriteHeader) {
+		if (mustWriteHeader.getAndSet(false)) {
 			LOG.trace("{} - Writing file header.", this);
 			ByteBuffer encryptedHeader = cryptor.fileHeaderCryptor().encryptHeader(fileHeader);
 			ciphertextFileChannel.write(encryptedHeader, 0);
-			mustWriteHeader = false; // write the header only once!
 		}
 	}
 
