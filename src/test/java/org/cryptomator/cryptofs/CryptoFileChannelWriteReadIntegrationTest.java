@@ -18,6 +18,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
@@ -233,18 +234,39 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 
 		// tests https://github.com/cryptomator/cryptofs/issues/48
 		@Test
-		public void testTruncateExistingWhileStillOpen() throws IOException {
-			try (FileChannel ch1 = FileChannel.open(file, CREATE_NEW, WRITE)) {
-				ch1.write(StandardCharsets.UTF_8.encode("goodbye world"), 0);
-				ch1.force(true); // will generate a file header
-				try (FileChannel ch2 = FileChannel.open(file, CREATE, WRITE, TRUNCATE_EXISTING)) { // reuse existing file header, but will not re-write it
-					ch2.write(StandardCharsets.UTF_8.encode("hello world"), 0);
+		@DisplayName("writing from second channel while first is still open")
+		public void testWriteFromSecondChannelWhileStillOpen() throws IOException {
+			try (var ch1 = FileChannel.open(file, CREATE_NEW, WRITE)) {
+				ch1.write(StandardCharsets.UTF_8.encode("howdy world"), 0);
+				ch1.force(true);
+				try (var ch2 = FileChannel.open(file, CREATE, WRITE)) { // reuse existing file header, but will not re-write it
+					ch2.write(StandardCharsets.UTF_8.encode("hello"), 0);
 				}
 			}
 
-			try (FileChannel ch1 = FileChannel.open(file, READ)) {
-				ByteBuffer buf = ByteBuffer.allocate((int) ch1.size());
-				ch1.read(buf);
+			try (var ch3 = FileChannel.open(file, READ)) {
+				ByteBuffer buf = ByteBuffer.allocate((int) ch3.size());
+				ch3.read(buf);
+				Assertions.assertArrayEquals("hello world".getBytes(), buf.array());
+			}
+		}
+
+		// tests https://github.com/cryptomator/cryptofs/issues/160
+		@Test
+		@DisplayName("TRUNCATE_EXISTING leads to new file header")
+		public void testNewFileHeaderWhenTruncateExisting() throws IOException {
+			try (var ch1 = FileChannel.open(file, CREATE_NEW, WRITE)) {
+				ch1.write(StandardCharsets.UTF_8.encode("this content will be truncated soon"), 0);
+				ch1.force(true);
+				try (var ch2 = FileChannel.open(file, CREATE, WRITE, TRUNCATE_EXISTING)) { // re-roll file header
+					ch2.write(StandardCharsets.UTF_8.encode("hello"), 0);
+				}
+				ch1.write(StandardCharsets.UTF_8.encode(" world"), 5); // should use new file key
+			}
+
+			try (var ch3 = FileChannel.open(file, READ)) {
+				ByteBuffer buf = ByteBuffer.allocate((int) ch3.size());
+				ch3.read(buf);
 				Assertions.assertArrayEquals("hello world".getBytes(), buf.array());
 			}
 		}
