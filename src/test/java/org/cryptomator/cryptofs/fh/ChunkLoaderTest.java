@@ -67,7 +67,6 @@ public class ChunkLoaderTest {
 
 		var data = inTest.load(chunkIndex);
 
-		verify(stats).addChunkCacheMiss();
 		verify(bufferPool).recycle(argThat(ByteBufferMatcher.hasCapacity(CIPHERTEXT_CHUNK_SIZE)));
 		Assertions.assertEquals(0, data.remaining());
 		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE, data.capacity());
@@ -91,7 +90,6 @@ public class ChunkLoaderTest {
 
 		var data = inTest.load(chunkIndex);
 
-		verify(stats).addChunkCacheMiss();
 		verify(stats).addBytesDecrypted(data.remaining());
 		verify(bufferPool).recycle(argThat(ByteBufferMatcher.hasCapacity(CIPHERTEXT_CHUNK_SIZE)));
 		assertThat(data, contains(decryptedData.get()));
@@ -117,7 +115,6 @@ public class ChunkLoaderTest {
 
 		var data = inTest.load(chunkIndex);
 
-		verify(stats).addChunkCacheMiss();
 		verify(stats).addBytesDecrypted(data.remaining());
 		verify(bufferPool).recycle(argThat(ByteBufferMatcher.hasCapacity(CIPHERTEXT_CHUNK_SIZE)));
 		assertThat(data, contains(decryptedData.get()));
