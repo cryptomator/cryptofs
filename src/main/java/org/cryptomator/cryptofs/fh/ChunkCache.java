@@ -60,6 +60,12 @@ public class ChunkCache {
 	 */
 	public Chunk putChunk(long chunkIndex, ByteBuffer chunkData) throws IllegalArgumentException {
 		return activeChunks.compute(chunkIndex, (index, chunk) -> {
+			// stale chunk for this index is obsolete:
+			var staleChunk = staleChunks.remove(index);
+			if (staleChunk != null) {
+				bufferPool.recycle(staleChunk.data());
+			}
+			// either create completely new chunk or replace all data of existing active chunk:
 			if (chunk == null) {
 				chunk = new Chunk(chunkData, true, () -> releaseChunk(chunkIndex));
 			} else {

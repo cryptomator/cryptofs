@@ -254,6 +254,17 @@ public class ChunkCacheTest {
 		}
 
 		@Test
+		@DisplayName("putChunk() recycles stale chunk if present")
+		public void testPutChunkRecyclesStaleChunk() {
+			var chunk = inTest.putChunk(42L, ByteBuffer.allocate(0));
+
+			Assertions.assertNotSame(staleChunk42, chunk);
+			Assertions.assertEquals(1, chunk.currentAccesses().get());
+			Assertions.assertTrue(chunk.isDirty());
+			verify(bufferPool).recycle(staleChunk42.data());
+		}
+
+		@Test
 		@DisplayName("putChunk() returns new chunk if neither stale nor active")
 		public void testPutChunkReturnsNewChunk() {
 			var chunk = inTest.putChunk(100L, ByteBuffer.allocate(0));
