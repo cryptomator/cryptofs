@@ -156,20 +156,12 @@ public class ChunkCacheTest {
 			verifyNoMoreInteractions(bufferPool);
 		}
 
-		@RepeatedTest(30)
-		@DisplayName("chunk.close() triggers eviction of LRU stale chunk")
+		@Test
+		@DisplayName("chunk.close() triggers eviction of some stale chunk")
 		public void testClosingActiveChunkTriggersEvictionOfStaleChunk() throws IOException, AuthenticationFailedException {
-			var cdl = new CountDownLatch(1);
-			Mockito.doAnswer(invocation -> {
-				cdl.countDown();
-				return null;
-			}).when(chunkSaver).save(Mockito.anyLong(), Mockito.any());
-
 			activeChunk1.close();
 
-			Assertions.assertTimeoutPreemptively(Duration.ofMillis(100), () -> {
-				cdl.await();
-			});
+			inTest.cleanup(); // evict now, don't wait for async task
 			// we can't know _which_ stale chunk gets evicted. see https://github.com/ben-manes/caffeine/issues/583
 			verify(chunkSaver).save(Mockito.anyLong(), Mockito.any());
 			verify(bufferPool).recycle(Mockito.any());

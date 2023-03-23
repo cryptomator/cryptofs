@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.fh;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.google.common.base.Preconditions;
@@ -23,6 +24,7 @@ public class ChunkCache {
 	private final CryptoFileSystemStats stats;
 	private final BufferPool bufferPool;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
+	private final Cache<Long, Chunk> chunkCache;
 	private final ConcurrentMap<Long, Chunk> cachedChunks;
 
 	@Inject
@@ -32,12 +34,12 @@ public class ChunkCache {
 		this.stats = stats;
 		this.bufferPool = bufferPool;
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
-		this.cachedChunks = Caffeine.newBuilder() //
+		this.chunkCache = Caffeine.newBuilder() //
 				.maximumWeight(MAX_CACHED_CLEARTEXT_CHUNKS) //
 				.weigher(this::weigh) //
 				.evictionListener(this::evictStaleChunk) //
-				.build() //
-				.asMap();
+				.build();
+		this.cachedChunks = chunkCache.asMap();
 	}
 
 	private int weigh(Long index, Chunk chunk) {
@@ -135,6 +137,11 @@ public class ChunkCache {
 		// This may not be atomic, however this method is only called during truncation.
 		// If chunks are added (and become stale) concurrently, behavior is undefined anyway
 		cachedChunks.entrySet().removeIf(entry -> entry.getValue().currentAccesses().get() == 0);
+	}
+
+	// visible for testing
+	void cleanup() {
+		chunkCache.cleanUp();
 	}
 
 	// visible for testing
