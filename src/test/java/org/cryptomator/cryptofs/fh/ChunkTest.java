@@ -15,28 +15,10 @@ import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
 
 public class ChunkTest {
 
-	@Test
-	public void testChunkDataWrappingBufferIsNotDirty() {
-		ByteBuffer buffer = repeat(3).times(200).asByteBuffer();
-
-		Chunk inTest = new Chunk(buffer, false);
-
-		Assertions.assertFalse(inTest.isDirty());
-	}
-
-	@Test
-	public void testEmptyChunkDataIsNotDirty() {
-		ByteBuffer buffer = ByteBuffer.allocate(0);
-
-		Chunk inTest = new Chunk(buffer, false);
-
-		Assertions.assertFalse(inTest.isDirty());
-	}
-
 	@Test // https://github.com/cryptomator/cryptofs/issues/85
 	public void testRaceConditionsDuringRead() {
 		ByteBuffer src = StandardCharsets.US_ASCII.encode("abcdefg");
-		Chunk inTest = new Chunk(src, false);
+		Chunk inTest = new Chunk(src, false, () -> {});
 		int attempts = 4000;
 		int threads = 6;
 

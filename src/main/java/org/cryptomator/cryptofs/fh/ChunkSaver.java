@@ -13,16 +13,14 @@ class ChunkSaver {
 	private final Cryptor cryptor;
 	private final ChunkIO ciphertext;
 	private final FileHeaderHolder headerHolder;
-	private final ExceptionsDuringWrite exceptionsDuringWrite;
 	private final CryptoFileSystemStats stats;
 	private final BufferPool bufferPool;
 
 	@Inject
-	public ChunkSaver(Cryptor cryptor, ChunkIO ciphertext, FileHeaderHolder headerHolder, ExceptionsDuringWrite exceptionsDuringWrite, CryptoFileSystemStats stats, BufferPool bufferPool) {
+	public ChunkSaver(Cryptor cryptor, ChunkIO ciphertext, FileHeaderHolder headerHolder, CryptoFileSystemStats stats, BufferPool bufferPool) {
 		this.cryptor = cryptor;
 		this.ciphertext = ciphertext;
 		this.headerHolder = headerHolder;
-		this.exceptionsDuringWrite = exceptionsDuringWrite;
 		this.stats = stats;
 		this.bufferPool = bufferPool;
 	}
@@ -30,18 +28,17 @@ class ChunkSaver {
 	public void save(long chunkIndex, Chunk chunkData) throws IOException {
 		if (chunkData.isDirty()) {
 			long ciphertextPos = chunkIndex * cryptor.fileContentCryptor().ciphertextChunkSize() + cryptor.fileHeaderCryptor().headerSize();
-			ByteBuffer cleartextBuf = chunkData.data().duplicate();
+			ByteBuffer cleartextBuf = chunkData.data().asReadOnlyBuffer();
 			stats.addBytesEncrypted(cleartextBuf.remaining());
 			ByteBuffer ciphertextBuf = bufferPool.getCiphertextBuffer();
 			try {
 				cryptor.fileContentCryptor().encryptChunk(cleartextBuf, ciphertextBuf, chunkIndex, headerHolder.get());
 				ciphertextBuf.flip();
 				ciphertext.write(ciphertextBuf, ciphertextPos);
-			} catch (IOException e) {
-				exceptionsDuringWrite.add(e);
+				chunkData.dirty().set(false);
 			} finally {
 				bufferPool.recycle(ciphertextBuf);
-			} // unchecked exceptions will be propagated to the thread causing removal
+			}
 		}
 	}
 

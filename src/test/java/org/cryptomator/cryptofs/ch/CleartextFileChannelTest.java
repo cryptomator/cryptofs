@@ -76,7 +76,8 @@ public class CleartextFileChannelTest {
 	public void setUp() throws IOException {
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
 		when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
-		when(chunkCache.get(Mockito.anyLong())).then(invocation -> new Chunk(ByteBuffer.allocate(100), false));
+		when(chunkCache.getChunk(Mockito.anyLong())).then(invocation -> new Chunk(ByteBuffer.allocate(100), false, () -> {}));
+		when(chunkCache.putChunk(Mockito.anyLong(), Mockito.any())).thenAnswer(invocation -> new Chunk(invocation.getArgument(1), true, () -> {}));
 		when(bufferPool.getCleartextBuffer()).thenAnswer(invocation -> ByteBuffer.allocate(100));
 		when(fileHeaderCryptor.headerSize()).thenReturn(50);
 		when(fileContentCryptor.cleartextChunkSize()).thenReturn(100);
@@ -176,7 +177,7 @@ public class CleartextFileChannelTest {
 
 			inTest.force(false);
 
-			verify(chunkCache).invalidateAll();
+			verify(chunkCache).flush();
 		}
 
 		@Test
@@ -189,7 +190,7 @@ public class CleartextFileChannelTest {
 			});
 			Assertions.assertEquals("exception during write", e.getMessage());
 
-			verify(chunkCache).invalidateAll();
+			verify(chunkCache).flush();
 		}
 
 		@Test
@@ -354,10 +355,10 @@ public class CleartextFileChannelTest {
 			inTest.read(buf, 5_000_000_000l);
 
 			InOrder inOrder = Mockito.inOrder(chunkCache, chunkCache, chunkCache, chunkCache);
-			inOrder.verify(chunkCache).get(0l); // A
-			inOrder.verify(chunkCache).get(1l); // B
-			inOrder.verify(chunkCache).get(2l); // B
-			inOrder.verify(chunkCache).get(50_000_000l); // C
+			inOrder.verify(chunkCache).getChunk(0l); // A
+			inOrder.verify(chunkCache).getChunk(1l); // B
+			inOrder.verify(chunkCache).getChunk(2l); // B
+			inOrder.verify(chunkCache).getChunk(50_000_000l); // C
 			inOrder.verifyNoMoreInteractions();
 		}
 
@@ -407,9 +408,9 @@ public class CleartextFileChannelTest {
 			inTest.write(buf3, 5000);
 
 			InOrder inOrder = Mockito.inOrder(chunkCache, chunkCache, chunkCache);
-			inOrder.verify(chunkCache).get(0l); // A
-			inOrder.verify(chunkCache).set(Mockito.eq(1l), Mockito.any()); // B
-			inOrder.verify(chunkCache).set(Mockito.eq(50l), Mockito.any()); // C
+			inOrder.verify(chunkCache).getChunk(0l); // A
+			inOrder.verify(chunkCache).putChunk(Mockito.eq(1l), Mockito.any()); // B
+			inOrder.verify(chunkCache).putChunk(Mockito.eq(50l), Mockito.any()); // C
 			inOrder.verifyNoMoreInteractions();
 		}
 
@@ -437,9 +438,9 @@ public class CleartextFileChannelTest {
 			Assertions.assertEquals(110, written);
 			Assertions.assertEquals(205, inTest.size());
 
-			verify(chunkCache).get(0l);
-			verify(chunkCache).set(Mockito.eq(1l), Mockito.any());
-			verify(chunkCache).get(2l);
+			verify(chunkCache).getChunk(0l);
+			verify(chunkCache).putChunk(Mockito.eq(1l), Mockito.any());
+			verify(chunkCache).getChunk(2l);
 		}
 
 		@Test

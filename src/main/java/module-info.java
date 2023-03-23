@@ -1,5 +1,4 @@
 import org.cryptomator.cryptofs.CryptoFileSystemProvider;
-import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.health.api.HealthCheck;
 import org.cryptomator.cryptofs.health.dirid.DirIdCheck;
 import org.cryptomator.cryptofs.health.shortened.ShortenedNamesCheck;
@@ -10,6 +9,7 @@ import java.nio.file.spi.FileSystemProvider;
 module org.cryptomator.cryptofs {
 	requires transitive org.cryptomator.cryptolib;
 	requires com.google.common;
+	requires com.github.benmanes.caffeine;
 	requires org.slf4j;
 	requires dagger;
 	requires com.auth0.jwt;
