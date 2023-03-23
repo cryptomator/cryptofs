@@ -27,7 +27,6 @@ class ChunkLoader {
 	}
 
 	public ByteBuffer load(Long chunkIndex) throws IOException, AuthenticationFailedException {
-		stats.addChunkCacheMiss();
 		int chunkSize = cryptor.fileContentCryptor().ciphertextChunkSize();
 		long ciphertextPos = chunkIndex * chunkSize + cryptor.fileHeaderCryptor().headerSize();
 		ByteBuffer ciphertextBuf = bufferPool.getCiphertextBuffer();
