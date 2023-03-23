@@ -170,8 +170,9 @@ public class ChunkCacheTest {
 			Assertions.assertTimeoutPreemptively(Duration.ofMillis(100), () -> {
 				cdl.await();
 			});
-			verify(chunkSaver).save(42L, staleChunk42);
-			verify(bufferPool).recycle(staleChunk42.data());
+			// we can't know _which_ stale chunk gets evicted. see https://github.com/ben-manes/caffeine/issues/583
+			verify(chunkSaver).save(Mockito.anyLong(), Mockito.any());
+			verify(bufferPool).recycle(Mockito.any());
 			verifyNoMoreInteractions(chunkSaver);
 		}
 
@@ -251,17 +252,6 @@ public class ChunkCacheTest {
 			Assertions.assertSame(activeChunk1, chunk);
 			Assertions.assertEquals(2, chunk.currentAccesses().get());
 			Assertions.assertTrue(chunk.isDirty());
-		}
-
-		@Test
-		@DisplayName("putChunk() recycles stale chunk if present")
-		public void testPutChunkRecyclesStaleChunk() {
-			var chunk = inTest.putChunk(42L, ByteBuffer.allocate(0));
-
-			Assertions.assertNotSame(staleChunk42, chunk);
-			Assertions.assertEquals(1, chunk.currentAccesses().get());
-			Assertions.assertTrue(chunk.isDirty());
-			verify(bufferPool).recycle(staleChunk42.data());
 		}
 
 		@Test
