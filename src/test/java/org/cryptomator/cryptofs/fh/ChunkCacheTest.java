@@ -4,13 +4,17 @@ import com.github.benmanes.caffeine.cache.RemovalCause;
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.AccessDeniedException;
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 
@@ -26,22 +30,15 @@ public class ChunkCacheTest {
 	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
 	private final BufferPool bufferPool = mock(BufferPool.class);
 	private final ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
-	private final ChunkCache inTest = new ChunkCache(chunkLoader, chunkSaver, stats, bufferPool, exceptionsDuringWrite);
+	private ChunkCache inTest;
 
-	@Test
-	@DisplayName("getChunk returns chunk with access count == 1")
-	public void testGetIncreasesAccessCounter() throws IOException {
-		long index = 42L;
-		var data = ByteBuffer.allocate(0);
-		when(chunkLoader.load(index)).thenReturn(data);
-
-		var result = inTest.getChunk(index);
-
-		Assertions.assertEquals(1, result.currentAccesses().get());
+	@BeforeEach
+	public void setup() {
+		 inTest = new ChunkCache(chunkLoader, chunkSaver, stats, bufferPool, exceptionsDuringWrite);
 	}
 
 	@Test
-	@DisplayName("getChunk invokes chunkLoader.load() on cache miss")
+	@DisplayName("getChunk() invokes chunkLoader.load() on cache miss")
 	public void testGetInvokesLoaderIfEntryNotInCache() throws IOException, AuthenticationFailedException {
 		long index = 42L;
 		var data = ByteBuffer.allocate(0);
@@ -51,69 +48,7 @@ public class ChunkCacheTest {
 
 		verify(chunkLoader).load(index);
 		verify(stats).addChunkCacheAccess();
-	}
-
-	@Test
-	@DisplayName("getChunk does not invoke chunkLoader.load() on cache hit due to getting chunk twice")
-	public void testGetDoesNotInvokeLoaderIfEntryInCacheFromPreviousGet() throws IOException, AuthenticationFailedException {
-		long index = 42L;
-		var data = ByteBuffer.allocate(0);
-		when(chunkLoader.load(index)).thenReturn(data);
-
-		var chunk = inTest.getChunk(index);
-		var sameChunk = inTest.getChunk(index);
-
-		Assertions.assertSame(chunk, sameChunk);
-		verify(chunkLoader, Mockito.times(1)).load(index);
-		verify(stats, Mockito.times(2)).addChunkCacheAccess();
-		verify(stats, Mockito.times(1)).addChunkCacheMiss();
-	}
-
-	@Test
-	@DisplayName("getChunk does not invoke chunkLoader.load() on cache hit due to getting after putting")
-	public void testGetDoesNotInvokeLoaderIfEntryInCacheFromPreviousSet() throws IOException {
-		long index = 42L;
-		var data = ByteBuffer.allocate(0);
-		var chunk = inTest.putChunk(index, data);
-
-		Assertions.assertSame(chunk, inTest.getChunk(index));
-		verify(stats).addChunkCacheAccess();
-	}
-
-	@Test
-	@DisplayName("putChunk returns a dirty chunk")
-	public void testPutChunkReturnsDirtyChunk() {
-		long index = 42L;
-		var data = ByteBuffer.allocate(0);
-		var chunk = inTest.putChunk(index, data);
-
-		Assertions.assertTrue(chunk.isDirty());
-	}
-
-	@RepeatedTest(100)
-	@DisplayName("getChunk() triggers cache eviction if stale cache contains MAX_CACHED_CLEARTEXT_CHUNKS entries")
-	public void testGetInvokesSaverIfMaxEntriesInCacheAreReachedAndAnEntryNotInCacheIsRequested() throws IOException, AuthenticationFailedException {
-		long firstIndex = 42L;
-		long indexNotInCache = 40L;
-		for (long i = firstIndex; i < firstIndex + ChunkCache.MAX_CACHED_CLEARTEXT_CHUNKS; i++) {
-			inTest.putChunk(i, ByteBuffer.allocate(0)).close();
-		}
-		var cdl = new CountDownLatch(1);
-		Mockito.doReturn(ByteBuffer.allocate(0)).when(chunkLoader).load(indexNotInCache);
-		Mockito.doAnswer(invocation -> {
-			cdl.countDown();
-			return null;
-		}).when(chunkSaver).save(Mockito.anyLong(), Mockito.any());
-
-		inTest.getChunk(indexNotInCache).close();
-
-		Assertions.assertTimeoutPreemptively(Duration.ofMillis(100), () -> {
-			cdl.await();
-		});
-		verify(stats).addChunkCacheAccess();
-		verify(chunkSaver).save(Mockito.eq(firstIndex), Mockito.any());
-		verify(bufferPool).recycle(Mockito.any());
-		verifyNoMoreInteractions(chunkSaver);
+		verify(stats).addChunkCacheMiss();
 	}
 
 	@Test
@@ -149,38 +84,195 @@ public class ChunkCacheTest {
 		});
 	}
 
-	@Test
-	@DisplayName("flush() saves all active chunks")
-	public void testFlushInvokesSaverForAllActiveChunks() throws IOException, AuthenticationFailedException {
-		long index = 42L;
-		long index2 = 43L;
+	@Nested
+	@DisplayName("With active chunks [1] and stale chunks [42, 43, 44, 45, 46]")
+	public class Prepopulated {
 
-		try (var chunk1 = inTest.putChunk(index, ByteBuffer.allocate(0)); var chunk2 = inTest.putChunk(index2, ByteBuffer.allocate(0))) {
+		private Chunk activeChunk1;
+		private Chunk staleChunk42;
+		private Chunk staleChunk43;
+		private Chunk staleChunk44;
+		private Chunk staleChunk45;
+		private Chunk staleChunk46;
+
+		@BeforeEach
+		public void setup() {
+			Assumptions.assumeTrue(ChunkCache.MAX_CACHED_CLEARTEXT_CHUNKS == 5);
+
+			activeChunk1 = inTest.putChunk(1L, ByteBuffer.allocate(0));
+			Assertions.assertEquals(1, activeChunk1.currentAccesses().get());
+
+			staleChunk42 = inTest.putChunk(42L, ByteBuffer.allocate(0));
+			staleChunk43 = inTest.putChunk(43L, ByteBuffer.allocate(0));
+			staleChunk44 = inTest.putChunk(44L, ByteBuffer.allocate(0));
+			staleChunk45 = inTest.putChunk(45L, ByteBuffer.allocate(0));
+			staleChunk46 = inTest.putChunk(46L, ByteBuffer.allocate(0));
+			staleChunk42.close();
+			staleChunk43.close();
+			staleChunk44.close();
+			staleChunk45.close();
+			staleChunk46.close();
+			Assertions.assertEquals(0, staleChunk42.currentAccesses().get());
+			Assertions.assertEquals(0, staleChunk43.currentAccesses().get());
+			Assertions.assertEquals(0, staleChunk44.currentAccesses().get());
+			Assertions.assertEquals(0, staleChunk45.currentAccesses().get());
+			Assertions.assertEquals(0, staleChunk46.currentAccesses().get());
+		}
+
+		@Test
+		@DisplayName("getChunk() does not invoke chunkLoader.load() and returns active chunk")
+		public void testGetChunkActive() throws IOException {
+			var chunk = inTest.getChunk(1L);
+
+			Assertions.assertSame(activeChunk1, chunk);
+			Assertions.assertEquals(2, chunk.currentAccesses().get());
+			verify(stats).addChunkCacheAccess();
+			verifyNoMoreInteractions(stats);
+			verifyNoMoreInteractions(chunkLoader);
+		}
+
+		@Test
+		@DisplayName("getChunk() does not invoke chunkLoader.load() and returns stale chunk")
+		public void testGetChunkStale() throws IOException {
+			var chunk = inTest.getChunk(42L);
+
+			Assertions.assertSame(staleChunk42, chunk);
+			Assertions.assertEquals(1, chunk.currentAccesses().get());
+			verify(stats).addChunkCacheAccess();
+			verifyNoMoreInteractions(stats);
+			verifyNoMoreInteractions(chunkLoader);
+		}
+
+		@Test
+		@DisplayName("chunk.close() keeps chunk active if access count > 1")
+		public void testClosingActiveChunkThatIsReferencedTwice() throws IOException, AuthenticationFailedException {
+			try (var chunk = inTest.getChunk(1L)) {
+				Assertions.assertSame(activeChunk1, chunk);
+				Assertions.assertEquals(2, activeChunk1.currentAccesses().get());
+			} // close
+
+			Assertions.assertEquals(1, activeChunk1.currentAccesses().get());
+			verifyNoMoreInteractions(chunkSaver);
+			verifyNoMoreInteractions(bufferPool);
+		}
+
+		@RepeatedTest(30)
+		@DisplayName("chunk.close() triggers eviction of LRU stale chunk")
+		public void testClosingActiveChunkTriggersEvictionOfStaleChunk() throws IOException, AuthenticationFailedException {
+			var cdl = new CountDownLatch(1);
+			Mockito.doAnswer(invocation -> {
+				cdl.countDown();
+				return null;
+			}).when(chunkSaver).save(Mockito.anyLong(), Mockito.any());
+
+			activeChunk1.close();
+
+			Assertions.assertTimeoutPreemptively(Duration.ofMillis(100), () -> {
+				cdl.await();
+			});
+			verify(chunkSaver).save(42L, staleChunk42);
+			verify(bufferPool).recycle(staleChunk42.data());
+			verifyNoMoreInteractions(chunkSaver);
+		}
+
+		@Test
+		@DisplayName("flush() saves all stale chunks")
+		public void testFlushInvokesSaverForAllStaleChunks() throws IOException, AuthenticationFailedException {
 			inTest.flush();
 
-			verify(chunkSaver).save(Mockito.eq(index), Mockito.any());
-			verify(chunkSaver).save(Mockito.eq(index2), Mockito.any());
+			verify(chunkSaver).save(42L, staleChunk42);
+			verify(chunkSaver).save(43L, staleChunk43);
+			verify(chunkSaver).save(44L, staleChunk44);
+			verify(chunkSaver).save(45L, staleChunk45);
+			verify(chunkSaver).save(46L, staleChunk46);
 		}
+
+		@Test
+		@DisplayName("flush() saves all active chunks")
+		public void testFlushInvokesSaverForAllActiveChunks() throws IOException, AuthenticationFailedException {
+			try (var activeChunk2 = inTest.putChunk(2L, ByteBuffer.allocate(0))) {
+				inTest.flush();
+
+				verify(chunkSaver).save(1L, activeChunk1);
+				verify(chunkSaver).save(2L, activeChunk2);
+			}
+		}
+
+		@Test
+		@DisplayName("flush() does not evict cached chunks")
+		public void testFlushKeepsItemInCache() throws IOException, AuthenticationFailedException {
+			inTest.flush();
+
+			Assertions.assertSame(activeChunk1, inTest.getChunk(1L));
+			Assertions.assertSame(staleChunk42, inTest.getChunk(42L));
+			verifyNoMoreInteractions(chunkLoader);
+		}
+
+		@Test
+		@DisplayName("flush() does not evict cached chunks despite I/O error")
+		public void testFlushKeepsItemInCacheDespiteIOException() throws IOException, AuthenticationFailedException {
+			Mockito.doThrow(new AccessDeniedException("")).when(chunkSaver).save(42L, staleChunk42);
+
+			Assertions.assertThrows(IOException.class, () -> inTest.flush());
+
+			Assertions.assertSame(activeChunk1, inTest.getChunk(1L));
+			Assertions.assertSame(staleChunk42, inTest.getChunk(42L));
+			verifyNoMoreInteractions(chunkLoader);
+		}
+
+		@Test
+		@DisplayName("invalidateAll() flushes stale chunks but keeps active chunks")
+		public void testInvalidateAll() throws IOException, AuthenticationFailedException {
+			when(chunkLoader.load(Mockito.anyLong())).thenReturn(ByteBuffer.allocate(0));
+
+			inTest.invalidateAll();
+
+			Assertions.assertSame(activeChunk1, inTest.getChunk(1L));
+			Assertions.assertNotSame(staleChunk42, inTest.getChunk(42L));
+			Assertions.assertNotSame(staleChunk43, inTest.getChunk(43L));
+			Assertions.assertNotSame(staleChunk44, inTest.getChunk(44L));
+			Assertions.assertNotSame(staleChunk45, inTest.getChunk(45L));
+			Assertions.assertNotSame(staleChunk46, inTest.getChunk(46L));
+			verify(chunkLoader).load(42L);
+			verify(chunkLoader).load(43L);
+			verify(chunkLoader).load(44L);
+			verify(chunkLoader).load(45L);
+			verify(chunkLoader).load(46L);
+			verifyNoMoreInteractions(chunkLoader);
+		}
+
+		@Test
+		@DisplayName("putChunk() returns active chunk if already present")
+		public void testPutChunkReturnsActiveChunk() {
+			activeChunk1.dirty().set(false);
+
+			var chunk = inTest.putChunk(1L, ByteBuffer.allocate(0));
+
+			Assertions.assertSame(activeChunk1, chunk);
+			Assertions.assertEquals(2, chunk.currentAccesses().get());
+			Assertions.assertTrue(chunk.isDirty());
+		}
+
+		@Test
+		@DisplayName("putChunk() returns new chunk if neither stale nor active")
+		public void testPutChunkReturnsNewChunk() {
+			var chunk = inTest.putChunk(100L, ByteBuffer.allocate(0));
+
+			Assertions.assertNotSame(activeChunk1, chunk);
+			Assertions.assertNotSame(staleChunk42, chunk);
+			Assertions.assertNotSame(staleChunk43, chunk);
+			Assertions.assertNotSame(staleChunk44, chunk);
+			Assertions.assertNotSame(staleChunk45, chunk);
+			Assertions.assertNotSame(staleChunk46, chunk);
+			Assertions.assertEquals(1, chunk.currentAccesses().get());
+			Assertions.assertTrue(chunk.isDirty());
+		}
+
+
 	}
 
 	@Test
-	@DisplayName("flush() saves all stale chunks")
-	public void testFlushInvokesSaverForAllStaleChunks() throws IOException, AuthenticationFailedException {
-		long index = 42L;
-		long index2 = 43L;
-
-		try (var chunk1 = inTest.putChunk(index, ByteBuffer.allocate(0)); var chunk2 = inTest.putChunk(index2, ByteBuffer.allocate(0))) {
-			// no-op
-		}
-
-		inTest.flush();
-
-		verify(chunkSaver).save(Mockito.eq(index), Mockito.any());
-		verify(chunkSaver).save(Mockito.eq(index2), Mockito.any());
-	}
-
-
-	@Test
+	@DisplayName("IOException during eviction of stale chunks is stored to exceptionsDuringWrite")
 	public void testIOExceptionsDuringWriteAreAddedToExceptionsDuringWrite() throws IOException {
 		IOException ioException = new IOException();
 		Chunk chunk = new Chunk(ByteBuffer.allocate(0), true, () -> {});
