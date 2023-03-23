@@ -114,7 +114,7 @@ public class ChunkCache {
 
 	/**
 	 * Flushes cached data (but keeps them cached).
-	 * @see #invalidateAll()
+	 * @see #invalidateStale()
 	 */
 	public void flush() throws IOException {
 		try {
@@ -133,7 +133,7 @@ public class ChunkCache {
 	/**
 	 * Removes stale chunks from cache.
 	 */
-	public void invalidateAll() { // TODO rename to invalidateStale()
+	public void invalidateStale() {
 		// This may not be atomic, however this method is only called during truncation.
 		// If chunks are added (and become stale) concurrently, behavior is undefined anyway
 		cachedChunks.entrySet().removeIf(entry -> entry.getValue().currentAccesses().get() == 0);

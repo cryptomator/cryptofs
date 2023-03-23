@@ -69,7 +69,7 @@ public class OpenCryptoFile implements Closeable {
 		Path path = currentFilePath.get();
 
 		if (options.truncateExisting()) {
-			chunkCache.invalidateAll();
+			chunkCache.invalidateStale();
 		}
 
 		FileChannel ciphertextFileChannel = null;

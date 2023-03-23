@@ -8,15 +8,12 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.AccessDeniedException;
-import java.time.Duration;
-import java.util.concurrent.CountDownLatch;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -214,11 +211,11 @@ public class ChunkCacheTest {
 		}
 
 		@Test
-		@DisplayName("invalidateAll() flushes stale chunks but keeps active chunks")
-		public void testInvalidateAll() throws IOException, AuthenticationFailedException {
+		@DisplayName("invalidateStale() flushes stale chunks but keeps active chunks")
+		public void testInvalidateStale() throws IOException, AuthenticationFailedException {
 			when(chunkLoader.load(Mockito.anyLong())).thenReturn(ByteBuffer.allocate(0));
 
-			inTest.invalidateAll();
+			inTest.invalidateStale();
 
 			Assertions.assertSame(activeChunk1, inTest.getChunk(1L));
 			Assertions.assertNotSame(staleChunk42, inTest.getChunk(42L));
