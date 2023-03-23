@@ -188,7 +188,7 @@ public class ChunkCache {
 		assert chunk.currentAccesses().get() == 0;
 		try {
 			chunkSaver.save(index, chunk);
-		} catch (IOException e) {
+		} catch (IOException | NonWritableChannelException e) {
 			exceptionsDuringWrite.add(e);
 		}
 		bufferPool.recycle(chunk.data());

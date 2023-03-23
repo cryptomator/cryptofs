@@ -18,7 +18,7 @@ public class ExceptionsDuringWrite {
 	public ExceptionsDuringWrite() {
 	}
 
-	public synchronized void add(IOException e) {
+	public synchronized void add(Exception e) {
 		e.addSuppressed(e);
 	}
 
