@@ -8,14 +8,14 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.concurrent.ExecutionException;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 
 import javax.inject.Inject;
-
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.LoadingCache;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
 
 @CryptoFileSystemScoped
 class DirectoryIdProvider {
@@ -26,13 +26,13 @@ class DirectoryIdProvider {
 
 	@Inject
 	public DirectoryIdProvider(DirectoryIdLoader directoryIdLoader) {
-		ids = CacheBuilder.newBuilder().maximumSize(MAX_CACHE_SIZE).build(directoryIdLoader);
+		this.ids = Caffeine.newBuilder().maximumSize(MAX_CACHE_SIZE).build(directoryIdLoader);
 	}
 
 	public String load(Path dirFilePath) throws IOException {
 		try {
 			return ids.get(dirFilePath);
-		} catch (ExecutionException e) {
+		} catch (UncheckedIOException e) {
 			throw new IOException("Failed to load contents of directory file at path " + dirFilePath, e);
 		}
 	}
@@ -61,5 +61,6 @@ class DirectoryIdProvider {
 			ids.invalidate(srcDirFilePath);
 		}
 	}
+
 
 }

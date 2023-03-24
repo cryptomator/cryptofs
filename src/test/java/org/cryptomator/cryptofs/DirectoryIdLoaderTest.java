@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
@@ -83,10 +84,10 @@ public class DirectoryIdLoaderTest {
 		when(provider.newFileChannel(eq(dirFilePath), any())).thenReturn(channel);
 		when(channel.size()).thenReturn(0l);
 
-		IOException e = Assertions.assertThrows(IOException.class, () -> {
+		UncheckedIOException e = Assertions.assertThrows(UncheckedIOException.class, () -> {
 			inTest.load(dirFilePath);
 		});
-		MatcherAssert.assertThat(e.getMessage(), containsString("Invalid, empty directory file"));
+		MatcherAssert.assertThat(e.getCause().getMessage(), containsString("Invalid, empty directory file"));
 	}
 
 	@Test
@@ -95,10 +96,10 @@ public class DirectoryIdLoaderTest {
 		when(provider.newFileChannel(eq(dirFilePath), any())).thenReturn(channel);
 		when(channel.size()).thenReturn((long) Integer.MAX_VALUE);
 
-		IOException e = Assertions.assertThrows(IOException.class, () -> {
+		UncheckedIOException e = Assertions.assertThrows(UncheckedIOException.class, () -> {
 			inTest.load(dirFilePath);
 		});
-		MatcherAssert.assertThat(e.getMessage(), containsString("Unexpectedly large directory file"));
+		MatcherAssert.assertThat(e.getCause().getMessage(), containsString("Unexpectedly large directory file"));
 	}
 
 }

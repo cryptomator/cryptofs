@@ -9,6 +9,7 @@ import org.mockito.Mockito;
 import org.mockito.verification.VerificationMode;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutionException;
 
@@ -38,14 +39,14 @@ public class DirectoryIdProviderTest {
 	}
 
 	@Test
-	public void testIOExceptionFromLoaderIsWrappedAndRethrown() throws IOException {
+	public void testIOExceptionFromLoaderIsWrappedAndRethrown() {
 		IOException originalIoException = new IOException();
-		when(loader.load(aPath)).thenThrow(originalIoException);
+		when(loader.load(aPath)).thenThrow(new UncheckedIOException(originalIoException));
 
 		IOException e = Assertions.assertThrows(IOException.class, () -> {
 			inTest.load(aPath);
 		});
-		Assertions.assertTrue(e.getCause() instanceof ExecutionException);
+		Assertions.assertTrue(e.getCause() instanceof UncheckedIOException);
 		Assertions.assertEquals(originalIoException, e.getCause().getCause());
 	}
 
