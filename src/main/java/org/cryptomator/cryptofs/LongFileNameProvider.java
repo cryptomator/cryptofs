@@ -8,10 +8,9 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.base.Throwables;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import com.google.common.io.BaseEncoding;
 import org.cryptomator.cryptolib.common.MessageDigestSupplier;
 
@@ -24,7 +23,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
-import java.util.concurrent.ExecutionException;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.cryptomator.cryptofs.common.Constants.DEFLATED_FILE_SUFFIX;
@@ -39,31 +37,28 @@ public class LongFileNameProvider {
 	private static final Duration MAX_CACHE_AGE = Duration.ofMinutes(1);
 
 	private final ReadonlyFlag readonlyFlag;
-	private final LoadingCache<Path, String> longNames; // Maps from c9s paths to inflated filenames
+	private final Cache<Path, String> longNames; // Maps from c9s paths to inflated filenames
 
 	@Inject
 	public LongFileNameProvider(ReadonlyFlag readonlyFlag) {
 		this.readonlyFlag = readonlyFlag;
-		this.longNames = CacheBuilder.newBuilder().expireAfterAccess(MAX_CACHE_AGE).build(new Loader());
+		this.longNames = Caffeine.newBuilder().expireAfterAccess(MAX_CACHE_AGE).build();
 	}
 
-	private class Loader extends CacheLoader<Path, String> {
-
-		@Override
-		public String load(Path c9sPath) throws IOException {
-			Path longNameFile = c9sPath.resolve(INFLATED_FILE_NAME);
-			try (SeekableByteChannel ch = Files.newByteChannel(longNameFile, StandardOpenOption.READ)) {
-				if (ch.size() > MAX_FILENAME_BUFFER_SIZE) {
-					throw new IOException("Unexpectedly large file: " + longNameFile);
-				}
-				assert ch.size() <= MAX_FILENAME_BUFFER_SIZE;
-				ByteBuffer buf = ByteBuffer.allocate((int) ch.size());
-				ch.read(buf);
-				buf.flip();
-				return UTF_8.decode(buf).toString();
+	private String load(Path c9sPath) throws UncheckedIOException {
+		Path longNameFile = c9sPath.resolve(INFLATED_FILE_NAME);
+		try (SeekableByteChannel ch = Files.newByteChannel(longNameFile, StandardOpenOption.READ)) {
+			if (ch.size() > MAX_FILENAME_BUFFER_SIZE) {
+				throw new IOException("Unexpectedly large file: " + longNameFile);
 			}
+			assert ch.size() <= MAX_FILENAME_BUFFER_SIZE;
+			ByteBuffer buf = ByteBuffer.allocate((int) ch.size());
+			ch.read(buf);
+			buf.flip();
+			return UTF_8.decode(buf).toString();
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
 		}
-
 	}
 
 	public boolean isDeflated(String possiblyDeflatedFileName) {
@@ -72,10 +67,9 @@ public class LongFileNameProvider {
 
 	public String inflate(Path c9sPath) throws IOException {
 		try {
-			return longNames.get(c9sPath);
-		} catch (ExecutionException e) {
-			Throwables.throwIfInstanceOf(e.getCause(), IOException.class);
-			throw new IllegalStateException("Unexpected exception", e);
+			return longNames.get(c9sPath, this::load);
+		} catch (UncheckedIOException e) {
+			throw e.getCause(); // rethrow original to keep exception types such as NoSuchFileException
 		}
 	}
 
