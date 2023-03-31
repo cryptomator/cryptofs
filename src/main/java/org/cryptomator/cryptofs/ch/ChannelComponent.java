@@ -17,8 +17,6 @@ public interface ChannelComponent {
 	interface Factory {
 
 		ChannelComponent create(@BindsInstance FileChannel ciphertextChannel, //
-								@BindsInstance FileHeader fileHeader, //
-								@BindsInstance @MustWriteHeader boolean mustWriteHeader, //
 								@BindsInstance EffectiveOpenOptions options, //
 								@BindsInstance ChannelCloseListener listener); //
 	}

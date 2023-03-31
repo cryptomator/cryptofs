@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 @OpenFileScoped
@@ -21,6 +22,7 @@ public class FileHeaderHolder {
 	private final Cryptor cryptor;
 	private final AtomicReference<Path> path;
 	private final AtomicReference<FileHeader> header = new AtomicReference<>();
+	private final AtomicBoolean isPersisted = new AtomicBoolean();
 
 	@Inject
 	public FileHeaderHolder(Cryptor cryptor, @CurrentOpenFilePath AtomicReference<Path> path) {
@@ -29,11 +31,7 @@ public class FileHeaderHolder {
 	}
 
 	public FileHeader get() {
-		FileHeader result = header.get();
-		if (result == null) {
-			throw new IllegalStateException("Header not set.");
-		}
-		return result;
+		return header.get();
 	}
 
 	public FileHeader createNew() {
@@ -52,10 +50,15 @@ public class FileHeaderHolder {
 		try {
 			FileHeader existingHeader = cryptor.fileHeaderCryptor().decryptHeader(existingHeaderBuf);
 			header.set(existingHeader);
+			isPersisted.set(true);
 			return existingHeader;
 		} catch (IllegalArgumentException | CryptoException e) {
 			throw new IOException("Unable to decrypt header of file " + path.get(), e);
 		}
+	}
+
+	public AtomicBoolean headerIsPersisted() {
+		return isPersisted;
 	}
 
 }

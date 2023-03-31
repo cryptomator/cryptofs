@@ -11,7 +11,6 @@ package org.cryptomator.cryptofs.fh;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
 import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.FileHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +18,7 @@ import javax.inject.Inject;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileTime;
@@ -68,26 +68,28 @@ public class OpenCryptoFile implements Closeable {
 	public synchronized FileChannel newFileChannel(EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
 		Path path = currentFilePath.get();
 
-		if (options.truncateExisting()) {
-			chunkCache.invalidateAll();
-		}
-
 		FileChannel ciphertextFileChannel = null;
 		CleartextFileChannel cleartextFileChannel = null;
 		try {
-			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
-			final FileHeader header;
-			final boolean isNewHeader;
-			if (ciphertextFileChannel.size() == 0l) {
-				header = headerHolder.createNew();
-				isNewHeader = true;
+			if (headerHolder.get() != null) {
+				//file already loaded, use already loaded header
+				ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
+			} else if (Files.notExists(path)) {
+				//file does not exist, create new header
+				ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
+				headerHolder.createNew();
 			} else {
-				header = headerHolder.loadExisting(ciphertextFileChannel);
-				isNewHeader = false;
+				//file already exists, load header
+				ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
+				headerHolder.loadExisting(ciphertextFileChannel);
+			}
+			if (options.truncateExisting()) {
+				chunkCache.invalidateAll();
+				ciphertextFileChannel.truncate(cryptor.fileHeaderCryptor().headerSize());
 			}
 			initFileSize(ciphertextFileChannel);
 			cleartextFileChannel = component.newChannelComponent() //
-					.create(ciphertextFileChannel, header, isNewHeader, options, this::channelClosed) //
+					.create(ciphertextFileChannel, options, this::channelClosed) //
 					.channel();
 		} finally {
 			if (cleartextFileChannel == null) { // i.e. something didn't work

@@ -9,6 +9,7 @@ import org.cryptomator.cryptofs.ch.ChannelComponent;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
+import org.cryptomator.cryptolib.api.FileHeaderCryptor;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
@@ -46,8 +47,8 @@ public class OpenCryptoFileTest {
 	private FileCloseListener closeListener = mock(FileCloseListener.class);
 	private ChunkCache chunkCache = mock(ChunkCache.class);
 	private Cryptor cryptor = mock(Cryptor.class);
+	private FileHeaderCryptor fileHeaderCryptor = mock(FileHeaderCryptor.class);
 	private FileHeaderHolder headerHolder = mock(FileHeaderHolder.class);
-	private FileHeader header = mock(FileHeader.class);
 	private ChunkIO chunkIO = mock(ChunkIO.class);
 	private AtomicLong fileSize = new AtomicLong(-1l);
 	private AtomicReference<Instant> lastModified = new AtomicReference(Instant.ofEpochMilli(0));
@@ -107,9 +108,9 @@ public class OpenCryptoFileTest {
 			ciphertextChannel = new AtomicReference<>();
 
 			Mockito.when(openCryptoFileComponent.newChannelComponent()).thenReturn(channelComponentFactory);
-			Mockito.when(channelComponentFactory.create(Mockito.any(), Mockito.any(), Mockito.anyBoolean(), Mockito.any(), Mockito.any())).thenAnswer(invocation -> {
+			Mockito.when(channelComponentFactory.create(Mockito.any(), Mockito.any(), Mockito.any())).thenAnswer(invocation -> {
 				ciphertextChannel.set(invocation.getArgument(0));
-				listener.set(invocation.getArgument(4));
+				listener.set(invocation.getArgument(2));
 				return channelComponent;
 			});
 			Mockito.when(channelComponent.channel()).thenReturn(cleartextFileChannel);
@@ -168,6 +169,8 @@ public class OpenCryptoFileTest {
 		@Order(20)
 		@DisplayName("TRUNCATE_EXISTING leads to chunk cache invalidation")
 		public void testTruncateExistingInvalidatesChunkCache() throws IOException {
+			Mockito.when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
+			Mockito.when(fileHeaderCryptor.headerSize()).thenReturn(43);
 			Files.write(CURRENT_FILE_PATH.get(), new byte[0]);
 			EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE), readonlyFlag);
 			openCryptoFile.newFileChannel(options);
