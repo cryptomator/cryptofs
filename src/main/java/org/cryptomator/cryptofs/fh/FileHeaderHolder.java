@@ -41,11 +41,18 @@ public class FileHeaderHolder {
 		return newHeader;
 	}
 
+
+	/**
+	 * Reads, decrypts and caches the file header from the given file channel.
+	 *
+	 * @param ch File channel to the encrypted file
+	 * @return {@link FileHeader} of the encrypted file
+	 * @throws IOException if the file header cannot be read or decrypted
+	 */
 	public FileHeader loadExisting(FileChannel ch) throws IOException {
 		LOG.trace("Reading file header from {}", path.get());
 		ByteBuffer existingHeaderBuf = ByteBuffer.allocate(cryptor.fileHeaderCryptor().headerSize());
-		int read = ch.read(existingHeaderBuf, 0);
-		assert read == existingHeaderBuf.capacity();
+		ch.read(existingHeaderBuf, 0);
 		existingHeaderBuf.flip();
 		try {
 			FileHeader existingHeader = cryptor.fileHeaderCryptor().decryptHeader(existingHeaderBuf);
