@@ -18,7 +18,6 @@ import javax.inject.Inject;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileTime;
@@ -71,18 +70,8 @@ public class OpenCryptoFile implements Closeable {
 		FileChannel ciphertextFileChannel = null;
 		CleartextFileChannel cleartextFileChannel = null;
 		try {
-			if (headerHolder.get() != null) {
-				//file already loaded, use already loaded header
-				ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
-			} else if (Files.notExists(path)) {
-				//file does not exist, create new header
-				ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
-				headerHolder.createNew();
-			} else {
-				//file already exists, load header
-				ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
-				headerHolder.loadExisting(ciphertextFileChannel);
-			}
+			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
+			initFileHeader(options, ciphertextFileChannel);
 			if (options.truncateExisting()) {
 				chunkCache.invalidateAll();
 				ciphertextFileChannel.truncate(cryptor.fileHeaderCryptor().headerSize());
@@ -105,6 +94,20 @@ public class OpenCryptoFile implements Closeable {
 		openChannels.put(cleartextFileChannel, ciphertextFileChannel);
 		chunkIO.registerChannel(ciphertextFileChannel, options.writable());
 		return cleartextFileChannel;
+	}
+
+	//TODO test
+	private void initFileHeader(EffectiveOpenOptions options, FileChannel ciphertextFileChannel) throws IOException {
+		if (headerHolder.get() == null) {
+			//first file channel to file, no header present
+			if (options.createNew() || (options.create() && ciphertextFileChannel.size() == 0)) {
+				//file did not exist, create new header
+				headerHolder.createNew();
+			} else {
+				//file must exist, load header from file
+				headerHolder.loadExisting(ciphertextFileChannel);
+			}
+		}
 	}
 
 	private void closeQuietly(Closeable closeable) {
