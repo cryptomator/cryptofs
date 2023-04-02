@@ -121,7 +121,7 @@ public class OpenCryptoFile implements Closeable {
 	}
 
 	/**
-	 * Called by {@link #newFileChannel(EffectiveOpenOptions)} to determine the fileSize.
+	 * Called by {@link #newFileChannel(EffectiveOpenOptions, FileAttribute[])} to determine the fileSize.
 	 * <p>
 	 * Before the size is initialized (i.e. before a channel has been created), {@link #size()} must not be called.
 	 * <p>
@@ -146,7 +146,7 @@ public class OpenCryptoFile implements Closeable {
 	}
 
 	/**
-	 * @return The size of the opened file. Note that the filesize is unknown until a {@link #newFileChannel(EffectiveOpenOptions) file channel is opened}. In this case this method returns an empty optional.
+	 * @return The size of the opened file. Note that the filesize is unknown until a {@link #newFileChannel(EffectiveOpenOptions, FileAttribute[])} is opened. In this case this method returns an empty optional.
 	 */
 	public Optional<Long> size() {
 		long val = fileSize.get();
