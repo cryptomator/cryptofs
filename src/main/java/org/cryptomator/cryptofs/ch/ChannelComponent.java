@@ -3,7 +3,6 @@ package org.cryptomator.cryptofs.ch;
 import dagger.BindsInstance;
 import dagger.Subcomponent;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
-import org.cryptomator.cryptolib.api.FileHeader;
 
 import java.nio.channels.FileChannel;
 
