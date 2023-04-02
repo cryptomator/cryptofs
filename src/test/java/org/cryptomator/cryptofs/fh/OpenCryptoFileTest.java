@@ -14,6 +14,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Nested;
@@ -36,7 +37,10 @@ import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 public class OpenCryptoFileTest {
@@ -87,6 +91,80 @@ public class OpenCryptoFileTest {
 		});
 		Assertions.assertSame(expectedException, exception);
 		verify(closeListener).close(CURRENT_FILE_PATH.get(), openCryptoFile);
+	}
+
+	@Nested
+	@DisplayName("Testing ::initFileHeader")
+	public class InitFilHeaderTests {
+
+		EffectiveOpenOptions options = Mockito.mock(EffectiveOpenOptions.class);
+		FileChannel cipherFileChannel = Mockito.mock(FileChannel.class, "cipherFilechannel");
+		OpenCryptoFile inTest = new OpenCryptoFile(closeListener, chunkCache, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, fileSize, lastModified, openCryptoFileComponent);
+
+		@Test
+		@DisplayName("Skip file header init, if the file header already exists in memory")
+		public void testInitFileHeaderExisting() throws IOException {
+			var header = Mockito.mock(FileHeader.class);
+			Mockito.when(headerHolder.get()).thenReturn(header);
+
+			inTest.initFileHeader(options, cipherFileChannel);
+
+			Mockito.verify(headerHolder, never()).loadExisting(any());
+			Mockito.verify(headerHolder, never()).createNew();
+		}
+
+		@Test
+		@DisplayName("Load file header from file, if not present and neither create nor create_new set")
+		public void testInitFileHeaderLoad() throws IOException {
+			Mockito.when(headerHolder.get()).thenReturn(null);
+			Mockito.when(options.createNew()).thenReturn(false);
+			Mockito.when(options.create()).thenReturn(false);
+
+			inTest.initFileHeader(options, cipherFileChannel);
+
+			Mockito.verify(headerHolder, times(1)).loadExisting(cipherFileChannel);
+			Mockito.verify(headerHolder, never()).createNew();
+		}
+
+		@Test
+		@DisplayName("Create new file header, if not present and create_new set")
+		public void testInitFileHeaderCreateNew() throws IOException {
+			Mockito.when(headerHolder.get()).thenReturn(null);
+			Mockito.when(options.createNew()).thenReturn(true);
+
+			inTest.initFileHeader(options, cipherFileChannel);
+
+			Mockito.verify(headerHolder, times(1)).createNew();
+			Mockito.verify(headerHolder, never()).loadExisting(any());
+		}
+
+		@Test
+		@DisplayName("Create new file header, if not present, create set and channel.size() == 0")
+		public void testInitFileHeaderCreateAndSize0() throws IOException {
+			Mockito.when(headerHolder.get()).thenReturn(null);
+			Mockito.when(options.createNew()).thenReturn(false);
+			Mockito.when(options.create()).thenReturn(true);
+			Mockito.when(cipherFileChannel.size()).thenReturn(0L);
+
+			inTest.initFileHeader(options, cipherFileChannel);
+
+			Mockito.verify(headerHolder, times(1)).createNew();
+			Mockito.verify(headerHolder, never()).loadExisting(any());
+		}
+
+		@Test
+		@DisplayName("Load file header, if create is set but channel has size > 0")
+		public void testInitFileHeaderCreateAndSizeGreater0() throws IOException {
+			Mockito.when(headerHolder.get()).thenReturn(null);
+			Mockito.when(options.createNew()).thenReturn(false);
+			Mockito.when(options.create()).thenReturn(true);
+			Mockito.when(cipherFileChannel.size()).thenReturn(42L);
+
+			inTest.initFileHeader(options, cipherFileChannel);
+
+			Mockito.verify(headerHolder, times(1)).loadExisting(cipherFileChannel);
+			Mockito.verify(headerHolder, never()).createNew();
+		}
 	}
 
 	@Nested
