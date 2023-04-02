@@ -34,7 +34,7 @@ public class FileHeaderHolder {
 		return header.get();
 	}
 
-	public FileHeader createNew() {
+	FileHeader createNew() {
 		LOG.trace("Generating file header for {}", path.get());
 		FileHeader newHeader = cryptor.fileHeaderCryptor().create();
 		header.set(newHeader);
@@ -49,7 +49,7 @@ public class FileHeaderHolder {
 	 * @return {@link FileHeader} of the encrypted file
 	 * @throws IOException if the file header cannot be read or decrypted
 	 */
-	public FileHeader loadExisting(FileChannel ch) throws IOException {
+	FileHeader loadExisting(FileChannel ch) throws IOException {
 		LOG.trace("Reading file header from {}", path.get());
 		ByteBuffer existingHeaderBuf = ByteBuffer.allocate(cryptor.fileHeaderCryptor().headerSize());
 		ch.read(existingHeaderBuf, 0);
