@@ -295,6 +295,24 @@ public class EffectiveOpenOptionsTest {
 	}
 
 	@Test
+	public void testTruncateExistingAndWrite() throws IOException {
+		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(TRUNCATE_EXISTING, WRITE), falseReadonlyFlag);
+
+		Assertions.assertFalse(inTest.append());
+		Assertions.assertFalse(inTest.create());
+		Assertions.assertFalse(inTest.createNew());
+		Assertions.assertFalse(inTest.deleteOnClose());
+		Assertions.assertFalse(inTest.noFollowLinks());
+		Assertions.assertFalse(inTest.readable());
+		Assertions.assertFalse(inTest.syncData());
+		Assertions.assertFalse(inTest.syncDataAndMetadata());
+		Assertions.assertTrue(inTest.truncateExisting());
+		Assertions.assertTrue(inTest.writable());
+
+		MatcherAssert.assertThat(inTest.createOpenOptionsForEncryptedFile(), containsInAnyOrder(READ, WRITE));
+	}
+
+	@Test
 	public void testWrite() throws IOException {
 		EffectiveOpenOptions inTest = EffectiveOpenOptions.from(Set.of(WRITE), falseReadonlyFlag);
 
