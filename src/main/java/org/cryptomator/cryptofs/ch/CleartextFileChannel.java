@@ -11,7 +11,6 @@ import org.cryptomator.cryptofs.fh.FileHeaderHolder;
 import org.cryptomator.cryptofs.fh.OpenFileModifiedDate;
 import org.cryptomator.cryptofs.fh.OpenFileSize;
 import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.FileHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -181,17 +180,13 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	}
 
 	private void writeHeaderIfNeeded() throws IOException {
-		if (!fileHeaderHolder.headerIsPersisted().getAndSet(true)) {
-			LOG.trace("{} - Writing file header.", this);
-			ByteBuffer encryptedHeader = cryptor.fileHeaderCryptor().encryptHeader(fileHeaderHolder.get());
-			//TODO: what if write fails? Should the encrypted header be cached? Because it cannot be encrypted again (NONCE reuse!)
-			try {
-				ciphertextFileChannel.write(encryptedHeader, 0);
-			} catch (IOException e) {
-				fileHeaderHolder.headerIsPersisted().set(false);
-				throw e;
-			}
+		if (fileHeaderHolder.headerIsPersisted().get()) {
+			return;
 		}
+		LOG.trace("{} - Writing file header.", this);
+		ByteBuffer encryptedHeader = cryptor.fileHeaderCryptor().encryptHeader(fileHeaderHolder.get());
+		ciphertextFileChannel.write(encryptedHeader, 0);
+		fileHeaderHolder.headerIsPersisted().set(true);
 	}
 
 	@Override

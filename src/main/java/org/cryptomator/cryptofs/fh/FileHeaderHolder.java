@@ -31,7 +31,11 @@ public class FileHeaderHolder {
 	}
 
 	public FileHeader get() {
-		return header.get();
+		FileHeader result = header.get();
+		if (result == null) {
+			throw new IllegalStateException("Header not set.");
+		}
+		return result;
 	}
 
 	FileHeader createNew() {

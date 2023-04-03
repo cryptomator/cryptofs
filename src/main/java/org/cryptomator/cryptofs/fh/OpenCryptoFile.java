@@ -99,9 +99,10 @@ public class OpenCryptoFile implements Closeable {
 	//visible for testing
 	void initFileHeader(EffectiveOpenOptions options, FileChannel ciphertextFileChannel) throws IOException {
 		if (headerHolder.get() == null) {
-			//first file channel to file, no header present
+			//first file channel to file
 			if (options.createNew() || (options.create() && ciphertextFileChannel.size() == 0)) {
 				//file did not exist, create new header
+				//file size will never be zero again, once the header is written because we retain on truncation the header
 				headerHolder.createNew();
 			} else {
 				//file must exist, load header from file
