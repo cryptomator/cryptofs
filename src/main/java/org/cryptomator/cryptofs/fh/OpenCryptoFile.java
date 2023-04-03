@@ -98,7 +98,9 @@ public class OpenCryptoFile implements Closeable {
 
 	//visible for testing
 	void initFileHeader(EffectiveOpenOptions options, FileChannel ciphertextFileChannel) throws IOException {
-		if (headerHolder.get() == null) {
+		try {
+			headerHolder.get();
+		} catch (IllegalStateException e) {
 			//first file channel to file
 			if (options.createNew() || (options.create() && ciphertextFileChannel.size() == 0)) {
 				//file did not exist, create new header

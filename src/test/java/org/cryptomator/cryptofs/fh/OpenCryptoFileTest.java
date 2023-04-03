@@ -116,7 +116,7 @@ public class OpenCryptoFileTest {
 		@Test
 		@DisplayName("Load file header from file, if not present and neither create nor create_new set")
 		public void testInitFileHeaderLoad() throws IOException {
-			Mockito.when(headerHolder.get()).thenReturn(null);
+			Mockito.when(headerHolder.get()).thenThrow(new IllegalStateException("no Header set"));
 			Mockito.when(options.createNew()).thenReturn(false);
 			Mockito.when(options.create()).thenReturn(false);
 
@@ -129,7 +129,7 @@ public class OpenCryptoFileTest {
 		@Test
 		@DisplayName("Create new file header, if not present and create_new set")
 		public void testInitFileHeaderCreateNew() throws IOException {
-			Mockito.when(headerHolder.get()).thenReturn(null);
+			Mockito.when(headerHolder.get()).thenThrow(new IllegalStateException("no Header set"));
 			Mockito.when(options.createNew()).thenReturn(true);
 
 			inTest.initFileHeader(options, cipherFileChannel);
@@ -141,7 +141,7 @@ public class OpenCryptoFileTest {
 		@Test
 		@DisplayName("Create new file header, if not present, create set and channel.size() == 0")
 		public void testInitFileHeaderCreateAndSize0() throws IOException {
-			Mockito.when(headerHolder.get()).thenReturn(null);
+			Mockito.when(headerHolder.get()).thenThrow(new IllegalStateException("no Header set"));
 			Mockito.when(options.createNew()).thenReturn(false);
 			Mockito.when(options.create()).thenReturn(true);
 			Mockito.when(cipherFileChannel.size()).thenReturn(0L);
@@ -155,7 +155,7 @@ public class OpenCryptoFileTest {
 		@Test
 		@DisplayName("Load file header, if create is set but channel has size > 0")
 		public void testInitFileHeaderCreateAndSizeGreater0() throws IOException {
-			Mockito.when(headerHolder.get()).thenReturn(null);
+			Mockito.when(headerHolder.get()).thenThrow(new IllegalStateException("no Header set"));
 			Mockito.when(options.createNew()).thenReturn(false);
 			Mockito.when(options.create()).thenReturn(true);
 			Mockito.when(cipherFileChannel.size()).thenReturn(42L);
