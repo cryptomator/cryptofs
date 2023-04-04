@@ -65,12 +65,11 @@ public class ChunkLoaderTest {
 		long chunkOffset = chunkIndex * CIPHERTEXT_CHUNK_SIZE + HEADER_SIZE;
 		when(chunkIO.read(argThat(hasAtLeastRemaining(CIPHERTEXT_CHUNK_SIZE)), eq(chunkOffset))).thenReturn(-1);
 
-		Chunk chunk = inTest.load(chunkIndex);
+		var data = inTest.load(chunkIndex);
 
-		verify(stats).addChunkCacheMiss();
 		verify(bufferPool).recycle(argThat(ByteBufferMatcher.hasCapacity(CIPHERTEXT_CHUNK_SIZE)));
-		Assertions.assertEquals(0, chunk.data().remaining());
-		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE, chunk.data().capacity());
+		Assertions.assertEquals(0, data.remaining());
+		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE, data.capacity());
 	}
 
 	@Test
@@ -89,14 +88,13 @@ public class ChunkLoaderTest {
 				Mockito.any(), eq(chunkIndex), eq(header), eq(true) //
 		);
 
-		Chunk chunk = inTest.load(chunkIndex);
+		var data = inTest.load(chunkIndex);
 
-		verify(stats).addChunkCacheMiss();
-		verify(stats).addBytesDecrypted(chunk.data().remaining());
+		verify(stats).addBytesDecrypted(data.remaining());
 		verify(bufferPool).recycle(argThat(ByteBufferMatcher.hasCapacity(CIPHERTEXT_CHUNK_SIZE)));
-		assertThat(chunk.data(), contains(decryptedData.get()));
-		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE, chunk.data().remaining());
-		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE, chunk.data().capacity());
+		assertThat(data, contains(decryptedData.get()));
+		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE, data.remaining());
+		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE, data.capacity());
 	}
 
 	@Test
@@ -115,14 +113,13 @@ public class ChunkLoaderTest {
 				any(ByteBuffer.class), eq(chunkIndex), eq(header), eq(true) //
 		);
 
-		Chunk chunk = inTest.load(chunkIndex);
+		var data = inTest.load(chunkIndex);
 
-		verify(stats).addChunkCacheMiss();
-		verify(stats).addBytesDecrypted(chunk.data().remaining());
+		verify(stats).addBytesDecrypted(data.remaining());
 		verify(bufferPool).recycle(argThat(ByteBufferMatcher.hasCapacity(CIPHERTEXT_CHUNK_SIZE)));
-		assertThat(chunk.data(), contains(decryptedData.get()));
-		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE - 3, chunk.data().remaining());
-		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE, chunk.data().capacity());
+		assertThat(data, contains(decryptedData.get()));
+		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE - 3, data.remaining());
+		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE, data.capacity());
 	}
 
 	private Answer<Integer> fillBufferWith(byte value, int amount) {

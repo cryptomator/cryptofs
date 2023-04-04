@@ -26,8 +26,7 @@ class ChunkLoader {
 		this.bufferPool = bufferPool;
 	}
 
-	public Chunk load(Long chunkIndex) throws IOException, AuthenticationFailedException {
-		stats.addChunkCacheMiss();
+	public ByteBuffer load(Long chunkIndex) throws IOException, AuthenticationFailedException {
 		int chunkSize = cryptor.fileContentCryptor().ciphertextChunkSize();
 		long ciphertextPos = chunkIndex * chunkSize + cryptor.fileHeaderCryptor().headerSize();
 		ByteBuffer ciphertextBuf = bufferPool.getCiphertextBuffer();
@@ -42,7 +41,7 @@ class ChunkLoader {
 				cleartextBuf.flip();
 				stats.addBytesDecrypted(cleartextBuf.remaining());
 			}
-			return new Chunk(cleartextBuf, false);
+			return cleartextBuf;
 		} finally {
 			bufferPool.recycle(ciphertextBuf);
 		}

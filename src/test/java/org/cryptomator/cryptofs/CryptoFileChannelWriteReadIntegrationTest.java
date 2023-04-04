@@ -8,6 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.util.ByteBuffers;
 import org.cryptomator.cryptolib.api.Masterkey;
@@ -17,7 +18,9 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -30,6 +33,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
@@ -42,7 +46,12 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static java.lang.Math.min;
@@ -225,18 +234,39 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 
 		// tests https://github.com/cryptomator/cryptofs/issues/48
 		@Test
-		public void testTruncateExistingWhileStillOpen() throws IOException {
-			try (FileChannel ch1 = FileChannel.open(file, CREATE_NEW, WRITE)) {
-				ch1.write(StandardCharsets.UTF_8.encode("goodbye world"), 0);
-				ch1.force(true); // will generate a file header
-				try (FileChannel ch2 = FileChannel.open(file, CREATE, WRITE, TRUNCATE_EXISTING)) { // reuse existing file header, but will not re-write it
-					ch2.write(StandardCharsets.UTF_8.encode("hello world"), 0);
+		@DisplayName("writing from second channel while first is still open")
+		public void testWriteFromSecondChannelWhileStillOpen() throws IOException {
+			try (var ch1 = FileChannel.open(file, CREATE_NEW, WRITE)) {
+				ch1.write(StandardCharsets.UTF_8.encode("howdy world"), 0);
+				ch1.force(true);
+				try (var ch2 = FileChannel.open(file, CREATE, WRITE)) { // reuse existing file header, but will not re-write it
+					ch2.write(StandardCharsets.UTF_8.encode("hello"), 0);
 				}
 			}
 
-			try (FileChannel ch1 = FileChannel.open(file, READ)) {
-				ByteBuffer buf = ByteBuffer.allocate((int) ch1.size());
-				ch1.read(buf);
+			try (var ch3 = FileChannel.open(file, READ)) {
+				ByteBuffer buf = ByteBuffer.allocate((int) ch3.size());
+				ch3.read(buf);
+				Assertions.assertArrayEquals("hello world".getBytes(), buf.array());
+			}
+		}
+
+		// tests https://github.com/cryptomator/cryptofs/issues/160
+		@Test
+		@DisplayName("TRUNCATE_EXISTING leads to new file header")
+		public void testNewFileHeaderWhenTruncateExisting() throws IOException {
+			try (var ch1 = FileChannel.open(file, CREATE_NEW, WRITE)) {
+				ch1.write(StandardCharsets.UTF_8.encode("this content will be truncated soon"), 0);
+				ch1.force(true);
+				try (var ch2 = FileChannel.open(file, CREATE, WRITE, TRUNCATE_EXISTING)) { // re-roll file header
+					ch2.write(StandardCharsets.UTF_8.encode("hello"), 0);
+				}
+				ch1.write(StandardCharsets.UTF_8.encode(" world"), 5); // should use new file key
+			}
+
+			try (var ch3 = FileChannel.open(file, READ)) {
+				ByteBuffer buf = ByteBuffer.allocate((int) ch3.size());
+				ch3.read(buf);
 				Assertions.assertArrayEquals("hello world".getBytes(), buf.array());
 			}
 		}
@@ -461,6 +491,60 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 				Assertions.assertEquals(3 * dataSize, result);
 				Assertions.assertEquals(EOF, channel.read(ByteBuffer.allocate(0)));
 			}
+		}
+
+		@RepeatedTest(100)
+		public void testConcurrentRead() throws IOException, InterruptedException {
+			// prepare test data:
+			var content = new byte[10_000_000];
+			for (int i = 0; i < 100_000; i++) {
+				byte b = (byte) (i % 255);
+				Arrays.fill(content, i * 100, (i + 1) * 100, b);
+			}
+
+			try (var ch = FileChannel.open(file, CREATE, WRITE, TRUNCATE_EXISTING)) {
+				ch.write(ByteBuffer.wrap(content));
+			}
+
+			// read concurrently from same file channel:
+			var numThreads = 100;
+			var rnd = new Random(42L);
+			var results = new int[numThreads];
+			var resultsHandle = MethodHandles.arrayElementVarHandle(int[].class);
+			Arrays.fill(results, 42);
+			var executor = Executors.newCachedThreadPool();
+			try (var ch = FileChannel.open(file, READ)) {
+				for (int i = 0; i < numThreads; i++) {
+					int t = i;
+					int num = rnd.nextInt(50_000);
+					int pos = rnd.nextInt(400_000);
+					executor.submit(() -> {
+						ByteBuffer buf = ByteBuffer.allocate(num);
+						try {
+							int read = ch.read(buf, pos);
+							if (read != num) {
+								System.out.println("thread " + t + " read " + pos + " - " + (pos + num));
+								resultsHandle.setOpaque(results, t, -1); // ERROR invalid number of bytes
+							} else if (Arrays.equals(content, pos, pos + num, buf.array(), 0, read)) {
+								resultsHandle.setOpaque(results, t, 0); // SUCCESS
+							} else {
+								System.out.println("thread " + t + " read " + pos + " - " + (pos + num));
+								resultsHandle.setOpaque(results, t, -2); // ERROR invalid content
+							}
+						} catch (IOException e) {
+							e.printStackTrace();
+							resultsHandle.setOpaque(results, t, -3); // ERROR I/O error
+						}
+					});
+				}
+				executor.shutdown();
+				boolean allTasksFinished = executor.awaitTermination(10, TimeUnit.SECONDS);
+				Assertions.assertTrue(allTasksFinished);
+			}
+
+			Assertions.assertAll(IntStream.range(0, numThreads).mapToObj(t -> {
+				return () -> Assertions.assertEquals(0, resultsHandle.getOpaque(results, t), "thread " + t + " unsuccessful");
+			}));
 		}
 
 	}

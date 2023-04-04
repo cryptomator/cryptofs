@@ -39,11 +39,8 @@ public class FileHeaderHolder {
 	public FileHeader createNew() {
 		LOG.trace("Generating file header for {}", path.get());
 		FileHeader newHeader = cryptor.fileHeaderCryptor().create();
-		if (header.compareAndSet(null, newHeader)) {
-			return newHeader;
-		} else {
-			return header.get();
-		}
+		header.set(newHeader);
+		return newHeader;
 	}
 
 	public FileHeader loadExisting(FileChannel ch) throws IOException {
