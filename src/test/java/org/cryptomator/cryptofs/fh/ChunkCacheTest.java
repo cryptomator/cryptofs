@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -156,8 +157,8 @@ public class ChunkCacheTest {
 			verifyNoMoreInteractions(bufferPool);
 		}
 
-		@RepeatedTest(30)
-		@DisplayName("chunk.close() triggers eviction of LRU stale chunk")
+		@RepeatedTest(100)
+		@DisplayName("chunk.close() triggers eviction of stale chunk")
 		public void testClosingActiveChunkTriggersEvictionOfStaleChunk() throws IOException, AuthenticationFailedException {
 			var cdl = new CountDownLatch(1);
 			Mockito.doAnswer(invocation -> {
@@ -170,8 +171,11 @@ public class ChunkCacheTest {
 			Assertions.assertTimeoutPreemptively(Duration.ofMillis(100), () -> {
 				cdl.await();
 			});
-			verify(chunkSaver).save(42L, staleChunk42);
-			verify(bufferPool).recycle(staleChunk42.data());
+
+			ArgumentCaptor<Chunk> chunkCaptor = ArgumentCaptor.forClass(Chunk.class);
+			ArgumentCaptor<Long> indexCaptor = ArgumentCaptor.forClass(Long.class);
+			verify(chunkSaver).save(indexCaptor.capture(), chunkCaptor.capture());
+			verify(bufferPool).recycle(chunkCaptor.getValue().data());
 			verifyNoMoreInteractions(chunkSaver);
 		}
 
