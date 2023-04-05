@@ -184,8 +184,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			return;
 		}
 		LOG.trace("{} - Writing file header.", this);
-		ByteBuffer encryptedHeader = cryptor.fileHeaderCryptor().encryptHeader(fileHeaderHolder.get());
-		ciphertextFileChannel.write(encryptedHeader, 0);
+		ciphertextFileChannel.write(fileHeaderHolder.getEncrypted(), 0);
 		fileHeaderHolder.headerIsPersisted().set(true);
 	}
 

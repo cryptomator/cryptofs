@@ -489,7 +489,7 @@ public class CleartextFileChannelTest {
 		public void testWriteHeaderIfNeeded() throws IOException {
 			when(options.writable()).thenReturn(true);
 
-			when(headerIsPersisted.getAndSet(anyBoolean())).thenReturn(false).thenReturn(true).thenReturn(true);
+			when(headerIsPersisted.get()).thenReturn(false).thenReturn(true).thenReturn(true);
 
 			inTest.force(true);
 			inTest.force(true);
@@ -499,23 +499,24 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
-		@DisplayName("If writing header fails, it is indicated as not persistet")
+		@DisplayName("If writing header fails, it is indicated as not persistent")
 		public void testWriteHeaderFailsResetsPersistenceState() throws IOException {
 			when(options.writable()).thenReturn(true);
-			when(headerIsPersisted.getAndSet(anyBoolean())).thenReturn(false);
+			when(headerIsPersisted.get()).thenReturn(false);
 			doNothing().when(headerIsPersisted).set(anyBoolean());
 			when(ciphertextFileChannel.write(any(), anyLong())).thenThrow(new IOException("writing failed"));
 
 			Assertions.assertThrows(IOException.class, () -> inTest.force(true));
 
 			Mockito.verify(ciphertextFileChannel, Mockito.times(1)).write(Mockito.any(), Mockito.eq(0l));
-			Mockito.verify(headerIsPersisted, Mockito.times(1)).set(false);
+			Mockito.verify(headerIsPersisted, Mockito.never()).set(anyBoolean());
 		}
 
 		@Test
 		@DisplayName("don't write header if it is already written")
 		public void testDontRewriteHeader() throws IOException {
 			when(options.writable()).thenReturn(true);
+			when(headerIsPersisted.get()).thenReturn(true);
 			inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, attributeViewSupplier, exceptionsDuringWrite, closeListener, stats);
 
 			inTest.force(true);

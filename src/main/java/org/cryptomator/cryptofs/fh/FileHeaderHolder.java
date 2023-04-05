@@ -22,6 +22,7 @@ public class FileHeaderHolder {
 	private final Cryptor cryptor;
 	private final AtomicReference<Path> path;
 	private final AtomicReference<FileHeader> header = new AtomicReference<>();
+	private final AtomicReference<ByteBuffer> encryptedHeader = new AtomicReference<>();
 	private final AtomicBoolean isPersisted = new AtomicBoolean();
 
 	@Inject
@@ -38,9 +39,18 @@ public class FileHeaderHolder {
 		return result;
 	}
 
+	public ByteBuffer getEncrypted() {
+		var result = encryptedHeader.get();
+		if (result == null) {
+			throw new IllegalStateException("Header not set.");
+		}
+		return result;
+	}
+
 	FileHeader createNew() {
 		LOG.trace("Generating file header for {}", path.get());
 		FileHeader newHeader = cryptor.fileHeaderCryptor().create();
+		encryptedHeader.set(cryptor.fileHeaderCryptor().encryptHeader(newHeader).asReadOnlyBuffer()); //to prevent NONCE reuse, we already encrypt the header and cache it
 		header.set(newHeader);
 		return newHeader;
 	}
@@ -60,6 +70,7 @@ public class FileHeaderHolder {
 		existingHeaderBuf.flip();
 		try {
 			FileHeader existingHeader = cryptor.fileHeaderCryptor().decryptHeader(existingHeaderBuf);
+			encryptedHeader.set(existingHeaderBuf.flip().asReadOnlyBuffer()); //for consistency
 			header.set(existingHeader);
 			isPersisted.set(true);
 			return existingHeader;
