@@ -67,17 +67,20 @@ class C9rConflictResolver {
 		}
 	}
 
-	private Stream<Node> resolveConflict(Node conflicting, Path canonicalPath) throws IOException {
-		Path conflictingPath = conflicting.ciphertextPath;
-		if (resolveConflictTrivially(canonicalPath, conflictingPath)) {
-			Node resolved = new Node(canonicalPath);
-			resolved.cleartextName = conflicting.cleartextName;
-			resolved.extractedCiphertext = conflicting.extractedCiphertext;
-			return Stream.of(resolved);
+	private Stream<Node> resolveConflict(Node conflictingNode, Path canonicalNodePath) throws IOException {
+		Path conflictingNodePath = conflictingNode.ciphertextPath;
+		Path conflictFreeNodePath = canonicalNodePath;
+		if (resolveConflictTrivially(canonicalNodePath, conflictingNodePath)) {
+			Node resolvedNode = new Node(conflictFreeNodePath);
+			resolvedNode.cleartextName = conflictingNode.cleartextName;
+			resolvedNode.extractedCiphertext = conflictingNode.extractedCiphertext;
+			return Stream.of(resolvedNode);
 		} else {
-			return Stream.of(renameConflictingFile(canonicalPath, conflictingPath, conflicting.cleartextName));
+			Node renamedNode = renameConflictingFile(conflictFreeNodePath, conflictingNodePath, conflictingNode.cleartextName);
+			return Stream.of(renamedNode);
 		}
 	}
+
 
 	/**
 	 * Resolves a conflict by renaming the conflicting file.

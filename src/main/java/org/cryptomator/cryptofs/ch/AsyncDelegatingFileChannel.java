@@ -32,6 +32,10 @@ public class AsyncDelegatingFileChannel extends AsynchronousFileChannel {
 		this.executor = executor;
 	}
 
+	public FileChannel getChannel() {
+		return channel;
+	}
+
 	@Override
 	public void close() throws IOException {
 		channel.close();

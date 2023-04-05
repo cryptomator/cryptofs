@@ -16,18 +16,40 @@ class PathMatcherFactory {
 	}
 
 	public PathMatcher pathMatcherFrom(String syntaxAndPattern) {
-		return new PatternPathMatcher(pattern(syntaxAndPattern));
+		PathMatcherStrategy strategy = getStrategy(syntaxAndPattern);
+		return strategy.createPathMatcher(syntaxAndPattern);
 	}
 
-	private Pattern pattern(String syntaxAndPattern) {
+	private PathMatcherStrategy getStrategy(String syntaxAndPattern) {
 		final String lowercaseSyntaxAndPattern = syntaxAndPattern.toLowerCase();
 		if (lowercaseSyntaxAndPattern.startsWith("glob:")) {
-			return Pattern.compile(globToRegexConverter.convert(syntaxAndPattern.substring(5)));
+			return new GlobPathMatcherStrategy();
 		} else if (lowercaseSyntaxAndPattern.startsWith("regex:")) {
-			return Pattern.compile(syntaxAndPattern.substring(6));
+			return new RegexPathMatcherStrategy();
 		} else {
 			throw new UnsupportedOperationException();
 		}
 	}
 
+	interface PathMatcherStrategy {
+		PathMatcher createPathMatcher(String syntaxAndPattern);
+	}
+
+	class GlobPathMatcherStrategy implements PathMatcherStrategy {
+		@Override
+		public PathMatcher createPathMatcher(String syntaxAndPattern) {
+			String pattern = globToRegexConverter.convert(syntaxAndPattern.substring(5));
+			return new PatternPathMatcher(Pattern.compile(pattern));
+		}
+	}
+
+	class RegexPathMatcherStrategy implements PathMatcherStrategy {
+		@Override
+		public PathMatcher createPathMatcher(String syntaxAndPattern) {
+			String pattern = syntaxAndPattern.substring(6);
+			return new PatternPathMatcher(Pattern.compile(pattern));
+		}
+	}
+
 }
+

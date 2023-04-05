@@ -23,23 +23,22 @@ class BrokenDirectoryFilter {
 		this.cryptoPathMapper = cryptoPathMapper;
 	}
 
-	public Stream<Node> process(Node node) {
-		Path dirFile = node.ciphertextPath.resolve(Constants.DIR_FILE_NAME);
-		if (Files.isRegularFile(dirFile)) {
-			final Path dirPath;
+	public Stream<Node> process(Node inputNode) {
+		Path inputCiphertextPath = inputNode.ciphertextPath.resolve(Constants.DIR_FILE_NAME);
+		if (Files.isRegularFile(inputCiphertextPath)) {
+			final Path resolvedDirectoryPath;
 			try {
-				dirPath = cryptoPathMapper.resolveDirectory(dirFile).path;
+				resolvedDirectoryPath = cryptoPathMapper.resolveDirectory(inputCiphertextPath).path;
 			} catch (IOException e) {
-				LOG.warn("Broken directory file: " + dirFile, e);
+				LOG.warn("Broken directory file: " + inputCiphertextPath, e);
 				return Stream.empty();
 			}
-			if (!Files.isDirectory(dirPath)) {
-				LOG.warn("Broken directory file {}. Directory {} does not exist.", dirFile, dirPath);
+			if (!Files.isDirectory(resolvedDirectoryPath)) {
+				LOG.warn("Broken directory file {}. Directory {} does not exist.", inputCiphertextPath, resolvedDirectoryPath);
 				return Stream.empty();
 			}
 		}
-		return Stream.of(node);
+		return Stream.of(inputNode);
 	}
-
 
 }
