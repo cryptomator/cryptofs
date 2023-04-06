@@ -179,7 +179,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		return written;
 	}
 
-	private synchronized void writeHeaderIfNeeded() throws IOException {
+	private void writeHeaderIfNeeded() throws IOException {
 		if (fileHeaderHolder.headerIsPersisted().get()) {
 			return;
 		}
