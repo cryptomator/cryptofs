@@ -182,6 +182,7 @@ public class EffectiveOpenOptions {
 		result.add(READ); // also needed during write
 		result.remove(LinkOption.NOFOLLOW_LINKS);
 		result.remove(APPEND);
+		result.remove(TRUNCATE_EXISTING);
 		return result;
 	}
 

@@ -42,6 +42,7 @@ public class FileHeaderHolderTest {
 	@BeforeEach
 	public void setup() throws IOException {
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
+		when(fileHeaderCryptor.encryptHeader(Mockito.any())).thenReturn(ByteBuffer.wrap(new byte[0]));
 	}
 
 	@Nested
@@ -75,6 +76,9 @@ public class FileHeaderHolderTest {
 			Assertions.assertSame(headerToLoad, loadedHeader3);
 
 			verify(fileHeaderCryptor, times(1)).decryptHeader(Mockito.any());
+			Assertions.assertNotNull(inTest.get());
+			Assertions.assertNotNull(inTest.getEncrypted());
+			Assertions.assertTrue(inTest.headerIsPersisted().get());
 		}
 
 	}
@@ -106,6 +110,9 @@ public class FileHeaderHolderTest {
 			Assertions.assertSame(headerToCreate, createdHeader3);
 
 			verify(fileHeaderCryptor, times(1)).create();
+			Assertions.assertNotNull(inTest.get());
+			Assertions.assertNotNull(inTest.getEncrypted());
+			Assertions.assertFalse(inTest.headerIsPersisted().get());
 		}
 
 	}

@@ -8,7 +8,6 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.util.ByteBuffers;
 import org.cryptomator.cryptolib.api.Masterkey;
@@ -251,17 +250,17 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			}
 		}
 
-		// tests https://github.com/cryptomator/cryptofs/issues/160
+		//tests changes made in https://github.com/cryptomator/cryptofs/pull/166
 		@Test
-		@DisplayName("TRUNCATE_EXISTING leads to new file header")
+		@DisplayName("TRUNCATE_EXISTING does not produce invalid ciphertext")
 		public void testNewFileHeaderWhenTruncateExisting() throws IOException {
 			try (var ch1 = FileChannel.open(file, CREATE_NEW, WRITE)) {
 				ch1.write(StandardCharsets.UTF_8.encode("this content will be truncated soon"), 0);
 				ch1.force(true);
-				try (var ch2 = FileChannel.open(file, CREATE, WRITE, TRUNCATE_EXISTING)) { // re-roll file header
+				try (var ch2 = FileChannel.open(file, CREATE, WRITE, TRUNCATE_EXISTING)) {
 					ch2.write(StandardCharsets.UTF_8.encode("hello"), 0);
 				}
-				ch1.write(StandardCharsets.UTF_8.encode(" world"), 5); // should use new file key
+				ch1.write(StandardCharsets.UTF_8.encode(" world"), 5);
 			}
 
 			try (var ch3 = FileChannel.open(file, READ)) {
