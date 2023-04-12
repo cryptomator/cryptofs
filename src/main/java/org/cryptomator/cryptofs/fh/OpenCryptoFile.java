@@ -66,14 +66,13 @@ public class OpenCryptoFile implements Closeable {
 	 */
 	public synchronized FileChannel newFileChannel(EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
 		Path path = currentFilePath.get();
-
 		FileChannel ciphertextFileChannel = null;
 		CleartextFileChannel cleartextFileChannel = null;
 		try {
 			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
 			initFileHeader(options, ciphertextFileChannel);
 			if (options.truncateExisting()) {
-				chunkCache.invalidateAll();
+				chunkCache.invalidateStale();
 				ciphertextFileChannel.truncate(cryptor.fileHeaderCryptor().headerSize());
 			}
 			initFileSize(ciphertextFileChannel);

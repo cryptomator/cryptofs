@@ -203,7 +203,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			}
 			long ciphertextFileSize = cryptor.fileHeaderCryptor().headerSize() + cryptor.fileContentCryptor().ciphertextSize(newSize);
 			chunkCache.flush();
-			chunkCache.invalidateAll(); // make sure no chunks _after_ newSize exist that would otherwise be written during the next cache eviction
+			chunkCache.invalidateStale(); // make sure no chunks _after_ newSize exist that would otherwise be written during the next cache eviction
 			ciphertextFileChannel.truncate(ciphertextFileSize);
 			position = min(newSize, position);
 			fileSize.set(newSize);
