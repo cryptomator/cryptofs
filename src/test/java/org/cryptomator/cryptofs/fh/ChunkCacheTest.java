@@ -159,7 +159,6 @@ public class ChunkCacheTest {
 		public void testClosingActiveChunkTriggersEvictionOfStaleChunk() throws IOException, AuthenticationFailedException {
 			activeChunk1.close();
 
-			inTest.cleanup(); // evict now, don't wait for async task
 			// we can't know _which_ stale chunk gets evicted. see https://github.com/ben-manes/caffeine/issues/583
 			ArgumentCaptor<Chunk> chunkCaptor = ArgumentCaptor.forClass(Chunk.class);
 			ArgumentCaptor<Long> indexCaptor = ArgumentCaptor.forClass(Long.class);

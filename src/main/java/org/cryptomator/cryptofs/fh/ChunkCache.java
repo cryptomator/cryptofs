@@ -57,6 +57,7 @@ public class ChunkCache {
 		this.chunkCache = Caffeine.newBuilder() //
 				.maximumWeight(MAX_CACHED_CLEARTEXT_CHUNKS) //
 				.weigher(this::weigh) //
+				.executor(Runnable::run) // run `evictStaleChunk` in same thread -> see https://github.com/cryptomator/cryptofs/pull/163#issuecomment-1505249736
 				.evictionListener(this::evictStaleChunk) //
 				.build();
 		this.cachedChunks = chunkCache.asMap();
@@ -179,11 +180,6 @@ public class ChunkCache {
 		} finally {
 			exclusiveLock.unlock();
 		}
-	}
-
-	// visible for testing
-	void cleanup() {
-		chunkCache.cleanUp();
 	}
 
 	// visible for testing
