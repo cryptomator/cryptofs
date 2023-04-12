@@ -14,7 +14,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Nested;
@@ -54,7 +53,7 @@ public class OpenCryptoFileTest {
 	private FileHeaderCryptor fileHeaderCryptor = mock(FileHeaderCryptor.class);
 	private FileHeaderHolder headerHolder = mock(FileHeaderHolder.class);
 	private ChunkIO chunkIO = mock(ChunkIO.class);
-	private AtomicLong fileSize = new AtomicLong(-1l);
+	private AtomicLong fileSize = Mockito.mock(AtomicLong.class);
 	private AtomicReference<Instant> lastModified = new AtomicReference(Instant.ofEpochMilli(0));
 	private OpenCryptoFileComponent openCryptoFileComponent = mock(OpenCryptoFileComponent.class);
 	private ChannelComponent.Factory channelComponentFactory = mock(ChannelComponent.Factory.class);
@@ -91,6 +90,22 @@ public class OpenCryptoFileTest {
 		});
 		Assertions.assertSame(expectedException, exception);
 		verify(closeListener).close(CURRENT_FILE_PATH.get(), openCryptoFile);
+	}
+
+	@Test
+	@DisplayName("Opening a file channel with TRUNCATE_EXISTING sets the file size to 0")
+	public void testFileSizeZerodOnTruncateExisting() throws IOException {
+		EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING), readonlyFlag);
+		Mockito.when(headerHolder.get()).thenReturn(Mockito.mock(FileHeader.class));
+		Mockito.when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
+		Mockito.when(fileHeaderCryptor.headerSize()).thenReturn(42);
+		Mockito.when(openCryptoFileComponent.newChannelComponent()).thenReturn(channelComponentFactory);
+		Mockito.when(channelComponentFactory.create(any(), any(), any())).thenReturn(channelComponent);
+		Mockito.when(channelComponent.channel()).thenReturn(mock(CleartextFileChannel.class));
+		OpenCryptoFile openCryptoFile = new OpenCryptoFile(closeListener, chunkCache, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, fileSize, lastModified, openCryptoFileComponent);
+
+		openCryptoFile.newFileChannel(options);
+		verify(fileSize).set(0L);
 	}
 
 	@Nested
@@ -173,6 +188,7 @@ public class OpenCryptoFileTest {
 	@DisplayName("FileChannels")
 	public class FileChannelFactoryTest {
 
+		private final AtomicLong realFileSize = new AtomicLong(-1L);
 		private OpenCryptoFile openCryptoFile;
 		private CleartextFileChannel cleartextFileChannel;
 		private AtomicReference<ChannelCloseListener> listener;
@@ -180,7 +196,7 @@ public class OpenCryptoFileTest {
 
 		@BeforeAll
 		public void setup() throws IOException {
-			openCryptoFile = new OpenCryptoFile(closeListener, chunkCache, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, fileSize, lastModified, openCryptoFileComponent);
+			openCryptoFile = new OpenCryptoFile(closeListener, chunkCache, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, realFileSize, lastModified, openCryptoFileComponent);
 			cleartextFileChannel = mock(CleartextFileChannel.class);
 			listener = new AtomicReference<>();
 			ciphertextChannel = new AtomicReference<>();

@@ -74,6 +74,7 @@ public class OpenCryptoFile implements Closeable {
 			if (options.truncateExisting()) {
 				chunkCache.invalidateStale();
 				ciphertextFileChannel.truncate(cryptor.fileHeaderCryptor().headerSize());
+				fileSize.set(0);
 			}
 			initFileSize(ciphertextFileChannel);
 			cleartextFileChannel = component.newChannelComponent() //
