@@ -196,6 +196,8 @@ public class OpenCryptoFileTest {
 
 		@BeforeAll
 		public void setup() throws IOException {
+			FS = Jimfs.newFileSystem("OpenCryptoFileTest.FileChannelFactoryTest", Configuration.unix().toBuilder().setAttributeViews("basic", "posix").build());
+			CURRENT_FILE_PATH = new AtomicReference<>(FS.getPath("currentFile"));
 			openCryptoFile = new OpenCryptoFile(closeListener, chunkCache, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, realFileSize, lastModified, openCryptoFileComponent);
 			cleartextFileChannel = mock(CleartextFileChannel.class);
 			listener = new AtomicReference<>();
