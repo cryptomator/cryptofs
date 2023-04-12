@@ -7,10 +7,10 @@ import org.cryptomator.cryptofs.fh.BufferPool;
 import org.cryptomator.cryptofs.fh.Chunk;
 import org.cryptomator.cryptofs.fh.ChunkCache;
 import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
+import org.cryptomator.cryptofs.fh.FileHeaderHolder;
 import org.cryptomator.cryptofs.fh.OpenFileModifiedDate;
 import org.cryptomator.cryptofs.fh.OpenFileSize;
 import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.FileHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +25,6 @@ import java.nio.channels.NonWritableChannelException;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -40,7 +39,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private static final Logger LOG = LoggerFactory.getLogger(CleartextFileChannel.class);
 
 	private final FileChannel ciphertextFileChannel;
-	private final FileHeader fileHeader;
+	private final FileHeaderHolder fileHeaderHolder;
 	private final Cryptor cryptor;
 	private final ChunkCache chunkCache;
 	private final BufferPool bufferPool;
@@ -51,13 +50,12 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
 	private final ChannelCloseListener closeListener;
 	private final CryptoFileSystemStats stats;
-	private final AtomicBoolean mustWriteHeader;
 
 	@Inject
-	public CleartextFileChannel(FileChannel ciphertextFileChannel, FileHeader fileHeader, @MustWriteHeader boolean mustWriteHeader, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, BufferPool bufferPool, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, Supplier<BasicFileAttributeView> attrViewProvider, ExceptionsDuringWrite exceptionsDuringWrite, ChannelCloseListener closeListener, CryptoFileSystemStats stats) {
+	public CleartextFileChannel(FileChannel ciphertextFileChannel, FileHeaderHolder fileHeaderHolder, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, BufferPool bufferPool, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, Supplier<BasicFileAttributeView> attrViewProvider, ExceptionsDuringWrite exceptionsDuringWrite, ChannelCloseListener closeListener, CryptoFileSystemStats stats) {
 		super(readWriteLock);
 		this.ciphertextFileChannel = ciphertextFileChannel;
-		this.fileHeader = fileHeader;
+		this.fileHeaderHolder = fileHeaderHolder;
 		this.cryptor = cryptor;
 		this.chunkCache = chunkCache;
 		this.bufferPool = bufferPool;
@@ -71,7 +69,6 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		if (options.append()) {
 			position = fileSize.get();
 		}
-		this.mustWriteHeader = new AtomicBoolean(mustWriteHeader);
 		if (options.createNew() || options.create()) {
 			lastModified.compareAndSet(Instant.EPOCH, Instant.now());
 		}
@@ -183,11 +180,12 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	}
 
 	private void writeHeaderIfNeeded() throws IOException {
-		if (mustWriteHeader.getAndSet(false)) {
-			LOG.trace("{} - Writing file header.", this);
-			ByteBuffer encryptedHeader = cryptor.fileHeaderCryptor().encryptHeader(fileHeader);
-			ciphertextFileChannel.write(encryptedHeader, 0);
+		if (fileHeaderHolder.headerIsPersisted().get()) {
+			return;
 		}
+		LOG.trace("{} - Writing file header.", this);
+		ciphertextFileChannel.write(fileHeaderHolder.getEncrypted(), 0);
+		fileHeaderHolder.headerIsPersisted().set(true);
 	}
 
 	@Override

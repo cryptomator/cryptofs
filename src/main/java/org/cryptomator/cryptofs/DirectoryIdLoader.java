@@ -1,10 +1,11 @@
 package org.cryptomator.cryptofs;
 
-import com.google.common.cache.CacheLoader;
+import com.github.benmanes.caffeine.cache.CacheLoader;
 
 import javax.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
@@ -14,7 +15,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.UUID;
 
 @CryptoFileSystemScoped
-class DirectoryIdLoader extends CacheLoader<Path, String> {
+class DirectoryIdLoader implements CacheLoader<Path, String> {
 
 	private static final int MAX_DIR_ID_LENGTH = 1000;
 
@@ -23,7 +24,7 @@ class DirectoryIdLoader extends CacheLoader<Path, String> {
 	}
 
 	@Override
-	public String load(Path dirFilePath) throws IOException {
+	public String load(Path dirFilePath) throws UncheckedIOException {
 		try (FileChannel ch = FileChannel.open(dirFilePath, StandardOpenOption.READ);
 			 InputStream in = Channels.newInputStream(ch)) {
 			long size = ch.size();
@@ -39,6 +40,8 @@ class DirectoryIdLoader extends CacheLoader<Path, String> {
 			}
 		} catch (NoSuchFileException e) {
 			return UUID.randomUUID().toString();
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
 		}
 	}
 

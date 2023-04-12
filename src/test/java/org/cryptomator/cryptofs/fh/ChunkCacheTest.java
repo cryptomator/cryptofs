@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -160,8 +161,10 @@ public class ChunkCacheTest {
 
 			inTest.cleanup(); // evict now, don't wait for async task
 			// we can't know _which_ stale chunk gets evicted. see https://github.com/ben-manes/caffeine/issues/583
-			verify(chunkSaver).save(Mockito.anyLong(), Mockito.any());
-			verify(bufferPool).recycle(Mockito.any());
+			ArgumentCaptor<Chunk> chunkCaptor = ArgumentCaptor.forClass(Chunk.class);
+			ArgumentCaptor<Long> indexCaptor = ArgumentCaptor.forClass(Long.class);
+			verify(chunkSaver).save(indexCaptor.capture(), chunkCaptor.capture());
+			verify(bufferPool).recycle(chunkCaptor.getValue().data());
 			verifyNoMoreInteractions(chunkSaver);
 		}
 

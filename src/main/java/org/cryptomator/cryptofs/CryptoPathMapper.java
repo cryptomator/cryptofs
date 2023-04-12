@@ -8,11 +8,9 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import com.google.common.base.Throwables;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.io.BaseEncoding;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.common.Constants;
@@ -22,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -32,7 +31,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
 
 import static org.cryptomator.cryptofs.common.Constants.DATA_DIR_NAME;
 
@@ -61,8 +59,8 @@ public class CryptoPathMapper {
 		this.dirIdProvider = dirIdProvider;
 		this.longFileNameProvider = longFileNameProvider;
 		this.vaultConfig = vaultConfig;
-		this.ciphertextNames = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_CIPHERTEXT_NAMES).build(CacheLoader.from(this::getCiphertextFileName));
-		this.ciphertextDirectories = CacheBuilder.newBuilder().maximumSize(MAX_CACHED_DIR_PATHS).expireAfterWrite(MAX_CACHE_AGE).build();
+		this.ciphertextNames = Caffeine.newBuilder().maximumSize(MAX_CACHED_CIPHERTEXT_NAMES).build(this::getCiphertextFileName);
+		this.ciphertextDirectories = Caffeine.newBuilder().maximumSize(MAX_CACHED_DIR_PATHS).expireAfterWrite(MAX_CACHE_AGE).build();
 		this.rootDirectory = resolveDirectory(Constants.ROOT_DIR_ID);
 	}
 
@@ -127,7 +125,7 @@ public class CryptoPathMapper {
 	}
 	
 	public CiphertextFilePath getCiphertextFilePath(Path parentCiphertextDir, String parentDirId, String cleartextName) {
-		String ciphertextName = ciphertextNames.getUnchecked(new DirIdAndName(parentDirId, cleartextName));
+		String ciphertextName = ciphertextNames.get(new DirIdAndName(parentDirId, cleartextName));
 		Path c9rPath = parentCiphertextDir.resolve(ciphertextName);
 		if (ciphertextName.length() > vaultConfig.getShorteningThreshold()) {
 			LongFileNameProvider.DeflatedFileName deflatedFileName = longFileNameProvider.deflate(c9rPath);
@@ -160,13 +158,16 @@ public class CryptoPathMapper {
 			return rootDirectory;
 		} else {
 			try {
-				return ciphertextDirectories.get(cleartextPath, () -> {
-					Path dirFile = getCiphertextFilePath(cleartextPath).getDirFilePath();
-					return resolveDirectory(dirFile);
+				return ciphertextDirectories.get(cleartextPath, p -> {
+					try {
+						Path dirFile = getCiphertextFilePath(p).getDirFilePath();
+						return resolveDirectory(dirFile);
+					} catch (IOException e) {
+						throw new UncheckedIOException(e);
+					}
 				});
-			} catch (ExecutionException e) {
-				Throwables.throwIfInstanceOf(e.getCause(), IOException.class);
-				throw new IOException("Unexpected exception", e);
+			} catch (UncheckedIOException e) {
+				throw new IOException(e);
 			}
 		}
 	}
