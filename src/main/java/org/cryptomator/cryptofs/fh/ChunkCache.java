@@ -36,10 +36,10 @@ public class ChunkCache {
 	 *     <li>Accessing a single chunk (with a known index), e.g. during {@link #getChunk(long)}</li>
 	 *     <li>Accessing multiple chunks, e.g. during {@link #invalidateStale()}</li>
 	 * </ol>
-	 *
+	 * <p>
 	 * While the former can be handled by the cache implementation (based on {@link ConcurrentMap}) just fine,
 	 * we need to make sure no concurrent modification will happen accessing multiple chunks (e.g. when iterating over the entry set).
-	 *
+	 * <p>
 	 * This is achieved using this {@link ReadWriteLock}, where holding the {@link ReadWriteLock#readLock() shared lock} is
 	 * sufficient for index-based access, while the {@link ReadWriteLock#writeLock() exclusive lock} is necessary otherwise.
 	 */
@@ -149,6 +149,7 @@ public class ChunkCache {
 
 	/**
 	 * Flushes cached data (but keeps them cached).
+	 *
 	 * @see #invalidateStale()
 	 */
 	public void flush() throws IOException {
