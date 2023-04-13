@@ -546,6 +546,16 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			}));
 		}
 
+		@Test
+		public void testClosingChannelOfDeletedFileDoesNotThrow() {
+			Assertions.assertDoesNotThrow(() -> {
+				try (var ch = FileChannel.open(file, CREATE_NEW, WRITE)) {
+					ch.write(ByteBuffer.wrap("delete me".getBytes(StandardCharsets.UTF_8)));
+					Files.delete(file);
+				}
+			});
+			Assertions.assertTrue(Files.notExists(file));
+		}
 	}
 
 }

@@ -227,6 +227,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 
 	/**
 	 * Writes in-memory contents to the ciphertext file
+	 *
 	 * @throws IOException
 	 */
 	private void flush() throws IOException {
@@ -313,7 +314,12 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	protected void implCloseChannel() throws IOException {
 		try {
 			flush();
-			persistLastModified();
+			try {
+				persistLastModified();
+			} catch (IOException e) {
+				//no-op, see https://github.com/cryptomator/cryptofs/issues/169
+				LOG.warn("Failed to persist last modified timestamp for encrypted file: {}", e.getMessage());
+			}
 		} finally {
 			super.implCloseChannel();
 			closeListener.closed(this);
