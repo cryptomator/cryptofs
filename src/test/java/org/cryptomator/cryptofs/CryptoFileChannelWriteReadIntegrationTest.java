@@ -561,7 +561,7 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		//https://github.com/cryptomator/cryptofs/issues/170
 		@Test
 		public void testWriteThenDeleteThenRead() throws IOException {
-			var bufToWrite = ByteBuffer.wrap("delete me".getBytes(StandardCharsets.UTF_8));
+			var bufToWrite = StandardCharsets.UTF_8.encode("delete me");
 			final int bytesRead;
 			try (var ch = FileChannel.open(file, CREATE_NEW, WRITE)) {
 				ch.write(bufToWrite);
