@@ -206,7 +206,7 @@ public class CryptoFileSystemImplTest {
 
 				Path result = inTest.getCiphertextPath(cleartext);
 				Assertions.assertEquals(ciphertext, result);
-				Mockito.verify(cryptoPathMapper,never()).getCiphertextFilePath(any());
+				Mockito.verify(cryptoPathMapper, never()).getCiphertextFilePath(any());
 			}
 		}
 
