@@ -48,6 +48,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
@@ -555,6 +556,21 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 				}
 			});
 			Assertions.assertTrue(Files.notExists(file));
+		}
+
+		//https://github.com/cryptomator/cryptofs/issues/170
+		@Test
+		public void testWriteThenDeleteThenRead() throws IOException {
+			var bufToWrite = StandardCharsets.UTF_8.encode("delete me");
+			final int bytesRead;
+			try (var ch = FileChannel.open(file, CREATE_NEW, WRITE)) {
+				ch.write(bufToWrite);
+				Files.delete(file);
+				try (var ch2 = fileSystem.provider().newFileChannel(file, Set.of(CREATE, READ, WRITE))) {
+					bytesRead = ch2.read(ByteBuffer.allocate(bufToWrite.capacity()));
+				}
+			}
+			Assertions.assertEquals(-1, bytesRead);
 		}
 	}
 

@@ -82,6 +82,20 @@ public class OpenCryptoFiles implements Closeable {
 	}
 
 	/**
+	 * Removes a ciphertextPath to {@link OpenCryptoFile} mapping, if it exists, and sets the path of the openCryptoFile to null.
+	 *
+	 * @param ciphertextPath The ciphertext file path to invalidate
+	 */
+	public void delete(Path ciphertextPath) {
+		openCryptoFiles.compute(ciphertextPath, (p, openFile) -> {
+			if (openFile != null) {
+				openFile.updateCurrentFilePath(null);
+			}
+			return null;
+		});
+	}
+
+	/**
 	 * Prepares to update any open file references during a move operation.
 	 * MUST be invoked using a try-with-resource statement and committed after the physical file move succeeded.
 	 *
@@ -137,7 +151,7 @@ public class OpenCryptoFiles implements Closeable {
 				throw new IllegalStateException();
 			}
 			if (openCryptoFile != null) {
-				openCryptoFile.setCurrentFilePath(dst);
+				openCryptoFile.updateCurrentFilePath(dst);
 			}
 			openCryptoFiles.remove(src, openCryptoFile);
 			committed = true;

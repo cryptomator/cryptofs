@@ -28,18 +28,9 @@ public class OpenCryptoFileModule {
 
 	@Provides
 	@OpenFileScoped
-	@CurrentOpenFilePath // TODO: do we still need this? only used in logging.
+	@CurrentOpenFilePath
 	public AtomicReference<Path> provideCurrentPath(@OriginalOpenFilePath Path originalPath) {
 		return new AtomicReference<>(originalPath);
-	}
-
-	@Provides
-	@OpenFileScoped
-	public Supplier<BasicFileAttributeView> provideBasicFileAttributeViewSupplier(@CurrentOpenFilePath AtomicReference<Path> currentPath) {
-		return () -> {
-			Path path = currentPath.get();
-			return path.getFileSystem().provider().getFileAttributeView(path, BasicFileAttributeView.class);
-		};
 	}
 
 	@Provides
