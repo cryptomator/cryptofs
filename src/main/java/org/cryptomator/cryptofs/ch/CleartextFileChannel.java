@@ -6,6 +6,7 @@ import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.fh.BufferPool;
 import org.cryptomator.cryptofs.fh.Chunk;
 import org.cryptomator.cryptofs.fh.ChunkCache;
+import org.cryptomator.cryptofs.fh.CurrentOpenFilePath;
 import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptofs.fh.FileHeaderHolder;
 import org.cryptomator.cryptofs.fh.OpenFileModifiedDate;
@@ -22,13 +23,14 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
-import java.util.function.Supplier;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
@@ -44,15 +46,15 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private final ChunkCache chunkCache;
 	private final BufferPool bufferPool;
 	private final EffectiveOpenOptions options;
+	private final AtomicReference<Path> currentFilePath;
 	private final AtomicLong fileSize;
 	private final AtomicReference<Instant> lastModified;
-	private final Supplier<BasicFileAttributeView> attrViewProvider;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
 	private final ChannelCloseListener closeListener;
 	private final CryptoFileSystemStats stats;
 
 	@Inject
-	public CleartextFileChannel(FileChannel ciphertextFileChannel, FileHeaderHolder fileHeaderHolder, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, BufferPool bufferPool, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, Supplier<BasicFileAttributeView> attrViewProvider, ExceptionsDuringWrite exceptionsDuringWrite, ChannelCloseListener closeListener, CryptoFileSystemStats stats) {
+	public CleartextFileChannel(FileChannel ciphertextFileChannel, FileHeaderHolder fileHeaderHolder, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, BufferPool bufferPool, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, @CurrentOpenFilePath AtomicReference<Path> currentPath, ExceptionsDuringWrite exceptionsDuringWrite, ChannelCloseListener closeListener, CryptoFileSystemStats stats) {
 		super(readWriteLock);
 		this.ciphertextFileChannel = ciphertextFileChannel;
 		this.fileHeaderHolder = fileHeaderHolder;
@@ -60,9 +62,9 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		this.chunkCache = chunkCache;
 		this.bufferPool = bufferPool;
 		this.options = options;
+		this.currentFilePath = currentPath;
 		this.fileSize = fileSize;
 		this.lastModified = lastModified;
-		this.attrViewProvider = attrViewProvider;
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
 		this.closeListener = closeListener;
 		this.stats = stats;
@@ -246,7 +248,13 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private void persistLastModified() throws IOException {
 		FileTime lastModifiedTime = isWritable() ? FileTime.from(lastModified.get()) : null;
 		FileTime lastAccessTime = FileTime.from(Instant.now());
-		attrViewProvider.get().setTimes(lastModifiedTime, lastAccessTime, null);
+		var p = currentFilePath.get();
+		if (p != null) {
+			p.getFileSystem().provider()//
+					.getFileAttributeView(p, BasicFileAttributeView.class)
+					.setTimes(lastModifiedTime, lastAccessTime, null);
+		}
+
 	}
 
 	@Override
@@ -316,8 +324,10 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			flush();
 			try {
 				persistLastModified();
-			} catch (IOException e) {
+			} catch (NoSuchFileException nsfe) {
 				//no-op, see https://github.com/cryptomator/cryptofs/issues/169
+			} catch (IOException e) {
+				//only best effort attempt
 				LOG.warn("Failed to persist last modified timestamp for encrypted file: {}", e.getMessage());
 			}
 		} finally {
