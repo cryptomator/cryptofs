@@ -66,6 +66,9 @@ public class OpenCryptoFile implements Closeable {
 	 */
 	public synchronized FileChannel newFileChannel(EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
 		Path path = currentFilePath.get();
+		if (path == null) {
+			throw new IllegalStateException("Cannot create file channel to deleted file");
+		}
 		FileChannel ciphertextFileChannel = null;
 		CleartextFileChannel cleartextFileChannel = null;
 		try {
@@ -172,8 +175,12 @@ public class OpenCryptoFile implements Closeable {
 		return currentFilePath.get();
 	}
 
-	public void setCurrentFilePath(Path currentFilePath) {
-		this.currentFilePath.set(currentFilePath);
+	/**
+	 * Updates the current ciphertext file path, if it is not already set to null (i.e., the openCryptoFile is deleted)
+	 * @param newFilePath new ciphertext path
+	 */
+	public void updateCurrentFilePath(Path newFilePath) {
+		currentFilePath.updateAndGet(p -> p == null ? null : newFilePath);
 	}
 
 	private synchronized void channelClosed(CleartextFileChannel cleartextFileChannel) throws IOException {
@@ -192,7 +199,10 @@ public class OpenCryptoFile implements Closeable {
 
 	@Override
 	public void close() {
-		listener.close(currentFilePath.get(), this);
+		var p = currentFilePath.get();
+		if(p != null) {
+			listener.close(p, this);
+		}
 	}
 
 	@Override

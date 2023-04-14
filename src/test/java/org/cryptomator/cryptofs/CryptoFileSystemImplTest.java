@@ -72,6 +72,7 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -558,6 +559,7 @@ public class CryptoFileSystemImplTest {
 		private final CryptoPath cleartextPath = mock(CryptoPath.class, "cleartext");
 		private final Path ciphertextRawPath = mock(Path.class, "d/00/00/path.c9r");
 		private final Path ciphertextDirFilePath = mock(Path.class, "d/00/00/path.c9r/dir.c9r");
+		private final Path ciphertextFilePath = mock(Path.class, "d/00/00/path.c9r");
 		private final Path ciphertextDirPath = mock(Path.class, "d/FF/FF/");
 		private final CiphertextFilePath ciphertextPath = mock(CiphertextFilePath.class, "ciphertext");
 		private final FileSystem physicalFs = mock(FileSystem.class);
@@ -574,6 +576,7 @@ public class CryptoFileSystemImplTest {
 			when(ciphertextRawPath.resolve("dir.c9r")).thenReturn(ciphertextDirFilePath);
 			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextPath);
 			when(ciphertextPath.getRawPath()).thenReturn(ciphertextRawPath);
+			when(ciphertextPath.getFilePath()).thenReturn(ciphertextFilePath);
 			when(ciphertextPath.getDirFilePath()).thenReturn(ciphertextDirFilePath);
 			when(cryptoPathMapper.getCiphertextDir(cleartextPath)).thenReturn(new CiphertextDirectory("foo", ciphertextDirPath));
 			when(physicalFsProv.readAttributes(ciphertextRawPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(ciphertextPathAttr);
@@ -590,10 +593,12 @@ public class CryptoFileSystemImplTest {
 		public void testDeleteExistingFile() throws IOException {
 			when(cryptoPathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
 			when(physicalFsProv.deleteIfExists(ciphertextRawPath)).thenReturn(true);
+			doNothing().when(openCryptoFiles).delete(Mockito.any());
 
 			inTest.delete(cleartextPath);
 
 			verify(readonlyFlag).assertWritable();
+			verify(openCryptoFiles).delete(ciphertextFilePath);
 			verify(physicalFsProv).deleteIfExists(ciphertextRawPath);
 		}
 
