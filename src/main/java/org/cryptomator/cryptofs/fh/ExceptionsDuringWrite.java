@@ -19,7 +19,7 @@ public class ExceptionsDuringWrite {
 	}
 
 	public synchronized void add(Exception e) {
-		e.addSuppressed(e);
+		this.e.addSuppressed(e);
 	}
 
 	public synchronized void throwIfPresent() throws IOException {

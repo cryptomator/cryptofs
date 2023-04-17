@@ -11,7 +11,6 @@ package org.cryptomator.cryptofs.fh;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
 import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.api.FileHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,27 +66,22 @@ public class OpenCryptoFile implements Closeable {
 	 */
 	public synchronized FileChannel newFileChannel(EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
 		Path path = currentFilePath.get();
-
-		if (options.truncateExisting()) {
-			chunkCache.invalidateAll();
+		if (path == null) {
+			throw new IllegalStateException("Cannot create file channel to deleted file");
 		}
-
 		FileChannel ciphertextFileChannel = null;
 		CleartextFileChannel cleartextFileChannel = null;
 		try {
 			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
-			final FileHeader header;
-			final boolean isNewHeader;
-			if (ciphertextFileChannel.size() == 0l) {
-				header = headerHolder.createNew();
-				isNewHeader = true;
-			} else {
-				header = headerHolder.loadExisting(ciphertextFileChannel);
-				isNewHeader = false;
+			initFileHeader(options, ciphertextFileChannel);
+			if (options.truncateExisting()) {
+				chunkCache.invalidateStale();
+				ciphertextFileChannel.truncate(cryptor.fileHeaderCryptor().headerSize());
+				fileSize.set(0);
 			}
 			initFileSize(ciphertextFileChannel);
 			cleartextFileChannel = component.newChannelComponent() //
-					.create(ciphertextFileChannel, header, isNewHeader, options, this::channelClosed) //
+					.create(ciphertextFileChannel, options, this::channelClosed) //
 					.channel();
 		} finally {
 			if (cleartextFileChannel == null) { // i.e. something didn't work
@@ -105,6 +99,23 @@ public class OpenCryptoFile implements Closeable {
 		return cleartextFileChannel;
 	}
 
+	//visible for testing
+	void initFileHeader(EffectiveOpenOptions options, FileChannel ciphertextFileChannel) throws IOException {
+		try {
+			headerHolder.get();
+		} catch (IllegalStateException e) {
+			//first file channel to file
+			if (options.createNew() || (options.create() && ciphertextFileChannel.size() == 0)) {
+				//file did not exist, create new header
+				//file size will never be zero again, once the header is written because we retain on truncation the header
+				headerHolder.createNew();
+			} else {
+				//file must exist, load header from file
+				headerHolder.loadExisting(ciphertextFileChannel);
+			}
+		}
+	}
+
 	private void closeQuietly(Closeable closeable) {
 		if (closeable != null) {
 			try {
@@ -116,7 +127,7 @@ public class OpenCryptoFile implements Closeable {
 	}
 
 	/**
-	 * Called by {@link #newFileChannel(EffectiveOpenOptions)} to determine the fileSize.
+	 * Called by {@link #newFileChannel(EffectiveOpenOptions, FileAttribute[])} to determine the fileSize.
 	 * <p>
 	 * Before the size is initialized (i.e. before a channel has been created), {@link #size()} must not be called.
 	 * <p>
@@ -141,7 +152,7 @@ public class OpenCryptoFile implements Closeable {
 	}
 
 	/**
-	 * @return The size of the opened file. Note that the filesize is unknown until a {@link #newFileChannel(EffectiveOpenOptions) file channel is opened}. In this case this method returns an empty optional.
+	 * @return The size of the opened file. Note that the filesize is unknown until a {@link #newFileChannel(EffectiveOpenOptions, FileAttribute[])} is opened. In this case this method returns an empty optional.
 	 */
 	public Optional<Long> size() {
 		long val = fileSize.get();
@@ -164,8 +175,12 @@ public class OpenCryptoFile implements Closeable {
 		return currentFilePath.get();
 	}
 
-	public void setCurrentFilePath(Path currentFilePath) {
-		this.currentFilePath.set(currentFilePath);
+	/**
+	 * Updates the current ciphertext file path, if it is not already set to null (i.e., the openCryptoFile is deleted)
+	 * @param newFilePath new ciphertext path
+	 */
+	public void updateCurrentFilePath(Path newFilePath) {
+		currentFilePath.updateAndGet(p -> p == null ? null : newFilePath);
 	}
 
 	private synchronized void channelClosed(CleartextFileChannel cleartextFileChannel) throws IOException {
@@ -184,7 +199,10 @@ public class OpenCryptoFile implements Closeable {
 
 	@Override
 	public void close() {
-		listener.close(currentFilePath.get(), this);
+		var p = currentFilePath.get();
+		if(p != null) {
+			listener.close(p, this);
+		}
 	}
 
 	@Override

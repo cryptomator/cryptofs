@@ -140,11 +140,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	public Path getCiphertextPath(Path cleartextPath) throws IOException {
 		var p = CryptoPath.castAndAssertAbsolute(cleartextPath);
 		var nodeType = cryptoPathMapper.getCiphertextFileType(p);
-		if( nodeType == CiphertextFileType.DIRECTORY) {
+		if (nodeType == CiphertextFileType.DIRECTORY) {
 			return cryptoPathMapper.getCiphertextDir(p).path;
 		}
 		var cipherFile = cryptoPathMapper.getCiphertextFilePath(p);
-		if( nodeType == CiphertextFileType.SYMLINK) {
+		if (nodeType == CiphertextFileType.SYMLINK) {
 			return cipherFile.getSymlinkFilePath();
 		} else {
 			return cipherFile.getFilePath();
@@ -421,8 +421,13 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		CiphertextFilePath ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextPath);
 		switch (ciphertextFileType) {
 			case DIRECTORY -> deleteDirectory(cleartextPath, ciphertextPath);
-			case FILE, SYMLINK -> Files.walkFileTree(ciphertextPath.getRawPath(), DeletingFileVisitor.INSTANCE);
+			case FILE, SYMLINK -> deleteFileOrSymlink(ciphertextPath);
 		}
+	}
+
+	private void deleteFileOrSymlink(CiphertextFilePath ciphertextPath) throws IOException {
+		openCryptoFiles.delete(ciphertextPath.getFilePath());
+		Files.walkFileTree(ciphertextPath.getRawPath(), DeletingFileVisitor.INSTANCE);
 	}
 
 	private void deleteDirectory(CryptoPath cleartextPath, CiphertextFilePath ciphertextPath) throws IOException {

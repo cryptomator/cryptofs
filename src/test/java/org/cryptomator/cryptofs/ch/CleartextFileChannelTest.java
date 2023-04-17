@@ -6,9 +6,9 @@ import org.cryptomator.cryptofs.fh.BufferPool;
 import org.cryptomator.cryptofs.fh.Chunk;
 import org.cryptomator.cryptofs.fh.ChunkCache;
 import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
+import org.cryptomator.cryptofs.fh.FileHeaderHolder;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
-import org.cryptomator.cryptolib.api.FileHeader;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Assertions;
@@ -32,9 +32,13 @@ import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
+import java.nio.file.FileSystem;
+import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
+import java.nio.file.spi.FileSystemProvider;
 import java.time.Instant;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
@@ -43,6 +47,9 @@ import java.util.function.Supplier;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -59,12 +66,13 @@ public class CleartextFileChannelTest {
 	private FileHeaderCryptor fileHeaderCryptor = mock(FileHeaderCryptor.class);
 	private FileContentCryptor fileContentCryptor = mock(FileContentCryptor.class);
 	private FileChannel ciphertextFileChannel = mock(FileChannel.class);
-	private FileHeader header = mock(FileHeader.class);
-	private boolean mustWriteHeader = true;
+	private FileHeaderHolder headerHolder = mock(FileHeaderHolder.class);
+	private AtomicBoolean headerIsPersisted = mock(AtomicBoolean.class);
 	private EffectiveOpenOptions options = mock(EffectiveOpenOptions.class);
+	private Path filePath = Mockito.mock(Path.class,"/foo/bar");
+	private AtomicReference<Path> currentFilePath = new AtomicReference<>(filePath);
 	private AtomicLong fileSize = new AtomicLong(100);
 	private AtomicReference<Instant> lastModified = new AtomicReference<>(Instant.ofEpochMilli(0));
-	private Supplier<BasicFileAttributeView> attributeViewSupplier = mock(Supplier.class);
 	private BasicFileAttributeView attributeView = mock(BasicFileAttributeView.class);
 	private ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
 	private ChannelCloseListener closeListener = mock(ChannelCloseListener.class);
@@ -80,13 +88,19 @@ public class CleartextFileChannelTest {
 		when(chunkCache.putChunk(Mockito.anyLong(), Mockito.any())).thenAnswer(invocation -> new Chunk(invocation.getArgument(1), true, () -> {}));
 		when(bufferPool.getCleartextBuffer()).thenAnswer(invocation -> ByteBuffer.allocate(100));
 		when(fileHeaderCryptor.headerSize()).thenReturn(50);
+		when(headerHolder.headerIsPersisted()).thenReturn(headerIsPersisted);
+		when(headerIsPersisted.getAndSet(anyBoolean())).thenReturn(true);
 		when(fileContentCryptor.cleartextChunkSize()).thenReturn(100);
 		when(fileContentCryptor.ciphertextChunkSize()).thenReturn(110);
-		when(attributeViewSupplier.get()).thenReturn(attributeView);
+		var fs = Mockito.mock(FileSystem.class);
+		var fsProvider = Mockito.mock(FileSystemProvider.class);
+		when(filePath.getFileSystem()).thenReturn(fs);
+		when(fs.provider()).thenReturn(fsProvider);
+		when(fsProvider.getFileAttributeView(filePath,BasicFileAttributeView.class)).thenReturn(attributeView);
 		when(readWriteLock.readLock()).thenReturn(readLock);
 		when(readWriteLock.writeLock()).thenReturn(writeLock);
 
-		inTest = new CleartextFileChannel(ciphertextFileChannel, header, mustWriteHeader, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, attributeViewSupplier, exceptionsDuringWrite, closeListener, stats);
+		inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, exceptionsDuringWrite, closeListener, stats);
 	}
 
 	@Test
@@ -339,7 +353,7 @@ public class CleartextFileChannelTest {
 			fileSize.set(5_000_000_100l); // initial cleartext size will be 5_000_000_100l
 			when(options.readable()).thenReturn(true);
 
-			inTest = new CleartextFileChannel(ciphertextFileChannel, header, mustWriteHeader, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, attributeViewSupplier, exceptionsDuringWrite, closeListener, stats);
+			inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, exceptionsDuringWrite, closeListener, stats);
 			ByteBuffer buf = ByteBuffer.allocate(10);
 
 			// A read from frist chunk:
@@ -483,6 +497,8 @@ public class CleartextFileChannelTest {
 		public void testWriteHeaderIfNeeded() throws IOException {
 			when(options.writable()).thenReturn(true);
 
+			when(headerIsPersisted.get()).thenReturn(false).thenReturn(true).thenReturn(true);
+
 			inTest.force(true);
 			inTest.force(true);
 			inTest.force(true);
@@ -491,10 +507,25 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
+		@DisplayName("If writing header fails, it is indicated as not persistent")
+		public void testWriteHeaderFailsResetsPersistenceState() throws IOException {
+			when(options.writable()).thenReturn(true);
+			when(headerIsPersisted.get()).thenReturn(false);
+			doNothing().when(headerIsPersisted).set(anyBoolean());
+			when(ciphertextFileChannel.write(any(), anyLong())).thenThrow(new IOException("writing failed"));
+
+			Assertions.assertThrows(IOException.class, () -> inTest.force(true));
+
+			Mockito.verify(ciphertextFileChannel, Mockito.times(1)).write(Mockito.any(), Mockito.eq(0l));
+			Mockito.verify(headerIsPersisted, Mockito.never()).set(anyBoolean());
+		}
+
+		@Test
 		@DisplayName("don't write header if it is already written")
 		public void testDontRewriteHeader() throws IOException {
 			when(options.writable()).thenReturn(true);
-			inTest = new CleartextFileChannel(ciphertextFileChannel, header, false, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, attributeViewSupplier, exceptionsDuringWrite, closeListener, stats);
+			when(headerIsPersisted.get()).thenReturn(true);
+			inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, exceptionsDuringWrite, closeListener, stats);
 
 			inTest.force(true);
 

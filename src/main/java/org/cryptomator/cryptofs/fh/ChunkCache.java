@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.fh;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.google.common.base.Preconditions;
@@ -11,11 +12,10 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.NonWritableChannelException;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.BiFunction;
 
 @OpenFileScoped
 public class ChunkCache {
@@ -27,14 +27,25 @@ public class ChunkCache {
 	private final CryptoFileSystemStats stats;
 	private final BufferPool bufferPool;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
-	private final ConcurrentMap<Long, Chunk> staleChunks;
-	private final ConcurrentMap<Long, Chunk> activeChunks;
+	private final Cache<Long, Chunk> chunkCache;
+	private final ConcurrentMap<Long, Chunk> cachedChunks;
 
 	/**
-	 * This lock ensures no chunks are passed between stale and active state while flushing,
-	 * as flushing requires iteration over both sets.
+	 * We have to deal with two forms of access to the {@link #chunkCache}:
+	 * <ol>
+	 *     <li>Accessing a single chunk (with a known index), e.g. during {@link #getChunk(long)}</li>
+	 *     <li>Accessing multiple chunks, e.g. during {@link #invalidateStale()}</li>
+	 * </ol>
+	 * <p>
+	 * While the former can be handled by the cache implementation (based on {@link ConcurrentMap}) just fine,
+	 * we need to make sure no concurrent modification will happen accessing multiple chunks (e.g. when iterating over the entry set).
+	 * <p>
+	 * This is achieved using this {@link ReadWriteLock}, where holding the {@link ReadWriteLock#readLock() shared lock} is
+	 * sufficient for index-based access, while the {@link ReadWriteLock#writeLock() exclusive lock} is necessary otherwise.
 	 */
-	private final ReadWriteLock flushLock = new ReentrantReadWriteLock();
+	private final ReadWriteLock lock = new ReentrantReadWriteLock();
+	private final Lock sharedLock = lock.readLock(); // required when accessing a single chunk
+	private final Lock exclusiveLock = lock.writeLock(); // required when accessing multiple chunks at once
 
 	@Inject
 	public ChunkCache(ChunkLoader chunkLoader, ChunkSaver chunkSaver, CryptoFileSystemStats stats, BufferPool bufferPool, ExceptionsDuringWrite exceptionsDuringWrite) {
@@ -43,12 +54,21 @@ public class ChunkCache {
 		this.stats = stats;
 		this.bufferPool = bufferPool;
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
-		this.staleChunks = Caffeine.newBuilder() //
-				.maximumSize(MAX_CACHED_CLEARTEXT_CHUNKS) //
+		this.chunkCache = Caffeine.newBuilder() //
+				.maximumWeight(MAX_CACHED_CLEARTEXT_CHUNKS) //
+				.weigher(this::weigh) //
+				.executor(Runnable::run) // run `evictStaleChunk` in same thread -> see https://github.com/cryptomator/cryptofs/pull/163#issuecomment-1505249736
 				.evictionListener(this::evictStaleChunk) //
-				.build() //
-				.asMap();
-		this.activeChunks = new ConcurrentHashMap<>();
+				.build();
+		this.cachedChunks = chunkCache.asMap();
+	}
+
+	private int weigh(Long index, Chunk chunk) {
+		if (chunk.currentAccesses().get() > 0) {
+			return 0; // zero, if currently in use -> avoid maximum size eviction
+		} else {
+			return 1;
+		}
 	}
 
 	/**
@@ -60,24 +80,23 @@ public class ChunkCache {
 	 * @throws IllegalArgumentException If {@code chunkData}'s remaining bytes is not equal to the number of bytes fitting into a chunk
 	 */
 	public Chunk putChunk(long chunkIndex, ByteBuffer chunkData) throws IllegalArgumentException {
-		return activeChunks.compute(chunkIndex, (index, chunk) -> {
-			// stale chunk for this index is obsolete:
-			var staleChunk = staleChunks.remove(index);
-			if (staleChunk != null) {
-				bufferPool.recycle(staleChunk.data());
-			}
-			// either create completely new chunk or replace all data of existing active chunk:
-			if (chunk == null) {
-				chunk = new Chunk(chunkData, true, () -> releaseChunk(chunkIndex));
-			} else {
-				var dst = chunk.data().duplicate().clear();
-				Preconditions.checkArgument(chunkData.remaining() == dst.remaining());
-				dst.put(chunkData);
-				chunk.dirty().set(true);
-			}
-			chunk.currentAccesses().incrementAndGet();
-			return chunk;
-		});
+		sharedLock.lock();
+		try {
+			return cachedChunks.compute(chunkIndex, (index, chunk) -> {
+				if (chunk == null) {
+					chunk = new Chunk(chunkData, true, () -> releaseChunk(chunkIndex));
+				} else {
+					var dst = chunk.data().duplicate().clear();
+					Preconditions.checkArgument(chunkData.remaining() == dst.remaining());
+					dst.put(chunkData);
+					chunk.dirty().set(true);
+				}
+				chunk.currentAccesses().incrementAndGet();
+				return chunk;
+			});
+		} finally {
+			sharedLock.unlock();
+		}
 	}
 
 	/**
@@ -88,31 +107,23 @@ public class ChunkCache {
 	 * @throws IOException If reading or decrypting the chunk failed
 	 */
 	public Chunk getChunk(long chunkIndex) throws IOException {
-		var lock = flushLock.readLock();
-		lock.lock();
+		sharedLock.lock();
 		try {
 			stats.addChunkCacheAccess();
-			return activeChunks.compute(chunkIndex, this::acquireInternal);
-		} catch (UncheckedIOException | AuthenticationFailedException e) {
-			throw new IOException(e);
+			try {
+				return cachedChunks.compute(chunkIndex, (idx, chunk) -> {
+					if (chunk == null) {
+						chunk = loadChunk(idx);
+					}
+					chunk.currentAccesses().incrementAndGet();
+					return chunk;
+				});
+			} catch (UncheckedIOException | AuthenticationFailedException e) {
+				throw new IOException(e);
+			}
 		} finally {
-			lock.unlock();
+			sharedLock.unlock();
 		}
-	}
-
-	private Chunk acquireInternal(Long index, Chunk activeChunk) throws AuthenticationFailedException, UncheckedIOException {
-		Chunk result = activeChunk;
-		if (result == null) {
-			result = staleChunks.remove(index);
-			assert result == null || result.currentAccesses().get() == 0;
-		}
-		if (result == null) {
-			result = loadChunk(index);
-		}
-
-		assert result != null;
-		result.currentAccesses().incrementAndGet();
-		return result;
 	}
 
 	private Chunk loadChunk(long chunkIndex) throws AuthenticationFailedException, UncheckedIOException {
@@ -126,60 +137,48 @@ public class ChunkCache {
 
 	@SuppressWarnings("resource")
 	private void releaseChunk(long chunkIndex) {
-		var lock = flushLock.readLock();
-		lock.lock();
+		sharedLock.lock();
 		try {
-			activeChunks.compute(chunkIndex, (index, chunk) -> {
-				assert chunk != null;
-				var accessCnt = chunk.currentAccesses().decrementAndGet();
-				if (accessCnt == 0) {
-					staleChunks.put(index, chunk);
-					return null; //chunk is stale, remove from active
-				} else {
-					assert accessCnt > 0;
-					return chunk; //keep active
-				}
+			cachedChunks.computeIfPresent(chunkIndex, (idx, chunk) -> {
+				chunk.currentAccesses().decrementAndGet();
+				return chunk;
 			});
 		} finally {
-			lock.unlock();
+			sharedLock.unlock();
 		}
 	}
 
 	/**
 	 * Flushes cached data (but keeps them cached).
-	 * @see #invalidateAll()
+	 *
+	 * @see #invalidateStale()
 	 */
 	public void flush() throws IOException {
-		var lock = flushLock.writeLock();
-		lock.lock();
-		BiFunction<Long, Chunk, Chunk> saveUnchecked = (index, chunk) -> {
-			try {
-				chunkSaver.save(index, chunk);
-			} catch (IOException e) {
-				throw new UncheckedIOException(e);
-			}
-			return chunk;
-		};
+		exclusiveLock.lock();
 		try {
-			activeChunks.replaceAll(saveUnchecked);
-			staleChunks.replaceAll(saveUnchecked);
+			cachedChunks.forEach((index, chunk) -> {
+				try {
+					chunkSaver.save(index, chunk);
+				} catch (IOException e) {
+					throw new UncheckedIOException(e);
+				}
+			});
 		} catch (UncheckedIOException e) {
 			throw new IOException(e);
 		} finally {
-			lock.unlock();
+			exclusiveLock.unlock();
 		}
 	}
 
 	/**
 	 * Removes stale chunks from cache.
 	 */
-	public void invalidateAll() {
-		var lock = flushLock.writeLock();
-		lock.lock();
+	public void invalidateStale() {
+		exclusiveLock.lock();
 		try {
-			staleChunks.clear();
+			cachedChunks.entrySet().removeIf(entry -> entry.getValue().currentAccesses().get() == 0);
 		} finally {
-			lock.unlock();
+			exclusiveLock.unlock();
 		}
 	}
 

@@ -8,15 +8,13 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.AccessDeniedException;
-import java.time.Duration;
-import java.util.concurrent.CountDownLatch;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -156,22 +154,16 @@ public class ChunkCacheTest {
 			verifyNoMoreInteractions(bufferPool);
 		}
 
-		@RepeatedTest(30)
-		@DisplayName("chunk.close() triggers eviction of LRU stale chunk")
+		@Test
+		@DisplayName("chunk.close() triggers eviction of some stale chunk")
 		public void testClosingActiveChunkTriggersEvictionOfStaleChunk() throws IOException, AuthenticationFailedException {
-			var cdl = new CountDownLatch(1);
-			Mockito.doAnswer(invocation -> {
-				cdl.countDown();
-				return null;
-			}).when(chunkSaver).save(Mockito.anyLong(), Mockito.any());
-
 			activeChunk1.close();
 
-			Assertions.assertTimeoutPreemptively(Duration.ofMillis(100), () -> {
-				cdl.await();
-			});
-			verify(chunkSaver).save(42L, staleChunk42);
-			verify(bufferPool).recycle(staleChunk42.data());
+			// we can't know _which_ stale chunk gets evicted. see https://github.com/ben-manes/caffeine/issues/583
+			ArgumentCaptor<Chunk> chunkCaptor = ArgumentCaptor.forClass(Chunk.class);
+			ArgumentCaptor<Long> indexCaptor = ArgumentCaptor.forClass(Long.class);
+			verify(chunkSaver).save(indexCaptor.capture(), chunkCaptor.capture());
+			verify(bufferPool).recycle(chunkCaptor.getValue().data());
 			verifyNoMoreInteractions(chunkSaver);
 		}
 
@@ -221,11 +213,11 @@ public class ChunkCacheTest {
 		}
 
 		@Test
-		@DisplayName("invalidateAll() flushes stale chunks but keeps active chunks")
-		public void testInvalidateAll() throws IOException, AuthenticationFailedException {
+		@DisplayName("invalidateStale() flushes stale chunks but keeps active chunks")
+		public void testInvalidateStale() throws IOException, AuthenticationFailedException {
 			when(chunkLoader.load(Mockito.anyLong())).thenReturn(ByteBuffer.allocate(0));
 
-			inTest.invalidateAll();
+			inTest.invalidateStale();
 
 			Assertions.assertSame(activeChunk1, inTest.getChunk(1L));
 			Assertions.assertNotSame(staleChunk42, inTest.getChunk(42L));
@@ -251,17 +243,6 @@ public class ChunkCacheTest {
 			Assertions.assertSame(activeChunk1, chunk);
 			Assertions.assertEquals(2, chunk.currentAccesses().get());
 			Assertions.assertTrue(chunk.isDirty());
-		}
-
-		@Test
-		@DisplayName("putChunk() recycles stale chunk if present")
-		public void testPutChunkRecyclesStaleChunk() {
-			var chunk = inTest.putChunk(42L, ByteBuffer.allocate(0));
-
-			Assertions.assertNotSame(staleChunk42, chunk);
-			Assertions.assertEquals(1, chunk.currentAccesses().get());
-			Assertions.assertTrue(chunk.isDirty());
-			verify(bufferPool).recycle(staleChunk42.data());
 		}
 
 		@Test

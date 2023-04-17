@@ -8,7 +8,6 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.util.ByteBuffers;
 import org.cryptomator.cryptolib.api.Masterkey;
@@ -33,6 +32,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.invoke.MethodHandles;
 import java.net.URI;
 import java.nio.ByteBuffer;
@@ -49,8 +49,11 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -251,17 +254,17 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			}
 		}
 
-		// tests https://github.com/cryptomator/cryptofs/issues/160
+		//tests changes made in https://github.com/cryptomator/cryptofs/pull/166
 		@Test
-		@DisplayName("TRUNCATE_EXISTING leads to new file header")
+		@DisplayName("TRUNCATE_EXISTING does not produce invalid ciphertext")
 		public void testNewFileHeaderWhenTruncateExisting() throws IOException {
 			try (var ch1 = FileChannel.open(file, CREATE_NEW, WRITE)) {
 				ch1.write(StandardCharsets.UTF_8.encode("this content will be truncated soon"), 0);
 				ch1.force(true);
-				try (var ch2 = FileChannel.open(file, CREATE, WRITE, TRUNCATE_EXISTING)) { // re-roll file header
+				try (var ch2 = FileChannel.open(file, CREATE, WRITE, TRUNCATE_EXISTING)) {
 					ch2.write(StandardCharsets.UTF_8.encode("hello"), 0);
 				}
-				ch1.write(StandardCharsets.UTF_8.encode(" world"), 5); // should use new file key
+				ch1.write(StandardCharsets.UTF_8.encode(" world"), 5);
 			}
 
 			try (var ch3 = FileChannel.open(file, READ)) {
@@ -547,6 +550,83 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			}));
 		}
 
-	}
+		//https://github.com/cryptomator/cryptofs/issues/168
+		@Test
+		@DisplayName("Opening two file channels simultaneously and close afterwards retains ciphertext readability")
+		public void testOpeningTwoChannelsRetainsCiphertextReadability() throws IOException {
+			var content = StandardCharsets.UTF_8.encode("two channels sitting on the wall").asReadOnlyBuffer();
+			ByteBuffer bytesRead = ByteBuffer.allocate(content.limit());
 
+			try (var ch = FileChannel.open(file, READ, WRITE, CREATE_NEW)) {
+				System.out.println("Openend channel " + ch);
+				try (var ch2 = FileChannel.open(file, WRITE)) {
+				}
+				ch.write(content, 0);
+			}
+
+			Assertions.assertDoesNotThrow(() -> {
+				try (var ch = FileChannel.open(file, READ)) {
+					ch.read(bytesRead, 0);
+				}
+			});
+		}
+
+		//https://github.com/cryptomator/cryptofs/issues/169
+		@Test
+		public void testClosingChannelOfDeletedFileDoesNotThrow() {
+			Assertions.assertDoesNotThrow(() -> {
+				try (var ch = FileChannel.open(file, CREATE_NEW, WRITE)) {
+					ch.write(ByteBuffer.wrap("delete me".getBytes(StandardCharsets.UTF_8)));
+					Files.delete(file);
+				}
+			});
+			Assertions.assertTrue(Files.notExists(file));
+		}
+
+		//https://github.com/cryptomator/cryptofs/issues/170
+		@Test
+		public void testWriteThenDeleteThenRead() throws IOException {
+			var bufToWrite = StandardCharsets.UTF_8.encode("delete me");
+			final int bytesRead;
+			try (var ch = FileChannel.open(file, CREATE_NEW, WRITE)) {
+				ch.write(bufToWrite);
+				Files.delete(file);
+				try (var ch2 = fileSystem.provider().newFileChannel(file, Set.of(CREATE, READ, WRITE))) {
+					bytesRead = ch2.read(ByteBuffer.allocate(bufToWrite.capacity()));
+				}
+			}
+			Assertions.assertEquals(-1, bytesRead);
+		}
+
+		@RepeatedTest(50)
+		public void testConcurrentWriteAndTruncate() throws IOException {
+			AtomicBoolean keepWriting = new AtomicBoolean(true);
+			ByteBuffer buf = ByteBuffer.wrap("the quick brown fox jumps over the lazy dog".getBytes(StandardCharsets.UTF_8));
+			var executor = Executors.newCachedThreadPool();
+			try (FileChannel writingChannel = FileChannel.open(file, WRITE, CREATE)) {
+				executor.submit(() -> {
+					while (keepWriting.get()) {
+						try {
+							writingChannel.write(buf);
+						} catch (IOException e) {
+							throw new UncheckedIOException(e);
+						}
+						buf.flip();
+					}
+				});
+				try (FileChannel truncatingChannel = FileChannel.open(file, WRITE, TRUNCATE_EXISTING)) {
+					keepWriting.set(false);
+				}
+				executor.shutdown();
+			}
+
+			Assertions.assertDoesNotThrow(() -> {
+				try (FileChannel readingChannel = FileChannel.open(file, READ)) {
+					var dst = ByteBuffer.allocate(buf.capacity());
+					readingChannel.read(dst);
+				}
+			});
+		}
+
+	}
 }
