@@ -70,9 +70,9 @@ public class CryptoFileSystemsTest {
 	@BeforeEach
 	public void setup() throws IOException, MasterkeyLoadingFailedException {
 		vaultConficClass = Mockito.mockStatic(VaultConfig.class);
-		filesClass = Mockito.mockStatic(Files.class);
 		cryptorProviderClass = Mockito.mockStatic(CryptorProvider.class);
 		backupHelperClass = Mockito.mockStatic(BackupHelper.class);
+		filesClass = Mockito.mockStatic(Files.class);
 
 		when(pathToVault.normalize()).thenReturn(normalizedPathToVault);
 		when(normalizedPathToVault.resolve("vault.cryptomator")).thenReturn(configFilePath);
