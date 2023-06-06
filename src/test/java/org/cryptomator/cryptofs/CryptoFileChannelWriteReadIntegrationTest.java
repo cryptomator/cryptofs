@@ -176,36 +176,29 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 
 		//https://github.com/cryptomator/cryptofs/issues/173
 		@Test
-		public void testPages() throws IOException {
-			FileChannel writer = null;
-			try {
-				writer = FileChannel.open(file, CREATE, WRITE);
-				writeAndAssert(writer, 81920, 3719);
-				try (var reader = FileChannel.open(file, CREATE, READ)) {
-					writeAndAssert(writer, 81920, 17345);
-					readAndAssert(reader, 98304, 1036, 961);
-					writeAndAssert(writer, 98304, 65536);
-					writer.close();
+		public void testWritingToPreviouslyReadRegionIsSavedCorrectly() throws IOException {
+			int x = 16_384; //half of cleartext chunk size
+			try (var reader = FileChannel.open(file, CREATE, READ, WRITE)) {
+				try (var writer = FileChannel.open(file, CREATE, WRITE)) {
+					assertWritten(writer, x, x + 1); //write to chunk 0 and 1
+					assertRead(reader, 2 * x, 1); //read 1 byte of chunk 1
+					assertWritten(writer, 2 * x, 2 * x); //write to chunk 1
 				}
+			}
 
-				try (var reader2 = FileChannel.open(file, CREATE, READ)) {
-					readAndAssert(reader2, 98304, 16384, 16384);
-				}
-			} finally {
-				if (writer != null) {
-					writer.close();
-				}
+			try (var reader2 = FileChannel.open(file, CREATE, READ)) {
+				assertRead(reader2, 2 * x, x); //read chunk 1
 			}
 
 		}
 
-		private void readAndAssert(FileChannel source, int position, int numBytes, int toRead) throws IOException {
+		private void assertRead(FileChannel source, int position, int numBytes) throws IOException {
 			var buf = ByteBuffer.allocate(numBytes);
 			int read = source.read(buf, position);
-			Assertions.assertEquals(toRead, read);
+			Assertions.assertEquals(numBytes, read);
 		}
 
-		private void writeAndAssert(FileChannel destination, int position, int numOfBytes) throws IOException {
+		private void assertWritten(FileChannel destination, int position, int numOfBytes) throws IOException {
 			var buf = createOfSize(numOfBytes);
 			int written = destination.write(buf, position);
 			Assertions.assertEquals(numOfBytes, written);
