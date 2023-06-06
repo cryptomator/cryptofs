@@ -53,7 +53,6 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -173,6 +172,61 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		@AfterEach
 		public void afterEach() throws IOException {
 			Files.deleteIfExists(file);
+		}
+
+		//https://github.com/cryptomator/cryptofs/issues/173
+		@Test
+		public void testPages() throws IOException {
+			FileChannel writer = null;
+			try {
+				writer = FileChannel.open(file, CREATE, WRITE);
+				writeAndAssert(writer, 81920, 3719);
+				try (var reader = FileChannel.open(file, CREATE, READ)) {
+					writeAndAssert(writer, 81920, 17345);
+					readAndAssert(reader, 98304, 1036, 961);
+					writeAndAssert(writer, 98304, 65536);
+					writer.close();
+				}
+
+				try (var reader2 = FileChannel.open(file, CREATE, READ)) {
+					readAndAssert(reader2, 98304, 16384, 16384);
+				}
+			} finally {
+				if (writer != null) {
+					writer.close();
+				}
+			}
+
+		}
+
+		private void readAndAssert(FileChannel source, int position, int numBytes, int toRead) throws IOException {
+			var buf = ByteBuffer.allocate(numBytes);
+			int read = source.read(buf, position);
+			Assertions.assertEquals(toRead, read);
+		}
+
+		private void writeAndAssert(FileChannel destination, int position, int numOfBytes) throws IOException {
+			var buf = createOfSize(numOfBytes);
+			int written = destination.write(buf, position);
+			Assertions.assertEquals(numOfBytes, written);
+		}
+
+		private ByteBuffer createOfSize(int size) {
+			if (size < 16) {
+				throw new IllegalArgumentException("too small!");
+			}
+			byte[] content = "16bytesLongtext.".getBytes(StandardCharsets.UTF_8);
+			int reps = size / 16;
+			int rest = size % 16;
+			ByteBuffer buf = ByteBuffer.allocate(size);
+			for (int i = 0; i < reps; i++) {
+				buf.put(content);
+			}
+			if (rest > 0) {
+				buf.put(".".repeat(rest).getBytes(StandardCharsets.UTF_8));
+			}
+			buf.flip();
+			return buf;
 		}
 
 		@Test
