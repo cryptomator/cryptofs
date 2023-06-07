@@ -86,9 +86,10 @@ public class ChunkCache {
 				if (chunk == null) {
 					chunk = new Chunk(chunkData, true, () -> releaseChunk(chunkIndex));
 				} else {
-					var dst = chunk.data().duplicate().clear();
+					var dst = chunk.data().clear();
 					Preconditions.checkArgument(chunkData.remaining() == dst.remaining());
-					dst.put(chunkData);
+					dst.put(chunkData) //
+							.flip();
 					chunk.dirty().set(true);
 				}
 				chunk.currentAccesses().incrementAndGet();
