@@ -53,7 +53,6 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -173,6 +172,25 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		@AfterEach
 		public void afterEach() throws IOException {
 			Files.deleteIfExists(file);
+		}
+
+		//https://github.com/cryptomator/cryptofs/issues/173
+		@Test
+		@DisplayName("First incomplete, then completely filled chunks are stored completely")
+		public void testFullChunksAreSavedCompletely() throws IOException {
+			int halfAChunk = 16_384; //half of cleartext chunk size
+			try (var writer = FileChannel.open(file, CREATE, WRITE)) {
+				writer.write(ByteBuffer.allocate(3 * halfAChunk), 0); //fill chunk 0, half fill chunk 1
+				writer.write(ByteBuffer.allocate(5 * halfAChunk), 0); //fill chunks 0 and 1, half fill chunk 2
+			}
+
+			try (var reader = FileChannel.open(file, CREATE, READ)) {
+				Assertions.assertAll(() -> reader.read(ByteBuffer.allocate(2 * halfAChunk), 0), //read chunk 0
+						() -> reader.read(ByteBuffer.allocate(2 * halfAChunk), 2 * halfAChunk), //read chunk 1
+						() -> reader.read(ByteBuffer.allocate(halfAChunk), 4 * halfAChunk) //read chunk 2
+				);
+			}
+
 		}
 
 		@Test
