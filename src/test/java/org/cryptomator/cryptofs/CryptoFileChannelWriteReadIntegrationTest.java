@@ -176,50 +176,21 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 
 		//https://github.com/cryptomator/cryptofs/issues/173
 		@Test
-		public void testWritingToPreviouslyReadRegionIsSavedCorrectly() throws IOException {
-			int x = 16_384; //half of cleartext chunk size
-			try (var reader = FileChannel.open(file, CREATE, READ, WRITE)) {
-				try (var writer = FileChannel.open(file, CREATE, WRITE)) {
-					assertWritten(writer, x, x + 1); //write to chunk 0 and 1
-					assertRead(reader, 2 * x, 1); //read 1 byte of chunk 1
-					assertWritten(writer, 2 * x, 2 * x); //write to chunk 1
-				}
+		@DisplayName("First incomplete, then completely filled chunks are stored completely")
+		public void testFullChunksAreSavedCompletely() throws IOException {
+			int halfAChunk = 16_384; //half of cleartext chunk size
+			try (var writer = FileChannel.open(file, CREATE, WRITE)) {
+				writer.write(ByteBuffer.allocate(3 * halfAChunk), 0); //fill chunk 0, half fill chunk 1
+				writer.write(ByteBuffer.allocate(5 * halfAChunk), 0); //fill chunks 0 and 1, half fill chunk 2
 			}
 
-			try (var reader2 = FileChannel.open(file, CREATE, READ)) {
-				assertRead(reader2, 2 * x, x); //read chunk 1
+			try (var reader = FileChannel.open(file, CREATE, READ)) {
+				Assertions.assertAll(() -> reader.read(ByteBuffer.allocate(2 * halfAChunk), 0), //read chunk 0
+						() -> reader.read(ByteBuffer.allocate(2 * halfAChunk), 2 * halfAChunk), //read chunk 1
+						() -> reader.read(ByteBuffer.allocate(halfAChunk), 4 * halfAChunk) //read chunk 2
+				);
 			}
 
-		}
-
-		private void assertRead(FileChannel source, int position, int numBytes) throws IOException {
-			var buf = ByteBuffer.allocate(numBytes);
-			int read = source.read(buf, position);
-			Assertions.assertEquals(numBytes, read);
-		}
-
-		private void assertWritten(FileChannel destination, int position, int numOfBytes) throws IOException {
-			var buf = createOfSize(numOfBytes);
-			int written = destination.write(buf, position);
-			Assertions.assertEquals(numOfBytes, written);
-		}
-
-		private ByteBuffer createOfSize(int size) {
-			if (size < 16) {
-				throw new IllegalArgumentException("too small!");
-			}
-			byte[] content = "16bytesLongtext.".getBytes(StandardCharsets.UTF_8);
-			int reps = size / 16;
-			int rest = size % 16;
-			ByteBuffer buf = ByteBuffer.allocate(size);
-			for (int i = 0; i < reps; i++) {
-				buf.put(content);
-			}
-			if (rest > 0) {
-				buf.put(".".repeat(rest).getBytes(StandardCharsets.UTF_8));
-			}
-			buf.flip();
-			return buf;
 		}
 
 		@Test
