@@ -62,7 +62,9 @@ import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.Set;
 
 import static java.nio.file.Files.readAllBytes;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
@@ -170,7 +172,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 	@Nested
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 	@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-	public class InMemory {
+	public class InMemoryOrdered {
 
 		private FileSystem tmpFs;
 		private MasterkeyLoader keyLoader1;
@@ -583,6 +585,68 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Assertions.assertTrue(Files.notExists(file1));
 			Assertions.assertTrue(Files.isRegularFile(file2));
 			Assertions.assertArrayEquals(contents, readAllBytes(file2));
+		}
+
+	}
+
+
+	@Nested
+	public class InMemory {
+
+		private static FileSystem tmpFs;
+		private static Path pathToVault;
+
+		@BeforeAll
+		public static void beforeAll() {
+			tmpFs = Jimfs.newFileSystem(Configuration.unix());
+			pathToVault = tmpFs.getPath("/vault");
+		}
+
+		@BeforeEach
+		public void beforeEach() throws IOException {
+			Files.createDirectory(pathToVault);
+		}
+
+		@AfterEach
+		public void afterEach() throws IOException {
+			try (var paths = Files.walk(pathToVault)) {
+				var nodes = paths.sorted(Comparator.reverseOrder()).toList();
+				for (var node : nodes) {
+					Files.delete(node);
+				}
+			}
+		}
+
+		@AfterAll
+		public static void afterAll() throws IOException {
+			tmpFs.close();
+		}
+
+		@Test
+		@DisplayName("Replace an existing, shortened file")
+		public void testReplaceExistingShortenedFile() throws IOException {
+			try (var fs = setupCryptoFs(50, 100, false)) {
+				var fiftyCharName2 = "/50char2_50char2_50char2_50char2_50char2_50char.txt"; //since filename encryption increases filename length, 50 cleartext chars are sufficient
+				var source = fs.getPath("/source.txt");
+				var target = fs.getPath(fiftyCharName2);
+				Files.createFile(source);
+				Files.createFile(target);
+
+				Assertions.assertDoesNotThrow(() -> Files.move(source, target, REPLACE_EXISTING));
+				Assertions.assertTrue(Files.notExists(source));
+				Assertions.assertTrue(Files.exists(target));
+			}
+		}
+
+		private FileSystem setupCryptoFs(int ciphertextShorteningThreshold, int maxCleartextFilename, boolean readonly) throws IOException {
+			byte[] key = new byte[64];
+			Arrays.fill(key, (byte) 0x55);
+			var keyLoader = Mockito.mock(MasterkeyLoader.class);
+			Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(key));
+			var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).withShorteningThreshold(ciphertextShorteningThreshold).withMaxCleartextNameLength(maxCleartextFilename).withFlags(readonly ? Set.of(CryptoFileSystemProperties.FileSystemFlags.READONLY) : Set.of()).build();
+			CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"));
+			URI fsUri = CryptoFileSystemUri.create(pathToVault);
+			return FileSystems.newFileSystem(fsUri, cryptoFileSystemProperties().withKeyLoader(keyLoader).build());
 		}
 
 	}
