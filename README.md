@@ -33,8 +33,13 @@ For more information on the security details, visit [docs.cryptomator.org](https
 ```java
 Path storageLocation = Paths.get("/home/cryptobot/vault");
 Files.createDirectories(storageLocation);
-CryptoFileSystemProvider.initialize(storageLocation, "masterkey.cryptomator", "password");
+Masterkey masterkey = Masterkey.generate(csprng));
+MasterkeyLoader loader = ignoredUri -> masterkey.copy(); //create a copy because the key handed over to init() method will be destroyed
+CryptoFileSystemProperties fsProps = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(loader).build();
+CryptoFileSystemProvider.initialize(storageLocation, fsProps, "myKeyId");
 ```
+
+The key material used for initialization and later de- & encryption is given by the [org.cryptomator.cryptolib.api.Masterkeyloader](https://github.com/cryptomator/cryptolib/blob/2.1.2/src/main/java/org/cryptomator/cryptolib/api/MasterkeyLoader.java) interface.
 
 ### Obtaining a FileSystem Instance
 
@@ -44,7 +49,7 @@ You have the option to use the convenience method `CryptoFileSystemProvider#newF
 FileSystem fileSystem = CryptoFileSystemProvider.newFileSystem(
 	storageLocation,
 	CryptoFileSystemProperties.cryptoFileSystemProperties()
-		.withPassphrase("password")
+		.withKeyLoader(ignoredUri -> masterkey.copy())
 		.withFlags(FileSystemFlags.READONLY) // readonly flag is optional of course
 		.build());
 ```
@@ -56,7 +61,7 @@ URI uri = CryptoFileSystemUri.create(storageLocation);
 FileSystem fileSystem = FileSystems.newFileSystem(
 		uri,
 		CryptoFileSystemProperties.cryptoFileSystemProperties()
-			.withPassphrase("password")
+            .withKeyLoader(ignoredUri -> masterkey.copy())
 			.withFlags(FileSystemFlags.READONLY) // readonly flag is optional of course
 			.build());
 ```
