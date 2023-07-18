@@ -599,7 +599,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		CiphertextFilePath ciphertextTarget = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
 		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath())) {
 			if (ciphertextTarget.isShortened()) {
-				Files.createDirectory(ciphertextTarget.getRawPath());
+				Files.createDirectories(ciphertextTarget.getRawPath());
 				ciphertextTarget.persistLongFileName();
 			}
 			Files.move(ciphertextSource.getFilePath(), ciphertextTarget.getFilePath(), options);
