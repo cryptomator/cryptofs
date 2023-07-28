@@ -91,7 +91,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 					.withFlags() //
 					.withMasterkeyFilename("masterkey.cryptomator") //
 					.withKeyLoader(keyLoader) //
-					.withMaxCleartextNameLength(50)
+					.withMaxCleartextNameLength(50) //
 					.build();
 			CryptoFileSystemProvider.initialize(tmpDir, properties, URI.create("test:key"));
 			fs = CryptoFileSystemProvider.newFileSystem(tmpDir, properties);
@@ -212,18 +212,17 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@Order(1)
 		@DisplayName("initialize vaults")
 		public void initializeVaults() {
-			Assertions.assertAll(
-					() -> {
-						var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader1).build();
-						CryptoFileSystemProvider.initialize(pathToVault1, properties, URI.create("test:key"));
-						Assertions.assertTrue(Files.isDirectory(pathToVault1.resolve("d")));
-						Assertions.assertTrue(Files.isRegularFile(vaultConfigFile1));
-					}, () -> {
-						var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader2).build();
-						CryptoFileSystemProvider.initialize(pathToVault2, properties, URI.create("test:key"));
-						Assertions.assertTrue(Files.isDirectory(pathToVault2.resolve("d")));
-						Assertions.assertTrue(Files.isRegularFile(vaultConfigFile2));
-					});
+			Assertions.assertAll(() -> {
+				var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader1).build();
+				CryptoFileSystemProvider.initialize(pathToVault1, properties, URI.create("test:key"));
+				Assertions.assertTrue(Files.isDirectory(pathToVault1.resolve("d")));
+				Assertions.assertTrue(Files.isRegularFile(vaultConfigFile1));
+			}, () -> {
+				var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader2).build();
+				CryptoFileSystemProvider.initialize(pathToVault2, properties, URI.create("test:key"));
+				Assertions.assertTrue(Files.isDirectory(pathToVault2.resolve("d")));
+				Assertions.assertTrue(Files.isRegularFile(vaultConfigFile2));
+			});
 		}
 
 		@Test
@@ -232,29 +231,27 @@ public class CryptoFileSystemProviderIntegrationTest {
 		public void testGetFsWithWrongCredentials() throws IOException {
 			Assumptions.assumeTrue(CryptoFileSystemProvider.checkDirStructureForVault(pathToVault1, "vault.cryptomator", "masterkey.cryptomator") == DirStructure.VAULT);
 			Assumptions.assumeTrue(CryptoFileSystemProvider.checkDirStructureForVault(pathToVault2, "vault.cryptomator", "masterkey.cryptomator") == DirStructure.VAULT);
-			Assertions.assertAll(
-					() -> {
-						URI fsUri = CryptoFileSystemUri.create(pathToVault1);
-						CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
-								.withFlags() //
-								.withMasterkeyFilename("masterkey.cryptomator") //
-								.withKeyLoader(keyLoader2) //
-								.build();
-						Assertions.assertThrows(VaultKeyInvalidException.class, () -> {
-							FileSystems.newFileSystem(fsUri, properties);
-						});
-					},
-					() -> {
-						URI fsUri = CryptoFileSystemUri.create(pathToVault2);
-						CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
-								.withFlags() //
-								.withMasterkeyFilename("masterkey.cryptomator") //
-								.withKeyLoader(keyLoader1) //
-								.build();
-						Assertions.assertThrows(VaultKeyInvalidException.class, () -> {
-							FileSystems.newFileSystem(fsUri, properties);
-						});
-					});
+			Assertions.assertAll(() -> {
+				URI fsUri = CryptoFileSystemUri.create(pathToVault1);
+				CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
+						.withFlags() //
+						.withMasterkeyFilename("masterkey.cryptomator") //
+						.withKeyLoader(keyLoader2) //
+						.build();
+				Assertions.assertThrows(VaultKeyInvalidException.class, () -> {
+					FileSystems.newFileSystem(fsUri, properties);
+				});
+			}, () -> {
+				URI fsUri = CryptoFileSystemUri.create(pathToVault2);
+				CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
+						.withFlags() //
+						.withMasterkeyFilename("masterkey.cryptomator") //
+						.withKeyLoader(keyLoader1) //
+						.build();
+				Assertions.assertThrows(VaultKeyInvalidException.class, () -> {
+					FileSystems.newFileSystem(fsUri, properties);
+				});
+			});
 		}
 
 		@Test
@@ -263,23 +260,21 @@ public class CryptoFileSystemProviderIntegrationTest {
 		public void testGetFsViaNioApi() {
 			Assumptions.assumeTrue(Files.exists(vaultConfigFile1));
 			Assumptions.assumeTrue(Files.exists(vaultConfigFile2));
-			Assertions.assertAll(
-					() -> {
-						URI fsUri = CryptoFileSystemUri.create(pathToVault1);
-						fs1 = FileSystems.newFileSystem(fsUri, cryptoFileSystemProperties().withKeyLoader(keyLoader1).build());
-						Assertions.assertTrue(fs1 instanceof CryptoFileSystemImpl);
+			Assertions.assertAll(() -> {
+				URI fsUri = CryptoFileSystemUri.create(pathToVault1);
+				fs1 = FileSystems.newFileSystem(fsUri, cryptoFileSystemProperties().withKeyLoader(keyLoader1).build());
+				Assertions.assertTrue(fs1 instanceof CryptoFileSystemImpl);
 
-						FileSystem sameFs = FileSystems.getFileSystem(fsUri);
-						Assertions.assertSame(fs1, sameFs);
-					},
-					() -> {
-						URI fsUri = CryptoFileSystemUri.create(pathToVault2);
-						fs2 = FileSystems.newFileSystem(fsUri, cryptoFileSystemProperties().withKeyLoader(keyLoader2).build());
-						Assertions.assertTrue(fs2 instanceof CryptoFileSystemImpl);
+				FileSystem sameFs = FileSystems.getFileSystem(fsUri);
+				Assertions.assertSame(fs1, sameFs);
+			}, () -> {
+				URI fsUri = CryptoFileSystemUri.create(pathToVault2);
+				fs2 = FileSystems.newFileSystem(fsUri, cryptoFileSystemProperties().withKeyLoader(keyLoader2).build());
+				Assertions.assertTrue(fs2 instanceof CryptoFileSystemImpl);
 
-						FileSystem sameFs = FileSystems.getFileSystem(fsUri);
-						Assertions.assertSame(fs2, sameFs);
-					});
+				FileSystem sameFs = FileSystems.getFileSystem(fsUri);
+				Assertions.assertSame(fs2, sameFs);
+			});
 		}
 
 		@Test
@@ -406,6 +401,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Files.delete(longNamePath);
 			Assertions.assertTrue(Files.notExists(longNamePath));
 		}
+
 		@Test
 		@Order(12)
 		@DisplayName("mkdir '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet'")
@@ -539,35 +535,31 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Assumptions.assumeTrue(Files.notExists(linksDir));
 			Files.createDirectories(linksDir);
 
-			Assertions.assertAll(
-					() -> {
-						Path link = linksDir.resolve("link1");
-						Files.createDirectories(link.getParent());
-						Files.createSymbolicLink(link, fs1.getPath("/linked/target1"));
-						Path target = Files.readSymbolicLink(link);
-						MatcherAssert.assertThat(target.getFileSystem(), is(link.getFileSystem())); // as per contract of readSymbolicLink
-						MatcherAssert.assertThat(target.toString(), Matchers.equalTo("/linked/target1"));
-						MatcherAssert.assertThat(link.resolveSibling(target).toString(), Matchers.equalTo("/linked/target1"));
-					},
-					() -> {
-						Path link = linksDir.resolve("link2");
-						Files.createDirectories(link.getParent());
-						Files.createSymbolicLink(link, fs1.getPath("./target2"));
-						Path target = Files.readSymbolicLink(link);
-						MatcherAssert.assertThat(target.getFileSystem(), is(link.getFileSystem()));
-						MatcherAssert.assertThat(target.toString(), Matchers.equalTo("./target2"));
-						MatcherAssert.assertThat(link.resolveSibling(target).normalize().toString(), Matchers.equalTo("/links/target2"));
-					},
-					() -> {
-						Path link = linksDir.resolve("link3");
-						Files.createDirectories(link.getParent());
-						Files.createSymbolicLink(link, fs1.getPath("../target3"));
-						Path target = Files.readSymbolicLink(link);
-						MatcherAssert.assertThat(target.getFileSystem(), is(link.getFileSystem()));
-						MatcherAssert.assertThat(target.toString(), Matchers.equalTo("../target3"));
-						MatcherAssert.assertThat(link.resolveSibling(target).normalize().toString(), Matchers.equalTo("/target3"));
-					}
-			);
+			Assertions.assertAll(() -> {
+				Path link = linksDir.resolve("link1");
+				Files.createDirectories(link.getParent());
+				Files.createSymbolicLink(link, fs1.getPath("/linked/target1"));
+				Path target = Files.readSymbolicLink(link);
+				MatcherAssert.assertThat(target.getFileSystem(), is(link.getFileSystem())); // as per contract of readSymbolicLink
+				MatcherAssert.assertThat(target.toString(), Matchers.equalTo("/linked/target1"));
+				MatcherAssert.assertThat(link.resolveSibling(target).toString(), Matchers.equalTo("/linked/target1"));
+			}, () -> {
+				Path link = linksDir.resolve("link2");
+				Files.createDirectories(link.getParent());
+				Files.createSymbolicLink(link, fs1.getPath("./target2"));
+				Path target = Files.readSymbolicLink(link);
+				MatcherAssert.assertThat(target.getFileSystem(), is(link.getFileSystem()));
+				MatcherAssert.assertThat(target.toString(), Matchers.equalTo("./target2"));
+				MatcherAssert.assertThat(link.resolveSibling(target).normalize().toString(), Matchers.equalTo("/links/target2"));
+			}, () -> {
+				Path link = linksDir.resolve("link3");
+				Files.createDirectories(link.getParent());
+				Files.createSymbolicLink(link, fs1.getPath("../target3"));
+				Path target = Files.readSymbolicLink(link);
+				MatcherAssert.assertThat(target.getFileSystem(), is(link.getFileSystem()));
+				MatcherAssert.assertThat(target.toString(), Matchers.equalTo("../target3"));
+				MatcherAssert.assertThat(link.resolveSibling(target).normalize().toString(), Matchers.equalTo("/target3"));
+			});
 		}
 
 		@Test
