@@ -91,6 +91,50 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 		}
 	}*/
 
+	/* //TODO https://github.com/cryptomator/cryptofs/issues/177
+	@Test
+	@DisplayName("Replace an existing, shortened symlink")
+	public void testReplaceExistingShortenedSymlink() throws IOException {
+		try (var fs = setupCryptoFs(50, 100, false)) {
+			var source = fs.getPath("/sourceDir");
+			var linkedFromSource = fs.getPath("/linkedFromSource.txt");
+			var linkedFromSourceContent = "linkedFromSourceContent!";
+
+			var targetName50Chars = "/target_89_123456789_123456789_123456789_123456789_"; //since filename encryption increases filename length, 50 cleartext chars are sufficient
+			var target = fs.getPath(targetName50Chars);
+			var linkedFromTarget = fs.getPath("/linkedFromTarget.txt");
+			var linkedFromTargetContent = "linkedFromTargeContent!";
+
+			Files.createFile(linkedFromSource);
+			Files.writeString(linkedFromSource, linkedFromSourceContent, UTF_8);
+			Files.createFile(linkedFromTarget);
+			Files.writeString(linkedFromTarget, linkedFromTargetContent, UTF_8);
+
+			Files.createSymbolicLink(source, linkedFromSource);
+			Files.createSymbolicLink(target, linkedFromTarget);
+
+			assertDoesNotThrow(() -> Files.move(source, target, REPLACE_EXISTING));
+			assertTrue(Files.notExists(source));
+			assertTrue(Files.exists(target));
+
+			//Assert linked files haven't been changed
+			assertTrue(Files.exists(linkedFromSource));
+			assertEquals(Files.readString(linkedFromSource, UTF_8), linkedFromSourceContent);
+			assertFalse(Files.isSymbolicLink(linkedFromSource));
+			assertTrue(Files.isRegularFile(linkedFromSource, LinkOption.NOFOLLOW_LINKS));
+
+			assertTrue(Files.exists(linkedFromTarget));
+			assertEquals(Files.readString(linkedFromTarget, UTF_8), linkedFromTargetContent);
+			assertFalse(Files.isSymbolicLink(linkedFromTarget));
+			assertTrue(Files.isRegularFile(linkedFromTarget, LinkOption.NOFOLLOW_LINKS));
+
+			//Assert link is correct
+			assertTrue(Files.isSymbolicLink(target));
+			assertTrue(Files.isRegularFile(target /* FOLLOW_LINKS *<remove angle brackets when enabling test>/));
+			assertEquals(Files.readSymbolicLink(target), linkedFromSource);
+		}
+	}*/
+
 	private FileSystem setupCryptoFs(int ciphertextShorteningThreshold, int maxCleartextFilename, boolean readonly) throws IOException {
 		byte[] key = new byte[64];
 		Arrays.fill(key, (byte) 0x55);
