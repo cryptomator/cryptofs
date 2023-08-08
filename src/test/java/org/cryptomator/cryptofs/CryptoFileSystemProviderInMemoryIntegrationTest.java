@@ -9,7 +9,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -27,6 +28,7 @@ import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSyst
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+//For shortening: Since filename encryption increases filename length, 50 cleartext chars are sufficient to reach the threshold
 public class CryptoFileSystemProviderInMemoryIntegrationTest {
 
 	private static FileSystem tmpFs;
@@ -58,13 +60,14 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 		tmpFs.close();
 	}
 
-	@Test
-	@DisplayName("Replace an existing, shortened file")
-	public void testReplaceExistingShortenedFile() throws IOException {
+	@DisplayName("Replace an existing file")
+	@ParameterizedTest
+	@ValueSource(strings = {"target50Chars_56789_123456789_123456789_123456789_", "target15Chars__", //
+			"target50Chars_56789_123456789_123456789_123456.txt", "target15C__.txt"})
+	public void testReplaceExistingFile(String targetName) throws IOException {
 		try (var fs = setupCryptoFs(50, 100, false)) {
-			var fiftyCharName2 = "/50char2_50char2_50char2_50char2_50char2_50char.txt"; //since filename encryption increases filename length, 50 cleartext chars are sufficient
 			var source = fs.getPath("/source.txt");
-			var target = fs.getPath(fiftyCharName2);
+			var target = fs.getPath("/" + targetName);
 			Files.createFile(source);
 			Files.createFile(target);
 
@@ -75,13 +78,14 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 	}
 
 	/* //TODO https://github.com/cryptomator/cryptofs/issues/176
-	@Test
-	@DisplayName("Replace an existing, shortened, empty directory")
-	public void testReplaceExistingShortenedDirEmpty() throws IOException {
+	@DisplayName("Replace an existing, empty directory")
+	@ParameterizedTest
+	@ValueSource(strings = {"target50Chars_56789_123456789_123456789_123456789_", "target15Chars__", //
+			"target50Chars_56789_123456789_123456789_123456.txt", "target15C__.txt"})
+	public void testReplaceExistingDirEmpty(String targetName) throws IOException {
 		try (var fs = setupCryptoFs(50, 100, false)) {
-			var dirName50Chars = "/target_89_123456789_123456789_123456789_123456789_"; //since filename encryption increases filename length, 50 cleartext chars are sufficient
 			var source = fs.getPath("/sourceDir");
-			var target = fs.getPath(dirName50Chars);
+			var target = fs.getPath("/" + targetName);
 			Files.createDirectory(source);
 			Files.createDirectory(target);
 
@@ -92,16 +96,17 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 	}*/
 
 	/* //TODO https://github.com/cryptomator/cryptofs/issues/177
-	@Test
-	@DisplayName("Replace an existing, shortened symlink")
-	public void testReplaceExistingShortenedSymlink() throws IOException {
+	@DisplayName("Replace an existing symlink")
+	@ParameterizedTest
+	@ValueSource(strings = {"target50Chars_56789_123456789_123456789_123456789_", "target15Chars__", //
+			"target50Chars_56789_123456789_123456789_123456.txt", "target15C__.txt"})
+	public void testReplaceExistingSymlink(String targetName) throws IOException {
 		try (var fs = setupCryptoFs(50, 100, false)) {
 			var source = fs.getPath("/sourceDir");
 			var linkedFromSource = fs.getPath("/linkedFromSource.txt");
 			var linkedFromSourceContent = "linkedFromSourceContent!";
 
-			var targetName50Chars = "/target_89_123456789_123456789_123456789_123456789_"; //since filename encryption increases filename length, 50 cleartext chars are sufficient
-			var target = fs.getPath(targetName50Chars);
+			var target = fs.getPath("/" + targetName);
 			var linkedFromTarget = fs.getPath("/linkedFromTarget.txt");
 			var linkedFromTargetContent = "linkedFromTargeContent!";
 
