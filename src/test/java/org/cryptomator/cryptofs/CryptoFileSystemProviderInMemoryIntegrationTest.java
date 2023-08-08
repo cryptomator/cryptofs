@@ -14,6 +14,10 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.net.URI;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -60,10 +64,21 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 		tmpFs.close();
 	}
 
-	@DisplayName("Replace an existing file")
 	@ParameterizedTest
-	@ValueSource(strings = {"target50Chars_56789_123456789_123456789_123456789_", "target15Chars__", //
-			"target50Chars_56789_123456789_123456789_123456.txt", "target15C__.txt"})
+	@ValueSource(strings = { //
+			"target50Chars_56789_123456789_123456789_123456789_", //
+			"target15Chars__", //
+			"target50Chars_56789_123456789_123456789_123456.txt", //
+			"target15C__.txt" //
+	})
+	@Target(ElementType.METHOD)
+	@Retention(RetentionPolicy.RUNTIME)
+	@interface ParameterizedFileTest {
+
+	}
+
+	@DisplayName("Replace an existing file")
+	@ParameterizedFileTest
 	public void testReplaceExistingFile(String targetName) throws IOException {
 		try (var fs = setupCryptoFs(50, 100, false)) {
 			var source = fs.getPath("/source.txt");
@@ -79,9 +94,7 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 
 	/* //TODO https://github.com/cryptomator/cryptofs/issues/176
 	@DisplayName("Replace an existing, empty directory")
-	@ParameterizedTest
-	@ValueSource(strings = {"target50Chars_56789_123456789_123456789_123456789_", "target15Chars__", //
-			"target50Chars_56789_123456789_123456789_123456.txt", "target15C__.txt"})
+	@ParameterizedFileTest
 	public void testReplaceExistingDirEmpty(String targetName) throws IOException {
 		try (var fs = setupCryptoFs(50, 100, false)) {
 			var source = fs.getPath("/sourceDir");
@@ -97,9 +110,7 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 
 	/* //TODO https://github.com/cryptomator/cryptofs/issues/177
 	@DisplayName("Replace an existing symlink")
-	@ParameterizedTest
-	@ValueSource(strings = {"target50Chars_56789_123456789_123456789_123456789_", "target15Chars__", //
-			"target50Chars_56789_123456789_123456789_123456.txt", "target15C__.txt"})
+	@ParameterizedFileTest
 	public void testReplaceExistingSymlink(String targetName) throws IOException {
 		try (var fs = setupCryptoFs(50, 100, false)) {
 			var source = fs.getPath("/sourceDir");
