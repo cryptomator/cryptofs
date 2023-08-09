@@ -18,7 +18,7 @@ import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.common.DeletingFileVisitor;
 import org.cryptomator.cryptofs.common.FinallyUtil;
 import org.cryptomator.cryptofs.dir.CiphertextDirectoryDeleter;
-import org.cryptomator.cryptofs.dir.DirIdBackupFilter;
+import org.cryptomator.cryptofs.dir.ExcludeDirIdBackupFilter;
 import org.cryptomator.cryptofs.dir.DirectoryStreamFactory;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -624,7 +624,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			// check if dir is empty:
 			Path targetCiphertextDirContentDir = cryptoPathMapper.getCiphertextDir(cleartextTarget).path;
 			boolean targetCiphertextDirExists = true;
-			try (DirectoryStream<Path> ds = Files.newDirectoryStream(targetCiphertextDirContentDir, new DirIdBackupFilter())) {
+			try (DirectoryStream<Path> ds = Files.newDirectoryStream(targetCiphertextDirContentDir, new ExcludeDirIdBackupFilter())) {
 				if (ds.iterator().hasNext()) {
 					throw new DirectoryNotEmptyException(cleartextTarget.toString());
 				}
