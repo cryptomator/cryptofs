@@ -621,18 +621,18 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 				throw new AtomicMoveNotSupportedException(cleartextSource.toString(), cleartextTarget.toString(), "Replacing directories during move requires non-atomic status checks.");
 			}
 			// check if dir is empty:
-			Path oldCiphertextDir = cryptoPathMapper.getCiphertextDir(cleartextTarget).path;
-			boolean oldCiphertextDirExists = true;
-			try (DirectoryStream<Path> ds = Files.newDirectoryStream(oldCiphertextDir)) {
+			Path targetCiphertextDirContentDir = cryptoPathMapper.getCiphertextDir(cleartextTarget).path;
+			boolean targetCiphertextDirExists = true;
+			try (DirectoryStream<Path> ds = Files.newDirectoryStream(targetCiphertextDirContentDir)) {
 				if (ds.iterator().hasNext()) {
 					throw new DirectoryNotEmptyException(cleartextTarget.toString());
 				}
 			} catch (NoSuchFileException e) {
-				oldCiphertextDirExists = false;
+				targetCiphertextDirExists = false;
 			}
 			// cleanup dir to be replaced:
-			if (oldCiphertextDirExists) {
-				Files.walkFileTree(oldCiphertextDir, DeletingFileVisitor.INSTANCE);
+			if (targetCiphertextDirExists) {
+				Files.walkFileTree(targetCiphertextDirContentDir, DeletingFileVisitor.INSTANCE);
 			}
 			Files.walkFileTree(ciphertextTarget.getRawPath(), DeletingFileVisitor.INSTANCE);
 		}
