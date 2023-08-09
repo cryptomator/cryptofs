@@ -59,6 +59,21 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 	}
 
 	@Test
+	@DisplayName("Replace an existing, shortened, empty directory")
+	public void testReplaceExistingShortenedDirEmpty() throws IOException {
+		try (var fs = setupCryptoFs(50, 100, false)) {
+			var dirName50Chars = "/target_89_123456789_123456789_123456789_123456789_"; //since filename encryption increases filename length, 50 cleartext chars are sufficient
+			var source = fs.getPath("/sourceDir");
+			var target = fs.getPath(dirName50Chars);
+			Files.createDirectory(source);
+			Files.createDirectory(target);
+			assertDoesNotThrow(() -> Files.move(source, target, REPLACE_EXISTING));
+			assertTrue(Files.notExists(source));
+			assertTrue(Files.exists(target));
+		}
+	}
+
+	@Test
 	@DisplayName("Replace an existing, shortened file")
 	public void testReplaceExistingShortenedFile() throws IOException {
 		try (var fs = setupCryptoFs(50, 100, false)) {
