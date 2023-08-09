@@ -9,8 +9,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.function.ThrowingConsumer;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -29,6 +31,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
@@ -68,13 +71,19 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 		tmpFs.close();
 	}
 
-	@ParameterizedTest
-	@ValueSource(strings = { //
+	private final static String[] targetFileNamesArray = new String[]{ //
 			"target50Chars_56789_123456789_123456789_123456789_", //
 			"target15Chars__", //
 			"target50Chars_56789_123456789_123456789_123456.txt", //
 			"target15C__.txt" //
-	})
+	};
+
+	static Stream<String> targetFileNames() {
+		return Arrays.stream(targetFileNamesArray);
+	}
+
+	@ParameterizedTest
+	@MethodSource("org.cryptomator.cryptofs.CryptoFileSystemProviderInMemoryIntegrationTest#targetFileNames")
 	@Target(ElementType.METHOD)
 	@Retention(RetentionPolicy.RUNTIME)
 	@interface ParameterizedFileTest {
@@ -225,6 +234,40 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 			assertTrue(Files.notExists(nestedFile, LinkOption.NOFOLLOW_LINKS));
 			assertTrue(Files.notExists(nestedDir, LinkOption.NOFOLLOW_LINKS));
 			assertTrue(Files.notExists(nestedLink, LinkOption.NOFOLLOW_LINKS));
+
+			assertThrows(NoSuchFileException.class, () -> Files.delete(targetDir)); //TODO Verify behavior
+		}
+	}
+
+	static Stream<Arguments> dirEntries() {
+		Stream<ThrowingConsumer<Path>> operations = Stream.of(Files::createFile, //
+				Files::createDirectory, //
+				nestedElement -> Files.createSymbolicLink(nestedElement, nestedElement.resolveSibling("linkTarget")));
+		return operations.flatMap(elementCreator -> targetFileNames().map( //
+				s -> Arguments.of(s, elementCreator)) //
+		);
+	}
+
+	@DisplayName("Delete directory while and after containing one element")
+	@ParameterizedTest
+	@MethodSource("org.cryptomator.cryptofs.CryptoFileSystemProviderInMemoryIntegrationTest#dirEntries")
+	public void testDeleteDirSingle(String targetName, ThrowingConsumer<Path> entryCreator) throws Throwable /* = IOE from entryCreator */ {
+		try (var fs = setupCryptoFs(50, 100, false)) {
+			var targetDir = fs.getPath("/" + targetName);
+			Files.createDirectory(targetDir);
+
+			var nestedElement = targetDir.resolve("nestedElement");
+			entryCreator.accept(nestedElement);
+
+			assertThrows(DirectoryNotEmptyException.class, () -> Files.delete(targetDir));
+			assertTrue(Files.exists(targetDir, LinkOption.NOFOLLOW_LINKS));
+			assertTrue(Files.exists(nestedElement, LinkOption.NOFOLLOW_LINKS));
+
+			assertDoesNotThrow(() -> Files.delete(nestedElement));
+			assertDoesNotThrow(() -> Files.delete(targetDir));
+
+			assertTrue(Files.notExists(targetDir, LinkOption.NOFOLLOW_LINKS));
+			assertTrue(Files.notExists(nestedElement, LinkOption.NOFOLLOW_LINKS));
 
 			assertThrows(NoSuchFileException.class, () -> Files.delete(targetDir)); //TODO Verify behavior
 		}
