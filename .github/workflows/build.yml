@@ -40,12 +40,10 @@ jobs:
         with:
           name: artifacts
           path: target/*.jar
-      - name: Create Release
-        uses: actions/create-release@v1 #NOTE: action is archived and unmaintained
+      - name: Create release
         if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GITHUB_TOKEN: ${{ secrets.CRYPTOBOT_RELEASE_TOKEN }} # release as "cryptobot"
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          token: ${{ secrets.CRYPTOBOT_RELEASE_TOKEN }}
+          generate_release_notes: true
           prerelease: true

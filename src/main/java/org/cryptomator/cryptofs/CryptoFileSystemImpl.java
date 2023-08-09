@@ -18,6 +18,7 @@ import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.common.DeletingFileVisitor;
 import org.cryptomator.cryptofs.common.FinallyUtil;
 import org.cryptomator.cryptofs.dir.CiphertextDirectoryDeleter;
+import org.cryptomator.cryptofs.dir.DirectoryStreamFilters;
 import org.cryptomator.cryptofs.dir.DirectoryStreamFactory;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -621,20 +622,21 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 				throw new AtomicMoveNotSupportedException(cleartextSource.toString(), cleartextTarget.toString(), "Replacing directories during move requires non-atomic status checks.");
 			}
 			// check if dir is empty:
-			Path oldCiphertextDir = cryptoPathMapper.getCiphertextDir(cleartextTarget).path;
-			boolean oldCiphertextDirExists = true;
-			try (DirectoryStream<Path> ds = Files.newDirectoryStream(oldCiphertextDir)) {
+			Path targetCiphertextDirContentDir = cryptoPathMapper.getCiphertextDir(cleartextTarget).path;
+			boolean targetCiphertextDirExists = true;
+			try (DirectoryStream<Path> ds = Files.newDirectoryStream(targetCiphertextDirContentDir, DirectoryStreamFilters.EXCLUDE_DIR_ID_BACKUP)) {
 				if (ds.iterator().hasNext()) {
 					throw new DirectoryNotEmptyException(cleartextTarget.toString());
 				}
 			} catch (NoSuchFileException e) {
-				oldCiphertextDirExists = false;
+				targetCiphertextDirExists = false;
 			}
-			// cleanup dir to be replaced:
-			if (oldCiphertextDirExists) {
-				Files.walkFileTree(oldCiphertextDir, DeletingFileVisitor.INSTANCE);
-			}
+			//delete dir link
 			Files.walkFileTree(ciphertextTarget.getRawPath(), DeletingFileVisitor.INSTANCE);
+			// cleanup content dir
+			if (targetCiphertextDirExists) {
+				Files.walkFileTree(targetCiphertextDirContentDir, DeletingFileVisitor.INSTANCE);
+			}
 		}
 
 		// no exceptions until this point, so MOVE:

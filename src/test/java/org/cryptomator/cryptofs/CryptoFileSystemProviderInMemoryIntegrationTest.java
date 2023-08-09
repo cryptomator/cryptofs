@@ -92,7 +92,6 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 		}
 	}
 
-	/* //TODO https://github.com/cryptomator/cryptofs/issues/176
 	@DisplayName("Replace an existing, empty directory")
 	@ParameterizedFileTest
 	public void testReplaceExistingDirEmpty(String targetName) throws IOException {
@@ -106,7 +105,7 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 			assertTrue(Files.notExists(source));
 			assertTrue(Files.exists(target));
 		}
-	}*/
+	}
 
 	/* //TODO https://github.com/cryptomator/cryptofs/issues/177
 	@DisplayName("Replace an existing symlink")
