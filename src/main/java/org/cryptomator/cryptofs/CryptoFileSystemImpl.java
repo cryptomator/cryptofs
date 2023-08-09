@@ -630,11 +630,12 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			} catch (NoSuchFileException e) {
 				targetCiphertextDirExists = false;
 			}
-			// cleanup dir to be replaced:
+			//delete dir link
+			Files.walkFileTree(ciphertextTarget.getRawPath(), DeletingFileVisitor.INSTANCE);
+			// cleanup content dir
 			if (targetCiphertextDirExists) {
 				Files.walkFileTree(targetCiphertextDirContentDir, DeletingFileVisitor.INSTANCE);
 			}
-			Files.walkFileTree(ciphertextTarget.getRawPath(), DeletingFileVisitor.INSTANCE);
 		}
 
 		// no exceptions until this point, so MOVE:
