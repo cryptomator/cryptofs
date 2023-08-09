@@ -19,6 +19,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.net.URI;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -190,6 +191,42 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 			assertTrue(Files.notExists(file, LinkOption.NOFOLLOW_LINKS));
 
 			assertThrows(NoSuchFileException.class, () -> Files.delete(file)); //TODO Verify behavior
+		}
+	}
+
+	@DisplayName("Delete directory while and after containing multiple elements")
+	@ParameterizedFileTest
+	public void testDeleteDirMultiple(String targetName) throws IOException {
+		try (var fs = setupCryptoFs(50, 100, false)) {
+			var targetDir = fs.getPath("/" + targetName);
+			Files.createDirectory(targetDir);
+
+			var nestedFile = targetDir.resolve("nestedFile");
+			Files.createFile(nestedFile);
+			var nestedDir = targetDir.resolve("nestedDir");
+			Files.createDirectory(nestedDir);
+			var nestedLink = targetDir.resolve("nestedLink");
+			Files.createSymbolicLink(nestedLink, fs.getPath("linkTarget"));
+
+			assertThrows(DirectoryNotEmptyException.class, () -> Files.delete(targetDir));
+
+			assertTrue(Files.exists(targetDir, LinkOption.NOFOLLOW_LINKS));
+			assertTrue(Files.exists(nestedFile, LinkOption.NOFOLLOW_LINKS));
+			assertTrue(Files.exists(nestedDir, LinkOption.NOFOLLOW_LINKS));
+			assertTrue(Files.exists(nestedLink, LinkOption.NOFOLLOW_LINKS));
+
+			assertDoesNotThrow(() -> Files.delete(nestedFile));
+			assertDoesNotThrow(() -> Files.delete(nestedDir));
+			assertDoesNotThrow(() -> Files.delete(nestedLink));
+
+			assertDoesNotThrow(() -> Files.delete(targetDir));
+
+			assertTrue(Files.notExists(targetDir, LinkOption.NOFOLLOW_LINKS));
+			assertTrue(Files.notExists(nestedFile, LinkOption.NOFOLLOW_LINKS));
+			assertTrue(Files.notExists(nestedDir, LinkOption.NOFOLLOW_LINKS));
+			assertTrue(Files.notExists(nestedLink, LinkOption.NOFOLLOW_LINKS));
+
+			assertThrows(NoSuchFileException.class, () -> Files.delete(targetDir)); //TODO Verify behavior
 		}
 	}
 
