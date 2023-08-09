@@ -178,6 +178,21 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 		}
 	}
 
+	@DisplayName("Delete empty directory that never contained elements")
+	@ParameterizedFileTest
+	public void testDeleteDirAlwaysEmpty(String targetName) throws IOException {
+		try (var fs = setupCryptoFs(50, 100, false)) {
+			var file = fs.getPath("/" + targetName);
+			Files.createDirectory(file);
+
+			assertTrue(Files.exists(file, LinkOption.NOFOLLOW_LINKS));
+			assertDoesNotThrow(() -> Files.delete(file));
+			assertTrue(Files.notExists(file, LinkOption.NOFOLLOW_LINKS));
+
+			assertThrows(NoSuchFileException.class, () -> Files.delete(file)); //TODO Verify behavior
+		}
+	}
+
 	private FileSystem setupCryptoFs(int ciphertextShorteningThreshold, int maxCleartextFilename, boolean readonly) throws IOException {
 		byte[] key = new byte[64];
 		Arrays.fill(key, (byte) 0x55);
