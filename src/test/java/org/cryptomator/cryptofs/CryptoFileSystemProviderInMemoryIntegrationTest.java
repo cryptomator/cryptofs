@@ -22,6 +22,8 @@ import java.net.URI;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -30,6 +32,7 @@ import java.util.Set;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 //For shortening: Since filename encryption increases filename length, 50 cleartext chars are sufficient to reach the threshold
@@ -149,6 +152,31 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 			assertEquals(Files.readSymbolicLink(target), linkedFromSource);
 		}
 	}*/
+
+	@DisplayName("Delete not existing file")
+	@ParameterizedFileTest
+	public void testDeleteNotExisting(String targetName) throws IOException {
+		try (var fs = setupCryptoFs(50, 100, false)) {
+			var file = fs.getPath("/" + targetName);
+
+			assertThrows(NoSuchFileException.class, () -> Files.delete(file)); //TODO Verify behavior
+		}
+	}
+
+	@DisplayName("Delete regular file")
+	@ParameterizedFileTest
+	public void testDeleteFile(String targetName) throws IOException {
+		try (var fs = setupCryptoFs(50, 100, false)) {
+			var file = fs.getPath("/" + targetName);
+			Files.createFile(file);
+
+			assertTrue(Files.exists(file, LinkOption.NOFOLLOW_LINKS));
+			assertDoesNotThrow(() -> Files.delete(file));
+			assertTrue(Files.notExists(file, LinkOption.NOFOLLOW_LINKS));
+
+			assertThrows(NoSuchFileException.class, () -> Files.delete(file)); //TODO Verify behavior
+		}
+	}
 
 	private FileSystem setupCryptoFs(int ciphertextShorteningThreshold, int maxCleartextFilename, boolean readonly) throws IOException {
 		byte[] key = new byte[64];
