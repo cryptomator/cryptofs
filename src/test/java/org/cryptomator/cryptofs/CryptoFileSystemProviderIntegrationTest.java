@@ -19,8 +19,6 @@ import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -70,6 +68,16 @@ import static java.nio.file.Files.readAllBytes;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 
 public class CryptoFileSystemProviderIntegrationTest {
@@ -91,7 +99,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 					.withFlags() //
 					.withMasterkeyFilename("masterkey.cryptomator") //
 					.withKeyLoader(keyLoader) //
-					.withMaxCleartextNameLength(50)
+					.withMaxCleartextNameLength(50) //
 					.build();
 			CryptoFileSystemProvider.initialize(tmpDir, properties, URI.create("test:key"));
 			fs = CryptoFileSystemProvider.newFileSystem(tmpDir, properties);
@@ -118,7 +126,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@Test
 		public void testCreateFileExceedingPathLengthLimit() {
 			Path p = fs.getPath("/this-cleartext-filename-is-longer-than-50-characters");
-			Assertions.assertThrows(FileNameTooLongException.class, () -> {
+			assertThrows(FileNameTooLongException.class, () -> {
 				Files.createFile(p);
 			});
 		}
@@ -127,7 +135,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@Test
 		public void testCreateDirExceedingPathLengthLimit() {
 			Path p = fs.getPath("/this-cleartext-filename-is-longer-than-50-characters");
-			Assertions.assertThrows(FileNameTooLongException.class, () -> {
+			assertThrows(FileNameTooLongException.class, () -> {
 				Files.createDirectory(p);
 			});
 		}
@@ -136,7 +144,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@Test
 		public void testCreateSymlinkExceedingPathLengthLimit() {
 			Path p = fs.getPath("/this-cleartext-filename-is-longer-than-50-characters");
-			Assertions.assertThrows(FileNameTooLongException.class, () -> {
+			assertThrows(FileNameTooLongException.class, () -> {
 				Files.createSymbolicLink(p, shortFilePath);
 			});
 		}
@@ -147,11 +155,11 @@ public class CryptoFileSystemProviderIntegrationTest {
 		public void testMoveExceedingPathLengthLimit(String path) {
 			Path src = fs.getPath(path);
 			Path dst = fs.getPath("/this-cleartext-filename-is-longer-than-50-characters");
-			Assertions.assertThrows(FileNameTooLongException.class, () -> {
+			assertThrows(FileNameTooLongException.class, () -> {
 				Files.move(src, dst);
 			});
-			Assertions.assertTrue(Files.exists(src));
-			Assertions.assertTrue(Files.notExists(dst));
+			assertTrue(Files.exists(src));
+			assertTrue(Files.notExists(dst));
 		}
 
 		@DisplayName("expect copy to fail with FileNameTooLongException")
@@ -160,11 +168,11 @@ public class CryptoFileSystemProviderIntegrationTest {
 		public void testCopyExceedingPathLengthLimit(String path) {
 			Path src = fs.getPath(path);
 			Path dst = fs.getPath("/this-cleartext-filename-is-longer-than-50-characters");
-			Assertions.assertThrows(FileNameTooLongException.class, () -> {
+			assertThrows(FileNameTooLongException.class, () -> {
 				Files.copy(src, dst, LinkOption.NOFOLLOW_LINKS);
 			});
-			Assertions.assertTrue(Files.exists(src));
-			Assertions.assertTrue(Files.notExists(dst));
+			assertTrue(Files.exists(src));
+			assertTrue(Files.notExists(dst));
 		}
 
 	}
@@ -212,84 +220,79 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@Order(1)
 		@DisplayName("initialize vaults")
 		public void initializeVaults() {
-			Assertions.assertAll(
-					() -> {
-						var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader1).build();
-						CryptoFileSystemProvider.initialize(pathToVault1, properties, URI.create("test:key"));
-						Assertions.assertTrue(Files.isDirectory(pathToVault1.resolve("d")));
-						Assertions.assertTrue(Files.isRegularFile(vaultConfigFile1));
-					}, () -> {
-						var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader2).build();
-						CryptoFileSystemProvider.initialize(pathToVault2, properties, URI.create("test:key"));
-						Assertions.assertTrue(Files.isDirectory(pathToVault2.resolve("d")));
-						Assertions.assertTrue(Files.isRegularFile(vaultConfigFile2));
-					});
+			assertAll(() -> {
+				var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader1).build();
+				CryptoFileSystemProvider.initialize(pathToVault1, properties, URI.create("test:key"));
+				assertTrue(Files.isDirectory(pathToVault1.resolve("d")));
+				assertTrue(Files.isRegularFile(vaultConfigFile1));
+			}, () -> {
+				var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader2).build();
+				CryptoFileSystemProvider.initialize(pathToVault2, properties, URI.create("test:key"));
+				assertTrue(Files.isDirectory(pathToVault2.resolve("d")));
+				assertTrue(Files.isRegularFile(vaultConfigFile2));
+			});
 		}
 
 		@Test
 		@Order(2)
 		@DisplayName("get filesystem with incorrect credentials")
 		public void testGetFsWithWrongCredentials() throws IOException {
-			Assumptions.assumeTrue(CryptoFileSystemProvider.checkDirStructureForVault(pathToVault1, "vault.cryptomator", "masterkey.cryptomator") == DirStructure.VAULT);
-			Assumptions.assumeTrue(CryptoFileSystemProvider.checkDirStructureForVault(pathToVault2, "vault.cryptomator", "masterkey.cryptomator") == DirStructure.VAULT);
-			Assertions.assertAll(
-					() -> {
-						URI fsUri = CryptoFileSystemUri.create(pathToVault1);
-						CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
-								.withFlags() //
-								.withMasterkeyFilename("masterkey.cryptomator") //
-								.withKeyLoader(keyLoader2) //
-								.build();
-						Assertions.assertThrows(VaultKeyInvalidException.class, () -> {
-							FileSystems.newFileSystem(fsUri, properties);
-						});
-					},
-					() -> {
-						URI fsUri = CryptoFileSystemUri.create(pathToVault2);
-						CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
-								.withFlags() //
-								.withMasterkeyFilename("masterkey.cryptomator") //
-								.withKeyLoader(keyLoader1) //
-								.build();
-						Assertions.assertThrows(VaultKeyInvalidException.class, () -> {
-							FileSystems.newFileSystem(fsUri, properties);
-						});
-					});
+			assumeTrue(CryptoFileSystemProvider.checkDirStructureForVault(pathToVault1, "vault.cryptomator", "masterkey.cryptomator") == DirStructure.VAULT);
+			assumeTrue(CryptoFileSystemProvider.checkDirStructureForVault(pathToVault2, "vault.cryptomator", "masterkey.cryptomator") == DirStructure.VAULT);
+			assertAll(() -> {
+				URI fsUri = CryptoFileSystemUri.create(pathToVault1);
+				CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
+						.withFlags() //
+						.withMasterkeyFilename("masterkey.cryptomator") //
+						.withKeyLoader(keyLoader2) //
+						.build();
+				assertThrows(VaultKeyInvalidException.class, () -> {
+					FileSystems.newFileSystem(fsUri, properties);
+				});
+			}, () -> {
+				URI fsUri = CryptoFileSystemUri.create(pathToVault2);
+				CryptoFileSystemProperties properties = cryptoFileSystemProperties() //
+						.withFlags() //
+						.withMasterkeyFilename("masterkey.cryptomator") //
+						.withKeyLoader(keyLoader1) //
+						.build();
+				assertThrows(VaultKeyInvalidException.class, () -> {
+					FileSystems.newFileSystem(fsUri, properties);
+				});
+			});
 		}
 
 		@Test
 		@Order(4)
 		@DisplayName("get filesystem with correct credentials")
 		public void testGetFsViaNioApi() {
-			Assumptions.assumeTrue(Files.exists(vaultConfigFile1));
-			Assumptions.assumeTrue(Files.exists(vaultConfigFile2));
-			Assertions.assertAll(
-					() -> {
-						URI fsUri = CryptoFileSystemUri.create(pathToVault1);
-						fs1 = FileSystems.newFileSystem(fsUri, cryptoFileSystemProperties().withKeyLoader(keyLoader1).build());
-						Assertions.assertTrue(fs1 instanceof CryptoFileSystemImpl);
+			assumeTrue(Files.exists(vaultConfigFile1));
+			assumeTrue(Files.exists(vaultConfigFile2));
+			assertAll(() -> {
+				URI fsUri = CryptoFileSystemUri.create(pathToVault1);
+				fs1 = FileSystems.newFileSystem(fsUri, cryptoFileSystemProperties().withKeyLoader(keyLoader1).build());
+				assertTrue(fs1 instanceof CryptoFileSystemImpl);
 
-						FileSystem sameFs = FileSystems.getFileSystem(fsUri);
-						Assertions.assertSame(fs1, sameFs);
-					},
-					() -> {
-						URI fsUri = CryptoFileSystemUri.create(pathToVault2);
-						fs2 = FileSystems.newFileSystem(fsUri, cryptoFileSystemProperties().withKeyLoader(keyLoader2).build());
-						Assertions.assertTrue(fs2 instanceof CryptoFileSystemImpl);
+				FileSystem sameFs = FileSystems.getFileSystem(fsUri);
+				assertSame(fs1, sameFs);
+			}, () -> {
+				URI fsUri = CryptoFileSystemUri.create(pathToVault2);
+				fs2 = FileSystems.newFileSystem(fsUri, cryptoFileSystemProperties().withKeyLoader(keyLoader2).build());
+				assertTrue(fs2 instanceof CryptoFileSystemImpl);
 
-						FileSystem sameFs = FileSystems.getFileSystem(fsUri);
-						Assertions.assertSame(fs2, sameFs);
-					});
+				FileSystem sameFs = FileSystems.getFileSystem(fsUri);
+				assertSame(fs2, sameFs);
+			});
 		}
 
 		@Test
 		@Order(5)
 		@DisplayName("touch /foo")
 		public void testOpenAndCloseFileChannel() throws IOException {
-			Assumptions.assumeTrue(fs1.isOpen());
+			assumeTrue(fs1.isOpen());
 
 			try (FileChannel ch = FileChannel.open(fs1.getPath("/foo"), EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW))) {
-				Assertions.assertTrue(ch instanceof CleartextFileChannel);
+				assertTrue(ch instanceof CleartextFileChannel);
 			}
 		}
 
@@ -298,10 +301,10 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@DisplayName("ln -s foo /link")
 		public void testCreateSymlink() {
 			Path target = fs1.getPath("/foo");
-			Assumptions.assumeTrue(Files.isRegularFile(target));
+			assumeTrue(Files.isRegularFile(target));
 			Path link = fs1.getPath("/link");
 
-			Assertions.assertDoesNotThrow(() -> {
+			assertDoesNotThrow(() -> {
 				Files.createSymbolicLink(link, target);
 			});
 		}
@@ -311,9 +314,9 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@DisplayName("echo 'hello world' > /link")
 		public void testWriteToSymlink() throws IOException {
 			Path link = fs1.getPath("/link");
-			Assumptions.assumeTrue(Files.isSymbolicLink(link));
+			assumeTrue(Files.isSymbolicLink(link));
 
-			Assertions.assertDoesNotThrow(() -> {
+			assertDoesNotThrow(() -> {
 				try (WritableByteChannel ch = Files.newByteChannel(link, StandardOpenOption.WRITE)) {
 					ch.write(StandardCharsets.US_ASCII.encode("hello world"));
 				}
@@ -325,7 +328,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@DisplayName("cat `readlink -f /link`")
 		public void testReadFromSymlink() throws IOException {
 			Path link = fs1.getPath("/link");
-			Assumptions.assumeTrue(Files.isSymbolicLink(link));
+			assumeTrue(Files.isSymbolicLink(link));
 			Path target = Files.readSymbolicLink(link);
 
 			try (ReadableByteChannel ch = Files.newByteChannel(target, StandardOpenOption.READ)) {
@@ -333,7 +336,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 				ch.read(buf);
 				buf.flip();
 				String str = StandardCharsets.US_ASCII.decode(buf).toString();
-				Assertions.assertEquals("hello world", str);
+				assertEquals("hello world", str);
 			}
 		}
 
@@ -343,11 +346,11 @@ public class CryptoFileSystemProviderIntegrationTest {
 		public void testCopySymlinkSymlink() throws IOException {
 			Path src = fs1.getPath("/link");
 			Path dst = fs1.getPath("/otherlink");
-			Assumptions.assumeTrue(Files.isSymbolicLink(src));
-			Assumptions.assumeTrue(Files.notExists(dst));
+			assumeTrue(Files.isSymbolicLink(src));
+			assumeTrue(Files.notExists(dst));
 			Files.copy(src, dst, LinkOption.NOFOLLOW_LINKS);
-			Assertions.assertTrue(Files.isSymbolicLink(src));
-			Assertions.assertTrue(Files.isSymbolicLink(dst));
+			assertTrue(Files.isSymbolicLink(src));
+			assertTrue(Files.isSymbolicLink(dst));
 		}
 
 		@Test
@@ -355,9 +358,9 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@DisplayName("rm /link")
 		public void testRemoveSymlink() throws IOException {
 			Path link = fs1.getPath("/link");
-			Assumptions.assumeTrue(Files.isSymbolicLink(link));
+			assumeTrue(Files.isSymbolicLink(link));
 
-			Assertions.assertDoesNotThrow(() -> {
+			assertDoesNotThrow(() -> {
 				Files.delete(link);
 			});
 		}
@@ -367,9 +370,9 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@DisplayName("rm /otherlink")
 		public void testRemoveOtherSymlink() throws IOException {
 			Path link = fs1.getPath("/otherlink");
-			Assumptions.assumeTrue(Files.isSymbolicLink(link));
+			assumeTrue(Files.isSymbolicLink(link));
 
-			Assertions.assertDoesNotThrow(() -> {
+			assertDoesNotThrow(() -> {
 				Files.delete(link);
 			});
 		}
@@ -379,11 +382,11 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@DisplayName("ln -s foo '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet'")
 		public void testCreateSymlinkWithLongName() throws IOException {
 			Path target = fs1.getPath("/foo");
-			Assumptions.assumeTrue(Files.isRegularFile(target));
+			assumeTrue(Files.isRegularFile(target));
 			Path longNameLink = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet");
 			Files.createSymbolicLink(longNameLink, target);
 			MatcherAssert.assertThat(MoreFiles.listFiles(fs1.getPath("/")), Matchers.hasItem(longNameLink));
-			Assertions.assertTrue(Files.exists(longNameLink));
+			assertTrue(Files.exists(longNameLink));
 		}
 
 		@Test
@@ -391,11 +394,11 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@DisplayName("mv '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet' '/Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat")
 		public void testMoveSymlinkWithLongNameToAnotherLongName() throws IOException {
 			Path longNameSource = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet");
-			Assumptions.assumeTrue(Files.isSymbolicLink(longNameSource));
+			assumeTrue(Files.isSymbolicLink(longNameSource));
 			Path longNameTarget = longNameSource.resolveSibling("/Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat");
 			Files.move(longNameSource, longNameTarget);
-			Assertions.assertTrue(Files.exists(longNameTarget));
-			Assertions.assertTrue(Files.notExists(longNameSource));
+			assertTrue(Files.exists(longNameTarget));
+			assertTrue(Files.notExists(longNameSource));
 		}
 
 		@Test
@@ -404,15 +407,16 @@ public class CryptoFileSystemProviderIntegrationTest {
 		public void testRemoveSymlinkWithLongName() throws IOException {
 			Path longNamePath = fs1.getPath("/Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat");
 			Files.delete(longNamePath);
-			Assertions.assertTrue(Files.notExists(longNamePath));
+			assertTrue(Files.notExists(longNamePath));
 		}
+
 		@Test
 		@Order(12)
 		@DisplayName("mkdir '/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet'")
 		public void testCreateDirWithLongName() throws IOException {
 			Path longNamePath = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet");
 			Files.createDirectory(longNamePath);
-			Assertions.assertTrue(Files.isDirectory(longNamePath));
+			assertTrue(Files.isDirectory(longNamePath));
 			MatcherAssert.assertThat(MoreFiles.listFiles(fs1.getPath("/")), Matchers.hasItem(longNamePath));
 		}
 
@@ -423,8 +427,8 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Path longNameSource = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet");
 			Path longNameTarget = longNameSource.resolveSibling("/Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat");
 			Files.move(longNameSource, longNameTarget);
-			Assertions.assertTrue(Files.exists(longNameTarget));
-			Assertions.assertTrue(Files.notExists(longNameSource));
+			assertTrue(Files.exists(longNameTarget));
+			assertTrue(Files.notExists(longNameSource));
 		}
 
 		@Test
@@ -433,7 +437,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		public void testRemoveDirWithLongName() throws IOException {
 			Path longNamePath = fs1.getPath("/Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat");
 			Files.delete(longNamePath);
-			Assertions.assertTrue(Files.notExists(longNamePath));
+			assertTrue(Files.notExists(longNamePath));
 		}
 
 		@Test
@@ -442,7 +446,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		public void testCreateFileWithLongName() throws IOException {
 			Path longNamePath = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet");
 			Files.createFile(longNamePath);
-			Assertions.assertTrue(Files.isRegularFile(longNamePath));
+			assertTrue(Files.isRegularFile(longNamePath));
 			MatcherAssert.assertThat(MoreFiles.listFiles(fs1.getPath("/")), Matchers.hasItem(longNamePath));
 		}
 
@@ -453,8 +457,8 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Path longNameSource = fs1.getPath("/Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet Telefon Energie Wasser Webseitengeraffel Bus Bahn Mietwagen Internet");
 			Path longNameTarget = longNameSource.resolveSibling("/Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat");
 			Files.move(longNameSource, longNameTarget);
-			Assertions.assertTrue(Files.exists(longNameTarget));
-			Assertions.assertTrue(Files.notExists(longNameSource));
+			assertTrue(Files.exists(longNameTarget));
+			assertTrue(Files.notExists(longNameSource));
 		}
 
 		@Test
@@ -463,7 +467,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		public void testRemoveFileWithLongName() throws IOException {
 			Path longNamePath = fs1.getPath("/Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat Talafan Anargaa Wassar Wabsaatangaraffal Bas Bahn Maatwagan Antarnat");
 			Files.delete(longNamePath);
-			Assertions.assertTrue(Files.notExists(longNamePath));
+			assertTrue(Files.notExists(longNamePath));
 		}
 
 		@Test
@@ -472,12 +476,12 @@ public class CryptoFileSystemProviderIntegrationTest {
 		public void testCopyFileAcrossFilesystem() throws IOException {
 			Path file1 = fs1.getPath("/foo");
 			Path file2 = fs2.getPath("/bar");
-			Assumptions.assumeTrue(Files.isRegularFile(file1));
-			Assumptions.assumeTrue(Files.notExists(file2));
+			assumeTrue(Files.isRegularFile(file1));
+			assumeTrue(Files.notExists(file2));
 
 			Files.copy(file1, file2);
 
-			Assertions.assertArrayEquals(readAllBytes(file1), readAllBytes(file2));
+			assertArrayEquals(readAllBytes(file1), readAllBytes(file2));
 		}
 
 		@Test
@@ -485,9 +489,9 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@DisplayName("echo 'goodbye world' > /foo")
 		public void testWriteToFile() throws IOException {
 			Path file1 = fs1.getPath("/foo");
-			Assumptions.assumeTrue(Files.isRegularFile(file1));
+			assumeTrue(Files.isRegularFile(file1));
 
-			Assertions.assertDoesNotThrow(() -> {
+			assertDoesNotThrow(() -> {
 				Files.write(file1, "goodbye world".getBytes());
 			});
 		}
@@ -498,12 +502,12 @@ public class CryptoFileSystemProviderIntegrationTest {
 		public void testCopyFileAcrossFilesystemReplaceExisting() throws IOException {
 			Path file1 = fs1.getPath("/foo");
 			Path file2 = fs2.getPath("/bar");
-			Assumptions.assumeTrue(Files.isRegularFile(file1));
-			Assumptions.assumeTrue(Files.isRegularFile(file2));
+			assumeTrue(Files.isRegularFile(file1));
+			assumeTrue(Files.isRegularFile(file2));
 
 			Files.copy(file1, file2, REPLACE_EXISTING);
 
-			Assertions.assertArrayEquals(readAllBytes(file1), readAllBytes(file2));
+			assertArrayEquals(readAllBytes(file1), readAllBytes(file2));
 		}
 
 		@Test
@@ -511,24 +515,24 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@DisplayName("readattr /attributes.txt")
 		public void testLazinessOfFileAttributeViews() throws IOException {
 			Path file = fs1.getPath("/attributes.txt");
-			Assumptions.assumeTrue(Files.notExists(file));
+			assumeTrue(Files.notExists(file));
 
 			BasicFileAttributeView attrView = Files.getFileAttributeView(file, BasicFileAttributeView.class);
-			Assertions.assertNotNull(attrView);
-			Assertions.assertThrows(NoSuchFileException.class, () -> {
+			assertNotNull(attrView);
+			assertThrows(NoSuchFileException.class, () -> {
 				attrView.readAttributes();
 			});
 
 			Files.write(file, new byte[3], StandardOpenOption.CREATE_NEW);
 			BasicFileAttributes attrs = attrView.readAttributes();
-			Assertions.assertNotNull(attrs);
-			Assertions.assertEquals(3, attrs.size());
+			assertNotNull(attrs);
+			assertEquals(3, attrs.size());
 
 			Files.delete(file);
-			Assertions.assertThrows(NoSuchFileException.class, () -> {
+			assertThrows(NoSuchFileException.class, () -> {
 				attrView.readAttributes();
 			});
-			Assertions.assertEquals(3, attrs.size()); // attrs should be immutable once they are read.
+			assertEquals(3, attrs.size()); // attrs should be immutable once they are read.
 		}
 
 		@Test
@@ -536,38 +540,34 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@DisplayName("ln -s /linked/targetY /links/linkX")
 		public void testSymbolicLinks() throws IOException {
 			Path linksDir = fs1.getPath("/links");
-			Assumptions.assumeTrue(Files.notExists(linksDir));
+			assumeTrue(Files.notExists(linksDir));
 			Files.createDirectories(linksDir);
 
-			Assertions.assertAll(
-					() -> {
-						Path link = linksDir.resolve("link1");
-						Files.createDirectories(link.getParent());
-						Files.createSymbolicLink(link, fs1.getPath("/linked/target1"));
-						Path target = Files.readSymbolicLink(link);
-						MatcherAssert.assertThat(target.getFileSystem(), is(link.getFileSystem())); // as per contract of readSymbolicLink
-						MatcherAssert.assertThat(target.toString(), Matchers.equalTo("/linked/target1"));
-						MatcherAssert.assertThat(link.resolveSibling(target).toString(), Matchers.equalTo("/linked/target1"));
-					},
-					() -> {
-						Path link = linksDir.resolve("link2");
-						Files.createDirectories(link.getParent());
-						Files.createSymbolicLink(link, fs1.getPath("./target2"));
-						Path target = Files.readSymbolicLink(link);
-						MatcherAssert.assertThat(target.getFileSystem(), is(link.getFileSystem()));
-						MatcherAssert.assertThat(target.toString(), Matchers.equalTo("./target2"));
-						MatcherAssert.assertThat(link.resolveSibling(target).normalize().toString(), Matchers.equalTo("/links/target2"));
-					},
-					() -> {
-						Path link = linksDir.resolve("link3");
-						Files.createDirectories(link.getParent());
-						Files.createSymbolicLink(link, fs1.getPath("../target3"));
-						Path target = Files.readSymbolicLink(link);
-						MatcherAssert.assertThat(target.getFileSystem(), is(link.getFileSystem()));
-						MatcherAssert.assertThat(target.toString(), Matchers.equalTo("../target3"));
-						MatcherAssert.assertThat(link.resolveSibling(target).normalize().toString(), Matchers.equalTo("/target3"));
-					}
-			);
+			assertAll(() -> {
+				Path link = linksDir.resolve("link1");
+				Files.createDirectories(link.getParent());
+				Files.createSymbolicLink(link, fs1.getPath("/linked/target1"));
+				Path target = Files.readSymbolicLink(link);
+				MatcherAssert.assertThat(target.getFileSystem(), is(link.getFileSystem())); // as per contract of readSymbolicLink
+				MatcherAssert.assertThat(target.toString(), Matchers.equalTo("/linked/target1"));
+				MatcherAssert.assertThat(link.resolveSibling(target).toString(), Matchers.equalTo("/linked/target1"));
+			}, () -> {
+				Path link = linksDir.resolve("link2");
+				Files.createDirectories(link.getParent());
+				Files.createSymbolicLink(link, fs1.getPath("./target2"));
+				Path target = Files.readSymbolicLink(link);
+				MatcherAssert.assertThat(target.getFileSystem(), is(link.getFileSystem()));
+				MatcherAssert.assertThat(target.toString(), Matchers.equalTo("./target2"));
+				MatcherAssert.assertThat(link.resolveSibling(target).normalize().toString(), Matchers.equalTo("/links/target2"));
+			}, () -> {
+				Path link = linksDir.resolve("link3");
+				Files.createDirectories(link.getParent());
+				Files.createSymbolicLink(link, fs1.getPath("../target3"));
+				Path target = Files.readSymbolicLink(link);
+				MatcherAssert.assertThat(target.getFileSystem(), is(link.getFileSystem()));
+				MatcherAssert.assertThat(target.toString(), Matchers.equalTo("../target3"));
+				MatcherAssert.assertThat(link.resolveSibling(target).normalize().toString(), Matchers.equalTo("/target3"));
+			});
 		}
 
 		@Test
@@ -576,77 +576,15 @@ public class CryptoFileSystemProviderIntegrationTest {
 		public void testMoveFileFromOneCryptoFileSystemToAnother() throws IOException {
 			Path file1 = fs1.getPath("/foo");
 			Path file2 = fs2.getPath("/baz");
-			Assumptions.assumeTrue(Files.isRegularFile(file1));
-			Assumptions.assumeTrue(Files.notExists(file2));
+			assumeTrue(Files.isRegularFile(file1));
+			assumeTrue(Files.notExists(file2));
 			byte[] contents = readAllBytes(file1);
 
 			Files.move(file1, file2);
 
-			Assertions.assertTrue(Files.notExists(file1));
-			Assertions.assertTrue(Files.isRegularFile(file2));
-			Assertions.assertArrayEquals(contents, readAllBytes(file2));
-		}
-
-	}
-
-
-	@Nested
-	public class InMemory {
-
-		private static FileSystem tmpFs;
-		private static Path pathToVault;
-
-		@BeforeAll
-		public static void beforeAll() {
-			tmpFs = Jimfs.newFileSystem(Configuration.unix());
-			pathToVault = tmpFs.getPath("/vault");
-		}
-
-		@BeforeEach
-		public void beforeEach() throws IOException {
-			Files.createDirectory(pathToVault);
-		}
-
-		@AfterEach
-		public void afterEach() throws IOException {
-			try (var paths = Files.walk(pathToVault)) {
-				var nodes = paths.sorted(Comparator.reverseOrder()).toList();
-				for (var node : nodes) {
-					Files.delete(node);
-				}
-			}
-		}
-
-		@AfterAll
-		public static void afterAll() throws IOException {
-			tmpFs.close();
-		}
-
-		@Test
-		@DisplayName("Replace an existing, shortened file")
-		public void testReplaceExistingShortenedFile() throws IOException {
-			try (var fs = setupCryptoFs(50, 100, false)) {
-				var fiftyCharName2 = "/50char2_50char2_50char2_50char2_50char2_50char.txt"; //since filename encryption increases filename length, 50 cleartext chars are sufficient
-				var source = fs.getPath("/source.txt");
-				var target = fs.getPath(fiftyCharName2);
-				Files.createFile(source);
-				Files.createFile(target);
-
-				Assertions.assertDoesNotThrow(() -> Files.move(source, target, REPLACE_EXISTING));
-				Assertions.assertTrue(Files.notExists(source));
-				Assertions.assertTrue(Files.exists(target));
-			}
-		}
-
-		private FileSystem setupCryptoFs(int ciphertextShorteningThreshold, int maxCleartextFilename, boolean readonly) throws IOException {
-			byte[] key = new byte[64];
-			Arrays.fill(key, (byte) 0x55);
-			var keyLoader = Mockito.mock(MasterkeyLoader.class);
-			Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(key));
-			var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).withShorteningThreshold(ciphertextShorteningThreshold).withMaxCleartextNameLength(maxCleartextFilename).withFlags(readonly ? Set.of(CryptoFileSystemProperties.FileSystemFlags.READONLY) : Set.of()).build();
-			CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"));
-			URI fsUri = CryptoFileSystemUri.create(pathToVault);
-			return FileSystems.newFileSystem(fsUri, cryptoFileSystemProperties().withKeyLoader(keyLoader).build());
+			assertTrue(Files.notExists(file1));
+			assertTrue(Files.isRegularFile(file2));
+			assertArrayEquals(contents, readAllBytes(file2));
 		}
 
 	}
@@ -685,7 +623,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 			@DisplayName("get shared lock on non-readable channel fails")
 			public void testGetSharedLockOnNonReadableChannel() throws IOException {
 				try (FileChannel ch = FileChannel.open(file, StandardOpenOption.WRITE)) {
-					Assertions.assertThrows(NonReadableChannelException.class, () -> {
+					assertThrows(NonReadableChannelException.class, () -> {
 						ch.lock(0, 50000, true);
 					});
 				}
@@ -696,7 +634,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 			public void testLockClosedChannel() throws IOException {
 				FileChannel ch = FileChannel.open(file, StandardOpenOption.WRITE);
 				ch.close();
-				Assertions.assertThrows(ClosedChannelException.class, () -> {
+				assertThrows(ClosedChannelException.class, () -> {
 					ch.lock();
 				});
 			}
@@ -705,7 +643,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 			@DisplayName("get exclusive lock on non-writable channel fails")
 			public void testGetSharedLockOnNonWritableChannel() throws IOException {
 				try (FileChannel ch = FileChannel.open(file, StandardOpenOption.READ)) {
-					Assertions.assertThrows(NonWritableChannelException.class, () -> {
+					assertThrows(NonWritableChannelException.class, () -> {
 						ch.lock(0, 50000, false);
 					});
 				}
@@ -718,7 +656,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 				try (FileChannel ch = FileChannel.open(file, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
 					try (FileLock lock1 = ch.lock(0, 10000, shared)) {
 						try (FileLock lock2 = ch.lock(90000, 10000, shared)) {
-							Assertions.assertNotSame(lock1, lock2);
+							assertNotSame(lock1, lock2);
 						}
 					}
 				}
@@ -731,7 +669,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 				try (FileChannel ch = FileChannel.open(file, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
 					try (FileLock lock1 = ch.lock(0, 10000, shared)) {
 						// while bock locks cover different cleartext byte ranges, it is necessary to lock the same ciphertext block
-						Assertions.assertThrows(OverlappingFileLockException.class, () -> {
+						assertThrows(OverlappingFileLockException.class, () -> {
 							ch.lock(10000, 10000, shared);
 						});
 					}
@@ -766,7 +704,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 		@DisplayName("set dos attributes")
 		public void testDosFileAttributes() throws IOException {
 			Path file = fs.getPath("/msDosAttributes.txt");
-			Assumptions.assumeTrue(Files.notExists(file));
+			assumeTrue(Files.notExists(file));
 
 			Files.write(file, new byte[1]);
 
@@ -775,20 +713,20 @@ public class CryptoFileSystemProviderIntegrationTest {
 			Files.setAttribute(file, "dos:archive", true);
 			Files.setAttribute(file, "dos:readOnly", true);
 
-			Assertions.assertEquals(true, Files.getAttribute(file, "dos:hidden"));
-			Assertions.assertEquals(true, Files.getAttribute(file, "dos:system"));
-			Assertions.assertEquals(true, Files.getAttribute(file, "dos:archive"));
-			Assertions.assertEquals(true, Files.getAttribute(file, "dos:readOnly"));
+			assertEquals(true, Files.getAttribute(file, "dos:hidden"));
+			assertEquals(true, Files.getAttribute(file, "dos:system"));
+			assertEquals(true, Files.getAttribute(file, "dos:archive"));
+			assertEquals(true, Files.getAttribute(file, "dos:readOnly"));
 
 			Files.setAttribute(file, "dos:hidden", false);
 			Files.setAttribute(file, "dos:system", false);
 			Files.setAttribute(file, "dos:archive", false);
 			Files.setAttribute(file, "dos:readOnly", false);
 
-			Assertions.assertEquals(false, Files.getAttribute(file, "dos:hidden"));
-			Assertions.assertEquals(false, Files.getAttribute(file, "dos:system"));
-			Assertions.assertEquals(false, Files.getAttribute(file, "dos:archive"));
-			Assertions.assertEquals(false, Files.getAttribute(file, "dos:readOnly"));
+			assertEquals(false, Files.getAttribute(file, "dos:hidden"));
+			assertEquals(false, Files.getAttribute(file, "dos:system"));
+			assertEquals(false, Files.getAttribute(file, "dos:archive"));
+			assertEquals(false, Files.getAttribute(file, "dos:readOnly"));
 		}
 
 		@Nested
@@ -814,7 +752,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 			@Test
 			@DisplayName("is not writable")
 			public void testNotWritable() {
-				Assertions.assertThrows(AccessDeniedException.class, () -> {
+				assertThrows(AccessDeniedException.class, () -> {
 					FileChannel.open(file, StandardOpenOption.WRITE);
 				});
 			}
@@ -823,7 +761,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 			@DisplayName("is readable")
 			public void testReadable() throws IOException {
 				try (FileChannel ch = FileChannel.open(file, StandardOpenOption.READ)) {
-					Assertions.assertEquals(1, ch.size());
+					assertEquals(1, ch.size());
 				}
 			}
 
@@ -832,7 +770,7 @@ public class CryptoFileSystemProviderIntegrationTest {
 			public void testFoo() throws IOException {
 				attrView.setReadOnly(false);
 				try (FileChannel ch = FileChannel.open(file, StandardOpenOption.WRITE)) {
-					Assertions.assertEquals(1, ch.size());
+					assertEquals(1, ch.size());
 				}
 			}
 
