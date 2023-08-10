@@ -169,7 +169,7 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 		try (var fs = setupCryptoFs(50, 100, false)) {
 			var file = fs.getPath("/" + targetName);
 
-			assertThrows(NoSuchFileException.class, () -> Files.delete(file)); //TODO Verify behavior
+			assertThrows(NoSuchFileException.class, () -> Files.delete(file));
 		}
 	}
 
@@ -184,7 +184,7 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 			assertDoesNotThrow(() -> Files.delete(file));
 			assertTrue(Files.notExists(file, LinkOption.NOFOLLOW_LINKS));
 
-			assertThrows(NoSuchFileException.class, () -> Files.delete(file)); //TODO Verify behavior
+			assertThrows(NoSuchFileException.class, () -> Files.delete(file));
 		}
 	}
 
@@ -199,7 +199,7 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 			assertDoesNotThrow(() -> Files.delete(file));
 			assertTrue(Files.notExists(file, LinkOption.NOFOLLOW_LINKS));
 
-			assertThrows(NoSuchFileException.class, () -> Files.delete(file)); //TODO Verify behavior
+			assertThrows(NoSuchFileException.class, () -> Files.delete(file));
 		}
 	}
 
@@ -235,7 +235,7 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 			assertTrue(Files.notExists(nestedDir, LinkOption.NOFOLLOW_LINKS));
 			assertTrue(Files.notExists(nestedLink, LinkOption.NOFOLLOW_LINKS));
 
-			assertThrows(NoSuchFileException.class, () -> Files.delete(targetDir)); //TODO Verify behavior
+			assertThrows(NoSuchFileException.class, () -> Files.delete(targetDir));
 		}
 	}
 
@@ -269,7 +269,7 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 			assertTrue(Files.notExists(targetDir, LinkOption.NOFOLLOW_LINKS));
 			assertTrue(Files.notExists(nestedElement, LinkOption.NOFOLLOW_LINKS));
 
-			assertThrows(NoSuchFileException.class, () -> Files.delete(targetDir)); //TODO Verify behavior
+			assertThrows(NoSuchFileException.class, () -> Files.delete(targetDir));
 		}
 	}
 
