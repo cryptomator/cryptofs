@@ -205,7 +205,7 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 
 	@DisplayName("Delete directory while and after containing multiple elements")
 	@ParameterizedFileTest
-	public void testDeleteDirMultiple(String targetName) throws IOException {
+	public void testDeleteDirMultipleNagging(String targetName) throws IOException {
 		try (var fs = setupCryptoFs(50, 100, false)) {
 			var targetDir = fs.getPath("/" + targetName);
 			Files.createDirectory(targetDir);
@@ -218,22 +218,60 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 			Files.createSymbolicLink(nestedLink, fs.getPath("linkTarget"));
 
 			assertThrows(DirectoryNotEmptyException.class, () -> Files.delete(targetDir));
-
 			assertTrue(Files.exists(targetDir, LinkOption.NOFOLLOW_LINKS));
 			assertTrue(Files.exists(nestedFile, LinkOption.NOFOLLOW_LINKS));
 			assertTrue(Files.exists(nestedDir, LinkOption.NOFOLLOW_LINKS));
 			assertTrue(Files.exists(nestedLink, LinkOption.NOFOLLOW_LINKS));
 
 			assertDoesNotThrow(() -> Files.delete(nestedFile));
+			assertThrows(DirectoryNotEmptyException.class, () -> Files.delete(targetDir));
+			assertTrue(Files.exists(targetDir, LinkOption.NOFOLLOW_LINKS));
+			assertTrue(Files.notExists(nestedFile, LinkOption.NOFOLLOW_LINKS));
+			assertTrue(Files.exists(nestedDir, LinkOption.NOFOLLOW_LINKS));
+			assertTrue(Files.exists(nestedLink, LinkOption.NOFOLLOW_LINKS));
+
+			assertDoesNotThrow(() -> Files.delete(nestedDir));
+			assertThrows(DirectoryNotEmptyException.class, () -> Files.delete(targetDir));
+			assertTrue(Files.exists(targetDir, LinkOption.NOFOLLOW_LINKS));
+			assertTrue(Files.notExists(nestedDir, LinkOption.NOFOLLOW_LINKS));
+			assertTrue(Files.exists(nestedLink, LinkOption.NOFOLLOW_LINKS));
+
+			assertDoesNotThrow(() -> Files.delete(nestedLink));
+			assertTrue(Files.exists(targetDir, LinkOption.NOFOLLOW_LINKS));
+			assertTrue(Files.notExists(nestedLink, LinkOption.NOFOLLOW_LINKS));
+
+			assertDoesNotThrow(() -> Files.delete(targetDir));
+			assertTrue(Files.notExists(targetDir, LinkOption.NOFOLLOW_LINKS));
+
+			assertThrows(NoSuchFileException.class, () -> Files.delete(targetDir));
+		}
+	}
+
+	@DisplayName("Delete directory after containing multiple elements")
+	@ParameterizedFileTest
+	public void testDeleteDirMultiple(String targetName) throws IOException {
+		try (var fs = setupCryptoFs(50, 100, false)) {
+			var targetDir = fs.getPath("/" + targetName);
+			Files.createDirectory(targetDir);
+
+			var nestedFile = targetDir.resolve("nestedFile");
+			Files.createFile(nestedFile);
+			var nestedDir = targetDir.resolve("nestedDir");
+			Files.createDirectory(nestedDir);
+			var nestedLink = targetDir.resolve("nestedLink");
+			Files.createSymbolicLink(nestedLink, fs.getPath("linkTarget"));
+
+			assertDoesNotThrow(() -> Files.delete(nestedFile));
 			assertDoesNotThrow(() -> Files.delete(nestedDir));
 			assertDoesNotThrow(() -> Files.delete(nestedLink));
 
-			assertDoesNotThrow(() -> Files.delete(targetDir));
-
-			assertTrue(Files.notExists(targetDir, LinkOption.NOFOLLOW_LINKS));
+			assertTrue(Files.exists(targetDir, LinkOption.NOFOLLOW_LINKS));
 			assertTrue(Files.notExists(nestedFile, LinkOption.NOFOLLOW_LINKS));
 			assertTrue(Files.notExists(nestedDir, LinkOption.NOFOLLOW_LINKS));
 			assertTrue(Files.notExists(nestedLink, LinkOption.NOFOLLOW_LINKS));
+
+			assertDoesNotThrow(() -> Files.delete(targetDir));
+			assertTrue(Files.notExists(targetDir, LinkOption.NOFOLLOW_LINKS));
 
 			assertThrows(NoSuchFileException.class, () -> Files.delete(targetDir));
 		}
@@ -251,7 +289,7 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 	@DisplayName("Delete directory while and after containing one element")
 	@ParameterizedTest
 	@MethodSource("org.cryptomator.cryptofs.CryptoFileSystemProviderInMemoryIntegrationTest#dirEntries")
-	public void testDeleteDirSingle(String targetName, ThrowingConsumer<Path> entryCreator) throws Throwable /* = IOE from entryCreator */ {
+	public void testDeleteDirSingleNagging(String targetName, ThrowingConsumer<Path> entryCreator) throws Throwable /* = IOE from entryCreator */ {
 		try (var fs = setupCryptoFs(50, 100, false)) {
 			var targetDir = fs.getPath("/" + targetName);
 			Files.createDirectory(targetDir);
@@ -264,10 +302,33 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 			assertTrue(Files.exists(nestedElement, LinkOption.NOFOLLOW_LINKS));
 
 			assertDoesNotThrow(() -> Files.delete(nestedElement));
-			assertDoesNotThrow(() -> Files.delete(targetDir));
-
-			assertTrue(Files.notExists(targetDir, LinkOption.NOFOLLOW_LINKS));
+			assertTrue(Files.exists(targetDir, LinkOption.NOFOLLOW_LINKS));
 			assertTrue(Files.notExists(nestedElement, LinkOption.NOFOLLOW_LINKS));
+
+			assertDoesNotThrow(() -> Files.delete(targetDir));
+			assertTrue(Files.notExists(targetDir, LinkOption.NOFOLLOW_LINKS));
+
+			assertThrows(NoSuchFileException.class, () -> Files.delete(targetDir));
+		}
+	}
+
+	@DisplayName("Delete directory after containing one element")
+	@ParameterizedTest
+	@MethodSource("org.cryptomator.cryptofs.CryptoFileSystemProviderInMemoryIntegrationTest#dirEntries")
+	public void testDeleteDirSingle(String targetName, ThrowingConsumer<Path> entryCreator) throws Throwable /* = IOE from entryCreator */ {
+		try (var fs = setupCryptoFs(50, 100, false)) {
+			var targetDir = fs.getPath("/" + targetName);
+			Files.createDirectory(targetDir);
+
+			var nestedElement = targetDir.resolve("nestedElement");
+			entryCreator.accept(nestedElement);
+
+			assertDoesNotThrow(() -> Files.delete(nestedElement));
+			assertTrue(Files.exists(targetDir, LinkOption.NOFOLLOW_LINKS));
+			assertTrue(Files.notExists(nestedElement, LinkOption.NOFOLLOW_LINKS));
+
+			assertDoesNotThrow(() -> Files.delete(targetDir));
+			assertTrue(Files.notExists(targetDir, LinkOption.NOFOLLOW_LINKS));
 
 			assertThrows(NoSuchFileException.class, () -> Files.delete(targetDir));
 		}
