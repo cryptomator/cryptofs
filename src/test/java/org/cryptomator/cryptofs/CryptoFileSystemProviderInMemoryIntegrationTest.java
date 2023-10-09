@@ -30,7 +30,9 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
@@ -38,6 +40,7 @@ import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSyst
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 //For shortening: Since filename encryption increases filename length, 50 cleartext chars are sufficient to reach the threshold
 public class CryptoFileSystemProviderInMemoryIntegrationTest {
@@ -331,6 +334,57 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 			assertTrue(Files.notExists(targetDir, LinkOption.NOFOLLOW_LINKS));
 
 			assertThrows(NoSuchFileException.class, () -> Files.delete(targetDir));
+		}
+	}
+
+	/**
+	 * Creates the Cartesian product of {@link #targetFileNames} with itself as stream, excluding entries where both elements match.
+	 */
+	static Stream<Arguments> fileNamePairs() {
+		return targetFileNames().mapMulti((name0, intoStreamConsumer) -> { //
+			targetFileNames().filter(Predicate.isEqual(name0).negate()) // //Don't create pairs with the same name
+					.map(name1 -> Arguments.of(name0, name1)) //
+					.forEach(intoStreamConsumer);
+		});
+	}
+
+	/**
+	 * Creates the Cartesian product of {@link #fileNamePairs} with a list of "targetCreators" as stream.
+	 */
+	static Stream<Arguments> linksWithCreator() {
+		List<ThrowingConsumer<Path>> operations = List.of(unused -> {}, //
+				Files::createFile, //
+				Files::createDirectory, //
+				nestedElement -> Files.createSymbolicLink(nestedElement, nestedElement.resolveSibling("linkTarget")));
+
+		return fileNamePairs().mapMulti((names, intoStreamConsumer) -> { //
+			operations.stream().map(operation -> {
+				var argValues = names.get();
+				return Arguments.of(argValues[0], argValues[1], operation);
+			}).forEach(intoStreamConsumer);
+		});
+	}
+
+	@DisplayName("Delete links")
+	@ParameterizedTest
+	@MethodSource("org.cryptomator.cryptofs.CryptoFileSystemProviderInMemoryIntegrationTest#linksWithCreator")
+	public void testDeleteSymLink(String linkName, String targetName, ThrowingConsumer<Path> targetCreator) throws Throwable /* = IOE from entryCreator */ {
+		try (var fs = setupCryptoFs(50, 100, false)) {
+			var link = fs.getPath("/" + linkName);
+			var target = fs.getPath("/" + targetName);
+			targetCreator.accept(target);
+			var targetCreated = Files.exists(target, LinkOption.NOFOLLOW_LINKS); //Allow for no-op targetCreator
+			Files.createSymbolicLink(link, target);
+
+			assertDoesNotThrow(() -> Files.delete(link));
+			assertTrue(Files.notExists(link, LinkOption.NOFOLLOW_LINKS));
+			assertThrows(NoSuchFileException.class, () -> Files.delete(link));
+
+			assumeTrue(targetCreated);
+			assertTrue(Files.exists(target, LinkOption.NOFOLLOW_LINKS));
+
+			assertDoesNotThrow(() -> Files.delete(target));
+			assertTrue(Files.notExists(target, LinkOption.NOFOLLOW_LINKS));
 		}
 	}
 
