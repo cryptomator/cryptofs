@@ -334,6 +334,21 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 		}
 	}
 
+	@DisplayName("Delete directly recursive link")
+	@ParameterizedFileTest
+	public void testDeleteDirectlyRecursiveSymLink(String targetName) throws IOException {
+		try (var fs = setupCryptoFs(50, 100, false)) {
+			var link = fs.getPath("/" + targetName);
+			Files.createSymbolicLink(link, link);
+
+			assertTrue(Files.exists(link, LinkOption.NOFOLLOW_LINKS));
+			assertDoesNotThrow(() -> Files.delete(link));
+			assertTrue(Files.notExists(link, LinkOption.NOFOLLOW_LINKS));
+
+			assertThrows(NoSuchFileException.class, () -> Files.delete(link));
+		}
+	}
+
 	private FileSystem setupCryptoFs(int ciphertextShorteningThreshold, int maxCleartextFilename, boolean readonly) throws IOException {
 		byte[] key = new byte[64];
 		Arrays.fill(key, (byte) 0x55);
