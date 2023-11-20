@@ -143,7 +143,7 @@ public class CryptoPathMapperTest {
 		Mockito.when(dataRoot.resolve("00")).thenReturn(d00);
 		Mockito.when(fileNameCryptor.hashDirectoryId("")).thenReturn("0000");
 
-		int maxNestingDepth = 9;
+		int maxNestingDepth = 97;
 
 		for (int depth=0; depth < maxNestingDepth; depth++) {
 			var dirId = "%02d".formatted(depth);
