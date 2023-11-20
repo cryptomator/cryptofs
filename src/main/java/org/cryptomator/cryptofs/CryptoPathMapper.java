@@ -8,7 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.AsyncCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.io.BaseEncoding;
@@ -31,6 +31,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 import static org.cryptomator.cryptofs.common.Constants.DATA_DIR_NAME;
 
@@ -48,7 +49,7 @@ public class CryptoPathMapper {
 	private final LongFileNameProvider longFileNameProvider;
 	private final VaultConfig vaultConfig;
 	private final LoadingCache<DirIdAndName, String> ciphertextNames;
-	private final Cache<CryptoPath, CiphertextDirectory> ciphertextDirectories;
+	private final AsyncCache<CryptoPath, CiphertextDirectory> ciphertextDirectories;
 
 	private final CiphertextDirectory rootDirectory;
 
@@ -60,7 +61,7 @@ public class CryptoPathMapper {
 		this.longFileNameProvider = longFileNameProvider;
 		this.vaultConfig = vaultConfig;
 		this.ciphertextNames = Caffeine.newBuilder().maximumSize(MAX_CACHED_CIPHERTEXT_NAMES).build(this::getCiphertextFileName);
-		this.ciphertextDirectories = Caffeine.newBuilder().maximumSize(MAX_CACHED_DIR_PATHS).expireAfterWrite(MAX_CACHE_AGE).build();
+		this.ciphertextDirectories = Caffeine.newBuilder().maximumSize(MAX_CACHED_DIR_PATHS).expireAfterWrite(MAX_CACHE_AGE).buildAsync();
 		this.rootDirectory = resolveDirectory(Constants.ROOT_DIR_ID);
 	}
 
@@ -140,14 +141,15 @@ public class CryptoPathMapper {
 	}
 
 	public void invalidatePathMapping(CryptoPath cleartextPath) {
-		ciphertextDirectories.invalidate(cleartextPath);
+		ciphertextDirectories.synchronous().invalidate(cleartextPath);
 	}
-	
+
 	public void movePathMapping(CryptoPath cleartextSrc, CryptoPath cleartextDst) {
-		CiphertextDirectory cachedValue = ciphertextDirectories.getIfPresent(cleartextSrc);
+		var syncedCache = ciphertextDirectories.synchronous();
+		CiphertextDirectory cachedValue = syncedCache.getIfPresent(cleartextSrc);
 		if (cachedValue != null) {
-			ciphertextDirectories.put(cleartextDst, cachedValue);
-			ciphertextDirectories.invalidate(cleartextSrc);
+			syncedCache.put(cleartextDst, cachedValue);
+			syncedCache.invalidate(cleartextSrc);
 		}
 	}
 
@@ -158,14 +160,16 @@ public class CryptoPathMapper {
 			return rootDirectory;
 		} else {
 			try {
-				return ciphertextDirectories.get(cleartextPath, p -> {
-					try {
-						Path dirFile = getCiphertextFilePath(p).getDirFilePath();
-						return resolveDirectory(dirFile);
-					} catch (IOException e) {
-						throw new UncheckedIOException(e);
-					}
-				});
+				var lazyEntry = new CompletableFuture<CiphertextDirectory>();
+				var priorEntry = ciphertextDirectories.asMap().putIfAbsent(cleartextPath, lazyEntry);
+				if (priorEntry != null) {
+					return priorEntry.join();
+				} else {
+					Path dirFile = getCiphertextFilePath(cleartextPath).getDirFilePath();
+					CiphertextDirectory cipherDir = resolveDirectory(dirFile);
+					lazyEntry.complete(cipherDir);
+					return cipherDir;
+				}
 			} catch (UncheckedIOException e) {
 				throw new IOException(e);
 			}
