@@ -141,15 +141,13 @@ public class CryptoPathMapper {
 	}
 
 	public void invalidatePathMapping(CryptoPath cleartextPath) {
-		ciphertextDirectories.synchronous().invalidate(cleartextPath);
+		ciphertextDirectories.asMap().remove(cleartextPath);
 	}
 
 	public void movePathMapping(CryptoPath cleartextSrc, CryptoPath cleartextDst) {
-		var syncedCache = ciphertextDirectories.synchronous();
-		CiphertextDirectory cachedValue = syncedCache.getIfPresent(cleartextSrc);
+		var cachedValue = ciphertextDirectories.asMap().remove(cleartextSrc);
 		if (cachedValue != null) {
-			syncedCache.put(cleartextDst, cachedValue);
-			syncedCache.invalidate(cleartextSrc);
+			ciphertextDirectories.put(cleartextDst, cachedValue);
 		}
 	}
 
