@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -124,7 +123,7 @@ public class CryptoPathMapper {
 		String cleartextName = cleartextPath.getFileName().toString();
 		return getCiphertextFilePath(parent.path, parent.dirId, cleartextName);
 	}
-	
+
 	public CiphertextFilePath getCiphertextFilePath(Path parentCiphertextDir, String parentDirId, String cleartextName) {
 		String ciphertextName = ciphertextNames.get(new DirIdAndName(parentDirId, cleartextName));
 		Path c9rPath = parentCiphertextDir.resolve(ciphertextName);
@@ -157,19 +156,15 @@ public class CryptoPathMapper {
 		if (parentPath == null) {
 			return rootDirectory;
 		} else {
-			try {
-				var lazyEntry = new CompletableFuture<CiphertextDirectory>();
-				var priorEntry = ciphertextDirectories.asMap().putIfAbsent(cleartextPath, lazyEntry);
-				if (priorEntry != null) {
-					return priorEntry.join();
-				} else {
-					Path dirFile = getCiphertextFilePath(cleartextPath).getDirFilePath();
-					CiphertextDirectory cipherDir = resolveDirectory(dirFile);
-					lazyEntry.complete(cipherDir);
-					return cipherDir;
-				}
-			} catch (UncheckedIOException e) {
-				throw new IOException(e);
+			var lazyEntry = new CompletableFuture<CiphertextDirectory>();
+			var priorEntry = ciphertextDirectories.asMap().putIfAbsent(cleartextPath, lazyEntry);
+			if (priorEntry != null) {
+				return priorEntry.join();
+			} else {
+				Path dirFile = getCiphertextFilePath(cleartextPath).getDirFilePath();
+				CiphertextDirectory cipherDir = resolveDirectory(dirFile);
+				lazyEntry.complete(cipherDir);
+				return cipherDir;
 			}
 		}
 	}
