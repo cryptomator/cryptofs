@@ -40,3 +40,5 @@ updates:
       github-actions:
         patterns:
           - "*"
+    labels:
+      - "ci"
