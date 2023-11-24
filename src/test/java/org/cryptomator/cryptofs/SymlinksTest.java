@@ -17,6 +17,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileAttribute;
 import java.nio.file.spi.FileSystemProvider;
 
 public class SymlinksTest {
@@ -69,7 +70,7 @@ public class SymlinksTest {
 		inTest.createSymbolicLink(cleartextPath, target);
 
 		ArgumentCaptor<ByteBuffer> bytesWritten = ArgumentCaptor.forClass(ByteBuffer.class);
-		Mockito.verify(underlyingFsProvider).createDirectory(Mockito.eq(ciphertextPath), Mockito.any());
+		Mockito.verify(underlyingFsProvider).createDirectory(Mockito.eq(ciphertextPath), Mockito.any(FileAttribute[].class));
 		Mockito.verify(openCryptoFiles).writeCiphertextFile(Mockito.eq(symlinkFilePath), Mockito.any(), bytesWritten.capture());
 		Assertions.assertEquals("/symlink/target/path", StandardCharsets.UTF_8.decode(bytesWritten.getValue()).toString());
 	}
