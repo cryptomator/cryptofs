@@ -62,9 +62,9 @@ public class AttributeProviderTest {
 		ciphertextBasicAttr = Mockito.mock(BasicFileAttributes.class);
 		ciphertextPosixAttr = Mockito.mock(PosixFileAttributes.class);
 		ciphertextDosAttr = Mockito.mock(DosFileAttributes.class);
-		Mockito.when(provider.readAttributes(Mockito.same(ciphertextRawPath), Mockito.same(BasicFileAttributes.class), any())).thenReturn(ciphertextBasicAttr);
-		Mockito.when(provider.readAttributes(Mockito.same(ciphertextRawPath), Mockito.same(PosixFileAttributes.class), any())).thenReturn(ciphertextPosixAttr);
-		Mockito.when(provider.readAttributes(Mockito.same(ciphertextRawPath), Mockito.same(DosFileAttributes.class), any())).thenReturn(ciphertextDosAttr);
+		Mockito.when(provider.readAttributes(Mockito.same(ciphertextRawPath), Mockito.same(BasicFileAttributes.class), any(LinkOption[].class))).thenReturn(ciphertextBasicAttr);
+		Mockito.when(provider.readAttributes(Mockito.same(ciphertextRawPath), Mockito.same(PosixFileAttributes.class), any(LinkOption[].class))).thenReturn(ciphertextPosixAttr);
+		Mockito.when(provider.readAttributes(Mockito.same(ciphertextRawPath), Mockito.same(DosFileAttributes.class), any(LinkOption[].class))).thenReturn(ciphertextDosAttr);
 
 		Mockito.when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
 		Mockito.when(pathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextPath);

@@ -49,6 +49,7 @@ import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.DosFileAttributes;
+import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.GroupPrincipal;
@@ -71,6 +72,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -454,7 +456,7 @@ public class CryptoFileSystemImplTest {
 			when(ciphertextPath.getFilePath()).thenReturn(ciphertextFilePath);
 			when(openCryptoFiles.getOrCreate(ciphertextFilePath)).thenReturn(openCryptoFile);
 			when(ciphertextFilePath.getName(3)).thenReturn(mock(CryptoPath.class, "path.c9r"));
-			when(openCryptoFile.newFileChannel(any(), any())).thenReturn(fileChannel);
+			when(openCryptoFile.newFileChannel(any(), any(FileAttribute[].class))).thenReturn(fileChannel);
 		}
 
 		@Nested
@@ -861,7 +863,7 @@ public class CryptoFileSystemImplTest {
 			private final CryptoPath cleartextTargetParent = mock(CryptoPath.class, "cleartextTargetParent");
 			private final Path ciphertextTargetParent = mock(Path.class, "ciphertextTargetParent");
 			private final Path ciphertextTargetDirParent = mock(Path.class, "ciphertextTargetDirParent");
-			private final FileChannel ciphertextTargetDirFileChannel = mock(FileChannel.class);
+			private final FileChannel ciphertextTargetDirDirFileFileChannel = mock(FileChannel.class);
 
 			@BeforeEach
 			public void setup() throws IOException, ReflectiveOperationException {
@@ -872,7 +874,7 @@ public class CryptoFileSystemImplTest {
 
 				when(cryptoPathMapper.getCiphertextDir(cleartextTargetParent)).thenReturn(new CiphertextDirectory("41", ciphertextTargetParent));
 				when(cryptoPathMapper.getCiphertextDir(cleartextDestination)).thenReturn(new CiphertextDirectory("42", ciphertextDestinationDir));
-				when(physicalFsProv.newFileChannel(Mockito.same(ciphertextDestinationDirFile), Mockito.anySet(), Mockito.any())).thenReturn(ciphertextTargetDirFileChannel);
+				when(physicalFsProv.newFileChannel(Mockito.same(ciphertextDestinationDirFile), Mockito.anySet(), Mockito.any())).thenReturn(ciphertextTargetDirDirFileFileChannel);
 			}
 
 			@Test
@@ -954,6 +956,7 @@ public class CryptoFileSystemImplTest {
 
 			@Test
 			public void copyDirectory() throws IOException {
+				when(physicalFsProv.newFileChannel(Mockito.eq(ciphertextDestinationDirFile), Mockito.any(), any(FileAttribute[].class))).thenReturn(ciphertextTargetDirDirFileFileChannel);
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.DIRECTORY);
 				when(cryptoPathMapper.getCiphertextFileType(cleartextDestination)).thenThrow(NoSuchFileException.class);
 				Mockito.doThrow(new NoSuchFileException("ciphertextDestinationDirFile")).when(physicalFsProv).checkAccess(ciphertextDestinationFile);
@@ -961,7 +964,7 @@ public class CryptoFileSystemImplTest {
 				inTest.copy(cleartextSource, cleartextDestination);
 
 				verify(readonlyFlag, atLeast(1)).assertWritable();
-				verify(ciphertextTargetDirFileChannel).write(any(ByteBuffer.class));
+				verify(ciphertextTargetDirDirFileFileChannel).write(any(ByteBuffer.class));
 				verify(physicalFsProv).createDirectory(ciphertextDestinationDir);
 				verify(dirIdProvider, Mockito.never()).delete(Mockito.any());
 				verify(cryptoPathMapper, Mockito.never()).invalidatePathMapping(Mockito.any());
@@ -981,7 +984,7 @@ public class CryptoFileSystemImplTest {
 				inTest.copy(cleartextSource, cleartextDestination, StandardCopyOption.REPLACE_EXISTING);
 
 				verify(readonlyFlag).assertWritable();
-				verify(ciphertextTargetDirFileChannel, Mockito.never()).write(any(ByteBuffer.class));
+				verify(ciphertextTargetDirDirFileFileChannel, Mockito.never()).write(any(ByteBuffer.class));
 				verify(physicalFsProv, Mockito.never()).createDirectory(Mockito.any());
 				verify(dirIdProvider, Mockito.never()).delete(Mockito.any());
 				verify(cryptoPathMapper, Mockito.never()).invalidatePathMapping(Mockito.any());
@@ -1001,8 +1004,9 @@ public class CryptoFileSystemImplTest {
 				when(srcAttrs.lastModifiedTime()).thenReturn(lastModifiedTime);
 				when(srcAttrs.lastAccessTime()).thenReturn(lastAccessTime);
 				when(srcAttrs.creationTime()).thenReturn(createTime);
-				when(physicalFsProv.readAttributes(Mockito.same(ciphertextSourceDir), Mockito.same(BasicFileAttributes.class), Mockito.any())).thenReturn(srcAttrs);
-				when(physicalFsProv.getFileAttributeView(Mockito.same(ciphertextDestinationDir), Mockito.same(BasicFileAttributeView.class), Mockito.any())).thenReturn(dstAttrView);
+				when(physicalFsProv.readAttributes(Mockito.same(ciphertextSourceDir), Mockito.same(BasicFileAttributes.class), any(LinkOption[].class))).thenReturn(srcAttrs);
+				when(physicalFsProv.getFileAttributeView(Mockito.same(ciphertextDestinationDir), Mockito.same(BasicFileAttributeView.class), any(LinkOption[].class))).thenReturn(dstAttrView);
+				when(physicalFsProv.newFileChannel(Mockito.same(ciphertextDestinationDirFile), Mockito.anySet(), any(FileAttribute[].class))).thenReturn(ciphertextTargetDirDirFileFileChannel);
 
 				inTest.copy(cleartextSource, cleartextDestination, StandardCopyOption.COPY_ATTRIBUTES);
 
@@ -1020,8 +1024,9 @@ public class CryptoFileSystemImplTest {
 				FileOwnerAttributeView srcAttrsView = mock(FileOwnerAttributeView.class);
 				FileOwnerAttributeView dstAttrView = mock(FileOwnerAttributeView.class);
 				when(srcAttrsView.getOwner()).thenReturn(owner);
-				when(physicalFsProv.getFileAttributeView(Mockito.same(ciphertextSourceDir), Mockito.same(FileOwnerAttributeView.class), Mockito.any())).thenReturn(srcAttrsView);
-				when(physicalFsProv.getFileAttributeView(Mockito.same(ciphertextDestinationDir), Mockito.same(FileOwnerAttributeView.class), Mockito.any())).thenReturn(dstAttrView);
+				when(physicalFsProv.getFileAttributeView(Mockito.same(ciphertextSourceDir), Mockito.same(FileOwnerAttributeView.class), any(LinkOption[].class))).thenReturn(srcAttrsView);
+				when(physicalFsProv.getFileAttributeView(Mockito.same(ciphertextDestinationDir), Mockito.same(FileOwnerAttributeView.class), any(LinkOption[].class))).thenReturn(dstAttrView);
+				when(physicalFsProv.newFileChannel(Mockito.same(ciphertextDestinationDirFile), Mockito.anySet(), any(FileAttribute[].class))).thenReturn(ciphertextTargetDirDirFileFileChannel);
 
 				inTest.copy(cleartextSource, cleartextDestination, StandardCopyOption.COPY_ATTRIBUTES);
 
@@ -1042,8 +1047,9 @@ public class CryptoFileSystemImplTest {
 				PosixFileAttributeView dstAttrView = mock(PosixFileAttributeView.class);
 				when(srcAttrs.group()).thenReturn(group);
 				when(srcAttrs.permissions()).thenReturn(permissions);
-				when(physicalFsProv.readAttributes(Mockito.same(ciphertextSourceDir), Mockito.same(PosixFileAttributes.class), Mockito.any())).thenReturn(srcAttrs);
-				when(physicalFsProv.getFileAttributeView(Mockito.same(ciphertextDestinationDir), Mockito.same(PosixFileAttributeView.class), Mockito.any())).thenReturn(dstAttrView);
+				when(physicalFsProv.readAttributes(Mockito.same(ciphertextSourceDir), Mockito.same(PosixFileAttributes.class), any(LinkOption[].class))).thenReturn(srcAttrs);
+				when(physicalFsProv.getFileAttributeView(Mockito.same(ciphertextDestinationDir), Mockito.same(PosixFileAttributeView.class), any(LinkOption[].class))).thenReturn(dstAttrView);
+				when(physicalFsProv.newFileChannel(Mockito.same(ciphertextDestinationDirFile), Mockito.anySet(), any(FileAttribute[].class))).thenReturn(ciphertextTargetDirDirFileFileChannel);
 
 				inTest.copy(cleartextSource, cleartextDestination, StandardCopyOption.COPY_ATTRIBUTES);
 
@@ -1064,8 +1070,9 @@ public class CryptoFileSystemImplTest {
 				when(srcAttrs.isHidden()).thenReturn(true);
 				when(srcAttrs.isReadOnly()).thenReturn(true);
 				when(srcAttrs.isSystem()).thenReturn(true);
-				when(physicalFsProv.readAttributes(Mockito.same(ciphertextSourceDir), Mockito.same(DosFileAttributes.class), Mockito.any())).thenReturn(srcAttrs);
-				when(physicalFsProv.getFileAttributeView(Mockito.same(ciphertextDestinationDir), Mockito.same(DosFileAttributeView.class), Mockito.any())).thenReturn(dstAttrView);
+				when(physicalFsProv.readAttributes(Mockito.same(ciphertextSourceDir), Mockito.same(DosFileAttributes.class), any(LinkOption[].class))).thenReturn(srcAttrs);
+				when(physicalFsProv.getFileAttributeView(Mockito.same(ciphertextDestinationDir), Mockito.same(DosFileAttributeView.class), any(LinkOption[].class))).thenReturn(dstAttrView);
+				when(physicalFsProv.newFileChannel(Mockito.same(ciphertextDestinationDirFile), Mockito.anySet(), any(FileAttribute[].class))).thenReturn(ciphertextTargetDirDirFileFileChannel);
 
 				inTest.copy(cleartextSource, cleartextDestination, StandardCopyOption.COPY_ATTRIBUTES);
 
@@ -1091,7 +1098,7 @@ public class CryptoFileSystemImplTest {
 					inTest.copy(cleartextSource, cleartextDestination, StandardCopyOption.REPLACE_EXISTING);
 				});
 				verify(readonlyFlag).assertWritable();
-				verify(ciphertextTargetDirFileChannel, Mockito.never()).write(any(ByteBuffer.class));
+				verify(ciphertextTargetDirDirFileFileChannel, Mockito.never()).write(any(ByteBuffer.class));
 				verify(physicalFsProv, Mockito.never()).createDirectory(Mockito.any());
 				verify(dirIdProvider, Mockito.never()).delete(Mockito.any());
 				verify(cryptoPathMapper, Mockito.never()).invalidatePathMapping(Mockito.any());
