@@ -33,6 +33,7 @@
 
 		<!-- build plugin dependencies -->
 		<dependency-check.version>8.1.2</dependency-check.version>
+		<junit-tree-reporter.version>1.2.1</junit-tree-reporter.version>
 		<jacoco.version>0.8.8</jacoco.version>
 		<nexus-staging.version>1.6.13</nexus-staging.version>
 	</properties>
@@ -158,10 +159,23 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>3.0.0-M7</version>
+				<dependencies>
+					<dependency>
+						<groupId>me.fabriciorby</groupId>
+						<artifactId>maven-surefire-junit5-tree-reporter</artifactId>
+						<version>${junit-tree-reporter.version}</version>
+					</dependency>
+				</dependencies>
 				<configuration>
 					<systemPropertyVariables>
 						<org.slf4j.simpleLogger.defaultLogLevel>ERROR</org.slf4j.simpleLogger.defaultLogLevel>
 					</systemPropertyVariables>
+					<consoleOutputReporter>
+						<disable>true</disable>
+					</consoleOutputReporter>
+					<statelessTestsetInfoReporter
+							implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5StatelessTestsetInfoTreeReporter">
+					</statelessTestsetInfoReporter>
 				</configuration>
 			</plugin>
 			<plugin>
