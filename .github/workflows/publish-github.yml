@@ -8,6 +8,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/') # only allow publishing tagged versions
     steps:
       - uses: actions/checkout@v4
+        with:
+          show-progress: false
       - uses: actions/setup-java@v3
         with:
           java-version: 17
