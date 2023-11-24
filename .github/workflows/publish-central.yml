@@ -10,7 +10,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: "refs/tags/${{ github.event.inputs.tag }}"
       - uses: actions/setup-java@v3
