@@ -14,6 +14,7 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
@@ -26,6 +27,8 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class CryptoPathMapperTest {
 
@@ -87,7 +90,7 @@ public class CryptoPathMapperTest {
 		Mockito.when(d00.resolve("00")).thenReturn(d0000);
 		Mockito.when(d0000.resolve("oof.c9r")).thenReturn(d0000oof);
 		Mockito.when(d0000oof.resolve("dir.c9r")).thenReturn(d0000oofdir);
-		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(),Mockito.eq("foo"), Mockito.any())).thenReturn("oof");
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("foo"), Mockito.any())).thenReturn("oof");
 		Mockito.when(dirIdProvider.load(d0000oofdir)).thenReturn("1");
 		Mockito.when(fileNameCryptor.hashDirectoryId("1")).thenReturn("0001");
 
@@ -131,6 +134,44 @@ public class CryptoPathMapperTest {
 		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
 		Path path = mapper.getCiphertextDir(fileSystem.getPath("/foo/bar")).path;
 		Assertions.assertEquals(d0002, path);
+	}
+
+	@DisplayName("Decrypts a deeply nested filepath")
+	@Test
+	public void testPathEncryptionDEEP() throws IOException {
+		Path d00 = Mockito.mock(Path.class, "d/00/");
+		Mockito.when(dataRoot.resolve("00")).thenReturn(d00);
+		Mockito.when(fileNameCryptor.hashDirectoryId("")).thenReturn("0000");
+
+		int maxNestingDepth = 97;
+
+		for (int depth = 0; depth < maxNestingDepth; depth++) {
+			var dirId = "%02d".formatted(depth);
+			var nextDirId = "%02d".formatted(depth + 1);
+			String pathPrefix = "d/00/" + dirId;
+			Path contentDir = Mockito.mock(Path.class, pathPrefix);
+			Path dirLinkDir = Mockito.mock(Path.class, pathPrefix + "/cipherDir" + dirId + ".c9r");
+			Path dirLinkFile = Mockito.mock(Path.class, pathPrefix + "/cipherDir" + dirId + ".c9r/dir.c9r");
+			Mockito.when(d00.resolve(dirId)).thenReturn(contentDir);
+			Mockito.when(contentDir.resolve("cipherDir" + dirId + ".c9r")).thenReturn(dirLinkDir);
+			Mockito.when(dirLinkDir.resolve("dir.c9r")).thenReturn(dirLinkFile);
+			Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq(dirId), Mockito.any())).thenReturn("cipherDir" + dirId);
+			Mockito.when(dirIdProvider.load(dirLinkFile)).thenReturn(nextDirId);
+			Mockito.when(fileNameCryptor.hashDirectoryId(nextDirId)).thenReturn("%04d".formatted(depth + 1));
+		}
+
+		var finalDirId = "%02d".formatted(maxNestingDepth);
+		Path finalContentDir = Mockito.mock(Path.class, "d/00/" + finalDirId);
+		Path finalEncryptedFile = Mockito.mock(Path.class, "d/00/" + finalDirId + "/file.c9r");
+		Mockito.when(d00.resolve(finalDirId)).thenReturn(finalContentDir);
+		Mockito.when(finalContentDir.resolve("file.c9r")).thenReturn(finalEncryptedFile);
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("cleartextFile"), Mockito.any())).thenReturn("file");
+
+		var testPath = "/" + IntStream.range(0, maxNestingDepth).mapToObj("%02d"::formatted).collect(Collectors.joining("/")) + "/cleartextFile";
+
+		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
+		Path path = mapper.getCiphertextFilePath(fileSystem.getPath(testPath)).getRawPath();
+		Assertions.assertEquals(finalEncryptedFile, path);
 	}
 
 	@Test
@@ -207,7 +248,7 @@ public class CryptoPathMapperTest {
 			Mockito.when(dirFilePath.getFileSystem()).thenReturn(underlyingFileSystem);
 			Mockito.when(symlinkFilePath.getFileSystem()).thenReturn(underlyingFileSystem);
 			Mockito.when(contentsFilePath.getFileSystem()).thenReturn(underlyingFileSystem);
-			
+
 		}
 
 

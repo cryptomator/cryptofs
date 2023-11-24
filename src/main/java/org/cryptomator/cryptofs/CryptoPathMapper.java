@@ -8,7 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.AsyncCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.io.BaseEncoding;
@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -31,6 +30,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 import static org.cryptomator.cryptofs.common.Constants.DATA_DIR_NAME;
 
@@ -48,7 +48,7 @@ public class CryptoPathMapper {
 	private final LongFileNameProvider longFileNameProvider;
 	private final VaultConfig vaultConfig;
 	private final LoadingCache<DirIdAndName, String> ciphertextNames;
-	private final Cache<CryptoPath, CiphertextDirectory> ciphertextDirectories;
+	private final AsyncCache<CryptoPath, CiphertextDirectory> ciphertextDirectories;
 
 	private final CiphertextDirectory rootDirectory;
 
@@ -60,7 +60,7 @@ public class CryptoPathMapper {
 		this.longFileNameProvider = longFileNameProvider;
 		this.vaultConfig = vaultConfig;
 		this.ciphertextNames = Caffeine.newBuilder().maximumSize(MAX_CACHED_CIPHERTEXT_NAMES).build(this::getCiphertextFileName);
-		this.ciphertextDirectories = Caffeine.newBuilder().maximumSize(MAX_CACHED_DIR_PATHS).expireAfterWrite(MAX_CACHE_AGE).build();
+		this.ciphertextDirectories = Caffeine.newBuilder().maximumSize(MAX_CACHED_DIR_PATHS).expireAfterWrite(MAX_CACHE_AGE).buildAsync();
 		this.rootDirectory = resolveDirectory(Constants.ROOT_DIR_ID);
 	}
 
@@ -123,7 +123,7 @@ public class CryptoPathMapper {
 		String cleartextName = cleartextPath.getFileName().toString();
 		return getCiphertextFilePath(parent.path, parent.dirId, cleartextName);
 	}
-	
+
 	public CiphertextFilePath getCiphertextFilePath(Path parentCiphertextDir, String parentDirId, String cleartextName) {
 		String ciphertextName = ciphertextNames.get(new DirIdAndName(parentDirId, cleartextName));
 		Path c9rPath = parentCiphertextDir.resolve(ciphertextName);
@@ -140,14 +140,13 @@ public class CryptoPathMapper {
 	}
 
 	public void invalidatePathMapping(CryptoPath cleartextPath) {
-		ciphertextDirectories.invalidate(cleartextPath);
+		ciphertextDirectories.asMap().remove(cleartextPath);
 	}
-	
+
 	public void movePathMapping(CryptoPath cleartextSrc, CryptoPath cleartextDst) {
-		CiphertextDirectory cachedValue = ciphertextDirectories.getIfPresent(cleartextSrc);
+		var cachedValue = ciphertextDirectories.asMap().remove(cleartextSrc);
 		if (cachedValue != null) {
 			ciphertextDirectories.put(cleartextDst, cachedValue);
-			ciphertextDirectories.invalidate(cleartextSrc);
 		}
 	}
 
@@ -157,17 +156,15 @@ public class CryptoPathMapper {
 		if (parentPath == null) {
 			return rootDirectory;
 		} else {
-			try {
-				return ciphertextDirectories.get(cleartextPath, p -> {
-					try {
-						Path dirFile = getCiphertextFilePath(p).getDirFilePath();
-						return resolveDirectory(dirFile);
-					} catch (IOException e) {
-						throw new UncheckedIOException(e);
-					}
-				});
-			} catch (UncheckedIOException e) {
-				throw new IOException(e);
+			var lazyEntry = new CompletableFuture<CiphertextDirectory>();
+			var priorEntry = ciphertextDirectories.asMap().putIfAbsent(cleartextPath, lazyEntry);
+			if (priorEntry != null) {
+				return priorEntry.join();
+			} else {
+				Path dirFile = getCiphertextFilePath(cleartextPath).getDirFilePath();
+				CiphertextDirectory cipherDir = resolveDirectory(dirFile);
+				lazyEntry.complete(cipherDir);
+				return cipherDir;
 			}
 		}
 	}
