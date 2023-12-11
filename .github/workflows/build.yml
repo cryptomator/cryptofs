@@ -40,11 +40,6 @@ jobs:
         with:
           name: artifacts
           path: target/*.jar
-      - name: Check dependencies for releases
-        if: startsWith(github.ref, 'refs/tags/')
-        run: mvn -B verify -Pdependency-check -DskipTests
-        env:
-          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
       - name: Create release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1

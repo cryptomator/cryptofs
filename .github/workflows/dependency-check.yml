@@ -2,6 +2,10 @@ name: OWASP Maven Dependency Check
 on:
   schedule:
     - cron: '0 7 * * 0'
+  push:
+    branches:
+      - 'release/**'
+      - 'hotfix/**'
   workflow_dispatch:
 
 
@@ -20,20 +24,20 @@ jobs:
           java-version: 17
           cache: 'maven'
       - name: Run org.owasp:dependency-check plugin
-        id: plugin-run
+        id: dependency-check
         continue-on-error: true
         run: mvn -B verify -Pdependency-check -DskipTests
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
       - name: Upload report on failure
-        if: "${{ steps.plugin-run.outcome == 'failure'}}"
+        if: "${{ steps.dependency-check.outcome == 'failure'}}"
         uses: actions/upload-artifact@v3
         with:
           name: dependency-check-report
           path: target/dependency-check-report.html
           if-no-files-found: error
       - name: Indicate failure, if necessary
-        if: "${{ steps.plugin-run.outcome == 'failure'}}"
+        if: "${{ steps.dependency-check.outcome == 'failure'}}"
         shell: bash
         run: |
           echo "Dependency check failed! See uploaded report for details."
