@@ -1,0 +1,39 @@
+name: OWASP Maven Dependency Check
+on:
+  schedule:
+    - cron: '0 7 * * 0'
+  workflow_call:
+
+jobs:
+  check-dependencies:
+    name: Check dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          show-progress: false
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'maven'
+      - name: Run org.owasp:dependency-check plugin
+        id: plugin-run
+        continue-on-error: true
+        run: mvn verfiy -Pdependency-check
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+      - name: Upload report on failure
+        if: "${{ steps.plugin-run.outcome == 'failure'}}"
+        uses: actions/upload-artifact@v3
+        with:
+          name: dependency-check-report
+          path: target/dependency-check-report.html
+          if-no-files-found: error
+      - name: Indicate failure, if necessary
+        if: "${{ steps.plugin-run.outcome == 'failure'}}"
+        shell: bash
+        run: |
+          echo "Dependency check failed! See uploaded report for details."
+          exit 1;
