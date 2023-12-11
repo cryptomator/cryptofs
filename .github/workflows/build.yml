@@ -23,7 +23,7 @@ jobs:
           restore-keys: ${{ runner.os }}-sonar
       - name: Ensure to use tagged version
         if: startsWith(github.ref, 'refs/tags/')
-        run: mvn versions:set --file ./pom.xml -DnewVersion=${GITHUB_REF##*/}
+        run: mvn -B versions:set --file ./pom.xml -DnewVersion=${GITHUB_REF##*/}
       - name: Build and Test
         run: >
           mvn -B verify
@@ -40,8 +40,11 @@ jobs:
         with:
           name: artifacts
           path: target/*.jar
-      - uses: ./github/workflows/dependency-check.yml
-        secrets: inherit
+      - name: Check dependencies for releases
+        if: startsWith(github.ref, 'refs/tags/')
+        run: mvn -B verify -Pdependency-check -DskipTests
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
       - name: Create release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
