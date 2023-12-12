@@ -37,7 +37,7 @@ jobs:
           path: target/dependency-check-report.html
           if-no-files-found: error
       - name: Slack Notification on regular check
-        if: github.event_name == 'schedule'
+        if: github.event_name == 'schedule' && steps.dependency-check.outcome == 'failure'
         uses: rtCamp/action-slack-notify@v2
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -50,6 +50,6 @@ jobs:
           SLACK_FOOTER: false
           MSG_MINIMAL: true
       - name: Failing workflow on release/hotfix branch
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && steps.dependency-check.outcome == 'failure'
         shell: bash
         run: exit 1
