@@ -29,7 +29,7 @@ jobs:
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
       - name: Upload report on failure
-        if: "${{ steps.dependency-check.outcome == 'failure'}}"
+        if: steps.dependency-check.outcome == 'failure'
         uses: actions/upload-artifact@v3
         with:
           name: dependency-check-report
