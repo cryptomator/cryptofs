@@ -280,7 +280,7 @@ public class OpenCryptoFileTest {
 			Assumptions.assumeTrue(listener.get() != null);
 			Assumptions.assumeTrue(ciphertextChannel.get() != null);
 
-			listener.get().closed(cleartextFileChannel);
+			listener.get().closed(ciphertextChannel.get());
 			verify(chunkIO).unregisterChannel(ciphertextChannel.get());
 		}
 

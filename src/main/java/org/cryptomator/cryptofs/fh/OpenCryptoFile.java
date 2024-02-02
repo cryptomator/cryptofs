@@ -23,8 +23,7 @@ import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -42,7 +41,7 @@ public class OpenCryptoFile implements Closeable {
 	private final AtomicReference<Path> currentFilePath;
 	private final AtomicLong fileSize;
 	private final OpenCryptoFileComponent component;
-	private final ConcurrentMap<CleartextFileChannel, FileChannel> openChannels = new ConcurrentHashMap<>();
+	private final AtomicInteger openChannels = new AtomicInteger(0);
 
 	@Inject
 	public OpenCryptoFile(FileCloseListener listener, ChunkCache chunkCache, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
@@ -87,14 +86,14 @@ public class OpenCryptoFile implements Closeable {
 			if (cleartextFileChannel == null) { // i.e. something didn't work
 				closeQuietly(ciphertextFileChannel);
 				// is this the first file channel to be opened?
-				if (openChannels.isEmpty()) {
+				if (openChannels.get() == 0) {
 					close(); // then also close the file again.
 				}
 			}
 		}
 
 		assert cleartextFileChannel != null; // otherwise there would have been an exception
-		openChannels.put(cleartextFileChannel, ciphertextFileChannel);
+		openChannels.incrementAndGet();
 		chunkIO.registerChannel(ciphertextFileChannel, options.writable());
 		return cleartextFileChannel;
 	}
@@ -177,30 +176,25 @@ public class OpenCryptoFile implements Closeable {
 
 	/**
 	 * Updates the current ciphertext file path, if it is not already set to null (i.e., the openCryptoFile is deleted)
+	 *
 	 * @param newFilePath new ciphertext path
 	 */
 	public void updateCurrentFilePath(Path newFilePath) {
 		currentFilePath.updateAndGet(p -> p == null ? null : newFilePath);
 	}
 
-	private synchronized void channelClosed(CleartextFileChannel cleartextFileChannel) throws IOException {
-		try {
-			FileChannel ciphertextFileChannel = openChannels.remove(cleartextFileChannel);
-			if (ciphertextFileChannel != null) {
-				chunkIO.unregisterChannel(ciphertextFileChannel);
-				ciphertextFileChannel.close();
-			}
-		} finally {
-			if (openChannels.isEmpty()) {
-				close();
-			}
+	private synchronized void channelClosed(FileChannel ciphertextFileChannel) {
+		int openChannels = this.openChannels.decrementAndGet();
+		chunkIO.unregisterChannel(ciphertextFileChannel);
+		if (openChannels == 0) {
+			close();
 		}
 	}
 
 	@Override
 	public void close() {
 		var p = currentFilePath.get();
-		if(p != null) {
+		if (p != null) {
 			listener.close(p, this);
 		}
 	}

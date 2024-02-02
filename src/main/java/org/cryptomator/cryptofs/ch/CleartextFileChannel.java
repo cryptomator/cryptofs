@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.ch;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
@@ -232,7 +233,8 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	 *
 	 * @throws IOException
 	 */
-	private void flush() throws IOException {
+	@VisibleForTesting
+	void flush() throws IOException {
 		if (isWritable()) {
 			writeHeaderIfNeeded();
 			chunkCache.flush();
@@ -245,13 +247,14 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	 *
 	 * @throws IOException
 	 */
-	private void persistLastModified() throws IOException {
+	@VisibleForTesting
+	void persistLastModified() throws IOException {
 		FileTime lastModifiedTime = isWritable() ? FileTime.from(lastModified.get()) : null;
 		FileTime lastAccessTime = FileTime.from(Instant.now());
 		var p = currentFilePath.get();
 		if (p != null) {
 			p.getFileSystem().provider()//
-					.getFileAttributeView(p, BasicFileAttributeView.class)
+					.getFileAttributeView(p, BasicFileAttributeView.class) //
 					.setTimes(lastModifiedTime, lastAccessTime, null);
 		}
 
@@ -321,7 +324,13 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	@Override
 	protected void implCloseChannel() throws IOException {
 		try {
-			flush();
+			try {
+				flush(); //flush cache content
+			} finally {
+				closeListener.closed(ciphertextFileChannel); //deregister channel from cache and possibly close file
+			}
+
+			ciphertextFileChannel.force(true); //flush this filechannel
 			try {
 				persistLastModified();
 			} catch (NoSuchFileException nsfe) {
@@ -331,8 +340,8 @@ public class CleartextFileChannel extends AbstractFileChannel {
 				LOG.warn("Failed to persist last modified timestamp for encrypted file: {}", e.getMessage());
 			}
 		} finally {
+			ciphertextFileChannel.close();
 			super.implCloseChannel();
-			closeListener.closed(this);
 		}
 	}
 }

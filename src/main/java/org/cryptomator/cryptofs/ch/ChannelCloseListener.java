@@ -1,11 +1,11 @@
 package org.cryptomator.cryptofs.ch;
 
 
-import java.io.IOException;
+import java.nio.channels.FileChannel;
 
 @FunctionalInterface
 public interface ChannelCloseListener {
 
-	void closed(CleartextFileChannel channel) throws IOException;
+	void closed(FileChannel ciphertextChannel);
 
 }

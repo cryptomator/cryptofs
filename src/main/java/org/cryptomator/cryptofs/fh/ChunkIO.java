@@ -6,7 +6,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
-import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -15,6 +14,8 @@ class ChunkIO {
 
 	private final Set<FileChannel> readableChannels = ConcurrentHashMap.newKeySet();
 	private final Set<FileChannel> writableChannels = ConcurrentHashMap.newKeySet();
+
+	private final PriorityMutex synchronizer = new PriorityMutex();
 
 	@Inject
 	public ChunkIO() {
@@ -39,8 +40,10 @@ class ChunkIO {
 	 * @param channel
 	 */
 	public void unregisterChannel(FileChannel channel) {
-		readableChannels.remove(channel);
-		writableChannels.remove(channel);
+		try (var token = synchronizer.dispensePriority()) {
+			readableChannels.remove(channel);
+			writableChannels.remove(channel);
+		}
 	}
 
 	int read(ByteBuffer dst, long position) throws IOException {
@@ -48,25 +51,17 @@ class ChunkIO {
 	}
 
 	int write(ByteBuffer src, long position) throws IOException {
-		return getWritableChannel().write(src, position);
+		try (var token = synchronizer.dispenseRegular()) {
+			return getWritableChannel().write(src, position);
+		}
 	}
 
 	private FileChannel getReadableChannel() {
-		Iterator<FileChannel> iter = readableChannels.iterator();
-		if (iter.hasNext()) {
-			return iter.next();
-		} else {
-			throw new NonReadableChannelException();
-		}
+		return readableChannels.stream().findAny().orElseThrow(NonReadableChannelException::new);
 	}
 
 	private FileChannel getWritableChannel() {
-		Iterator<FileChannel> iter = writableChannels.iterator();
-		if (iter.hasNext()) {
-			return iter.next();
-		} else {
-			throw new NonWritableChannelException();
-		}
+		return writableChannels.stream().findAny().orElseThrow(NonWritableChannelException::new);
 	}
 
 }

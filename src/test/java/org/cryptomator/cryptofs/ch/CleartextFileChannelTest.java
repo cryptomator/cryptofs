@@ -234,10 +234,23 @@ public class CleartextFileChannelTest {
 	public class Close {
 
 		@Test
-		public void testCloseTriggersCloseListener() throws IOException {
-			inTest.implCloseChannel();
+		@DisplayName("IOException during flush still cleans up")
+		public void testCloseIoExceptionFlush() throws IOException {
+			var inSpy = Mockito.spy(inTest);
+			Mockito.doThrow(IOException.class).when(inSpy).flush();
+			Assertions.assertThrows(IOException.class, () -> inSpy.implCloseChannel());
+			verify(closeListener).closed(ciphertextFileChannel);
+			verify(ciphertextFileChannel).close();
+		}
 
-			verify(closeListener).closed(inTest);
+		@Test
+		@DisplayName("IOException during ciphertextChannel.force() still cleans up")
+		public void testCloseIoExceptionForce() throws IOException {
+			var inSpy = Mockito.spy(inTest);
+			Mockito.doThrow(IOException.class).when(ciphertextFileChannel).force(Mockito.anyBoolean());
+			Assertions.assertThrows(IOException.class, () -> inSpy.implCloseChannel());
+			verify(closeListener).closed(ciphertextFileChannel);
+			verify(ciphertextFileChannel).close();
 		}
 
 		@Test
@@ -249,6 +262,19 @@ public class CleartextFileChannelTest {
 			inTest.implCloseChannel();
 
 			verify(attributeView).setTimes(Mockito.eq(fileTime), Mockito.any(), Mockito.isNull());
+		}
+
+		@Test
+		@DisplayName("IOException on persisting lastModified during close is ignored")
+		public void testCloseExceptionOnLastModifiedPersistenceIgnored() throws IOException {
+			when(options.writable()).thenReturn(true);
+			lastModified.set(Instant.ofEpochMilli(123456789000l));
+
+			var inSpy = Mockito.spy(inTest);
+			Mockito.doThrow(IOException.class).when(inSpy).persistLastModified();
+
+			Assertions.assertDoesNotThrow(() -> inSpy.implCloseChannel());
+
 		}
 
 		@Test
