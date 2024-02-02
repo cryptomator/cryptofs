@@ -43,7 +43,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
-import java.util.function.Supplier;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.mockito.ArgumentMatchers.any;
@@ -69,7 +68,7 @@ public class CleartextFileChannelTest {
 	private FileHeaderHolder headerHolder = mock(FileHeaderHolder.class);
 	private AtomicBoolean headerIsPersisted = mock(AtomicBoolean.class);
 	private EffectiveOpenOptions options = mock(EffectiveOpenOptions.class);
-	private Path filePath = Mockito.mock(Path.class,"/foo/bar");
+	private Path filePath = Mockito.mock(Path.class, "/foo/bar");
 	private AtomicReference<Path> currentFilePath = new AtomicReference<>(filePath);
 	private AtomicLong fileSize = new AtomicLong(100);
 	private AtomicReference<Instant> lastModified = new AtomicReference<>(Instant.ofEpochMilli(0));
@@ -96,7 +95,7 @@ public class CleartextFileChannelTest {
 		var fsProvider = Mockito.mock(FileSystemProvider.class);
 		when(filePath.getFileSystem()).thenReturn(fs);
 		when(fs.provider()).thenReturn(fsProvider);
-		when(fsProvider.getFileAttributeView(filePath,BasicFileAttributeView.class)).thenReturn(attributeView);
+		when(fsProvider.getFileAttributeView(filePath, BasicFileAttributeView.class)).thenReturn(attributeView);
 		when(readWriteLock.readLock()).thenReturn(readLock);
 		when(readWriteLock.writeLock()).thenReturn(writeLock);
 
