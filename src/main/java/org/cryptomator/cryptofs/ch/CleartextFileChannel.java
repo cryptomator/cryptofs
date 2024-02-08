@@ -322,6 +322,10 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	protected void implCloseChannel() throws IOException {
 		try {
 			flush();
+		} finally {
+			super.implCloseChannel();
+			closeListener.closed(this);
+			ciphertextFileChannel.close();
 			try {
 				persistLastModified();
 			} catch (NoSuchFileException nsfe) {
@@ -330,9 +334,6 @@ public class CleartextFileChannel extends AbstractFileChannel {
 				//only best effort attempt
 				LOG.warn("Failed to persist last modified timestamp for encrypted file: {}", e.getMessage());
 			}
-		} finally {
-			super.implCloseChannel();
-			closeListener.closed(this);
 		}
 	}
 }
