@@ -322,6 +322,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	protected void implCloseChannel() throws IOException {
 		try {
 			flush();
+			ciphertextFileChannel.force(true);
 			try {
 				persistLastModified();
 			} catch (NoSuchFileException nsfe) {
