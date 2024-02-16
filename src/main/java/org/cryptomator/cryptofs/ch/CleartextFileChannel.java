@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.ch;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
@@ -245,7 +246,8 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	 *
 	 * @throws IOException
 	 */
-	private void persistLastModified() throws IOException {
+	@VisibleForTesting
+	void persistLastModified() throws IOException {
 		FileTime lastModifiedTime = isWritable() ? FileTime.from(lastModified.get()) : null;
 		FileTime lastAccessTime = FileTime.from(Instant.now());
 		var p = currentFilePath.get();
@@ -322,6 +324,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	protected void implCloseChannel() throws IOException {
 		try {
 			flush();
+			ciphertextFileChannel.force(true);
 			try {
 				persistLastModified();
 			} catch (NoSuchFileException nsfe) {
