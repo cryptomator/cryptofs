@@ -1,0 +1,20 @@
+name: OWASP Maven Dependency Check
+on:
+  schedule:
+    - cron: '0 10 * * 0'
+  push:
+    branches:
+      - 'release/**'
+  workflow_dispatch:
+
+
+jobs:
+  check-dependencies:
+    uses: skymatic/workflows/.github/workflows/run-dependency-check.yml@v1
+    with:
+      runner-os: 'ubuntu-latest'
+      java-distribution: 'temurin'
+      java-version: 17
+    secrets:
+      nvd-api-key: ${{ secrets.NVD_API_KEY }}
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

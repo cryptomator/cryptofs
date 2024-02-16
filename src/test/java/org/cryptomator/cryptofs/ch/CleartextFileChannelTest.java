@@ -51,7 +51,9 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -238,6 +240,17 @@ public class CleartextFileChannelTest {
 			inTest.implCloseChannel();
 
 			verify(closeListener).closed(inTest);
+		}
+
+		@Test
+		@DisplayName("On close, first flush channel, then persist lastModified")
+		public void testCloseFlushBeforePersist() throws IOException {
+			var inSpy = spy(inTest);
+			inSpy.implCloseChannel();
+
+			var ordering = inOrder(inSpy, ciphertextFileChannel);
+			ordering.verify(ciphertextFileChannel).force(true);
+			ordering.verify(inSpy).persistLastModified();
 		}
 
 		@Test
