@@ -248,13 +248,13 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
-		@DisplayName("On close, first flush channel, then persist lastModified")
-		public void testCloseFlushBeforePersist() throws IOException {
+		@DisplayName("On close, first close channel, then persist lastModified")
+		public void testCloseCipherChannelCloseBeforePersist() throws IOException {
 			var inSpy = spy(inTest);
 			inSpy.implCloseChannel();
 
 			var ordering = inOrder(inSpy, ciphertextFileChannel);
-			ordering.verify(ciphertextFileChannel).force(true);
+			ordering.verify(ciphertextFileChannel).close();
 			ordering.verify(inSpy).persistLastModified();
 		}
 
