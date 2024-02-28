@@ -52,21 +52,11 @@ class ChunkIO {
 	}
 
 	private FileChannel getReadableChannel() {
-		Iterator<FileChannel> iter = readableChannels.iterator();
-		if (iter.hasNext()) {
-			return iter.next();
-		} else {
-			throw new NonReadableChannelException();
-		}
+		return readableChannels.stream().findFirst().orElseThrow(NonReadableChannelException::new);
 	}
 
 	private FileChannel getWritableChannel() {
-		Iterator<FileChannel> iter = writableChannels.iterator();
-		if (iter.hasNext()) {
-			return iter.next();
-		} else {
-			throw new NonWritableChannelException();
-		}
+		return writableChannels.stream().findFirst().orElseThrow(NonWritableChannelException::new);
 	}
 
 }
