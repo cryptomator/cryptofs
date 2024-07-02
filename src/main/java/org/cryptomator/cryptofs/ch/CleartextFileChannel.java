@@ -326,19 +326,29 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		try {
 			flush();
 		} finally {
+			implCloseChannelFinally1();
+		}
+	}
+
+	private void implCloseChannelFinally1() throws IOException {
+		try {
 			super.implCloseChannel();
+		} finally {
 			closeListener.closed(this);
+			implCloseChannelFinally2();
+		}
+	}
+
+	private void implCloseChannelFinally2() throws IOException {
+		try {
+			ciphertextFileChannel.close();
+		} finally {
 			try {
-				ciphertextFileChannel.close();
-			} finally {
-				try {
-					persistLastModified();
-				} catch (NoSuchFileException nsfe) {
-					//no-op, see https://github.com/cryptomator/cryptofs/issues/169
-				} catch (IOException e) {
-					//only best effort attempt
-					LOG.warn("Failed to persist last modified timestamp for encrypted file: {}", e.getMessage());
-				}
+				persistLastModified();
+			} catch (NoSuchFileException nsfe) {
+				//no-op, see https://github.com/cryptomator/cryptofs/issues/169
+			} catch (IOException e) {
+				LOG.warn("Failed to persist last modified timestamp for encrypted file: {}", e.getMessage());
 			}
 		}
 	}
