@@ -29,6 +29,8 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -323,33 +325,38 @@ public class CleartextFileChannel extends AbstractFileChannel {
 
 	@Override
 	protected void implCloseChannel() throws IOException {
+		var closeActions = List.<CloseAction>of(this::flush, //
+				super::implCloseChannel, //
+				() -> closeListener.closed(this), //
+				ciphertextFileChannel::close, //
+				this::tryPersistLastModified);
+		tryAll(closeActions.iterator());
+	}
+
+	private void tryPersistLastModified() {
 		try {
-			flush();
-		} finally {
-			implCloseChannelFinally1();
+			persistLastModified();
+		} catch (NoSuchFileException nsfe) {
+			//no-op, see https://github.com/cryptomator/cryptofs/issues/169
+		} catch (IOException e) {
+			LOG.warn("Failed to persist last modified timestamp for encrypted file: {}", e.getMessage());
 		}
 	}
 
-	private void implCloseChannelFinally1() throws IOException {
-		try {
-			super.implCloseChannel();
-		} finally {
-			closeListener.closed(this);
-			implCloseChannelFinally2();
-		}
-	}
-
-	private void implCloseChannelFinally2() throws IOException {
-		try {
-			ciphertextFileChannel.close();
-		} finally {
+	private void tryAll(Iterator<CloseAction> actions) throws IOException {
+		if (actions.hasNext()) {
 			try {
-				persistLastModified();
-			} catch (NoSuchFileException nsfe) {
-				//no-op, see https://github.com/cryptomator/cryptofs/issues/169
-			} catch (IOException e) {
-				LOG.warn("Failed to persist last modified timestamp for encrypted file: {}", e.getMessage());
+				actions.next().run();
+			} finally {
+				tryAll(actions);
 			}
 		}
 	}
+
+	@FunctionalInterface
+	private interface CloseAction {
+
+		void run() throws IOException;
+	}
+
 }
