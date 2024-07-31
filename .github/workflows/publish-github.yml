@@ -12,7 +12,7 @@ jobs:
           show-progress: false
       - uses: actions/setup-java@v4
         with:
-          java-version: 17
+          java-version: 21
           distribution: 'temurin'
           cache: 'maven'
           gpg-private-key: ${{ secrets.RELEASES_GPG_PRIVATE_KEY }} # Value of the GPG private key to import
