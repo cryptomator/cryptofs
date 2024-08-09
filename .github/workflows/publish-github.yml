@@ -12,7 +12,7 @@ jobs:
           show-progress: false
       - uses: actions/setup-java@v4
         with:
-          java-version: 17
+          java-version: 21
           distribution: 'temurin'
           cache: 'maven'
       - name: Enforce project version ${{ github.event.release.tag_name }}

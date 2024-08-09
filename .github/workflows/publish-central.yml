@@ -16,7 +16,7 @@ jobs:
           show-progress: false
       - uses: actions/setup-java@v4
         with:
-          java-version: 17
+          java-version: 21
           distribution: 'temurin'
           cache: 'maven'
           server-id: ossrh # Value of the distributionManagement/repository/id field of the pom.xml
