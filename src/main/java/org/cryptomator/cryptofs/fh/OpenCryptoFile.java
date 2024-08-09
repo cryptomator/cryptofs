@@ -183,17 +183,13 @@ public class OpenCryptoFile implements Closeable {
 		currentFilePath.updateAndGet(p -> p == null ? null : newFilePath);
 	}
 
-	private synchronized void channelClosed(CleartextFileChannel cleartextFileChannel) throws IOException {
-		try {
-			FileChannel ciphertextFileChannel = openChannels.remove(cleartextFileChannel);
-			if (ciphertextFileChannel != null) {
-				chunkIO.unregisterChannel(ciphertextFileChannel);
-				ciphertextFileChannel.close();
-			}
-		} finally {
-			if (openChannels.isEmpty()) {
-				close();
-			}
+	private synchronized void channelClosed(CleartextFileChannel cleartextFileChannel) {
+		FileChannel ciphertextFileChannel = openChannels.remove(cleartextFileChannel);
+		if (ciphertextFileChannel != null) {
+			chunkIO.unregisterChannel(ciphertextFileChannel);
+		}
+		if (openChannels.isEmpty()) {
+			close();
 		}
 	}
 
