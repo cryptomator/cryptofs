@@ -17,7 +17,7 @@ public interface ChannelComponent {
 
 		ChannelComponent create(@BindsInstance FileChannel ciphertextChannel, //
 								@BindsInstance EffectiveOpenOptions options, //
-								@BindsInstance ChannelCloseListener listener); //
+								@BindsInstance Runnable closeListener); //
 	}
 
 }
