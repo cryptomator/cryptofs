@@ -15,8 +15,6 @@ jobs:
           java-version: 17
           distribution: 'temurin'
           cache: 'maven'
-          gpg-private-key: ${{ secrets.RELEASES_GPG_PRIVATE_KEY }} # Value of the GPG private key to import
-          gpg-passphrase: MAVEN_GPG_PASSPHRASE # env variable for GPG private key passphrase
       - name: Enforce project version ${{ github.event.release.tag_name }}
         run: mvn versions:set -B -DnewVersion=${{ github.event.release.tag_name }}
       - name: Deploy
@@ -24,6 +22,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.RELEASES_GPG_PASSPHRASE }}
+          MAVEN_GPG_KEY: ${{ secrets.RELEASES_GPG_PRIVATE_KEY }} # Value of the GPG private key to import
       - name: Slack Notification
         uses: rtCamp/action-slack-notify@v2
         env:
