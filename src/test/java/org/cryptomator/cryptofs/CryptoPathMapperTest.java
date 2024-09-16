@@ -290,6 +290,7 @@ public class CryptoPathMapperTest {
 			Mockito.when(underlyingFileSystemProvider.readAttributes(dirFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(Mockito.mock(BasicFileAttributes.class));
 			Mockito.when(underlyingFileSystemProvider.readAttributes(symlinkFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(NoSuchFileException.class);
 			Mockito.when(underlyingFileSystemProvider.readAttributes(contentsFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(NoSuchFileException.class);
+			Mockito.when(underlyingFileSystemProvider.exists(dirFilePath, LinkOption.NOFOLLOW_LINKS)).thenReturn(true);
 
 			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
 
@@ -305,6 +306,7 @@ public class CryptoPathMapperTest {
 			Mockito.when(underlyingFileSystemProvider.readAttributes(dirFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(NoSuchFileException.class);
 			Mockito.when(underlyingFileSystemProvider.readAttributes(symlinkFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(Mockito.mock(BasicFileAttributes.class));
 			Mockito.when(underlyingFileSystemProvider.readAttributes(contentsFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(NoSuchFileException.class);
+			Mockito.when(underlyingFileSystemProvider.exists(symlinkFilePath, LinkOption.NOFOLLOW_LINKS)).thenReturn(true);
 
 			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
 
@@ -322,6 +324,7 @@ public class CryptoPathMapperTest {
 			Mockito.when(underlyingFileSystemProvider.readAttributes(contentsFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(Mockito.mock(BasicFileAttributes.class));
 			Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("LONGCLEAR"), Mockito.any())).thenReturn(Strings.repeat("A", 1000));
 			Mockito.when(longFileNameProvider.deflate(Mockito.any())).thenReturn(new LongFileNameProvider.DeflatedFileName(c9rPath, null, null));
+			Mockito.when(underlyingFileSystemProvider.exists(contentsFilePath, LinkOption.NOFOLLOW_LINKS)).thenReturn(true);
 
 			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
 

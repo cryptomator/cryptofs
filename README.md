@@ -6,6 +6,7 @@
 [![Known Vulnerabilities](https://snyk.io/test/github/cryptomator/cryptofs/badge.svg)](https://snyk.io/test/github/cryptomator/cryptofs)
 
 **CryptoFS:** Implementation of the [Cryptomator](https://github.com/cryptomator/cryptomator) encryption scheme.
+For more info about the encryption scheme, read the [docs](https://docs.cryptomator.org/en/latest/security/vault/).
 
 ## Features
 
@@ -98,7 +99,7 @@ For more details on how to use the constructed `FileSystem`, you may consult the
 
 ### Dependencies
 
-* Java 17
+* Java 21
 * Maven 3
 
 ### Run Maven

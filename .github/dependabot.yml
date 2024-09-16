@@ -19,6 +19,7 @@ updates:
           - "org.apache.maven.plugins:*"
           - "org.jacoco:jacoco-maven-plugin"
           - "org.owasp:dependency-check-maven"
+          - "me.fabriciorby:maven-surefire-junit5-tree-reporter"
       java-production-dependencies:
         patterns:
           - "*"
@@ -30,6 +31,7 @@ updates:
           - "org.mockito:*"
           - "org.hamcrest:*"
           - "com.google.jimfs:jimfs"
+          - "me.fabriciorby:maven-surefire-junit5-tree-reporter"
 
 
   - package-ecosystem: "github-actions"

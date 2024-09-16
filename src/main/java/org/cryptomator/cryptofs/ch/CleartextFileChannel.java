@@ -29,6 +29,8 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
+import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -233,7 +235,8 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	 *
 	 * @throws IOException
 	 */
-	private void flush() throws IOException {
+	@VisibleForTesting
+	void flush() throws IOException {
 		if (isWritable()) {
 			writeHeaderIfNeeded();
 			chunkCache.flush();
@@ -322,20 +325,38 @@ public class CleartextFileChannel extends AbstractFileChannel {
 
 	@Override
 	protected void implCloseChannel() throws IOException {
+		var closeActions = List.<CloseAction>of(this::flush, //
+				super::implCloseChannel, //
+				() -> closeListener.closed(this), //
+				ciphertextFileChannel::close, //
+				this::tryPersistLastModified);
+		tryAll(closeActions.iterator());
+	}
+
+	private void tryPersistLastModified() {
 		try {
-			flush();
-			ciphertextFileChannel.force(true);
-			try {
-				persistLastModified();
-			} catch (NoSuchFileException nsfe) {
-				//no-op, see https://github.com/cryptomator/cryptofs/issues/169
-			} catch (IOException e) {
-				//only best effort attempt
-				LOG.warn("Failed to persist last modified timestamp for encrypted file: {}", e.getMessage());
-			}
-		} finally {
-			super.implCloseChannel();
-			closeListener.closed(this);
+			persistLastModified();
+		} catch (NoSuchFileException nsfe) {
+			//no-op, see https://github.com/cryptomator/cryptofs/issues/169
+		} catch (IOException e) {
+			LOG.warn("Failed to persist last modified timestamp for encrypted file: {}", e.getMessage());
 		}
 	}
+
+	private void tryAll(Iterator<CloseAction> actions) throws IOException {
+		if (actions.hasNext()) {
+			try {
+				actions.next().run();
+			} finally {
+				tryAll(actions);
+			}
+		}
+	}
+
+	@FunctionalInterface
+	private interface CloseAction {
+
+		void run() throws IOException;
+	}
+
 }
