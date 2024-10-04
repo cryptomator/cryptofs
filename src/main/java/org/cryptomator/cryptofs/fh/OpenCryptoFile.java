@@ -1,11 +1,3 @@
-/*******************************************************************************
- * Copyright (c) 2016 Sebastian Stenzel and others.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the accompanying LICENSE.txt.
- *
- * Contributors:
- *     Sebastian Stenzel - initial API and implementation
- *******************************************************************************/
 package org.cryptomator.cryptofs.fh;
 
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
@@ -23,8 +15,6 @@ import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -38,19 +28,18 @@ public class OpenCryptoFile implements Closeable {
 	private final ChunkCache chunkCache;
 	private final Cryptor cryptor;
 	private final FileHeaderHolder headerHolder;
-	private final ChunkIO chunkIO;
 	private final AtomicReference<Path> currentFilePath;
 	private final AtomicLong fileSize;
 	private final OpenCryptoFileComponent component;
-	private final ConcurrentMap<CleartextFileChannel, FileChannel> openChannels = new ConcurrentHashMap<>();
+
+	private volatile int openChannelsCount = 0;
 
 	@Inject
-	public OpenCryptoFile(FileCloseListener listener, ChunkCache chunkCache, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
+	public OpenCryptoFile(FileCloseListener listener, ChunkCache chunkCache, Cryptor cryptor, FileHeaderHolder headerHolder, @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
 		this.listener = listener;
 		this.chunkCache = chunkCache;
 		this.cryptor = cryptor;
 		this.headerHolder = headerHolder;
-		this.chunkIO = chunkIO;
 		this.currentFilePath = currentFilePath;
 		this.fileSize = fileSize;
 		this.component = component;
@@ -71,6 +60,8 @@ public class OpenCryptoFile implements Closeable {
 		}
 		FileChannel ciphertextFileChannel = null;
 		CleartextFileChannel cleartextFileChannel = null;
+
+		openChannelsCount = openChannelsCount + 1; // synchronized context, hence we can proactively increase the number
 		try {
 			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
 			initFileHeader(options, ciphertextFileChannel);
@@ -86,16 +77,11 @@ public class OpenCryptoFile implements Closeable {
 		} finally {
 			if (cleartextFileChannel == null) { // i.e. something didn't work
 				closeQuietly(ciphertextFileChannel);
-				// is this the first file channel to be opened?
-				if (openChannels.isEmpty()) {
-					close(); // then also close the file again.
-				}
+				channelClosed(); // if first channel and it fails, close this again
 			}
 		}
 
 		assert cleartextFileChannel != null; // otherwise there would have been an exception
-		openChannels.put(cleartextFileChannel, ciphertextFileChannel);
-		chunkIO.registerChannel(ciphertextFileChannel, options.writable());
 		return cleartextFileChannel;
 	}
 
@@ -183,12 +169,9 @@ public class OpenCryptoFile implements Closeable {
 		currentFilePath.updateAndGet(p -> p == null ? null : newFilePath);
 	}
 
-	private synchronized void channelClosed(CleartextFileChannel cleartextFileChannel) {
-		FileChannel ciphertextFileChannel = openChannels.remove(cleartextFileChannel);
-		if (ciphertextFileChannel != null) {
-			chunkIO.unregisterChannel(ciphertextFileChannel);
-		}
-		if (openChannels.isEmpty()) {
+	private synchronized void channelClosed() {
+		openChannelsCount = openChannelsCount - 1;
+		if (openChannelsCount == 0) {
 			close();
 		}
 	}

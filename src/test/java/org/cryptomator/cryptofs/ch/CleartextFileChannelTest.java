@@ -5,6 +5,7 @@ import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.fh.BufferPool;
 import org.cryptomator.cryptofs.fh.Chunk;
 import org.cryptomator.cryptofs.fh.ChunkCache;
+import org.cryptomator.cryptofs.fh.ChunkIO;
 import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptofs.fh.FileHeaderHolder;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -59,6 +60,7 @@ import static org.mockito.Mockito.when;
 public class CleartextFileChannelTest {
 
 	private ChunkCache chunkCache = mock(ChunkCache.class);
+	private ChunkIO chunkIO = mock(ChunkIO.class);
 	private BufferPool bufferPool = mock(BufferPool.class);
 	private ReadWriteLock readWriteLock = mock(ReadWriteLock.class);
 	private Lock readLock = mock(Lock.class);
@@ -76,7 +78,7 @@ public class CleartextFileChannelTest {
 	private AtomicReference<Instant> lastModified = new AtomicReference<>(Instant.ofEpochMilli(0));
 	private BasicFileAttributeView attributeView = mock(BasicFileAttributeView.class);
 	private ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
-	private ChannelCloseListener closeListener = mock(ChannelCloseListener.class);
+	private Runnable closeListener = mock(Runnable.class);
 	private CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
 
 	private CleartextFileChannel inTest;
@@ -87,6 +89,8 @@ public class CleartextFileChannelTest {
 		when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
 		when(chunkCache.getChunk(Mockito.anyLong())).then(invocation -> new Chunk(ByteBuffer.allocate(100), false, () -> {}));
 		when(chunkCache.putChunk(Mockito.anyLong(), Mockito.any())).thenAnswer(invocation -> new Chunk(invocation.getArgument(1), true, () -> {}));
+		doNothing().when(chunkIO).registerChannel(Mockito.eq(ciphertextFileChannel), Mockito.anyBoolean());
+		doNothing().when(chunkIO).unregisterChannel(ciphertextFileChannel);
 		when(bufferPool.getCleartextBuffer()).thenAnswer(invocation -> ByteBuffer.allocate(100));
 		when(fileHeaderCryptor.headerSize()).thenReturn(50);
 		when(headerHolder.headerIsPersisted()).thenReturn(headerIsPersisted);
@@ -101,7 +105,7 @@ public class CleartextFileChannelTest {
 		when(readWriteLock.readLock()).thenReturn(readLock);
 		when(readWriteLock.writeLock()).thenReturn(writeLock);
 
-		inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, exceptionsDuringWrite, closeListener, stats);
+		inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkIO, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, exceptionsDuringWrite, closeListener, stats);
 	}
 
 	@Test
@@ -242,9 +246,21 @@ public class CleartextFileChannelTest {
 
 			Assertions.assertThrows(IOException.class, () -> inSpy.implCloseChannel());
 
-			verify(closeListener).closed(inSpy);
+			verify(closeListener).run();
 			verify(ciphertextFileChannel).close();
+			verify(chunkIO).unregisterChannel(ciphertextFileChannel);
 			verify(inSpy).persistLastModified();
+		}
+
+		@Test
+		@DisplayName("On close, first flush channel, then unregister")
+		public void testCloseCipherChannelFlushBeforeUnregister() throws IOException {
+			var inSpy = spy(inTest);
+			inSpy.implCloseChannel();
+
+			var ordering = inOrder(inSpy, chunkIO);
+			ordering.verify(inSpy).flush();
+			ordering.verify(chunkIO).unregisterChannel(ciphertextFileChannel);
 		}
 
 		@Test
@@ -279,7 +295,8 @@ public class CleartextFileChannelTest {
 			Mockito.doThrow(IOException.class).when(inSpy).persistLastModified();
 
 			Assertions.assertDoesNotThrow(() -> inSpy.implCloseChannel());
-			verify(closeListener).closed(inSpy);
+			verify(chunkIO).unregisterChannel(ciphertextFileChannel);
+			verify(closeListener).run();
 			verify(ciphertextFileChannel).close();
 		}
 
@@ -385,7 +402,7 @@ public class CleartextFileChannelTest {
 			fileSize.set(5_000_000_100l); // initial cleartext size will be 5_000_000_100l
 			when(options.readable()).thenReturn(true);
 
-			inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, exceptionsDuringWrite, closeListener, stats);
+			inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkIO, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, exceptionsDuringWrite, closeListener, stats);
 			ByteBuffer buf = ByteBuffer.allocate(10);
 
 			// A read from frist chunk:
@@ -557,7 +574,7 @@ public class CleartextFileChannelTest {
 		public void testDontRewriteHeader() throws IOException {
 			when(options.writable()).thenReturn(true);
 			when(headerIsPersisted.get()).thenReturn(true);
-			inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, exceptionsDuringWrite, closeListener, stats);
+			inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkIO, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, exceptionsDuringWrite, closeListener, stats);
 
 			inTest.force(true);
 
