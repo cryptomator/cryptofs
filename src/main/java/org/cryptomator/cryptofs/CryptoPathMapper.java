@@ -28,6 +28,8 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -140,14 +142,20 @@ public class CryptoPathMapper {
 	}
 
 	public void invalidatePathMapping(CryptoPath cleartextPath) {
-		ciphertextDirectories.asMap().remove(cleartextPath);
+		ciphertextDirectories.asMap().keySet().removeIf(p -> p.startsWith(cleartextPath));
 	}
 
 	public void movePathMapping(CryptoPath cleartextSrc, CryptoPath cleartextDst) {
-		var cachedValue = ciphertextDirectories.asMap().remove(cleartextSrc);
-		if (cachedValue != null) {
-			ciphertextDirectories.put(cleartextDst, cachedValue);
-		}
+		var remappedEntries = new ArrayList<Map.Entry<CryptoPath, CompletableFuture<CiphertextDirectory>>>();
+		ciphertextDirectories.asMap().entrySet().removeIf(e -> {
+			if (e.getKey().startsWith(cleartextSrc)) {
+				var remappedPath = cleartextDst.resolve(cleartextSrc.relativize(e.getKey()));
+				return remappedEntries.add(Map.entry(remappedPath, e.getValue()));
+			} else {
+				return false;
+			}
+		});
+		remappedEntries.forEach(e -> ciphertextDirectories.put(e.getKey(), e.getValue()));
 	}
 
 	public CiphertextDirectory getCiphertextDir(CryptoPath cleartextPath) throws IOException {

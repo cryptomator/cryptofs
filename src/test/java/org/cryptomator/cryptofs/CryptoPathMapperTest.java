@@ -65,6 +65,116 @@ public class CryptoPathMapperTest {
 	}
 
 	@Test
+	@DisplayName("Removing a cached cleartext path also removes all cached child paths")
+	public void testInvalidatingCleartextPathCleansCacheFromChildPaths() throws IOException {
+		//prepare root
+		Path d00 = Mockito.mock(Path.class);
+		Mockito.when(dataRoot.resolve("00")).thenReturn(d00);
+		Mockito.when(fileNameCryptor.hashDirectoryId("")).thenReturn("0000");
+
+		//prepare cleartextDir "/foo"
+		Path d0000 = Mockito.mock(Path.class, "d/00/00");
+		Path d0000oof = Mockito.mock(Path.class, "d/00/00/oof.c9r");
+		Path d0000oofdir = Mockito.mock(Path.class, "d/00/00/oof.c9r/dir.c9r");
+		Mockito.when(d00.resolve("00")).thenReturn(d0000);
+		Mockito.when(d0000.resolve("oof.c9r")).thenReturn(d0000oof);
+		Mockito.when(d0000oof.resolve("dir.c9r")).thenReturn(d0000oofdir);
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("foo"), Mockito.any())).thenReturn("oof");
+		Mockito.when(dirIdProvider.load(d0000oofdir)).thenReturn("1");
+		Mockito.when(fileNameCryptor.hashDirectoryId("1")).thenReturn("0001");
+
+		//prepare cleartextDir "/foo/bar"
+		Path d0001 = Mockito.mock(Path.class, "d/00/01");
+		Path d0001rab = Mockito.mock(Path.class, "d/00/01/rab.c9r");
+		Path d0000rabdir = Mockito.mock(Path.class, "d/00/00/rab.c9r/dir.c9r");
+		Mockito.when(d00.resolve("01")).thenReturn(d0001);
+		Mockito.when(d0001.resolve("rab.c9r")).thenReturn(d0001rab);
+		Mockito.when(d0001rab.resolve("dir.c9r")).thenReturn(d0000rabdir);
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("bar"), Mockito.any())).thenReturn("rab");
+		Mockito.when(dirIdProvider.load(d0000rabdir)).thenReturn("2");
+		Mockito.when(fileNameCryptor.hashDirectoryId("2")).thenReturn("0002");
+
+		Path d0002 = Mockito.mock(Path.class);
+		Mockito.when(d00.resolve("02")).thenReturn(d0002);
+
+		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
+		//put cleartextpath /foo
+		Path cipherFooPath = mapper.getCiphertextDir(fileSystem.getPath("/foo")).path;
+		//put cleartextpath /foo/bar
+		Path cipherFooBarPath = mapper.getCiphertextDir(fileSystem.getPath("/foo/bar")).path;
+		//invalidate /foo
+		mapper.invalidatePathMapping(fileSystem.getPath("/foo"));
+		//cache should miss
+		var mapperSpy = Mockito.spy(mapper);
+		mapperSpy.getCiphertextDir(fileSystem.getPath("/foo/bar"));
+		Mockito.verify(mapperSpy, Mockito.atLeast(1)).getCiphertextFilePath(Mockito.any());
+	}
+
+	@Test
+	@DisplayName("Moving a cached cleartext path also remaps all cached child paths")
+	public void testMovingCleartextPathRemapsCachedChildPaths() throws IOException {
+		CryptoPath fooPath = fileSystem.getPath("/foo");
+		CryptoPath fooBarPath = fileSystem.getPath("/foo/bar");
+		CryptoPath unkelFooPath = fileSystem.getPath("/unkel/foo");
+		CryptoPath unkelFooBarPath = fileSystem.getPath("/unkel/foo/bar");
+		//prepare root
+		Path d00 = Mockito.mock(Path.class);
+		Mockito.when(dataRoot.resolve("00")).thenReturn(d00);
+		Mockito.when(fileNameCryptor.hashDirectoryId("")).thenReturn("0000");
+
+		//prepare cleartextDir "/foo"
+		Path d0000 = Mockito.mock(Path.class, "d/00/00");
+		Path d0000oof = Mockito.mock(Path.class, "d/00/00/oof.c9r");
+		Path d0000oofdir = Mockito.mock(Path.class, "d/00/00/oof.c9r/dir.c9r");
+		Mockito.when(d00.resolve("00")).thenReturn(d0000);
+		Mockito.when(d0000.resolve("oof.c9r")).thenReturn(d0000oof);
+		Mockito.when(d0000oof.resolve("dir.c9r")).thenReturn(d0000oofdir);
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("foo"), Mockito.any())).thenReturn("oof");
+		Mockito.when(dirIdProvider.load(d0000oofdir)).thenReturn("1");
+		Mockito.when(fileNameCryptor.hashDirectoryId("1")).thenReturn("0001");
+
+		//prepare cleartextDir "/foo/bar"
+		Path d0001 = Mockito.mock(Path.class, "d/00/01");
+		Path d0001rab = Mockito.mock(Path.class, "d/00/01/rab.c9r");
+		Path d0000rabdir = Mockito.mock(Path.class, "d/00/00/rab.c9r/dir.c9r");
+		Mockito.when(d00.resolve("01")).thenReturn(d0001);
+		Mockito.when(d0001.resolve("rab.c9r")).thenReturn(d0001rab);
+		Mockito.when(d0001rab.resolve("dir.c9r")).thenReturn(d0000rabdir);
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("bar"), Mockito.any())).thenReturn("rab");
+		Mockito.when(dirIdProvider.load(d0000rabdir)).thenReturn("2");
+		Mockito.when(fileNameCryptor.hashDirectoryId("2")).thenReturn("0002");
+
+		Path d0002 = Mockito.mock(Path.class);
+		Mockito.when(d00.resolve("02")).thenReturn(d0002);
+
+		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
+		//put cleartextpath /foo in cache
+		Path cipherFooPath = mapper.getCiphertextDir(fooPath).path;
+		//put cleartextpath /foo/bar in cache
+		Path cipherBarPath = mapper.getCiphertextDir(fooBarPath).path;
+		//move /foo to /unkel/dinkel/foo/, effectively moving also moving /foo/bar
+		mapper.movePathMapping(fooPath, unkelFooPath);
+
+		//cache should ...
+		var mapperSpy = Mockito.spy(mapper);
+		var someCiphertextFilePath = Mockito.mock(CiphertextFilePath.class);
+		var someCiphertextDirFilePath = Mockito.mock(Path.class);
+		var someCipherDirObj = Mockito.mock(CryptoPathMapper.CiphertextDirectory.class);
+		Mockito.doReturn(someCiphertextFilePath).when(mapperSpy).getCiphertextFilePath(fooBarPath);
+		Mockito.doReturn(someCiphertextDirFilePath).when(someCiphertextFilePath).getDirFilePath();
+		Mockito.doReturn(someCipherDirObj).when(mapperSpy).resolveDirectory(someCiphertextDirFilePath);
+
+		//... succeed for /unkel/foo/ and /unkel/foo/bar
+		mapperSpy.getCiphertextDir(unkelFooPath);
+		mapperSpy.getCiphertextDir(unkelFooBarPath);
+		Mockito.verify(mapperSpy, Mockito.never()).getCiphertextFilePath(Mockito.any());
+
+		//...miss and return our mocked cipherDirObj
+		var actualCipherDirObj = mapperSpy.getCiphertextDir(fooBarPath);
+		Assertions.assertEquals(someCipherDirObj, actualCipherDirObj);
+	}
+
+	@Test
 	public void testPathEncryptionForRoot() throws IOException {
 		Path d00 = Mockito.mock(Path.class);
 		Mockito.when(dataRoot.resolve("00")).thenReturn(d00);
