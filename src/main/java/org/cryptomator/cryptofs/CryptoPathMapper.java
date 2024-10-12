@@ -41,8 +41,6 @@ public class CryptoPathMapper {
 
 	private static final Logger LOG = LoggerFactory.getLogger(CryptoPathMapper.class);
 	private static final int MAX_CACHED_CIPHERTEXT_NAMES = 5000;
-	private static final int MAX_CACHED_DIR_PATHS = 5000;
-	private static final Duration MAX_CACHE_AGE = Duration.ofSeconds(20);
 
 	private final Cryptor cryptor;
 	private final Path dataRoot;
@@ -50,7 +48,7 @@ public class CryptoPathMapper {
 	private final LongFileNameProvider longFileNameProvider;
 	private final VaultConfig vaultConfig;
 	private final LoadingCache<DirIdAndName, String> ciphertextNames;
-	private final AsyncCache<CryptoPath, CiphertextDirectory> ciphertextDirectories;
+	private final ClearToCipherDirCache clearToCipherDirCache;
 
 	private final CiphertextDirectory rootDirectory;
 
@@ -62,7 +60,7 @@ public class CryptoPathMapper {
 		this.longFileNameProvider = longFileNameProvider;
 		this.vaultConfig = vaultConfig;
 		this.ciphertextNames = Caffeine.newBuilder().maximumSize(MAX_CACHED_CIPHERTEXT_NAMES).build(this::getCiphertextFileName);
-		this.ciphertextDirectories = Caffeine.newBuilder().maximumSize(MAX_CACHED_DIR_PATHS).expireAfterWrite(MAX_CACHE_AGE).buildAsync();
+		this.clearToCipherDirCache = new ClearToCipherDirCache();
 		this.rootDirectory = resolveDirectory(Constants.ROOT_DIR_ID);
 	}
 
@@ -141,39 +139,31 @@ public class CryptoPathMapper {
 		return cryptor.fileNameCryptor().encryptFilename(BaseEncoding.base64Url(), dirIdAndName.name, dirIdAndName.dirId.getBytes(StandardCharsets.UTF_8)) + Constants.CRYPTOMATOR_FILE_SUFFIX;
 	}
 
+	/**
+	 * TODO: doc doc doc
+	 * @param cleartextPath
+	 */
 	public void invalidatePathMapping(CryptoPath cleartextPath) {
-		ciphertextDirectories.asMap().keySet().removeIf(p -> p.startsWith(cleartextPath));
+		clearToCipherDirCache.removeAllKeysWithPrefix(cleartextPath);
 	}
 
+	/**
+	 * TODO: doc doc doc
+	 */
 	public void movePathMapping(CryptoPath cleartextSrc, CryptoPath cleartextDst) {
-		var remappedEntries = new ArrayList<Map.Entry<CryptoPath, CompletableFuture<CiphertextDirectory>>>();
-		ciphertextDirectories.asMap().entrySet().removeIf(e -> {
-			if (e.getKey().startsWith(cleartextSrc)) {
-				var remappedPath = cleartextDst.resolve(cleartextSrc.relativize(e.getKey()));
-				return remappedEntries.add(Map.entry(remappedPath, e.getValue()));
-			} else {
-				return false;
-			}
-		});
-		remappedEntries.forEach(e -> ciphertextDirectories.put(e.getKey(), e.getValue()));
+		clearToCipherDirCache.recomputeAllKeysWithPrefix(cleartextSrc, cleartextDst);
 	}
 
 	public CiphertextDirectory getCiphertextDir(CryptoPath cleartextPath) throws IOException {
 		assert cleartextPath.isAbsolute();
-		CryptoPath parentPath = cleartextPath.getParent();
-		if (parentPath == null) {
+		if (cleartextPath.getParent() == null) {
 			return rootDirectory;
 		} else {
-			var lazyEntry = new CompletableFuture<CiphertextDirectory>();
-			var priorEntry = ciphertextDirectories.asMap().putIfAbsent(cleartextPath, lazyEntry);
-			if (priorEntry != null) {
-				return priorEntry.join();
-			} else {
+			CipherDirLoader cipherDirLoaderIfAbsent = () -> {
 				Path dirFile = getCiphertextFilePath(cleartextPath).getDirFilePath();
-				CiphertextDirectory cipherDir = resolveDirectory(dirFile);
-				lazyEntry.complete(cipherDir);
-				return cipherDir;
-			}
+				return resolveDirectory(dirFile);
+			};
+			return clearToCipherDirCache.putIfAbsent(cleartextPath, cipherDirLoaderIfAbsent);
 		}
 	}
 
@@ -238,6 +228,52 @@ public class CryptoPathMapper {
 				return false;
 			}
 		}
+	}
+
+	static class ClearToCipherDirCache {
+
+		private static final int MAX_CACHED_DIR_PATHS = 5000;
+		private static final Duration MAX_CACHE_AGE = Duration.ofSeconds(20);
+
+		private final AsyncCache<CryptoPath, CiphertextDirectory> ciphertextDirectories = Caffeine.newBuilder() //
+				.maximumSize(MAX_CACHED_DIR_PATHS) //
+				.expireAfterWrite(MAX_CACHE_AGE) //
+				.buildAsync();
+
+		void removeAllKeysWithPrefix(CryptoPath basePrefix) {
+			ciphertextDirectories.asMap().keySet().removeIf(p -> p.startsWith(basePrefix));
+		}
+
+		void recomputeAllKeysWithPrefix(CryptoPath oldPrefix, CryptoPath newPrefix) {
+			var remappedEntries = new ArrayList<Map.Entry<CryptoPath, CompletableFuture<CiphertextDirectory>>>();
+			ciphertextDirectories.asMap().entrySet().removeIf(e -> {
+				if (e.getKey().startsWith(oldPrefix)) {
+					var remappedPath = newPrefix.resolve(oldPrefix.relativize(e.getKey()));
+					return remappedEntries.add(Map.entry(remappedPath, e.getValue()));
+				} else {
+					return false;
+				}
+			});
+			remappedEntries.forEach(e -> ciphertextDirectories.put(e.getKey(), e.getValue()));
+		}
+
+		CiphertextDirectory putIfAbsent(CryptoPath cleartextPath, CipherDirLoader ifAbsent) throws IOException {
+			var futureMapping = new CompletableFuture<CiphertextDirectory>();
+			var currentMapping = ciphertextDirectories.asMap().putIfAbsent(cleartextPath, futureMapping);
+			if (currentMapping != null) {
+				return currentMapping.join();
+			} else {
+				futureMapping.complete(ifAbsent.load());
+				return futureMapping.join();
+			}
+		}
+
+	}
+
+	@FunctionalInterface
+	interface CipherDirLoader {
+
+		CiphertextDirectory load() throws IOException;
 	}
 
 }
