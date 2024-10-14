@@ -75,7 +75,7 @@ public class CryptoPathMapperTest {
 		Mockito.when(d00.resolve("00")).thenReturn(d0000);
 
 		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
-		Path path = mapper.getCiphertextDir(fileSystem.getRootPath()).path;
+		Path path = mapper.getCiphertextDir(fileSystem.getRootPath()).contentDirPath();
 		Assertions.assertEquals(d0000, path);
 	}
 
@@ -99,7 +99,7 @@ public class CryptoPathMapperTest {
 		Mockito.when(d00.resolve("01")).thenReturn(d0001);
 
 		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
-		Path path = mapper.getCiphertextDir(fileSystem.getPath("/foo")).path;
+		Path path = mapper.getCiphertextDir(fileSystem.getPath("/foo")).contentDirPath();
 		Assertions.assertEquals(d0001, path);
 	}
 
@@ -133,7 +133,7 @@ public class CryptoPathMapperTest {
 		Mockito.when(d00.resolve("02")).thenReturn(d0002);
 
 		CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
-		Path path = mapper.getCiphertextDir(fileSystem.getPath("/foo/bar")).path;
+		Path path = mapper.getCiphertextDir(fileSystem.getPath("/foo/bar")).contentDirPath();
 		Assertions.assertEquals(d0002, path);
 	}
 

@@ -8,7 +8,6 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import com.github.benmanes.caffeine.cache.AsyncCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.io.BaseEncoding;
@@ -27,12 +26,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 import static org.cryptomator.cryptofs.common.Constants.DATA_DIR_NAME;
 
@@ -47,10 +41,10 @@ public class CryptoPathMapper {
 	private final DirectoryIdProvider dirIdProvider;
 	private final LongFileNameProvider longFileNameProvider;
 	private final VaultConfig vaultConfig;
-	private final LoadingCache<DirIdAndName, String> ciphertextNames;
+	private final LoadingCache<CipherNodeNameParameters, String> ciphertextNames;
 	private final ClearToCipherDirCache clearToCipherDirCache;
 
-	private final CiphertextDirectory rootDirectory;
+	private final CipherDir rootDirectory;
 
 	@Inject
 	CryptoPathMapper(@PathToVault Path pathToVault, Cryptor cryptor, DirectoryIdProvider dirIdProvider, LongFileNameProvider longFileNameProvider, VaultConfig vaultConfig) {
@@ -69,7 +63,7 @@ public class CryptoPathMapper {
 	 *
 	 * @param cleartextPath A path
 	 * @throws FileAlreadyExistsException If the node exists
-	 * @throws IOException                If any I/O error occurs while attempting to resolve the ciphertext path
+	 * @throws IOException If any I/O error occurs while attempting to resolve the ciphertext path
 	 */
 	public void assertNonExisting(CryptoPath cleartextPath) throws FileAlreadyExistsException, IOException {
 		try {
@@ -119,13 +113,13 @@ public class CryptoPathMapper {
 		if (parentPath == null) {
 			throw new IllegalArgumentException("Invalid file path (must have a parent): " + cleartextPath);
 		}
-		CiphertextDirectory parent = getCiphertextDir(parentPath);
+		CipherDir parent = getCiphertextDir(parentPath);
 		String cleartextName = cleartextPath.getFileName().toString();
-		return getCiphertextFilePath(parent.path, parent.dirId, cleartextName);
+		return getCiphertextFilePath(parent.contentDirPath(), parent.dirId(), cleartextName);
 	}
 
 	public CiphertextFilePath getCiphertextFilePath(Path parentCiphertextDir, String parentDirId, String cleartextName) {
-		String ciphertextName = ciphertextNames.get(new DirIdAndName(parentDirId, cleartextName));
+		String ciphertextName = ciphertextNames.get(new CipherNodeNameParameters(parentDirId, cleartextName));
 		Path c9rPath = parentCiphertextDir.resolve(ciphertextName);
 		if (ciphertextName.length() > vaultConfig.getShorteningThreshold()) {
 			LongFileNameProvider.DeflatedFileName deflatedFileName = longFileNameProvider.deflate(c9rPath);
@@ -135,13 +129,12 @@ public class CryptoPathMapper {
 		}
 	}
 
-	private String getCiphertextFileName(DirIdAndName dirIdAndName) {
-		return cryptor.fileNameCryptor().encryptFilename(BaseEncoding.base64Url(), dirIdAndName.name, dirIdAndName.dirId.getBytes(StandardCharsets.UTF_8)) + Constants.CRYPTOMATOR_FILE_SUFFIX;
+	private String getCiphertextFileName(CipherNodeNameParameters dirIdAndName) {
+		return cryptor.fileNameCryptor().encryptFilename(BaseEncoding.base64Url(), dirIdAndName.clearNodeName(), dirIdAndName.dirId().getBytes(StandardCharsets.UTF_8)) + Constants.CRYPTOMATOR_FILE_SUFFIX;
 	}
 
 	/**
 	 * TODO: doc doc doc
-	 * @param cleartextPath
 	 */
 	public void invalidatePathMapping(CryptoPath cleartextPath) {
 		clearToCipherDirCache.removeAllKeysWithPrefix(cleartextPath);
@@ -154,12 +147,12 @@ public class CryptoPathMapper {
 		clearToCipherDirCache.recomputeAllKeysWithPrefix(cleartextSrc, cleartextDst);
 	}
 
-	public CiphertextDirectory getCiphertextDir(CryptoPath cleartextPath) throws IOException {
+	public CipherDir getCiphertextDir(CryptoPath cleartextPath) throws IOException {
 		assert cleartextPath.isAbsolute();
 		if (cleartextPath.getParent() == null) {
 			return rootDirectory;
 		} else {
-			CipherDirLoader cipherDirLoaderIfAbsent = () -> {
+			ClearToCipherDirCache.CipherDirLoader cipherDirLoaderIfAbsent = () -> {
 				Path dirFile = getCiphertextFilePath(cleartextPath).getDirFilePath();
 				return resolveDirectory(dirFile);
 			};
@@ -167,113 +160,14 @@ public class CryptoPathMapper {
 		}
 	}
 
-	public CiphertextDirectory resolveDirectory(Path directoryFile) throws IOException {
+	public CipherDir resolveDirectory(Path directoryFile) throws IOException {
 		String dirId = dirIdProvider.load(directoryFile);
 		return resolveDirectory(dirId);
 	}
 
-	private CiphertextDirectory resolveDirectory(String dirId) {
+	private CipherDir resolveDirectory(String dirId) {
 		String dirHash = cryptor.fileNameCryptor().hashDirectoryId(dirId);
 		Path dirPath = dataRoot.resolve(dirHash.substring(0, 2)).resolve(dirHash.substring(2));
-		return new CiphertextDirectory(dirId, dirPath);
+		return new CipherDir(dirId, dirPath);
 	}
-
-	public static class CiphertextDirectory {
-		public final String dirId;
-		public final Path path;
-
-		public CiphertextDirectory(String dirId, Path path) {
-			this.dirId = Objects.requireNonNull(dirId);
-			this.path = Objects.requireNonNull(path);
-		}
-
-		@Override
-		public int hashCode() {
-			return Objects.hash(dirId, path);
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (obj == this) {
-				return true;
-			} else if (obj instanceof CiphertextDirectory other) {
-				return this.dirId.equals(other.dirId) && this.path.equals(other.path);
-			} else {
-				return false;
-			}
-		}
-	}
-
-	private static class DirIdAndName {
-		public final String dirId;
-		public final String name;
-
-		public DirIdAndName(String dirId, String name) {
-			this.dirId = Objects.requireNonNull(dirId);
-			this.name = Objects.requireNonNull(name);
-		}
-
-		@Override
-		public int hashCode() {
-			return Objects.hash(dirId, name);
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (obj == this) {
-				return true;
-			} else if (obj instanceof DirIdAndName other) {
-				return this.dirId.equals(other.dirId) && this.name.equals(other.name);
-			} else {
-				return false;
-			}
-		}
-	}
-
-	static class ClearToCipherDirCache {
-
-		private static final int MAX_CACHED_DIR_PATHS = 5000;
-		private static final Duration MAX_CACHE_AGE = Duration.ofSeconds(20);
-
-		private final AsyncCache<CryptoPath, CiphertextDirectory> ciphertextDirectories = Caffeine.newBuilder() //
-				.maximumSize(MAX_CACHED_DIR_PATHS) //
-				.expireAfterWrite(MAX_CACHE_AGE) //
-				.buildAsync();
-
-		void removeAllKeysWithPrefix(CryptoPath basePrefix) {
-			ciphertextDirectories.asMap().keySet().removeIf(p -> p.startsWith(basePrefix));
-		}
-
-		void recomputeAllKeysWithPrefix(CryptoPath oldPrefix, CryptoPath newPrefix) {
-			var remappedEntries = new ArrayList<Map.Entry<CryptoPath, CompletableFuture<CiphertextDirectory>>>();
-			ciphertextDirectories.asMap().entrySet().removeIf(e -> {
-				if (e.getKey().startsWith(oldPrefix)) {
-					var remappedPath = newPrefix.resolve(oldPrefix.relativize(e.getKey()));
-					return remappedEntries.add(Map.entry(remappedPath, e.getValue()));
-				} else {
-					return false;
-				}
-			});
-			remappedEntries.forEach(e -> ciphertextDirectories.put(e.getKey(), e.getValue()));
-		}
-
-		CiphertextDirectory putIfAbsent(CryptoPath cleartextPath, CipherDirLoader ifAbsent) throws IOException {
-			var futureMapping = new CompletableFuture<CiphertextDirectory>();
-			var currentMapping = ciphertextDirectories.asMap().putIfAbsent(cleartextPath, futureMapping);
-			if (currentMapping != null) {
-				return currentMapping.join();
-			} else {
-				futureMapping.complete(ifAbsent.load());
-				return futureMapping.join();
-			}
-		}
-
-	}
-
-	@FunctionalInterface
-	interface CipherDirLoader {
-
-		CiphertextDirectory load() throws IOException;
-	}
-
 }

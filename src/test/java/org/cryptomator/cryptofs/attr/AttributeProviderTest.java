@@ -8,10 +8,10 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.attr;
 
+import org.cryptomator.cryptofs.CipherDir;
 import org.cryptomator.cryptofs.CiphertextFilePath;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
-import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptofs.Symlinks;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.junit.jupiter.api.Assertions;
@@ -140,7 +140,7 @@ public class AttributeProviderTest {
 		public void setup() throws IOException {
 			Mockito.when(symlinks.resolveRecursively(cleartextPath)).thenReturn(cleartextPath);
 			Mockito.when(pathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.DIRECTORY);
-			Mockito.when(pathMapper.getCiphertextDir(cleartextPath)).thenReturn(new CiphertextDirectory("foo", ciphertextRawPath));
+			Mockito.when(pathMapper.getCiphertextDir(cleartextPath)).thenReturn(new CipherDir("foo", ciphertextRawPath));
 
 			prov = new AttributeProvider(attributeComponentFactory, pathMapper, symlinks);
 		}

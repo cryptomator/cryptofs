@@ -1,9 +1,9 @@
 package org.cryptomator.cryptofs.dir;
 
+import org.cryptomator.cryptofs.CipherDir;
 import org.cryptomator.cryptofs.CryptoFileSystemScoped;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
-import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptofs.common.Constants;
 
 import javax.inject.Inject;
@@ -36,9 +36,9 @@ public class DirectoryStreamFactory {
 		if (closed) {
 			throw new ClosedFileSystemException();
 		}
-		CiphertextDirectory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
-		DirectoryStream<Path> ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path, this::matchesEncryptedContentPattern);
-		var cleartextDirStream = directoryStreamComponentFactory.create(cleartextDir, ciphertextDir.dirId, ciphertextDirStream, filter, streams::remove).directoryStream();
+		CipherDir ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
+		DirectoryStream<Path> ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.contentDirPath(), this::matchesEncryptedContentPattern);
+		var cleartextDirStream = directoryStreamComponentFactory.create(cleartextDir, ciphertextDir.dirId(), ciphertextDirStream, filter, streams::remove).directoryStream();
 		streams.put(cleartextDirStream, ciphertextDirStream);
 		return cleartextDirStream;
 	}
