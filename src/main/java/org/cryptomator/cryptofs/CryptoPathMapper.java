@@ -134,14 +134,17 @@ public class CryptoPathMapper {
 	}
 
 	/**
-	 * TODO: doc doc doc
+	 * Removes the given cleartext path and all cached child paths from the dir cache
+	 * @param cleartextPath the root cleartext path, for which all mappings starting with it will be removed
 	 */
 	public void invalidatePathMapping(CryptoPath cleartextPath) {
 		clearToCipherDirCache.removeAllKeysWithPrefix(cleartextPath);
 	}
 
 	/**
-	 * TODO: doc doc doc
+	 * Moves the given cleartext path and all cached child paths in the dir cache
+	 * @param cleartextSrc the root cleartext path, for which alle mappings starting with it will be moved
+	 * @param cleartextDst the destination cleartext path. The path itself and all childs will be adjusted to start with cleartextDst.
 	 */
 	public void movePathMapping(CryptoPath cleartextSrc, CryptoPath cleartextDst) {
 		clearToCipherDirCache.recomputeAllKeysWithPrefix(cleartextSrc, cleartextDst);
