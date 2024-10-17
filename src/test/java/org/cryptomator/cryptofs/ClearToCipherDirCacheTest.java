@@ -30,7 +30,7 @@ public class ClearToCipherDirCacheTest {
 		var cipherDir = Mockito.mock(CipherDir.class);
 		Mockito.when(dirLoader.load()).thenReturn(cipherDir);
 
-		var result = cache.putIfAbsent(clearPath, dirLoader);
+		var result = cache.get(clearPath, dirLoader);
 		Assertions.assertEquals(cipherDir, result);
 		Mockito.verify(dirLoader).load();
 	}
@@ -40,8 +40,8 @@ public class ClearToCipherDirCacheTest {
 		Mockito.when(dirLoader.load()).thenReturn(Mockito.mock(CipherDir.class));
 		var dirLoader2 = Mockito.mock(ClearToCipherDirCache.CipherDirLoader.class);
 
-		var result = cache.putIfAbsent(clearPath, dirLoader);
-		var result2 = cache.putIfAbsent(clearPath, dirLoader2);
+		var result = cache.get(clearPath, dirLoader);
+		var result2 = cache.get(clearPath, dirLoader2);
 		Assertions.assertEquals(result2, result);
 		Mockito.verify(dirLoader2, Mockito.never()).load();
 	}
@@ -55,9 +55,9 @@ public class ClearToCipherDirCacheTest {
 		public void entryRemovedOnPrefixSuccess() throws IOException {
 			Mockito.when(clearPath.startsWith(prefixPath)).thenReturn(true);
 
-			cache.putIfAbsent(clearPath, dirLoader); //triggers loader
+			cache.get(clearPath, dirLoader); //triggers loader
 			cache.removeAllKeysWithPrefix(prefixPath);
-			cache.putIfAbsent(clearPath, dirLoader); //triggers loader
+			cache.get(clearPath, dirLoader); //triggers loader
 
 			Mockito.verify(dirLoader, Mockito.times(2)).load();
 		}
@@ -66,9 +66,9 @@ public class ClearToCipherDirCacheTest {
 		public void entryStaysOnPrefixFailure() throws IOException {
 			Mockito.when(clearPath.startsWith(prefixPath)).thenReturn(false);
 
-			cache.putIfAbsent(clearPath, dirLoader); //triggers loader
+			cache.get(clearPath, dirLoader); //triggers loader
 			cache.removeAllKeysWithPrefix(prefixPath);
-			cache.putIfAbsent(clearPath, dirLoader); //does not trigger
+			cache.get(clearPath, dirLoader); //does not trigger
 
 			Mockito.verify(dirLoader).load();
 		}
@@ -95,10 +95,10 @@ public class ClearToCipherDirCacheTest {
 		public void entryRemappedOnPrefixSuccess() throws IOException {
 			Mockito.when(clearPath.startsWith(oldPrefixPath)).thenReturn(true);
 
-			cache.putIfAbsent(clearPath, dirLoader); //triggers loader
+			cache.get(clearPath, dirLoader); //triggers loader
 			cache.recomputeAllKeysWithPrefix(oldPrefixPath, newPrefixPath);
-			cache.putIfAbsent(clearPath, dirLoader); //does trigger
-			cache.putIfAbsent(newClearPath, dirLoader); //does not trigger
+			cache.get(clearPath, dirLoader); //does trigger
+			cache.get(newClearPath, dirLoader); //does not trigger
 
 			Mockito.verify(dirLoader, Mockito.times(2)).load();
 		}
@@ -107,10 +107,10 @@ public class ClearToCipherDirCacheTest {
 		public void entryUntouchedOnPrefixFailure() throws IOException {
 			Mockito.when(clearPath.startsWith(oldPrefixPath)).thenReturn(false);
 
-			cache.putIfAbsent(clearPath, dirLoader); //triggers loader
+			cache.get(clearPath, dirLoader); //triggers loader
 			cache.recomputeAllKeysWithPrefix(oldPrefixPath, newPrefixPath);
-			cache.putIfAbsent(clearPath, dirLoader); //does not trigger
-			cache.putIfAbsent(newClearPath, dirLoader); //does trigger
+			cache.get(clearPath, dirLoader); //does not trigger
+			cache.get(newClearPath, dirLoader); //does trigger
 
 			Mockito.verify(dirLoader, Mockito.times(2)).load();
 		}

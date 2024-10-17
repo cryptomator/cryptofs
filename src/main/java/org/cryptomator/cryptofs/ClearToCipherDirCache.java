@@ -24,10 +24,6 @@ public class ClearToCipherDirCache {
 	 * @param basePrefix The prefix key which the keys are checked against
 	 */
 	void removeAllKeysWithPrefix(CryptoPath basePrefix) {
-		//TODO: this a expensive operation
-		// with a cachesize of _n_, comparsion cost of _x_ and removal costs of y
-		// worstcase runtime is n*(x+y)
-		// worstcase example: recursivley deleting a deeply nested dir, where all child dirs are cached
 		ciphertextDirectories.asMap().keySet().removeIf(p -> p.startsWith(basePrefix));
 	}
 
@@ -39,11 +35,6 @@ public class ClearToCipherDirCache {
 	 * @param newPrefix the prefix key which replaces {@code oldPrefix}
 	 */
 	void recomputeAllKeysWithPrefix(CryptoPath oldPrefix, CryptoPath newPrefix) {
-		//TODO: this is a very expensive operation
-		//  with a  cache size of _n_, comparsion cost of _x_, removal costs of y and insertion costs of z
-		//  worstcase runtime is n*x + n*y + n*z
-		//  worstcase example: moving the root of a deeply nested dir, where all child dirs are cached
-		//  Structure: /foo/bar/foo/bar/foo/bar...; Call: remapWithPrefix(/foo,/seb)
 		var remappedEntries = new ArrayList<CacheEntry>();
 		ciphertextDirectories.asMap().entrySet().removeIf(e -> {
 			if (e.getKey().startsWith(oldPrefix)) {
@@ -56,7 +47,15 @@ public class ClearToCipherDirCache {
 		remappedEntries.forEach(e -> ciphertextDirectories.put(e.clearPath(), e.cipherDir()));
 	}
 
-	CipherDir putIfAbsent(CryptoPath cleartextPath, CipherDirLoader ifAbsent) throws IOException {
+
+	/**
+	 * Gets the cipher directory for the given cleartext path. If a cache miss occurs, the mapping is loaded with the {@code ifAbsent} function.
+	 * @param cleartextPath Cleartext path key
+	 * @param ifAbsent Function to compute the (cleartextPath, cipherDir) mapping on a cache miss.
+	 * @return a {@link CipherDir}, containing the dirId and the ciphertext content directory path
+	 * @throws IOException if the loading function throws an IOExcecption
+	 */
+	CipherDir get(CryptoPath cleartextPath, CipherDirLoader ifAbsent) throws IOException {
 		var futureMapping = new CompletableFuture<CipherDir>();
 		var currentMapping = ciphertextDirectories.asMap().putIfAbsent(cleartextPath, futureMapping);
 		if (currentMapping != null) {

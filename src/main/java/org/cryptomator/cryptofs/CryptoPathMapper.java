@@ -156,7 +156,7 @@ public class CryptoPathMapper {
 				Path dirFile = getCiphertextFilePath(cleartextPath).getDirFilePath();
 				return resolveDirectory(dirFile);
 			};
-			return clearToCipherDirCache.putIfAbsent(cleartextPath, cipherDirLoaderIfAbsent);
+			return clearToCipherDirCache.get(cleartextPath, cipherDirLoaderIfAbsent);
 		}
 	}
 
