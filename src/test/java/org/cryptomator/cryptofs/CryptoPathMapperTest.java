@@ -334,7 +334,113 @@ public class CryptoPathMapperTest {
 			Assertions.assertEquals(CiphertextFileType.FILE, type);
 		}
 
+	}
 
+	@Nested
+	public class InvalidateOrMovePathMapping {
+
+		Path d00 = Mockito.mock(Path.class);
+		Path d0000 = Mockito.mock(Path.class, "d/00/00");
+		Path d0000oof = Mockito.mock(Path.class, "d/00/00/oof.c9r");
+		Path d0000oofdirFile = Mockito.mock(Path.class, "d/00/00/oof.c9r/dir.c9r");
+		Path d0001 = Mockito.mock(Path.class, "d/00/01");
+		Path d0001rab = Mockito.mock(Path.class, "d/00/01/rab.c9r");
+		Path d0000rabdirFile = Mockito.mock(Path.class, "d/00/00/rab.c9r/dir.c9r");
+		Path d0002 = Mockito.mock(Path.class);
+		Path d0000kik = Mockito.mock(Path.class, "d/00/00/kik.c9r");
+		Path d0000kikdirFile = Mockito.mock(Path.class, "d/00/00/kik.c9r/dir.c9r");
+		Path d0003 = Mockito.mock(Path.class, "d/00/03/kik.c9r");
+
+		@BeforeEach
+		void beforeEach() throws IOException {
+			Mockito.when(dataRoot.resolve("00")).thenReturn(d00);
+			Mockito.when(fileNameCryptor.hashDirectoryId("")).thenReturn("0000");
+
+			// /foo
+			Mockito.when(d00.resolve("00")).thenReturn(d0000);
+			Mockito.when(d0000.resolve("oof.c9r")).thenReturn(d0000oof);
+			Mockito.when(d0000oof.resolve("dir.c9r")).thenReturn(d0000oofdirFile);
+			Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("foo"), Mockito.any())).thenReturn("oof");
+			Mockito.when(dirIdProvider.load(d0000oofdirFile)).thenReturn("1");
+			Mockito.when(fileNameCryptor.hashDirectoryId("1")).thenReturn("0001");
+
+			// /kik
+			Mockito.when(d0000.resolve("kik.c9r")).thenReturn(d0000kik);
+			Mockito.when(d0000kik.resolve("dir.c9r")).thenReturn(d0000kikdirFile);
+			Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("kik"), Mockito.any())).thenReturn("kik");
+			Mockito.when(dirIdProvider.load(d0000kikdirFile)).thenReturn("3");
+			Mockito.when(fileNameCryptor.hashDirectoryId("3")).thenReturn("0003");
+
+			// /foo/bar
+			Mockito.when(d00.resolve("01")).thenReturn(d0001);
+			Mockito.when(d0001.resolve("rab.c9r")).thenReturn(d0001rab);
+			Mockito.when(d0001rab.resolve("dir.c9r")).thenReturn(d0000rabdirFile);
+			Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.eq("bar"), Mockito.any())).thenReturn("rab");
+			Mockito.when(dirIdProvider.load(d0000rabdirFile)).thenReturn("2");
+			Mockito.when(fileNameCryptor.hashDirectoryId("2")).thenReturn("0002");
+
+			Mockito.when(d00.resolve("02")).thenReturn(d0002);
+			Mockito.when(d00.resolve("03")).thenReturn(d0003);
+		}
+
+		@Test
+		@DisplayName("Invalidating node causes cache miss on next retrieval")
+		public void testRemovedEntryMiss() throws IOException {
+			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
+			var fooPath = fileSystem.getPath("/foo");
+			mapper.getCiphertextDir(fooPath);
+			mapper.invalidatePathMapping(fooPath);
+			var mapperSpy = Mockito.spy(mapper);
+			mapperSpy.getCiphertextDir(fooPath);
+			Mockito.verify(mapperSpy, Mockito.atLeastOnce()).getCiphertextFilePath(fooPath); //loader is triggered, hence we have a cache miss
+		}
+
+		@Test
+		@DisplayName("Invalidating node also invalidates all children")
+		public void testRemovedEntryChildMiss() throws IOException {
+			var fooPath = fileSystem.getPath("/foo");
+			var fooBarPath = fileSystem.getPath("/foo/bar");
+
+			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
+			mapper.getCiphertextDir(fooPath);
+			mapper.getCiphertextDir(fooBarPath);
+			mapper.invalidatePathMapping(fooPath);
+			var mapperSpy = Mockito.spy(mapper);
+			mapperSpy.getCiphertextDir(fooBarPath);
+			Mockito.verify(mapperSpy, Mockito.atLeastOnce()).getCiphertextFilePath(fooBarPath); //loader is triggered, hence we have a cache miss
+			mapperSpy.getCiphertextDir(fooBarPath);
+		}
+
+		@Test
+		@DisplayName("Moving node causes cache miss for oldPath and cache hit for new")
+		public void testMoveEntryOldMissNewHit() throws IOException {
+			var fooPath = fileSystem.getPath("/foo");
+			var kikPath = fileSystem.getPath("/kik");
+
+			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
+			mapper.getCiphertextDir(fooPath);
+			mapper.movePathMapping(fooPath, kikPath);
+			var mapperSpy = Mockito.spy(mapper);
+			mapperSpy.getCiphertextDir(fooPath);
+			Mockito.verify(mapperSpy, Mockito.atLeastOnce()).getCiphertextFilePath(fooPath); //loader is triggered, hence we have a cache miss
+			Mockito.verify(mapperSpy, Mockito.never()).getCiphertextFilePath(kikPath); //loader is not triggered, hence we have a cache hit
+		}
+
+		@Test
+		@DisplayName("Moving node causes cache miss for childs of oldPath")
+		public void testMoveEntryOldChildMiss() throws IOException {
+			var fooPath = fileSystem.getPath("/foo");
+			var fooBarPath = fileSystem.getPath("/foo/bar");
+			var kikPath = fileSystem.getPath("/kik");
+
+			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig);
+			mapper.getCiphertextDir(fooPath);
+			mapper.getCiphertextDir(fooBarPath);
+			mapper.movePathMapping(fooPath, kikPath);
+			var mapperSpy = Mockito.spy(mapper);
+			mapperSpy.getCiphertextDir(fooBarPath);
+			Mockito.verify(mapperSpy, Mockito.atLeastOnce()).getCiphertextFilePath(fooBarPath); //loader is triggered, hence we have a cache miss
+		}
 	}
 
 }
