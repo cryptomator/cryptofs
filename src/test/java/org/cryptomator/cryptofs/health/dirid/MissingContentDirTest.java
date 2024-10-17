@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.health.dirid;
 
+import org.cryptomator.cryptofs.CipherDir;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.DirectoryIdBackup;
 import org.cryptomator.cryptofs.VaultConfig;
@@ -60,7 +61,7 @@ public class MissingContentDirTest {
 			result.fix(pathToVault, cryptor);
 
 			var expectedPath = pathToVault.resolve("d/ri/diculous-32-char-pseudo-hashhh");
-			ArgumentMatcher<CryptoPathMapper.CiphertextDirectory> cipherDirMatcher = obj -> obj.dirId.equals(dirId) && obj.path.endsWith(expectedPath);
+			ArgumentMatcher<CipherDir> cipherDirMatcher = obj -> obj.dirId().equals(dirId) && obj.contentDirPath().endsWith(expectedPath);
 			dirIdBackupMock.verify(() -> DirectoryIdBackup.backupManually(Mockito.eq(cryptor), Mockito.argThat(cipherDirMatcher)), Mockito.times(1));
 			var attr = Assertions.assertDoesNotThrow(() -> Files.readAttributes(expectedPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS));
 			Assertions.assertTrue(attr.isDirectory());

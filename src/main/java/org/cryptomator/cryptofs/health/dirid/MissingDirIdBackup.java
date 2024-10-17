@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.health.dirid;
 
+import org.cryptomator.cryptofs.CipherDir;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.DirectoryIdBackup;
 import org.cryptomator.cryptofs.VaultConfig;
@@ -30,7 +31,7 @@ public record MissingDirIdBackup(String dirId, Path contentDir) implements Diagn
 	//visible for testing
 	void fix(Path pathToVault, Cryptor cryptor) throws IOException {
 		Path absCipherDir = pathToVault.resolve(contentDir);
-		DirectoryIdBackup.backupManually(cryptor, new CryptoPathMapper.CiphertextDirectory(dirId, absCipherDir));
+		DirectoryIdBackup.backupManually(cryptor, new CipherDir(dirId, absCipherDir));
 	}
 
 	@Override

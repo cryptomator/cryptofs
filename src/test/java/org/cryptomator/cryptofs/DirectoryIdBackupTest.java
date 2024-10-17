@@ -22,7 +22,7 @@ public class DirectoryIdBackupTest {
 	Path contentPath;
 
 	private String dirId = "12345678";
-	private CryptoPathMapper.CiphertextDirectory cipherDirObject;
+	private CipherDir cipherDirObject;
 	private EncryptingWritableByteChannel encChannel;
 	private Cryptor cryptor;
 
@@ -31,7 +31,7 @@ public class DirectoryIdBackupTest {
 
 	@BeforeEach
 	public void init() {
-		cipherDirObject = new CryptoPathMapper.CiphertextDirectory(dirId, contentPath);
+		cipherDirObject = new CipherDir(dirId, contentPath);
 		cryptor = Mockito.mock(Cryptor.class);
 		encChannel = Mockito.mock(EncryptingWritableByteChannel.class);
 
