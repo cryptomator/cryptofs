@@ -1,6 +1,6 @@
 package org.cryptomator.cryptofs.dir;
 
-import org.cryptomator.cryptofs.CipherDir;
+import org.cryptomator.cryptofs.CiphertextDirectory;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.junit.jupiter.api.Assertions;
@@ -55,7 +55,7 @@ public class DirectoryStreamFactoryTest {
 		String dirId = "dirIdAbc";
 		Path dirPath = mock(Path.class, "dirAbc");
 		when(dirPath.getFileSystem()).thenReturn(fileSystem);
-		when(cryptoPathMapper.getCiphertextDir(path)).thenReturn(new CipherDir(dirId, dirPath));
+		when(cryptoPathMapper.getCiphertextDir(path)).thenReturn(new CiphertextDirectory(dirId, dirPath));
 		DirectoryStream<Path> stream = mock(DirectoryStream.class);
 		when(provider.newDirectoryStream(same(dirPath), any())).thenReturn(stream);
 
@@ -74,8 +74,8 @@ public class DirectoryStreamFactoryTest {
 		when(dirPathA.getFileSystem()).thenReturn(fileSystem);
 		Path dirPathB = mock(Path.class, "dirPathB");
 		when(dirPathB.getFileSystem()).thenReturn(fileSystem);
-		when(cryptoPathMapper.getCiphertextDir(pathA)).thenReturn(new CipherDir("dirIdA", dirPathA));
-		when(cryptoPathMapper.getCiphertextDir(pathB)).thenReturn(new CipherDir("dirIdB", dirPathB));
+		when(cryptoPathMapper.getCiphertextDir(pathA)).thenReturn(new CiphertextDirectory("dirIdA", dirPathA));
+		when(cryptoPathMapper.getCiphertextDir(pathB)).thenReturn(new CiphertextDirectory("dirIdB", dirPathB));
 		DirectoryStream<Path> streamA = mock(DirectoryStream.class, "streamA");
 		DirectoryStream<Path> streamB = mock(DirectoryStream.class, "streamB");
 		when(provider.newDirectoryStream(same(dirPathA), any())).thenReturn(streamA);

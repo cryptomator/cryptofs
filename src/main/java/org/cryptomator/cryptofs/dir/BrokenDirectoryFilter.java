@@ -28,7 +28,7 @@ class BrokenDirectoryFilter {
 		if (Files.isRegularFile(dirFile)) {
 			final Path dirPath;
 			try {
-				dirPath = cryptoPathMapper.resolveDirectory(dirFile).contentDirPath();
+				dirPath = cryptoPathMapper.resolveDirectory(dirFile).path();
 			} catch (IOException e) {
 				LOG.warn("Broken directory file: " + dirFile, e);
 				return Stream.empty();

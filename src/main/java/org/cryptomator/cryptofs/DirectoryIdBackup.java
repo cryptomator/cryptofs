@@ -26,15 +26,15 @@ public class DirectoryIdBackup {
 	}
 
 	/**
-	 * Performs the backup operation for the given {@link CipherDir} object.
+	 * Performs the backup operation for the given {@link CiphertextDirectory} object.
 	 * <p>
-	 * The directory id is written via an encrypting channel to the file {@link CipherDir#contentDirPath()} /{@value Constants#DIR_BACKUP_FILE_NAME}.
+	 * The directory id is written via an encrypting channel to the file {@link CiphertextDirectory#path()} /{@value Constants#DIR_BACKUP_FILE_NAME}.
 	 *
 	 * @param ciphertextDirectory The cipher dir object containing the dir id and the encrypted content root
 	 * @throws IOException if an IOException is raised during the write operation
 	 */
-	public void execute(CipherDir ciphertextDirectory) throws IOException {
-		try (var channel = Files.newByteChannel(ciphertextDirectory.contentDirPath().resolve(Constants.DIR_BACKUP_FILE_NAME), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE); //
+	public void execute(CiphertextDirectory ciphertextDirectory) throws IOException {
+		try (var channel = Files.newByteChannel(ciphertextDirectory.path().resolve(Constants.DIR_BACKUP_FILE_NAME), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE); //
 			 var encryptingChannel = wrapEncryptionAround(channel, cryptor)) {
 			encryptingChannel.write(ByteBuffer.wrap(ciphertextDirectory.dirId().getBytes(StandardCharsets.US_ASCII)));
 		}
@@ -44,10 +44,10 @@ public class DirectoryIdBackup {
 	 * Static method to explicitly back up the directory id for a specified ciphertext directory.
 	 *
 	 * @param cryptor The cryptor to be used
-	 * @param ciphertextDirectory A {@link CipherDir} for which the dirId should be back up'd.
+	 * @param ciphertextDirectory A {@link CiphertextDirectory} for which the dirId should be back up'd.
 	 * @throws IOException when the dirId file already exists, or it cannot be written to.
 	 */
-	public static void backupManually(Cryptor cryptor, CipherDir ciphertextDirectory) throws IOException {
+	public static void backupManually(Cryptor cryptor, CiphertextDirectory ciphertextDirectory) throws IOException {
 		new DirectoryIdBackup(cryptor).execute(ciphertextDirectory);
 	}
 

@@ -53,7 +53,7 @@ public class AttributeProvider {
 	private Path getCiphertextPath(CryptoPath path, CiphertextFileType type) throws IOException {
 		return switch (type) {
 			case SYMLINK -> pathMapper.getCiphertextFilePath(path).getSymlinkFilePath();
-			case DIRECTORY -> pathMapper.getCiphertextDir(path).contentDirPath();
+			case DIRECTORY -> pathMapper.getCiphertextDir(path).path();
 			case FILE -> pathMapper.getCiphertextFilePath(path).getFilePath();
 		};
 	}

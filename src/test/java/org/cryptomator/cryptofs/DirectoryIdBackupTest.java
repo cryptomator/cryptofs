@@ -22,7 +22,7 @@ public class DirectoryIdBackupTest {
 	Path contentPath;
 
 	private String dirId = "12345678";
-	private CipherDir cipherDirObject;
+	private CiphertextDirectory ciphertextDirectoryObject;
 	private EncryptingWritableByteChannel encChannel;
 	private Cryptor cryptor;
 
@@ -31,7 +31,7 @@ public class DirectoryIdBackupTest {
 
 	@BeforeEach
 	public void init() {
-		cipherDirObject = new CipherDir(dirId, contentPath);
+		ciphertextDirectoryObject = new CiphertextDirectory(dirId, contentPath);
 		cryptor = Mockito.mock(Cryptor.class);
 		encChannel = Mockito.mock(EncryptingWritableByteChannel.class);
 
@@ -44,7 +44,7 @@ public class DirectoryIdBackupTest {
 			backupMock.when(() -> DirectoryIdBackup.wrapEncryptionAround(Mockito.any(), Mockito.eq(cryptor))).thenReturn(encChannel);
 			Mockito.when(encChannel.write(Mockito.any())).thenReturn(0);
 
-			dirIdBackup.execute(cipherDirObject);
+			dirIdBackup.execute(ciphertextDirectoryObject);
 
 			Assertions.assertTrue(Files.exists(contentPath.resolve(Constants.DIR_BACKUP_FILE_NAME)));
 		}
@@ -58,7 +58,7 @@ public class DirectoryIdBackupTest {
 		try (MockedStatic<DirectoryIdBackup> backupMock = Mockito.mockStatic(DirectoryIdBackup.class)) {
 			backupMock.when(() -> DirectoryIdBackup.wrapEncryptionAround(Mockito.any(), Mockito.eq(cryptor))).thenReturn(encChannel);
 
-			dirIdBackup.execute(cipherDirObject);
+			dirIdBackup.execute(ciphertextDirectoryObject);
 
 			Mockito.verify(encChannel, Mockito.times(1)).write(Mockito.argThat(b -> b.equals(expectedWrittenContent)));
 		}

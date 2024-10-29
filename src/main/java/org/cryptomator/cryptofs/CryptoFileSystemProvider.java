@@ -155,7 +155,7 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 			Path vaultCipherRootPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(dirHash.substring(0, 2)).resolve(dirHash.substring(2));
 			Files.createDirectories(vaultCipherRootPath);
 			// create dirId backup:
-			DirectoryIdBackup.backupManually(cryptor, new CipherDir(Constants.ROOT_DIR_ID, vaultCipherRootPath));
+			DirectoryIdBackup.backupManually(cryptor, new CiphertextDirectory(Constants.ROOT_DIR_ID, vaultCipherRootPath));
 		} finally {
 			Arrays.fill(rawKey, (byte) 0x00);
 		}

@@ -9,25 +9,25 @@ import org.mockito.Mockito;
 import java.io.IOException;
 import java.nio.file.Path;
 
-public class ClearToCipherDirCacheTest {
+public class CiphertextDirCacheTest {
 
-	ClearToCipherDirCache cache;
+	CiphertextDirCache cache;
 	CryptoPath clearPath;
-	ClearToCipherDirCache.CipherDirLoader dirLoader;
+	CiphertextDirCache.CipherDirLoader dirLoader;
 
 
 	@BeforeEach
 	public void beforeEach() throws IOException {
-		cache = new ClearToCipherDirCache();
+		cache = new CiphertextDirCache();
 		clearPath = Mockito.mock(CryptoPath.class);
-		dirLoader = Mockito.mock(ClearToCipherDirCache.CipherDirLoader.class);
-		var cipherDir = Mockito.mock(CipherDir.class);
+		dirLoader = Mockito.mock(CiphertextDirCache.CipherDirLoader.class);
+		var cipherDir = Mockito.mock(CiphertextDirectory.class);
 		Mockito.when(dirLoader.load()).thenReturn(cipherDir);
 	}
 
 	@Test
 	public void testPuttingNewEntryTriggersLoader() throws IOException {
-		var cipherDir = Mockito.mock(CipherDir.class);
+		var cipherDir = Mockito.mock(CiphertextDirectory.class);
 		Mockito.when(dirLoader.load()).thenReturn(cipherDir);
 
 		var result = cache.get(clearPath, dirLoader);
@@ -37,8 +37,8 @@ public class ClearToCipherDirCacheTest {
 
 	@Test
 	public void testPuttingKnownEntryDoesNotTriggerLoader() throws IOException {
-		Mockito.when(dirLoader.load()).thenReturn(Mockito.mock(CipherDir.class));
-		var dirLoader2 = Mockito.mock(ClearToCipherDirCache.CipherDirLoader.class);
+		Mockito.when(dirLoader.load()).thenReturn(Mockito.mock(CiphertextDirectory.class));
+		var dirLoader2 = Mockito.mock(CiphertextDirCache.CipherDirLoader.class);
 
 		var result = cache.get(clearPath, dirLoader);
 		var result2 = cache.get(clearPath, dirLoader2);

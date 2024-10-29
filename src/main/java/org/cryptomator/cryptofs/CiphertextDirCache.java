@@ -8,12 +8,15 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 
-public class ClearToCipherDirCache {
+/**
+ * Caches for the cleartext path of a directory its ciphertext path to the content directory.
+ */
+public class CiphertextDirCache {
 
 	private static final int MAX_CACHED_PATHS = 5000;
 	private static final Duration MAX_CACHE_AGE = Duration.ofSeconds(20);
 
-	private final AsyncCache<CryptoPath, CipherDir> ciphertextDirectories = Caffeine.newBuilder() //
+	private final AsyncCache<CryptoPath, CiphertextDirectory> ciphertextDirectories = Caffeine.newBuilder() //
 			.maximumSize(MAX_CACHED_PATHS) //
 			.expireAfterWrite(MAX_CACHE_AGE) //
 			.buildAsync();
@@ -52,11 +55,11 @@ public class ClearToCipherDirCache {
 	 * Gets the cipher directory for the given cleartext path. If a cache miss occurs, the mapping is loaded with the {@code ifAbsent} function.
 	 * @param cleartextPath Cleartext path key
 	 * @param ifAbsent Function to compute the (cleartextPath, cipherDir) mapping on a cache miss.
-	 * @return a {@link CipherDir}, containing the dirId and the ciphertext content directory path
+	 * @return a {@link CiphertextDirectory}, containing the dirId and the ciphertext content directory path
 	 * @throws IOException if the loading function throws an IOExcecption
 	 */
-	CipherDir get(CryptoPath cleartextPath, CipherDirLoader ifAbsent) throws IOException {
-		var futureMapping = new CompletableFuture<CipherDir>();
+	CiphertextDirectory get(CryptoPath cleartextPath, CipherDirLoader ifAbsent) throws IOException {
+		var futureMapping = new CompletableFuture<CiphertextDirectory>();
 		var currentMapping = ciphertextDirectories.asMap().putIfAbsent(cleartextPath, futureMapping);
 		if (currentMapping != null) {
 			return currentMapping.join();
@@ -69,10 +72,10 @@ public class ClearToCipherDirCache {
 	@FunctionalInterface
 	interface CipherDirLoader {
 
-		CipherDir load() throws IOException;
+		CiphertextDirectory load() throws IOException;
 	}
 
-	private record CacheEntry(CryptoPath clearPath, CompletableFuture<CipherDir> cipherDir) {
+	private record CacheEntry(CryptoPath clearPath, CompletableFuture<CiphertextDirectory> cipherDir) {
 
 	}
 
