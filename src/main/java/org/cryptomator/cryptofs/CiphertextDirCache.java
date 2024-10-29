@@ -56,7 +56,7 @@ public class CiphertextDirCache {
 	 * @param cleartextPath Cleartext path key
 	 * @param ifAbsent Function to compute the (cleartextPath, cipherDir) mapping on a cache miss.
 	 * @return a {@link CiphertextDirectory}, containing the dirId and the ciphertext content directory path
-	 * @throws IOException if the loading function throws an IOExcecption
+	 * @throws IOException if the loading function throws an IOException
 	 */
 	CiphertextDirectory get(CryptoPath cleartextPath, CipherDirLoader ifAbsent) throws IOException {
 		var futureMapping = new CompletableFuture<CiphertextDirectory>();

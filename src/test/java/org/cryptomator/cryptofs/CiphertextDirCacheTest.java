@@ -87,8 +87,8 @@ public class CiphertextDirCacheTest {
 			newClearPath = Mockito.mock(CryptoPath.class);
 			oldPrefixPath = Mockito.mock(CryptoPath.class);
 			newPrefixPath = Mockito.mock(CryptoPath.class);
-			Mockito.when(oldPrefixPath.relativize(Mockito.any())).thenReturn(oldPrefixPath);
-			Mockito.when(newPrefixPath.resolve((Path) Mockito.any())).thenReturn(newClearPath);
+			Mockito.when(oldPrefixPath.relativize(Mockito.any(Path.class))).thenReturn(oldPrefixPath);
+			Mockito.when(newPrefixPath.resolve(Mockito.any(Path.class))).thenReturn(newClearPath);
 		}
 
 		@Test
