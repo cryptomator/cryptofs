@@ -1,7 +1,7 @@
 package org.cryptomator.cryptofs.health.dirid;
 
 import com.google.common.io.BaseEncoding;
-import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.CiphertextDirectory;
 import org.cryptomator.cryptofs.DirectoryIdBackup;
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
@@ -115,7 +115,7 @@ public class OrphanContentDir implements DiagnosticResult {
 		Files.deleteIfExists(orphanedDir.resolve(Constants.DIR_BACKUP_FILE_NAME));
 		try (var nonCryptomatorFiles = Files.newDirectoryStream(orphanedDir)) {
 			for (Path p : nonCryptomatorFiles) {
-				Files.move(p, stepParentDir.path.resolve(p.getFileName()), LinkOption.NOFOLLOW_LINKS);
+				Files.move(p, stepParentDir.path().resolve(p.getFileName()), LinkOption.NOFOLLOW_LINKS);
 			}
 		}
 		Files.delete(orphanedDir);
@@ -154,7 +154,7 @@ public class OrphanContentDir implements DiagnosticResult {
 	}
 
 	// visible for testing
-	CryptoPathMapper.CiphertextDirectory prepareStepParent(Path dataDir, Path cipherRecoveryDir, Cryptor cryptor, String clearStepParentDirName) throws IOException {
+	CiphertextDirectory prepareStepParent(Path dataDir, Path cipherRecoveryDir, Cryptor cryptor, String clearStepParentDirName) throws IOException {
 		//create "stepparent" directory to move orphaned files to
 		String cipherStepParentDirName = encrypt(cryptor.fileNameCryptor(), clearStepParentDirName, Constants.RECOVERY_DIR_ID);
 		Path cipherStepParentDirFile = cipherRecoveryDir.resolve(cipherStepParentDirName + "/" + Constants.DIR_FILE_NAME);
@@ -169,7 +169,7 @@ public class OrphanContentDir implements DiagnosticResult {
 		String stepParentDirHash = cryptor.fileNameCryptor().hashDirectoryId(stepParentUUID);
 		Path stepParentDir = dataDir.resolve(stepParentDirHash.substring(0, 2)).resolve(stepParentDirHash.substring(2)).toAbsolutePath();
 		Files.createDirectories(stepParentDir);
-		var stepParentCipherDir = new CryptoPathMapper.CiphertextDirectory(stepParentUUID, stepParentDir);
+		var stepParentCipherDir = new CiphertextDirectory(stepParentUUID, stepParentDir);
 		//only if it does not exist
 		try {
 			DirectoryIdBackup.backupManually(cryptor, stepParentCipherDir);
@@ -215,11 +215,11 @@ public class OrphanContentDir implements DiagnosticResult {
 	}
 
 	// visible for testing
-	void adoptOrphanedResource(Path oldCipherPath, String newClearName, boolean isShortened, CryptoPathMapper.CiphertextDirectory stepParentDir, FileNameCryptor cryptor, MessageDigest sha1) throws IOException {
-		var newCipherName = encrypt(cryptor, newClearName, stepParentDir.dirId);
+	void adoptOrphanedResource(Path oldCipherPath, String newClearName, boolean isShortened, CiphertextDirectory stepParentDir, FileNameCryptor cryptor, MessageDigest sha1) throws IOException {
+		var newCipherName = encrypt(cryptor, newClearName, stepParentDir.dirId());
 		if (isShortened) {
 			var deflatedName = BaseEncoding.base64Url().encode(sha1.digest(newCipherName.getBytes(StandardCharsets.UTF_8))) + Constants.DEFLATED_FILE_SUFFIX;
-			Path targetPath = stepParentDir.path.resolve(deflatedName);
+			Path targetPath = stepParentDir.path().resolve(deflatedName);
 			Files.move(oldCipherPath, targetPath);
 
 			//adjust name.c9s
@@ -227,7 +227,7 @@ public class OrphanContentDir implements DiagnosticResult {
 				fc.write(ByteBuffer.wrap(newCipherName.getBytes(StandardCharsets.UTF_8)));
 			}
 		} else {
-			Path targetPath = stepParentDir.path.resolve(newCipherName);
+			Path targetPath = stepParentDir.path().resolve(newCipherName);
 			Files.move(oldCipherPath, targetPath);
 		}
 	}

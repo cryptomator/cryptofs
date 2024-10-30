@@ -60,7 +60,7 @@ abstract sealed class AbstractCryptoFileAttributeView implements FileAttributeVi
 					yield getCiphertextPath(resolved);
 				}
 			case DIRECTORY:
-				yield pathMapper.getCiphertextDir(path).path;
+				yield pathMapper.getCiphertextDir(path).path();
 			case FILE:
 				yield pathMapper.getCiphertextFilePath(path).getFilePath();
 		};
