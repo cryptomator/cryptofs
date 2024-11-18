@@ -1,6 +1,6 @@
 package org.cryptomator.cryptofs.health.dirid;
 
-import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.CiphertextDirectory;
 import org.cryptomator.cryptofs.DirectoryIdBackup;
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -43,7 +43,7 @@ public class MissingDirIdBackupTest {
 			result.fix(pathToVault, cryptor);
 
 			var expectedPath = pathToVault.resolve(cipherDir);
-			ArgumentMatcher<CryptoPathMapper.CiphertextDirectory> cipherDirMatcher = obj -> obj.dirId.equals(dirId) && obj.path.isAbsolute() && obj.path.equals(expectedPath);
+			ArgumentMatcher<CiphertextDirectory> cipherDirMatcher = obj -> obj.dirId().equals(dirId) && obj.path().isAbsolute() && obj.path().equals(expectedPath);
 			dirIdBackupMock.verify(() -> DirectoryIdBackup.backupManually(Mockito.eq(cryptor), Mockito.argThat(cipherDirMatcher)), Mockito.times(1));
 		}
 	}

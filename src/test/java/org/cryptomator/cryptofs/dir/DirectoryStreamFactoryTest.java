@@ -1,8 +1,8 @@
 package org.cryptomator.cryptofs.dir;
 
+import org.cryptomator.cryptofs.CiphertextDirectory;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
-import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

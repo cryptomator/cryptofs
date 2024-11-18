@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.dir;
 
+import org.cryptomator.cryptofs.CiphertextDirectory;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,7 @@ public class BrokenDirectoryFilterTest {
 		Path targetDir = Files.createDirectories(dir.resolve("d/ab/cdefg"));
 		Files.createDirectory(dir.resolve("foo.c9r"));
 		Files.write(dir.resolve("foo.c9r/dir.c9r"), "".getBytes());
-		Mockito.when(cryptoPathMapper.resolveDirectory(Mockito.any())).thenReturn(new CryptoPathMapper.CiphertextDirectory("asd", targetDir));
+		Mockito.when(cryptoPathMapper.resolveDirectory(Mockito.any())).thenReturn(new CiphertextDirectory("asd", targetDir));
 		Node unfiltered = new Node(dir.resolve("foo.c9r"));
 
 		Stream<Node> result = brokenDirectoryFilter.process(unfiltered);
@@ -45,7 +46,7 @@ public class BrokenDirectoryFilterTest {
 		Path targetDir = dir.resolve("d/ab/cdefg"); // not existing!
 		Files.createDirectory(dir.resolve("foo.c9r"));
 		Files.write(dir.resolve("foo.c9r/dir.c9r"), "".getBytes());
-		Mockito.when(cryptoPathMapper.resolveDirectory(Mockito.any())).thenReturn(new CryptoPathMapper.CiphertextDirectory("asd", targetDir));
+		Mockito.when(cryptoPathMapper.resolveDirectory(Mockito.any())).thenReturn(new CiphertextDirectory("asd", targetDir));
 		Node unfiltered = new Node(dir.resolve("foo.c9r"));
 
 		Stream<Node> result = brokenDirectoryFilter.process(unfiltered);

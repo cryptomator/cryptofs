@@ -1,6 +1,5 @@
 package org.cryptomator.cryptofs;
 
-import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptofs.attr.AttributeByNameProvider;
 import org.cryptomator.cryptofs.attr.AttributeProvider;
 import org.cryptomator.cryptofs.attr.AttributeViewProvider;
@@ -1258,11 +1257,11 @@ public class CryptoFileSystemImplTest {
 			Path ciphertextDirPath = mock(Path.class, "d/FF/FF/");
 			CiphertextFilePath ciphertextPath = mock(CiphertextFilePath.class, "ciphertext");
 			String dirId = "DirId1234ABC";
-			CiphertextDirectory cipherDirObject = new CiphertextDirectory(dirId, ciphertextDirPath);
+			CiphertextDirectory ciphertextDirectoryObject = new CiphertextDirectory(dirId, ciphertextDirPath);
 			FileChannelMock channel = new FileChannelMock(100);
 			when(ciphertextRawPath.resolve("dir.c9r")).thenReturn(ciphertextDirFile);
 			when(cryptoPathMapper.getCiphertextFilePath(path)).thenReturn(ciphertextPath);
-			when(cryptoPathMapper.getCiphertextDir(path)).thenReturn(cipherDirObject);
+			when(cryptoPathMapper.getCiphertextDir(path)).thenReturn(ciphertextDirectoryObject);
 			when(cryptoPathMapper.getCiphertextDir(parent)).thenReturn(new CiphertextDirectory("parentDirId", ciphertextParent));
 			when(cryptoPathMapper.getCiphertextFileType(path)).thenThrow(NoSuchFileException.class);
 			when(ciphertextPath.getRawPath()).thenReturn(ciphertextRawPath);
@@ -1278,7 +1277,7 @@ public class CryptoFileSystemImplTest {
 			inTest.createDirectory(path);
 
 			verify(readonlyFlag).assertWritable();
-			verify(dirIdBackup, Mockito.times(1)).execute(cipherDirObject);
+			verify(dirIdBackup, Mockito.times(1)).execute(ciphertextDirectoryObject);
 		}
 
 

@@ -8,10 +8,10 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.attr;
 
+import org.cryptomator.cryptofs.CiphertextDirectory;
 import org.cryptomator.cryptofs.CiphertextFilePath;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
-import org.cryptomator.cryptofs.CryptoPathMapper.CiphertextDirectory;
 import org.cryptomator.cryptofs.Symlinks;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.junit.jupiter.api.Assertions;
