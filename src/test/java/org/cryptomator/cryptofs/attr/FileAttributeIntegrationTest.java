@@ -8,7 +8,9 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.attr;
 
+import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
+import com.google.common.jimfs.PathType;
 import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptofs.CryptoFileSystemProvider;
 import org.cryptomator.cryptolib.api.Masterkey;
@@ -22,13 +24,22 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -37,6 +48,7 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
+import java.nio.file.attribute.UserDefinedFileAttributeView;
 import java.nio.file.attribute.UserPrincipal;
 import java.time.Instant;
 import java.util.Map;
@@ -58,7 +70,7 @@ public class FileAttributeIntegrationTest {
 
 	@BeforeAll
 	public static void setupClass() throws IOException, MasterkeyLoadingFailedException {
-		inMemoryFs = Jimfs.newFileSystem();
+		inMemoryFs = Jimfs.newFileSystem(Configuration.unix().toBuilder().setAttributeViews("basic", "owner", "user").build());
 		pathToVault = inMemoryFs.getRootDirectories().iterator().next().resolve("vault");
 		Files.createDirectory(pathToVault);
 		MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
@@ -192,6 +204,78 @@ public class FileAttributeIntegrationTest {
 			});
 		}
 	}
+
+	@Nested
+	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+	@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+	@DisplayName("Extended Attributes")
+	public class UserDefinedFileAttributes {
+
+		private Path file;
+
+		@BeforeAll
+		public void setup() throws IOException {
+			Assumptions.assumeTrue(inMemoryFs.supportedFileAttributeViews().contains("user"));
+			Assumptions.assumeTrue(fileSystem.supportedFileAttributeViews().contains("user"));
+			file = fileSystem.getPath("/xattr.txt");
+			Files.createFile(file);
+		}
+
+		@Order(1)
+		@DisplayName("setxattr /xattr.txt")
+		@ParameterizedTest(name = "{0}")
+		@ValueSource(strings = {"attr1", "attr2", "attr3", "attr4", "attr5"})
+		public void testSetxattr(String attrName) throws IOException {
+			var attrView = Files.getFileAttributeView(file, UserDefinedFileAttributeView.class);
+			var attrValue = StandardCharsets.UTF_8.encode(attrName);
+
+			int written = attrView.write(attrName, attrValue);
+
+			Assertions.assertEquals(attrName.length(), written);
+		}
+
+		@Order(2)
+		@Test
+		@DisplayName("removexattr /xattr.txt")
+		public void testRemovexattr() {
+			var attrView = Files.getFileAttributeView(file, UserDefinedFileAttributeView.class);
+
+			Assertions.assertDoesNotThrow(() -> attrView.delete("attr3"));
+		}
+
+		@Order(3)
+		@Test
+		@DisplayName("listxattr /xattr.txt")
+		public void testListxattr() throws IOException {
+			var attrView = Files.getFileAttributeView(file, UserDefinedFileAttributeView.class);
+			var result = attrView.list();
+
+			Assertions.assertAll(
+					() -> Assertions.assertTrue(result.contains("attr1")),
+					() -> Assertions.assertTrue(result.contains("attr2")),
+					() -> Assertions.assertFalse(result.contains("attr3")),
+					() -> Assertions.assertTrue(result.contains("attr4")),
+					() -> Assertions.assertTrue(result.contains("attr5"))
+			);
+		}
+
+		@Order(4)
+		@DisplayName("getxattr")
+		@ParameterizedTest(name = "{0}")
+		@ValueSource(strings = {"attr1", "attr2", "attr4", "attr5"})
+		public void testGetxattr(String attrName) throws IOException {
+			var attrView = Files.getFileAttributeView(file, UserDefinedFileAttributeView.class);
+			var buffer = ByteBuffer.allocate(attrView.size(attrName));
+			var read = attrView.read(attrName, buffer);
+			buffer.flip();
+			var value = StandardCharsets.UTF_8.decode(buffer).toString();
+
+			Assertions.assertEquals(attrName.length(), read);
+			Assertions.assertEquals(attrName, value);
+		}
+
+	}
+
 
 	private static Matcher<FileTime> isAfter(FileTime previousFileTime) {
 		return new BaseMatcher<>() {
