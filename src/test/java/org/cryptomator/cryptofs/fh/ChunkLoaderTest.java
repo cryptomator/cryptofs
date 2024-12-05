@@ -44,7 +44,7 @@ public class ChunkLoaderTest {
 	private final FileHeader header = mock(FileHeader.class);
 	private final FileHeaderHolder headerHolder = mock(FileHeaderHolder.class);
 	private final BufferPool bufferPool = mock(BufferPool.class);
-	private final ChunkLoader inTest = new ChunkLoader(cryptor, chunkIO, headerHolder, stats, bufferPool);
+	private final ChunkLoader inTest = new ChunkLoader(null, null,cryptor, chunkIO, headerHolder, stats, bufferPool);
 
 	@BeforeEach
 	public void setup() throws IOException {

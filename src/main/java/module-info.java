@@ -22,6 +22,7 @@ module org.cryptomator.cryptofs {
 	requires java.compiler;
 
 	exports org.cryptomator.cryptofs;
+	exports org.cryptomator.cryptofs.event;
 	exports org.cryptomator.cryptofs.common;
 	exports org.cryptomator.cryptofs.health.api;
 	exports org.cryptomator.cryptofs.migration;

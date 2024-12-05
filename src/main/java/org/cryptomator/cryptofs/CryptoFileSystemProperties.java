@@ -9,10 +9,12 @@
 package org.cryptomator.cryptofs;
 
 import com.google.common.base.Strings;
+import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
 
 import java.net.URI;
+import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.AbstractMap;
@@ -20,6 +22,7 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 
 import static java.util.Arrays.asList;
@@ -113,6 +116,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 				Map.entry(PROPERTY_FILESYSTEM_FLAGS, builder.flags), //
 				Map.entry(PROPERTY_VAULTCONFIG_FILENAME, builder.vaultConfigFilename), //
 				Map.entry(PROPERTY_MASTERKEY_FILENAME, builder.masterkeyFilename), //
+				Map.entry("fsSubscriber", builder.subscriber), //
 				Map.entry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, builder.maxCleartextNameLength), //
 				Map.entry(PROPERTY_SHORTENING_THRESHOLD, builder.shorteningThreshold), //
 				Map.entry(PROPERTY_CIPHER_COMBO, builder.cipherCombo) //
@@ -151,6 +155,10 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	int shorteningThreshold() {
 		return (int) get(PROPERTY_SHORTENING_THRESHOLD);
+	}
+
+	Flow.Subscriber<FilesystemEvent> filesystemEventSubscriber() {
+		return (Flow.Subscriber<FilesystemEvent>) get("fsSubscriber");
 	}
 
 	@Override
@@ -208,6 +216,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		private String masterkeyFilename = DEFAULT_MASTERKEY_FILENAME;
 		private int maxCleartextNameLength = DEFAULT_MAX_CLEARTEXT_NAME_LENGTH;
 		private int shorteningThreshold = DEFAULT_SHORTENING_THRESHOLD;
+		private Flow.Subscriber<FilesystemEvent> subscriber = null;
 
 		private Builder() {
 		}
@@ -220,6 +229,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 			checkedSet(Integer.class, PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, properties, this::withMaxCleartextNameLength);
 			checkedSet(Integer.class, PROPERTY_SHORTENING_THRESHOLD, properties, this::withShorteningThreshold);
 			checkedSet(CryptorProvider.Scheme.class, PROPERTY_CIPHER_COMBO, properties, this::withCipherCombo);
+			checkedSet(Flow.Subscriber.class, "fsSubscriber", properties, this::withFilesystemEventSubscriber);
 		}
 
 		private <T> void checkedSet(Class<T> type, String key, Map<String, ?> properties, Consumer<T> setter) {
@@ -331,6 +341,18 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		@Deprecated
 		public Builder withMasterkeyFilename(String masterkeyFilename) {
 			this.masterkeyFilename = masterkeyFilename;
+			return this;
+		}
+
+		/**
+		 * Sets the subscriber for filesystem events.
+		 *
+		 * @param subscriber the subscriber to recieve filesystem events
+		 * @return this
+		 * @since 2.8.0
+		 */
+		public Builder withFilesystemEventSubscriber(Flow.Subscriber<FilesystemEvent> subscriber) {
+			this.subscriber = subscriber;
 			return this;
 		}
 

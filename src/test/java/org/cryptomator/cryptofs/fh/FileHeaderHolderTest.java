@@ -37,7 +37,7 @@ public class FileHeaderHolderTest {
 	private final Path path = mock(Path.class, "openFile.txt");
 	private final AtomicReference<Path> pathRef = new AtomicReference<>(path);
 
-	private final FileHeaderHolder inTest = new FileHeaderHolder(cryptor, pathRef);
+	private final FileHeaderHolder inTest = new FileHeaderHolder(null, cryptor, pathRef);
 
 	@BeforeEach
 	public void setup() throws IOException {
