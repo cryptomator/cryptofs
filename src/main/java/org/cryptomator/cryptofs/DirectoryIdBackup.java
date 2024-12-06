@@ -1,7 +1,9 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.common.DecryptingReadableByteChannel;
 import org.cryptomator.cryptolib.common.EncryptingWritableByteChannel;
 
 import javax.inject.Inject;
@@ -53,7 +55,56 @@ public class DirectoryIdBackup {
 	}
 
 
-	static EncryptingWritableByteChannel wrapEncryptionAround(ByteChannel channel, Cryptor cryptor) {
+	/**
+	 * Reads the dirId backup file and retrieves the directory id from it.
+	 *
+	 * @param ciphertextContentDir path of a ciphertext <emp>content</emp> directory
+	 * @return a byte array containing the directory id
+	 * @throws IOException if the dirId backup file cannot be read
+	 * @throws CryptoException if the content of dirId backup file cannot be decrypted/authenticated
+	 * @throws IllegalStateException if the directory id exceeds {@value Constants#MAX_DIR_ID_LENGTH} chars
+	 */
+	public byte[] read(Path ciphertextContentDir) throws IOException, CryptoException, IllegalStateException {
+		var dirIdBackupFile = getBackupFilePath(ciphertextContentDir);
+		var dirIdBuffer = ByteBuffer.allocate(Constants.MAX_DIR_ID_LENGTH + 1); //a dir id contains at most 36 ascii chars, we add for security checks one more
+
+		try (var channel = Files.newByteChannel(dirIdBackupFile, StandardOpenOption.READ); //
+			 var decryptingChannel = wrapDecryptionAround(channel, cryptor)) {
+			int read = decryptingChannel.read(dirIdBuffer);
+			if (read < 0 || read > Constants.MAX_DIR_ID_LENGTH) {
+				throw new IllegalStateException("Read directory id exceeds the maximum length of %d characters".formatted(Constants.MAX_DIR_ID_LENGTH));
+			}
+		}
+
+		var dirId = new byte[dirIdBuffer.position()];
+		dirIdBuffer.get(0, dirId);
+		return dirId;
+	}
+
+	/**
+	 * Static method to explicitly retrieve the directory id of a ciphertext directory from the dirId backup file
+	 *
+	 * @param cryptor The cryptor to be used for decryption
+	 * @param ciphertextContentDir path of a ciphertext <emp>content</emp> directory
+	 * @return a byte array containing the directory id
+	 * @throws IOException if the dirId backup file cannot be read
+	 * @throws CryptoException if the content of dirId backup file cannot be decrypted/authenticated
+	 * @throws IllegalStateException if the directory id exceeds {@value Constants#MAX_DIR_ID_LENGTH} chars
+	 */
+	public static byte[] read(Cryptor cryptor, Path ciphertextContentDir) throws IOException, CryptoException, IllegalStateException {
+		return new DirectoryIdBackup(cryptor).read(ciphertextContentDir);
+	}
+
+
+	private static Path getBackupFilePath(Path ciphertextContentDir) {
+		return ciphertextContentDir.resolve(Constants.DIR_ID_BACKUP_FILE_NAME);
+	}
+
+	DecryptingReadableByteChannel wrapDecryptionAround(ByteChannel channel, Cryptor cryptor) {
+		return new DecryptingReadableByteChannel(channel, cryptor, true);
+	}
+
+	EncryptingWritableByteChannel wrapEncryptionAround(ByteChannel channel, Cryptor cryptor) {
 		return new EncryptingWritableByteChannel(channel, cryptor);
 	}
 }
