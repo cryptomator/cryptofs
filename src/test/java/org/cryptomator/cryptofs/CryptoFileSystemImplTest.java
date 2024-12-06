@@ -1277,7 +1277,7 @@ public class CryptoFileSystemImplTest {
 			inTest.createDirectory(path);
 
 			verify(readonlyFlag).assertWritable();
-			verify(dirIdBackup, Mockito.times(1)).execute(ciphertextDirectoryObject);
+			verify(dirIdBackup, Mockito.times(1)).write(ciphertextDirectoryObject);
 		}
 
 

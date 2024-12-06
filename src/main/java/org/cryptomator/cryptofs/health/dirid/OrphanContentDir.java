@@ -112,7 +112,7 @@ public class OrphanContentDir implements DiagnosticResult {
 				adoptOrphanedResource(orphanedResource, newClearName, isShortened, stepParentDir, cryptor.fileNameCryptor(), sha1);
 			}
 		}
-		Files.deleteIfExists(orphanedDir.resolve(Constants.DIR_BACKUP_FILE_NAME));
+		Files.deleteIfExists(orphanedDir.resolve(Constants.DIR_ID_BACKUP_FILE_NAME));
 		try (var nonCryptomatorFiles = Files.newDirectoryStream(orphanedDir)) {
 			for (Path p : nonCryptomatorFiles) {
 				Files.move(p, stepParentDir.path().resolve(p.getFileName()), LinkOption.NOFOLLOW_LINKS);
@@ -172,7 +172,7 @@ public class OrphanContentDir implements DiagnosticResult {
 		var stepParentCipherDir = new CiphertextDirectory(stepParentUUID, stepParentDir);
 		//only if it does not exist
 		try {
-			DirectoryIdBackup.backupManually(cryptor, stepParentCipherDir);
+			DirectoryIdBackup.write(cryptor, stepParentCipherDir);
 		} catch (FileAlreadyExistsException e) {
 			// already exists due to a previous recovery attempt
 		}
@@ -181,7 +181,7 @@ public class OrphanContentDir implements DiagnosticResult {
 
 	//visible for testing
 	Optional<String> retrieveDirId(Path orphanedDir, Cryptor cryptor) {
-		var dirIdFile = orphanedDir.resolve(Constants.DIR_BACKUP_FILE_NAME);
+		var dirIdFile = orphanedDir.resolve(Constants.DIR_ID_BACKUP_FILE_NAME);
 		var dirIdBuffer = ByteBuffer.allocate(36); //a dir id contains at most 36 ascii chars
 
 		try (var channel = Files.newByteChannel(dirIdFile, StandardOpenOption.READ); //

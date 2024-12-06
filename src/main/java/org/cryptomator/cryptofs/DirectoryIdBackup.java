@@ -10,15 +10,16 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
 /**
- * Single purpose class to back up the directory id of an encrypted directory when it is created.
+ * Single purpose class to read or write the directory id backup of an encrypted directory.
  */
 @CryptoFileSystemScoped
 public class DirectoryIdBackup {
 
-	private Cryptor cryptor;
+	private final Cryptor cryptor;
 
 	@Inject
 	public DirectoryIdBackup(Cryptor cryptor) {
@@ -26,15 +27,15 @@ public class DirectoryIdBackup {
 	}
 
 	/**
-	 * Performs the backup operation for the given {@link CiphertextDirectory} object.
+	 * Writes the dirId backup file for the {@link CiphertextDirectory} object.
 	 * <p>
-	 * The directory id is written via an encrypting channel to the file {@link CiphertextDirectory#path()} /{@value Constants#DIR_BACKUP_FILE_NAME}.
+	 * The directory id is written via an encrypting channel to the file {@link CiphertextDirectory#path()}.resolve({@value Constants#DIR_ID_BACKUP_FILE_NAME});
 	 *
 	 * @param ciphertextDirectory The cipher dir object containing the dir id and the encrypted content root
 	 * @throws IOException if an IOException is raised during the write operation
 	 */
-	public void execute(CiphertextDirectory ciphertextDirectory) throws IOException {
-		try (var channel = Files.newByteChannel(ciphertextDirectory.path().resolve(Constants.DIR_BACKUP_FILE_NAME), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE); //
+	public void write(CiphertextDirectory ciphertextDirectory) throws IOException {
+		try (var channel = Files.newByteChannel(getBackupFilePath(ciphertextDirectory.path()), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE); //
 			 var encryptingChannel = wrapEncryptionAround(channel, cryptor)) {
 			encryptingChannel.write(ByteBuffer.wrap(ciphertextDirectory.dirId().getBytes(StandardCharsets.US_ASCII)));
 		}
@@ -43,12 +44,12 @@ public class DirectoryIdBackup {
 	/**
 	 * Static method to explicitly back up the directory id for a specified ciphertext directory.
 	 *
-	 * @param cryptor The cryptor to be used
+	 * @param cryptor The cryptor to be used for encryption
 	 * @param ciphertextDirectory A {@link CiphertextDirectory} for which the dirId should be back up'd.
 	 * @throws IOException when the dirId file already exists, or it cannot be written to.
 	 */
-	public static void backupManually(Cryptor cryptor, CiphertextDirectory ciphertextDirectory) throws IOException {
-		new DirectoryIdBackup(cryptor).execute(ciphertextDirectory);
+	public static void write(Cryptor cryptor, CiphertextDirectory ciphertextDirectory) throws IOException {
+		new DirectoryIdBackup(cryptor).write(ciphertextDirectory);
 	}
 
 

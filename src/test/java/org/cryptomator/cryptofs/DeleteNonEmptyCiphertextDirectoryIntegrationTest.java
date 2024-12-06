@@ -169,7 +169,7 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 	}
 
 	private boolean isEmptyCryptoFsDirectory(Path path) {
-		Predicate<Path> isIgnoredFile = p -> Constants.DIR_BACKUP_FILE_NAME.equals(p.getFileName().toString());
+		Predicate<Path> isIgnoredFile = p -> Constants.DIR_ID_BACKUP_FILE_NAME.equals(p.getFileName().toString());
 		try (Stream<Path> files = Files.list(path)) {
 			return files.noneMatch(isIgnoredFile.negate());
 		} catch (IOException e) {
@@ -181,7 +181,7 @@ public class DeleteNonEmptyCiphertextDirectoryIntegrationTest {
 	@DisplayName("Tests internal cryptofs directory emptiness definition")
 	public void testCryptoFsDirEmptiness() throws IOException {
 		var emptiness = pathToVault.getParent().resolve("emptiness");
-		var ignoredFile = emptiness.resolve(Constants.DIR_BACKUP_FILE_NAME);
+		var ignoredFile = emptiness.resolve(Constants.DIR_ID_BACKUP_FILE_NAME);
 		Files.createDirectory(emptiness);
 		Files.createFile(ignoredFile);
 

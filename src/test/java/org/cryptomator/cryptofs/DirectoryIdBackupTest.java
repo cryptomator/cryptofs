@@ -44,9 +44,9 @@ public class DirectoryIdBackupTest {
 			backupMock.when(() -> DirectoryIdBackup.wrapEncryptionAround(Mockito.any(), Mockito.eq(cryptor))).thenReturn(encChannel);
 			Mockito.when(encChannel.write(Mockito.any())).thenReturn(0);
 
-			dirIdBackup.execute(ciphertextDirectoryObject);
+			dirIdBackup.write(ciphertextDirectoryObject);
 
-			Assertions.assertTrue(Files.exists(contentPath.resolve(Constants.DIR_BACKUP_FILE_NAME)));
+			Assertions.assertTrue(Files.exists(contentPath.resolve(Constants.DIR_ID_BACKUP_FILE_NAME)));
 		}
 	}
 
@@ -58,7 +58,7 @@ public class DirectoryIdBackupTest {
 		try (MockedStatic<DirectoryIdBackup> backupMock = Mockito.mockStatic(DirectoryIdBackup.class)) {
 			backupMock.when(() -> DirectoryIdBackup.wrapEncryptionAround(Mockito.any(), Mockito.eq(cryptor))).thenReturn(encChannel);
 
-			dirIdBackup.execute(ciphertextDirectoryObject);
+			dirIdBackup.write(ciphertextDirectoryObject);
 
 			Mockito.verify(encChannel, Mockito.times(1)).write(Mockito.argThat(b -> b.equals(expectedWrittenContent)));
 		}
