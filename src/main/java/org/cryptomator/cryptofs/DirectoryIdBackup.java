@@ -58,7 +58,7 @@ public class DirectoryIdBackup {
 	/**
 	 * Reads the dirId backup file and retrieves the directory id from it.
 	 *
-	 * @param ciphertextContentDir path of a ciphertext <emp>content</emp> directory
+	 * @param ciphertextContentDir path of a ciphertext <strong>content</strong> directory
 	 * @return a byte array containing the directory id
 	 * @throws IOException if the dirId backup file cannot be read
 	 * @throws CryptoException if the content of dirId backup file cannot be decrypted/authenticated
@@ -85,7 +85,7 @@ public class DirectoryIdBackup {
 	 * Static method to explicitly retrieve the directory id of a ciphertext directory from the dirId backup file
 	 *
 	 * @param cryptor The cryptor to be used for decryption
-	 * @param ciphertextContentDir path of a ciphertext <emp>content</emp> directory
+	 * @param ciphertextContentDir path of a ciphertext <strong>content</strong> directory
 	 * @return a byte array containing the directory id
 	 * @throws IOException if the dirId backup file cannot be read
 	 * @throws CryptoException if the content of dirId backup file cannot be decrypted/authenticated
