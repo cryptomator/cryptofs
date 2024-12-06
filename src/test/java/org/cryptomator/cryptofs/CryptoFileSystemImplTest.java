@@ -127,7 +127,7 @@ public class CryptoFileSystemImplTest {
 				pathMatcherFactory, directoryStreamFactory, dirIdProvider, dirIdBackup, //
 				fileAttributeProvider, fileAttributeByNameProvider, fileAttributeViewProvider, //
 				openCryptoFiles, symlinks, finallyUtil, ciphertextDirDeleter, readonlyFlag, //
-				fileSystemProperties);
+				fileSystemProperties, null);
 	}
 
 	@Test
