@@ -8,17 +8,15 @@ import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.health.api.DiagnosticResult;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
+import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
-import org.cryptomator.cryptolib.common.ByteBuffers;
-import org.cryptomator.cryptolib.common.DecryptingReadableByteChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -89,7 +87,7 @@ public class OrphanContentDir implements DiagnosticResult {
 		AtomicInteger dirCounter = new AtomicInteger(1);
 		AtomicInteger symlinkCounter = new AtomicInteger(1);
 		String longNameSuffix = createClearnameToBeShortened(config.getShorteningThreshold());
-		Optional<String> dirId = retrieveDirId(orphanedDir, cryptor);
+		Optional<byte[]> dirId = retrieveDirId(orphanedDir, cryptor);
 
 		try (var orphanedContentStream = Files.newDirectoryStream(orphanedDir, this::matchesEncryptedContentPattern)) {
 			for (Path orphanedResource : orphanedContentStream) {
@@ -180,29 +178,18 @@ public class OrphanContentDir implements DiagnosticResult {
 	}
 
 	//visible for testing
-	Optional<String> retrieveDirId(Path orphanedDir, Cryptor cryptor) {
-		var dirIdFile = orphanedDir.resolve(Constants.DIR_ID_BACKUP_FILE_NAME);
-		var dirIdBuffer = ByteBuffer.allocate(36); //a dir id contains at most 36 ascii chars
-
-		try (var channel = Files.newByteChannel(dirIdFile, StandardOpenOption.READ); //
-			 var decryptingChannel = createDecryptingReadableByteChannel(channel, cryptor)) {
-			ByteBuffers.fill(decryptingChannel, dirIdBuffer);
-			dirIdBuffer.flip();
-		} catch (IOException e) {
-			LOG.info("Unable to read {}.", dirIdFile, e);
+	Optional<byte []> retrieveDirId(Path orphanedDir, Cryptor cryptor) {
+		try {
+			byte[] dirId = DirectoryIdBackup.read(cryptor, orphanedDir);
+			return Optional.of(dirId);
+		} catch (IOException | CryptoException | IllegalStateException e) {
+			LOG.info("Unable to retrieve directory id for directory {}", orphanedDir, e);
 			return Optional.empty();
 		}
-
-		return Optional.of(StandardCharsets.US_ASCII.decode(dirIdBuffer).toString());
-	}
-
-	//exists and visible for testability
-	DecryptingReadableByteChannel createDecryptingReadableByteChannel(ByteChannel channel, Cryptor cryptor) {
-		return new DecryptingReadableByteChannel(channel, cryptor, true);
 	}
 
 	//visible for testing
-	String decryptFileName(Path orphanedResource, boolean isShortened, String dirId, FileNameCryptor cryptor) throws IOException, AuthenticationFailedException {
+	String decryptFileName(Path orphanedResource, boolean isShortened, byte [] dirId, FileNameCryptor cryptor) throws IOException, AuthenticationFailedException {
 		final String filenameWithExtension;
 		if (isShortened) {
 			filenameWithExtension = Files.readString(orphanedResource.resolve(Constants.INFLATED_FILE_NAME));
@@ -211,7 +198,7 @@ public class OrphanContentDir implements DiagnosticResult {
 		}
 
 		final String filename = filenameWithExtension.substring(0, filenameWithExtension.length() - Constants.CRYPTOMATOR_FILE_SUFFIX.length());
-		return cryptor.decryptFilename(BaseEncoding.base64Url(), filename, dirId.getBytes(StandardCharsets.UTF_8));
+		return cryptor.decryptFilename(BaseEncoding.base64Url(), filename, dirId);
 	}
 
 	// visible for testing
