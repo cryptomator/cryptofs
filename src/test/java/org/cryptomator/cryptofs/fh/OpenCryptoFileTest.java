@@ -4,7 +4,6 @@ import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ReadonlyFlag;
-import org.cryptomator.cryptofs.ch.ChannelCloseListener;
 import org.cryptomator.cryptofs.ch.ChannelComponent;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -35,6 +34,7 @@ import java.time.Instant;
 import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -191,7 +191,7 @@ public class OpenCryptoFileTest {
 		private final AtomicLong realFileSize = new AtomicLong(-1L);
 		private OpenCryptoFile openCryptoFile;
 		private CleartextFileChannel cleartextFileChannel;
-		private AtomicReference<ChannelCloseListener> listener;
+		private AtomicReference<Consumer<FileChannel>> listener;
 		private AtomicReference<FileChannel> ciphertextChannel;
 
 		@BeforeAll
@@ -280,7 +280,7 @@ public class OpenCryptoFileTest {
 			Assumptions.assumeTrue(listener.get() != null);
 			Assumptions.assumeTrue(ciphertextChannel.get() != null);
 
-			listener.get().closed(cleartextFileChannel);
+			listener.get().accept(ciphertextChannel.get());
 			verify(chunkIO).unregisterChannel(ciphertextChannel.get());
 		}
 
