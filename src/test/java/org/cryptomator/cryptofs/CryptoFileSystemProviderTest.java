@@ -198,7 +198,7 @@ public class CryptoFileSystemProviderTest {
 		Optional<Path> dirIdBackup = Files.list(rootDir.get()).findFirst();
 		Assertions.assertTrue(dirIdBackup.isPresent());
 		Assertions.assertTrue(Files.isRegularFile(dirIdBackup.get()));
-		Assertions.assertEquals(Constants.DIR_BACKUP_FILE_NAME, dirIdBackup.get().getFileName().toString());
+		Assertions.assertEquals(Constants.DIR_ID_BACKUP_FILE_NAME, dirIdBackup.get().getFileName().toString());
 	}
 
 	@Test
