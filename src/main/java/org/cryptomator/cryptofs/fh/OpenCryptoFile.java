@@ -15,6 +15,7 @@ import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -33,11 +34,11 @@ public class OpenCryptoFile implements Closeable {
 	private final AtomicLong fileSize;
 	private final OpenCryptoFileComponent component;
 
-	private volatile int openChannelsCount = 0;
+	private final AtomicInteger openChannelsCount = new AtomicInteger(0);
 
 	@Inject
 	public OpenCryptoFile(FileCloseListener listener, ChunkCache chunkCache, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, //
-						  @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize,
+						  @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, //
 						  @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
 		this.listener = listener;
 		this.chunkCache = chunkCache;
@@ -65,7 +66,7 @@ public class OpenCryptoFile implements Closeable {
 		FileChannel ciphertextFileChannel = null;
 		CleartextFileChannel cleartextFileChannel = null;
 
-		openChannelsCount = openChannelsCount + 1; // synchronized context, hence we can proactively increase the number
+		openChannelsCount.incrementAndGet(); // synchronized context, hence we can proactively increase the number
 		try {
 			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
 			initFileHeader(options, ciphertextFileChannel);
@@ -78,7 +79,6 @@ public class OpenCryptoFile implements Closeable {
 			cleartextFileChannel = component.newChannelComponent() //
 					.create(ciphertextFileChannel, options, this::cleartextChannelClosed) //
 					.channel();
-			chunkIO.registerChannel(ciphertextFileChannel,options.writable());
 		} finally {
 			if (cleartextFileChannel == null) { // i.e. something didn't work
 				cleartextChannelClosed(ciphertextFileChannel);
@@ -87,6 +87,7 @@ public class OpenCryptoFile implements Closeable {
 		}
 
 		assert cleartextFileChannel != null; // otherwise there would have been an exception
+		chunkIO.registerChannel(ciphertextFileChannel, options.writable());
 		return cleartextFileChannel;
 	}
 
@@ -175,12 +176,10 @@ public class OpenCryptoFile implements Closeable {
 	}
 
 	private synchronized void cleartextChannelClosed(FileChannel ciphertextFileChannel) {
-		if( ciphertextFileChannel != null ){
+		if (ciphertextFileChannel != null) {
 			chunkIO.unregisterChannel(ciphertextFileChannel);
 		}
-
-		openChannelsCount = openChannelsCount - 1;
-		if (openChannelsCount == 0) {
+		if (openChannelsCount.decrementAndGet() == 0) {
 			close();
 		}
 	}
