@@ -25,11 +25,9 @@ import org.cryptomator.cryptofs.dir.DirectoryStreamFilters;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.common.DecryptingReadableByteChannel;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.AccessMode;
@@ -159,24 +157,17 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		}
 	}
 
+	//TODO: test test test
 	@Override
 	protected String getCleartextNameInternal(Path ciphertextNode) throws IOException, UnsupportedOperationException {
-		var dirIdFile = ciphertextNode.resolveSibling(Constants.DIR_BACKUP_FILE_NAME);
-		var buf = ByteBuffer.allocate(36);
-		try (var channel = Files.newByteChannel(dirIdFile, StandardOpenOption.READ); //
-			 var decryptingChannel = new DecryptingReadableByteChannel(channel, cryptor, true)) {
-			int read = decryptingChannel.read(buf.clear());
-			if (read < 0 || 36 < read) { //Note: Root_Dir_Id is the empty string!
-				throw new FileSystemException(dirIdFile.toString(), null, "Invalid directory id: Longer than 36 bytes");
-			}
+		byte[] dirId = null;
+		try {
+			dirId = dirIdBackup.read(ciphertextNode);
 		} catch (NoSuchFileException e) {
 			throw new UnsupportedOperationException("Directory does not have a dirid.c9r file.");
-		} catch (CryptoException e) {
-			throw new FileSystemException(dirIdFile.toString(), null, "Decryption of directory id failed:" + e);
+		} catch (CryptoException | IllegalStateException e) {
+			throw new FileSystemException(ciphertextNode.toString(), null, "Decryption of dirId backup file failed:" + e);
 		}
-		var dirId = new byte[buf.position()];
-		buf.flip().get(dirId);
-
 		var fullCipherNodeName = ciphertextNode.getFileName().toString();
 		var cipherNodeExtension = fullCipherNodeName.substring(fullCipherNodeName.length() - 4);
 
