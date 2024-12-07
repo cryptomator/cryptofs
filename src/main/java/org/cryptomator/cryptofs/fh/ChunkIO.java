@@ -11,7 +11,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @OpenFileScoped
-public class ChunkIO {
+class ChunkIO {
 
 	private final Set<FileChannel> readableChannels = ConcurrentHashMap.newKeySet();
 	private final Set<FileChannel> writableChannels = ConcurrentHashMap.newKeySet();

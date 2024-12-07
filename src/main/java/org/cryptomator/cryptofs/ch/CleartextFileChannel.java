@@ -7,7 +7,6 @@ import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.fh.BufferPool;
 import org.cryptomator.cryptofs.fh.Chunk;
 import org.cryptomator.cryptofs.fh.ChunkCache;
-import org.cryptomator.cryptofs.fh.ChunkIO;
 import org.cryptomator.cryptofs.fh.CurrentOpenFilePath;
 import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptofs.fh.FileHeaderHolder;
@@ -35,6 +34,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.function.Consumer;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
@@ -47,7 +47,6 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private final FileChannel ciphertextFileChannel;
 	private final FileHeaderHolder fileHeaderHolder;
 	private final Cryptor cryptor;
-	private final ChunkIO chunkIO;
 	private final ChunkCache chunkCache;
 	private final BufferPool bufferPool;
 	private final EffectiveOpenOptions options;
@@ -55,16 +54,15 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private final AtomicLong fileSize;
 	private final AtomicReference<Instant> lastModified;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
-	private final Runnable closeListener;
+	private final Consumer<FileChannel> closeListener;
 	private final CryptoFileSystemStats stats;
 
 	@Inject
-	public CleartextFileChannel(FileChannel ciphertextFileChannel, FileHeaderHolder fileHeaderHolder, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkIO chunkIO, ChunkCache chunkCache, BufferPool bufferPool, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, @CurrentOpenFilePath AtomicReference<Path> currentPath, ExceptionsDuringWrite exceptionsDuringWrite, Runnable closeListener, CryptoFileSystemStats stats) {
+	public CleartextFileChannel(FileChannel ciphertextFileChannel, FileHeaderHolder fileHeaderHolder, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, BufferPool bufferPool, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, @CurrentOpenFilePath AtomicReference<Path> currentPath, ExceptionsDuringWrite exceptionsDuringWrite, Consumer<FileChannel> closeListener, CryptoFileSystemStats stats) {
 		super(readWriteLock);
 		this.ciphertextFileChannel = ciphertextFileChannel;
 		this.fileHeaderHolder = fileHeaderHolder;
 		this.cryptor = cryptor;
-		this.chunkIO = chunkIO;
 		this.chunkCache = chunkCache;
 		this.bufferPool = bufferPool;
 		this.options = options;
@@ -80,7 +78,6 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		if (options.createNew() || options.create()) {
 			lastModified.compareAndSet(Instant.EPOCH, Instant.now());
 		}
-		chunkIO.registerChannel(ciphertextFileChannel, options.writable());
 	}
 
 	@Override
@@ -331,8 +328,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	protected void implCloseChannel() throws IOException {
 		var closeActions = List.<CloseAction>of(this::flush, //
 				super::implCloseChannel, //
-				() -> chunkIO.unregisterChannel(ciphertextFileChannel), // _after_ flush, since the flushed chunk cache uses chunkIO file channels
-				closeListener::run, //
+				() -> closeListener.accept(ciphertextFileChannel),
 				ciphertextFileChannel::close, //
 				this::tryPersistLastModified);
 		tryAll(closeActions.iterator());

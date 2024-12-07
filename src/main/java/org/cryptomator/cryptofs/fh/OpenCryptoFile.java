@@ -28,6 +28,7 @@ public class OpenCryptoFile implements Closeable {
 	private final ChunkCache chunkCache;
 	private final Cryptor cryptor;
 	private final FileHeaderHolder headerHolder;
+	private final ChunkIO chunkIO;
 	private final AtomicReference<Path> currentFilePath;
 	private final AtomicLong fileSize;
 	private final OpenCryptoFileComponent component;
@@ -35,11 +36,14 @@ public class OpenCryptoFile implements Closeable {
 	private volatile int openChannelsCount = 0;
 
 	@Inject
-	public OpenCryptoFile(FileCloseListener listener, ChunkCache chunkCache, Cryptor cryptor, FileHeaderHolder headerHolder, @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
+	public OpenCryptoFile(FileCloseListener listener, ChunkCache chunkCache, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, //
+						  @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize,
+						  @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
 		this.listener = listener;
 		this.chunkCache = chunkCache;
 		this.cryptor = cryptor;
 		this.headerHolder = headerHolder;
+		this.chunkIO = chunkIO;
 		this.currentFilePath = currentFilePath;
 		this.fileSize = fileSize;
 		this.component = component;
@@ -72,12 +76,13 @@ public class OpenCryptoFile implements Closeable {
 			}
 			initFileSize(ciphertextFileChannel);
 			cleartextFileChannel = component.newChannelComponent() //
-					.create(ciphertextFileChannel, options, this::channelClosed) //
+					.create(ciphertextFileChannel, options, this::cleartextChannelClosed) //
 					.channel();
+			chunkIO.registerChannel(ciphertextFileChannel,options.writable());
 		} finally {
 			if (cleartextFileChannel == null) { // i.e. something didn't work
+				cleartextChannelClosed(ciphertextFileChannel);
 				closeQuietly(ciphertextFileChannel);
-				channelClosed(); // if first channel and it fails, close this again
 			}
 		}
 
@@ -169,7 +174,11 @@ public class OpenCryptoFile implements Closeable {
 		currentFilePath.updateAndGet(p -> p == null ? null : newFilePath);
 	}
 
-	private synchronized void channelClosed() {
+	private synchronized void cleartextChannelClosed(FileChannel ciphertextFileChannel) {
+		if( ciphertextFileChannel != null ){
+			chunkIO.unregisterChannel(ciphertextFileChannel);
+		}
+
 		openChannelsCount = openChannelsCount - 1;
 		if (openChannelsCount == 0) {
 			close();
