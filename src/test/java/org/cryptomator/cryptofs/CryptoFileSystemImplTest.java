@@ -13,7 +13,9 @@ import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles.TwoPhaseMove;
 import org.cryptomator.cryptofs.mocks.FileChannelMock;
+import org.cryptomator.cryptofs.util.TestCryptoException;
 import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Assertions;
@@ -22,6 +24,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -71,6 +76,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -105,6 +111,7 @@ public class CryptoFileSystemImplTest {
 	private final CiphertextDirectoryDeleter ciphertextDirDeleter = mock(CiphertextDirectoryDeleter.class);
 	private final ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 	private final CryptoFileSystemProperties fileSystemProperties = mock(CryptoFileSystemProperties.class);
+	private final LongFileNameProvider longFileNameProvider = mock(LongFileNameProvider.class);
 
 	private final CryptoPath root = mock(CryptoPath.class);
 	private final CryptoPath empty = mock(CryptoPath.class);
@@ -127,7 +134,7 @@ public class CryptoFileSystemImplTest {
 				pathMatcherFactory, directoryStreamFactory, dirIdProvider, dirIdBackup, //
 				fileAttributeProvider, fileAttributeByNameProvider, fileAttributeViewProvider, //
 				openCryptoFiles, symlinks, finallyUtil, ciphertextDirDeleter, readonlyFlag, //
-				fileSystemProperties, null);
+				fileSystemProperties, longFileNameProvider);
 	}
 
 	@Test
@@ -272,6 +279,80 @@ public class CryptoFileSystemImplTest {
 
 				Assertions.assertThrows(IllegalArgumentException.class, () -> inTest.getCiphertextPath(cleartext));
 			}
+		}
+	}
+
+	@Nested
+	public class GetCiphertextPath {
+
+		@TempDir
+		Path tmpPath;
+
+		@ParameterizedTest
+		@DisplayName("Given a ciphertextNode, it's clearname is returned")
+		@ValueSource(strings = {".c9r", ".c9s"})
+		public void success(String fileExtension) throws IOException {
+			var ciphertextNodeNameName = "someFile";
+			var ciphertextNode = tmpPath.resolve(ciphertextNodeNameName + fileExtension);
+			var dirId = new byte[]{'f', 'o', 'o', 'b', 'a', 'r'};
+			var fileNameCryptor = mock(FileNameCryptor.class);
+			var expectedClearName = "veryClearText";
+			when(dirIdBackup.read(ciphertextNode)).thenReturn(dirId);
+			when(longFileNameProvider.inflate(ciphertextNode)).thenReturn(ciphertextNodeNameName);
+			when(cryptor.fileNameCryptor()).thenReturn(fileNameCryptor);
+			when(fileNameCryptor.decryptFilename(any(), eq(ciphertextNodeNameName), eq(dirId))).thenReturn(expectedClearName);
+
+			var result = inTest.getCleartextNameInternal(ciphertextNode);
+			verify(fileNameCryptor).decryptFilename(any(), eq(ciphertextNodeNameName), eq(dirId));
+			Assertions.assertEquals(expectedClearName, result);
+		}
+
+		@Test
+		@DisplayName("If the dirId backup file does not exists, throw UnsupportedOperationException")
+		public void notExistingDirIdFile() throws IOException {
+			var ciphertextNode = tmpPath.resolve("toDecrypt.c9r");
+			when(dirIdBackup.read(ciphertextNode)).thenThrow(UnsupportedOperationException.class);
+			Assertions.assertThrows(UnsupportedOperationException.class, () -> inTest.getCleartextNameInternal(ciphertextNode));
+		}
+
+		@Test
+		@DisplayName("If the dirId cannot be read, throw FileSystemException")
+		public void notReadableDirIdFile() throws IOException {
+			var ciphertextNode = tmpPath.resolve("toDecrypt.c9r");
+			when(dirIdBackup.read(ciphertextNode)) //
+					.thenThrow(TestCryptoException.class) //
+					.thenThrow(IllegalStateException.class);
+			Assertions.assertThrows(FileSystemException.class, () -> inTest.getCleartextNameInternal(ciphertextNode));
+			Assertions.assertThrows(FileSystemException.class, () -> inTest.getCleartextNameInternal(ciphertextNode));
+		}
+
+		@Test
+		@DisplayName("If the ciphertextName cannot be decrypted, throw FileSystemException")
+		public void notDecryptableCiphertext() throws IOException {
+			var name = "toDecrypt";
+			var ciphertextNode = tmpPath.resolve(name + ".c9s");
+			var dirId = new byte[]{'f', 'o', 'o', 'b', 'a', 'r'};
+			var expectedException = new IOException("Inflation failed");
+			when(dirIdBackup.read(ciphertextNode)).thenReturn(dirId);
+			when(longFileNameProvider.inflate(ciphertextNode)).thenThrow(expectedException);
+
+			var actual = Assertions.assertThrows(IOException.class, () -> inTest.getCleartextNameInternal(ciphertextNode));
+			Assertions.assertEquals(expectedException, actual);
+		}
+
+		@Test
+		@DisplayName("If inflating the shortened Name throws exception, it is rethrown")
+		public void inflateThrows() throws IOException {
+			var name = "toDecrypt";
+			var ciphertextNode = tmpPath.resolve(name + ".c9r");
+			var dirId = new byte[]{'f', 'o', 'o', 'b', 'a', 'r'};
+			var fileNameCryptor = mock(FileNameCryptor.class);
+			when(dirIdBackup.read(ciphertextNode)).thenReturn(dirId);
+			when(cryptor.fileNameCryptor()).thenReturn(fileNameCryptor);
+			when(fileNameCryptor.decryptFilename(any(), eq(name), eq(dirId))).thenThrow(TestCryptoException.class);
+
+			Assertions.assertThrows(FileSystemException.class, () -> inTest.getCleartextNameInternal(ciphertextNode));
+			verify(fileNameCryptor).decryptFilename(any(), eq(name), eq(dirId));
 		}
 	}
 
