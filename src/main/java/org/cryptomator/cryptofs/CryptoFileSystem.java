@@ -5,9 +5,7 @@ import org.cryptomator.cryptofs.common.Constants;
 import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.util.Optional;
 
 /**
  * A {@link FileSystem} which allows access to encrypted data in a directory.
@@ -46,9 +44,9 @@ public abstract class CryptoFileSystem extends FileSystem {
 	public abstract Path getCiphertextPath(Path cleartextPath) throws IOException;
 
 	/**
-	 * Computes from an encrypted node (file or folder) its cleartext name.
+	 * Computes from a valid,encrypted node (file or folder) its cleartext name.
 	 * <p>
-	 * Due to the structure of a vault, a node is valid if:
+	 * Due to the structure of a vault, an encrypted node is valid if:
 	 * <ul>
 	 *     <li>the path points into the vault (duh!)</li>
 	 *     <li>the "file" extension is {@value Constants#CRYPTOMATOR_FILE_SUFFIX} or {@value Constants#DEFLATED_FILE_SUFFIX}</li>
@@ -63,26 +61,7 @@ public abstract class CryptoFileSystem extends FileSystem {
 	 * @throws IllegalArgumentException if {@param ciphertextNode} is not a valid ciphertext content node of the vault
 	 * @throws UnsupportedOperationException if the directory containing the {@param ciphertextNode} does not have a {@value Constants#DIR_ID_BACKUP_FILE_NAME} file
 	 */
-	public String getCleartextName(Path ciphertextNode) throws IOException, IllegalArgumentException, UnsupportedOperationException {
-		var vaultPath = getPathToVault();
-		var absoluteCipherNode = ciphertextNode.toAbsolutePath();
-		if (!absoluteCipherNode.startsWith(vaultPath)) {
-			throw new IllegalArgumentException("Node %s is not a part of vault %s".formatted(absoluteCipherNode, vaultPath));
-		}
-		if (vaultPath.relativize(absoluteCipherNode).getNameCount() != 4) { // d/AB/ABCDDEDED/thisMustBeTheFile.c9r
-			throw new IllegalArgumentException("Node %s is not located at depth 4 from vault storage root".formatted(ciphertextNode));
-		}
-		if (Optional.ofNullable(ciphertextNode.getFileName()) //
-				.map(Object::toString) //
-				.filter(s -> s.length() >= Constants.MIN_CIPHER_NAME_LENGTH //
-						&& (s.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX) || s.endsWith(Constants.DEFLATED_FILE_SUFFIX))) //
-				.isEmpty()) {
-			throw new IllegalArgumentException("Node %s does not end with %s or %s or is shorter than %d characters.".formatted(ciphertextNode, Constants.CRYPTOMATOR_FILE_SUFFIX, Constants.DEFLATED_FILE_SUFFIX, Constants.MIN_CIPHER_NAME_LENGTH));
-		}
-		return getCleartextNameInternal(absoluteCipherNode);
-	}
-
-	protected abstract String getCleartextNameInternal(Path ciphertextFile) throws IOException, UnsupportedOperationException;
+	public abstract String getCleartextName(Path ciphertextNode) throws IOException, UnsupportedOperationException;
 
 	/**
 	 * Provides file system performance statistics.

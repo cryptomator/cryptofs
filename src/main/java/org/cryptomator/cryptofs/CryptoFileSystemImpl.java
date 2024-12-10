@@ -8,22 +8,18 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import com.google.common.io.BaseEncoding;
 import org.cryptomator.cryptofs.attr.AttributeByNameProvider;
 import org.cryptomator.cryptofs.attr.AttributeProvider;
 import org.cryptomator.cryptofs.attr.AttributeViewProvider;
 import org.cryptomator.cryptofs.attr.AttributeViewType;
 import org.cryptomator.cryptofs.common.ArrayUtils;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
-import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.DeletingFileVisitor;
 import org.cryptomator.cryptofs.common.FinallyUtil;
-import org.cryptomator.cryptofs.common.StringUtils;
 import org.cryptomator.cryptofs.dir.CiphertextDirectoryDeleter;
 import org.cryptomator.cryptofs.dir.DirectoryStreamFactory;
 import org.cryptomator.cryptofs.dir.DirectoryStreamFilters;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
-import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.Cryptor;
 
 import javax.inject.Inject;
@@ -99,17 +95,17 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	private final CryptoPath rootPath;
 	private final CryptoPath emptyPath;
-	private final LongFileNameProvider longFileNameProvider;
+	private final FileNameDecryptor fileNameDecryptor;
 
 	private volatile boolean open = true;
 
 	@Inject
-	public CryptoFileSystemImpl(CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, @PathToVault Path pathToVault, Cryptor cryptor,
-								CryptoFileStore fileStore, CryptoFileSystemStats stats, CryptoPathMapper cryptoPathMapper, CryptoPathFactory cryptoPathFactory,
-								PathMatcherFactory pathMatcherFactory, DirectoryStreamFactory directoryStreamFactory, DirectoryIdProvider dirIdProvider, DirectoryIdBackup dirIdBackup,
-								AttributeProvider fileAttributeProvider, AttributeByNameProvider fileAttributeByNameProvider, AttributeViewProvider fileAttributeViewProvider,
-								OpenCryptoFiles openCryptoFiles, Symlinks symlinks, FinallyUtil finallyUtil, CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag,
-								CryptoFileSystemProperties fileSystemProperties, LongFileNameProvider longFileNameProvider) {
+	public CryptoFileSystemImpl(CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, @PathToVault Path pathToVault, Cryptor cryptor, //
+								CryptoFileStore fileStore, CryptoFileSystemStats stats, CryptoPathMapper cryptoPathMapper, CryptoPathFactory cryptoPathFactory, //
+								PathMatcherFactory pathMatcherFactory, DirectoryStreamFactory directoryStreamFactory, DirectoryIdProvider dirIdProvider, DirectoryIdBackup dirIdBackup, //
+								AttributeProvider fileAttributeProvider, AttributeByNameProvider fileAttributeByNameProvider, AttributeViewProvider fileAttributeViewProvider, //
+								OpenCryptoFiles openCryptoFiles, Symlinks symlinks, FinallyUtil finallyUtil, CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag, //
+								CryptoFileSystemProperties fileSystemProperties, FileNameDecryptor fileNameDecryptor) {
 		this.provider = provider;
 		this.cryptoFileSystems = cryptoFileSystems;
 		this.pathToVault = pathToVault;
@@ -134,7 +130,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 		this.rootPath = cryptoPathFactory.rootFor(this);
 		this.emptyPath = cryptoPathFactory.emptyFor(this);
-		this.longFileNameProvider = longFileNameProvider;
+		this.fileNameDecryptor = fileNameDecryptor;
 	}
 
 	@Override
@@ -157,30 +153,9 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		}
 	}
 
-	//TODO: test test test
 	@Override
-	protected String getCleartextNameInternal(Path ciphertextNode) throws IOException, UnsupportedOperationException {
-		byte[] dirId = null;
-		try {
-			dirId = dirIdBackup.read(ciphertextNode);
-		} catch (NoSuchFileException e) {
-			throw new UnsupportedOperationException("Directory does not have a dirid.c9r file.");
-		} catch (CryptoException | IllegalStateException e) {
-			throw new FileSystemException(ciphertextNode.toString(), null, "Decryption of dirId backup file failed:" + e);
-		}
-		var fullCipherNodeName = ciphertextNode.getFileName().toString();
-		var cipherNodeExtension = fullCipherNodeName.substring(fullCipherNodeName.length() - 4);
-
-		String actualEncryptedName = switch (cipherNodeExtension) {
-			case Constants.CRYPTOMATOR_FILE_SUFFIX -> StringUtils.removeEnd(fullCipherNodeName, Constants.CRYPTOMATOR_FILE_SUFFIX);
-			case Constants.DEFLATED_FILE_SUFFIX -> longFileNameProvider.inflate(ciphertextNode);
-			default -> throw new IllegalStateException("SHOULD NOT REACH HERE");
-		};
-		try {
-			return cryptor.fileNameCryptor().decryptFilename(BaseEncoding.base64Url(), actualEncryptedName, dirId);
-		} catch (CryptoException e) {
-			throw new FileSystemException(ciphertextNode.toString(), null, "Filname decryption failed:" + e);
-		}
+	public String getCleartextName(Path ciphertextNode) throws IOException, UnsupportedOperationException {
+		return fileNameDecryptor.decryptFilename(ciphertextNode);
 	}
 
 	@Override
