@@ -1,6 +1,8 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.health.dirid.OrphanContentDirTest;
+import org.cryptomator.cryptofs.util.TestCryptoException;
 import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.common.DecryptingReadableByteChannel;
@@ -103,15 +105,11 @@ public class DirectoryIdBackupTest {
 		@DisplayName("If the backup file cannot be decrypted, a CryptoException is thrown")
 		public void invalidEncryptionThrowsCryptoException() throws IOException {
 			var dirIdBackupSpy = spy(dirIdBackup);
-			var expectedException = new MyCryptoException();
+			var expectedException = new TestCryptoException();
 			Mockito.when(dirIdBackupSpy.wrapDecryptionAround(Mockito.any(), Mockito.eq(cryptor))).thenReturn(decChannel);
 			Mockito.when(decChannel.read(Mockito.any())).thenThrow(expectedException);
 			var actual = Assertions.assertThrows(CryptoException.class, () -> dirIdBackupSpy.read(contentPath));
 			Assertions.assertEquals(expectedException, actual);
-		}
-
-		static class MyCryptoException extends CryptoException {
-
 		}
 
 		@Test

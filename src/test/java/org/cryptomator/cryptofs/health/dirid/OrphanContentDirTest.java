@@ -5,8 +5,8 @@ import org.cryptomator.cryptofs.CiphertextDirectory;
 import org.cryptomator.cryptofs.DirectoryIdBackup;
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.util.TestCryptoException;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
-import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
@@ -227,11 +227,7 @@ public class OrphanContentDirTest {
 
 		private OrphanContentDir resultSpy;
 
-		static class MyCryptoException extends CryptoException {
-
-		}
-
-		static List<Throwable> expectedExceptions = List.of(new IOException(), new IllegalStateException(), new MyCryptoException());
+		static List<Throwable> expectedExceptions = List.of(new IOException(), new IllegalStateException(), new TestCryptoException());
 
 		@BeforeEach
 		public void init() {
