@@ -34,13 +34,11 @@ class CryptoFileSystems {
 
 	private final ConcurrentMap<Path, CryptoFileSystemImpl> fileSystems = new ConcurrentHashMap<>();
 	private final CryptoFileSystemComponent.Factory cryptoFileSystemComponentFactory;
-	private final FileSystemCapabilityChecker capabilityChecker;
 	private final SecureRandom csprng;
 
 	@Inject
-	public CryptoFileSystems(CryptoFileSystemComponent.Factory cryptoFileSystemComponentFactory, FileSystemCapabilityChecker capabilityChecker, SecureRandom csprng) {
+	public CryptoFileSystems(CryptoFileSystemComponent.Factory cryptoFileSystemComponentFactory, SecureRandom csprng) {
 		this.cryptoFileSystemComponentFactory = cryptoFileSystemComponentFactory;
-		this.capabilityChecker = capabilityChecker;
 		this.csprng = csprng;
 	}
 
