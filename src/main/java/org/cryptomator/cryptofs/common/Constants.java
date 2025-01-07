@@ -29,7 +29,9 @@ public final class Constants {
 
 	public static final int MAX_SYMLINK_LENGTH = 32767; // max path length on NTFS and FAT32: 32k-1
 	public static final int MAX_DIR_ID_LENGTH = 36; // UUIDv4: hex-encoded 16 byte int + 4 hyphens = 36 ASCII chars
-	public static final int MIN_CIPHER_NAME_LENGTH = 26; //rounded up base64url encoded (16 bytes IV + 0 bytes empty string) + file suffix = 26 ASCII chars
+	public static final int MAX_CIPHER_NAME_LENGTH = 220; // calculations done in https://github.com/cryptomator/cryptofs/issues/60#issuecomment-523238303
+	public static final int MIN_CIPHER_NAME_LENGTH = 28; //rounded up base64url encoded (16 bytes IV + 0 bytes empty string) + file suffix = 28 ASCII chars
+	public static final int MAX_ADDITIONAL_PATH_LENGTH = 48; // beginning at d/... see https://github.com/cryptomator/cryptofs/issues/77
 
 	public static final String SEPARATOR = "/";
 	public static final String RECOVERY_DIR_NAME = "LOST+FOUND";
