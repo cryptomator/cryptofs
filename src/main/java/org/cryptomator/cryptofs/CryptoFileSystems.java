@@ -53,13 +53,12 @@ class CryptoFileSystems {
 		try (Masterkey key = properties.keyLoader().loadKey(keyId)) {
 			var config = configLoader.verify(key.getEncoded(), Constants.VAULT_VERSION);
 			backupVaultConfigFile(normalizedPathToVault, properties);
-			var adjustedProperties = adjustForCapabilities(pathToVault, properties);
 			var cryptor = CryptorProvider.forScheme(config.getCipherCombo()).provide(key.copy(), csprng);
 			try {
 				checkVaultRootExistence(pathToVault, cryptor);
 				return fileSystems.compute(normalizedPathToVault, (path, fs) -> {
 					if (fs == null) {
-						return cryptoFileSystemComponentFactory.create(cryptor, config, provider, normalizedPathToVault, adjustedProperties).cryptoFileSystem();
+						return cryptoFileSystemComponentFactory.create(cryptor, config, provider, normalizedPathToVault, properties).cryptoFileSystem();
 					} else {
 						throw new FileSystemAlreadyExistsException();
 					}
@@ -121,23 +120,6 @@ class CryptoFileSystems {
 	private void backupVaultConfigFile(Path pathToVault, CryptoFileSystemProperties properties) throws IOException {
 		Path vaultConfigFile = pathToVault.resolve(properties.vaultConfigFilename());
 		BackupHelper.attemptBackup(vaultConfigFile);
-	}
-
-	private CryptoFileSystemProperties adjustForCapabilities(Path pathToVault, CryptoFileSystemProperties originalProperties) throws FileSystemCapabilityChecker.MissingCapabilityException {
-		if (!originalProperties.readonly()) {
-			try {
-				capabilityChecker.assertWriteAccess(pathToVault);
-				return originalProperties;
-			} catch (FileSystemCapabilityChecker.MissingCapabilityException e) {
-				capabilityChecker.assertReadAccess(pathToVault);
-				LOG.warn("No write access to vault. Fallback to read-only access.");
-				Set<CryptoFileSystemProperties.FileSystemFlags> flags = EnumSet.copyOf(originalProperties.flags());
-				flags.add(CryptoFileSystemProperties.FileSystemFlags.READONLY);
-				return CryptoFileSystemProperties.cryptoFileSystemPropertiesFrom(originalProperties).withFlags(flags).build();
-			}
-		} else {
-			return originalProperties;
-		}
 	}
 
 	public void remove(CryptoFileSystemImpl cryptoFileSystem) {
