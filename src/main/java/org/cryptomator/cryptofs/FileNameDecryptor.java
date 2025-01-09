@@ -82,8 +82,11 @@ class FileNameDecryptor {
 		return name != null && Stream.of(Constants.CRYPTOMATOR_FILE_SUFFIX, Constants.DEFLATED_FILE_SUFFIX).anyMatch(name.toString()::endsWith);
 	}
 
-	boolean isAtCipherNodeLevel(Path p) {
-		return vaultPath.relativize(p).getNameCount() == 4; //TODO: relativize is defined for two relative Paths. For two absolute paths, the result depends on the OS
+	boolean isAtCipherNodeLevel(Path absolutPah) {
+		if (!absolutPah.isAbsolute()) {
+			throw new IllegalArgumentException("Path " + absolutPah + "must be absolute");
+		}
+		return absolutPah.subpath(vaultPath.getNameCount(), absolutPah.getNameCount()).getNameCount() == 4;
 	}
 
 	boolean hasMinimumFileNameLength(Path p) {

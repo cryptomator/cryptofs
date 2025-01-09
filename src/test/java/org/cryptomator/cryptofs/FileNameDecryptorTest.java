@@ -167,5 +167,10 @@ public class FileNameDecryptorTest {
 		}
 	}
 
+	@Test
+	public void testIsAtCipherNodeLevelRequiresAbsolutePath() {
+		Assertions.assertThrows(IllegalArgumentException.class, () -> testObj.isAtCipherNodeLevel(Path.of("relative/path")));
+	}
+
 
 }
