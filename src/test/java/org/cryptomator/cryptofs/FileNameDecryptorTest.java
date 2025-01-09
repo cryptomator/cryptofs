@@ -16,6 +16,7 @@ import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.file.FileSystemException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -76,7 +77,7 @@ public class FileNameDecryptorTest {
 	@DisplayName("If the dirId backup file does not exists, throw UnsupportedOperationException")
 	public void notExistingDirIdFile() throws IOException {
 		var ciphertextNode = tmpPath.resolve("toDecrypt.c9r");
-		when(dirIdBackup.read(ciphertextNode)).thenThrow(UnsupportedOperationException.class);
+		when(dirIdBackup.read(ciphertextNode)).thenThrow(NoSuchFileException.class);
 
 		Assertions.assertThrows(UnsupportedOperationException.class, () -> testObjSpy.decryptFilenameInternal(ciphertextNode));
 	}
