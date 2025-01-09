@@ -7,8 +7,6 @@ import com.google.common.io.RecursiveDeleteOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
-import javax.inject.Singleton;
 import java.io.IOException;
 import java.nio.file.DirectoryIteratorException;
 import java.nio.file.DirectoryStream;
@@ -17,13 +15,9 @@ import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-@Singleton
-public class FileSystemCapabilityChecker {
+public final class FileSystemCapabilityChecker {
 
 	private static final Logger LOG = LoggerFactory.getLogger(FileSystemCapabilityChecker.class);
-	private static final int MAX_CIPHERTEXT_NAME_LENGTH = 220; // inclusive. calculations done in https://github.com/cryptomator/cryptofs/issues/60#issuecomment-523238303
-	private static final int MIN_CIPHERTEXT_NAME_LENGTH = 28; // base64(iv).c9r
-	private static final int MAX_ADDITIONAL_PATH_LENGTH = 48; // beginning at d/... see https://github.com/cryptomator/cryptofs/issues/77
 
 	public enum Capability {
 		/**
@@ -41,8 +35,8 @@ public class FileSystemCapabilityChecker {
 		WRITE_ACCESS,
 	}
 
-	@Inject
-	public FileSystemCapabilityChecker() {
+	private FileSystemCapabilityChecker() {
+
 	}
 
 	/**
@@ -53,7 +47,7 @@ public class FileSystemCapabilityChecker {
 	 * @implNote Only short-running tests with constant time are performed
 	 * @since 1.9.2
 	 */
-	public void assertAllCapabilities(Path pathToVault) throws MissingCapabilityException {
+	public static void assertAllCapabilities(Path pathToVault) throws MissingCapabilityException {
 		assertReadAccess(pathToVault);
 		assertWriteAccess(pathToVault);
 	}
@@ -65,7 +59,7 @@ public class FileSystemCapabilityChecker {
 	 * @throws MissingCapabilityException if the check fails
 	 * @since 1.9.3
 	 */
-	public void assertReadAccess(Path pathToVault) throws MissingCapabilityException {
+	public static void assertReadAccess(Path pathToVault) throws MissingCapabilityException {
 		try (DirectoryStream<Path> ds = Files.newDirectoryStream(pathToVault)) {
 			assert ds != null;
 		} catch (IOException e) {
@@ -80,7 +74,7 @@ public class FileSystemCapabilityChecker {
 	 * @throws MissingCapabilityException if the check fails
 	 * @since 1.9.3
 	 */
-	public void assertWriteAccess(Path pathToVault) throws MissingCapabilityException {
+	public static void assertWriteAccess(Path pathToVault) throws MissingCapabilityException {
 		Path checkDir = pathToVault.resolve("c");
 		try {
 			Files.createDirectories(checkDir);
@@ -93,9 +87,9 @@ public class FileSystemCapabilityChecker {
 		}
 	}
 
-	public int determineSupportedCleartextFileNameLength(Path pathToVault) throws IOException {
+	public static int determineSupportedCleartextFileNameLength(Path pathToVault) throws IOException {
 		int maxCiphertextLen = determineSupportedCiphertextFileNameLength(pathToVault);
-		assert maxCiphertextLen >= MIN_CIPHERTEXT_NAME_LENGTH;
+		assert maxCiphertextLen >= Constants.MIN_CIPHER_NAME_LENGTH;
 		// math explained in https://github.com/cryptomator/cryptofs/issues/60#issuecomment-523238303;
 		// subtract 4 for file extension, base64-decode, subtract 16 for IV
 		return (maxCiphertextLen - 4) / 4 * 3 - 16;
@@ -108,22 +102,22 @@ public class FileSystemCapabilityChecker {
 	 * @return Number of chars a .c9r file is allowed to have
 	 * @throws IOException If unable to perform this check
 	 */
-	public int determineSupportedCiphertextFileNameLength(Path pathToVault) throws IOException {
-		int subPathLength = MAX_ADDITIONAL_PATH_LENGTH - 2; // subtract "c/"
-		return determineSupportedCiphertextFileNameLength(pathToVault.resolve("c"), subPathLength, MIN_CIPHERTEXT_NAME_LENGTH, MAX_CIPHERTEXT_NAME_LENGTH);
+	public static int determineSupportedCiphertextFileNameLength(Path pathToVault) throws IOException {
+		int subPathLength = Constants.MAX_ADDITIONAL_PATH_LENGTH - 2; // subtract "c/"
+		return determineSupportedCiphertextFileNameLength(pathToVault.resolve("c"), subPathLength, Constants.MIN_CIPHER_NAME_LENGTH, Constants.MAX_CIPHER_NAME_LENGTH);
 	}
 
 	/**
 	 * Determines the number of chars a filename is allowed to have inside of subdirectories of <code>dir</code> by running an experiment.
 	 *
-	 * @param dir               Path to a directory where to conduct the experiment (e.g. <code>/path/to/vault/c</code>)
-	 * @param subPathLength     Defines the combined number of chars of the subdirectories inside <code>dir</code>, including slashes but excluding the leading slash. Must be a minimum of 6
+	 * @param dir Path to a directory where to conduct the experiment (e.g. <code>/path/to/vault/c</code>)
+	 * @param subPathLength Defines the combined number of chars of the subdirectories inside <code>dir</code>, including slashes but excluding the leading slash. Must be a minimum of 6
 	 * @param minFileNameLength The minimum filename length to check
 	 * @param maxFileNameLength The maximum filename length to check
 	 * @return The supported filename length inside a subdirectory of <code>dir</code> with <code>subPathLength</code> chars
 	 * @throws IOException If unable to perform this check
 	 */
-	public int determineSupportedCiphertextFileNameLength(Path dir, int subPathLength, int minFileNameLength, int maxFileNameLength) throws IOException {
+	public static int determineSupportedCiphertextFileNameLength(Path dir, int subPathLength, int minFileNameLength, int maxFileNameLength) throws IOException {
 		Preconditions.checkArgument(subPathLength >= 6, "subPathLength must be larger than charcount(a/nnn/)");
 		Preconditions.checkArgument(minFileNameLength > 0);
 		Preconditions.checkArgument(maxFileNameLength <= 999);
@@ -144,7 +138,7 @@ public class FileSystemCapabilityChecker {
 		}
 	}
 
-	private int determineSupportedCiphertextFileNameLength(Path p, int lowerBoundIncl, int upperBoundExcl) {
+	private static int determineSupportedCiphertextFileNameLength(Path p, int lowerBoundIncl, int upperBoundExcl) {
 		assert lowerBoundIncl < upperBoundExcl;
 		int mid = (lowerBoundIncl + upperBoundExcl) / 2;
 		assert mid < upperBoundExcl;
@@ -159,7 +153,7 @@ public class FileSystemCapabilityChecker {
 		}
 	}
 
-	private boolean canHandleFileNameLength(Path parent, int nameLength) {
+	private static boolean canHandleFileNameLength(Path parent, int nameLength) {
 		Path checkDir = parent.resolve(String.format("%03d", nameLength));
 		Path checkFile = checkDir.resolve(Strings.repeat("a", nameLength));
 		try {
@@ -178,7 +172,7 @@ public class FileSystemCapabilityChecker {
 		}
 	}
 
-	private boolean canListDir(Path dir) {
+	private static boolean canListDir(Path dir) {
 		try (DirectoryStream<Path> ds = Files.newDirectoryStream(dir)) {
 			ds.iterator().hasNext(); // throws DirectoryIteratorException on Windows if child path too long
 			return true;
@@ -187,7 +181,7 @@ public class FileSystemCapabilityChecker {
 		}
 	}
 
-	private void deleteSilently(Path path) {
+	private static void deleteSilently(Path path) {
 		try {
 			Files.delete(path);
 		} catch (IOException e) {
@@ -195,7 +189,7 @@ public class FileSystemCapabilityChecker {
 		}
 	}
 
-	private void deleteRecursivelySilently(Path dir) {
+	private static void deleteRecursivelySilently(Path dir) {
 		try {
 			if (Files.exists(dir)) {
 				MoreFiles.deleteRecursively(dir, RecursiveDeleteOption.ALLOW_INSECURE);

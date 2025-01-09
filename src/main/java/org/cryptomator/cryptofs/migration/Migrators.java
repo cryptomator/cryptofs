@@ -46,12 +46,10 @@ public class Migrators {
 	private static final MigrationComponent COMPONENT = DaggerMigrationComponent.builder().csprng(strongSecureRandom()).build();
 
 	private final Map<Migration, Migrator> migrators;
-	private final FileSystemCapabilityChecker fsCapabilityChecker;
 
 	@Inject
-	Migrators(Map<Migration, Migrator> migrators, FileSystemCapabilityChecker fsCapabilityChecker) {
+	Migrators(Map<Migration, Migrator> migrators) {
 		this.migrators = migrators;
-		this.fsCapabilityChecker = fsCapabilityChecker;
 	}
 
 	private static SecureRandom strongSecureRandom() {
@@ -69,9 +67,9 @@ public class Migrators {
 	/**
 	 * Inspects the vault and checks if it is supported by this library.
 	 *
-	 * @param pathToVault         Path to the vault's root
+	 * @param pathToVault Path to the vault's root
 	 * @param vaultConfigFilename Name of the vault config file located in the vault
-	 * @param masterkeyFilename   Name of the masterkey file optionally located in the vault
+	 * @param masterkeyFilename Name of the masterkey file optionally located in the vault
 	 * @return <code>true</code> if the vault at the given path is of an older format than supported by this library
 	 * @throws IOException if an I/O error occurs parsing the masterkey file
 	 */
@@ -83,19 +81,19 @@ public class Migrators {
 	/**
 	 * Performs the actual migration. This task may take a while and this method will block.
 	 *
-	 * @param pathToVault          Path to the vault's root
-	 * @param vaultConfigFilename  Name of the vault config file located inside <code>pathToVault</code>
-	 * @param masterkeyFilename    Name of the masterkey file located inside <code>pathToVault</code>
-	 * @param passphrase           The passphrase needed to unlock the vault
-	 * @param progressListener     Listener that will get notified of progress updates
+	 * @param pathToVault Path to the vault's root
+	 * @param vaultConfigFilename Name of the vault config file located inside <code>pathToVault</code>
+	 * @param masterkeyFilename Name of the masterkey file located inside <code>pathToVault</code>
+	 * @param passphrase The passphrase needed to unlock the vault
+	 * @param progressListener Listener that will get notified of progress updates
 	 * @param continuationListener Listener that will get asked if there are events that require feedback
-	 * @throws NoApplicableMigratorException                          If the vault can not be migrated, because no migrator could be found
-	 * @throws InvalidPassphraseException                             If the passphrase could not be used to unlock the vault
+	 * @throws NoApplicableMigratorException If the vault can not be migrated, because no migrator could be found
+	 * @throws InvalidPassphraseException If the passphrase could not be used to unlock the vault
 	 * @throws FileSystemCapabilityChecker.MissingCapabilityException If the underlying filesystem lacks features required to store a vault
-	 * @throws IOException                                            if an I/O error occurs migrating the vault
+	 * @throws IOException if an I/O error occurs migrating the vault
 	 */
 	public void migrate(Path pathToVault, String vaultConfigFilename, String masterkeyFilename, CharSequence passphrase, MigrationProgressListener progressListener, MigrationContinuationListener continuationListener) throws NoApplicableMigratorException, CryptoException, IOException {
-		fsCapabilityChecker.assertAllCapabilities(pathToVault);
+		FileSystemCapabilityChecker.assertAllCapabilities(pathToVault);
 		int vaultVersion = determineVaultVersion(pathToVault, vaultConfigFilename, masterkeyFilename);
 		try {
 			Migrator migrator = findApplicableMigrator(vaultVersion).orElseThrow(NoApplicableMigratorException::new);
