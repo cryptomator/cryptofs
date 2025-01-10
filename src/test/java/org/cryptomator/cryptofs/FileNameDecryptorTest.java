@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
@@ -167,9 +168,41 @@ public class FileNameDecryptorTest {
 		}
 	}
 
-	@Test
-	public void testIsAtCipherNodeLevelRequiresAbsolutePath() {
-		Assertions.assertThrows(IllegalArgumentException.class, () -> testObj.isAtCipherNodeLevel(Path.of("relative/path")));
+	@Nested
+	public class IsAtCipherNodeLevel {
+
+		@TempDir
+		Path tmpDir;
+
+		@Test
+		@DisplayName("cipherNodeLevel test requires an absolute path")
+		public void requiresAbsolutePath() {
+			var relativePath = Path.of("relative/path");
+			Assertions.assertThrows(IllegalArgumentException.class, () -> testObj.isAtCipherNodeLevel(relativePath));
+		}
+
+		@Test
+		public void success() {
+			when(vaultPath.getNameCount()).thenReturn(tmpDir.getNameCount());
+			var p = tmpDir.resolve("d/AA/BBBBBBBBBBBBBBB/encrypted.file");
+			Assertions.assertTrue(testObj.isAtCipherNodeLevel(p));
+		}
+
+		@Test
+		public void failure() {
+			when(vaultPath.getNameCount()).thenReturn(tmpDir.getNameCount());
+			var p = tmpDir.resolve("d/AA/other.file");
+			Assertions.assertFalse(testObj.isAtCipherNodeLevel(p));
+		}
+	}
+
+	@ParameterizedTest
+	@DisplayName("Only c9r and c9s are accepted file extensions")
+	@CsvSource(value = {"file.c9r,true", "file.c9s,true", "filec9r,false", "file.c9l,false",})
+	public void testHasCipherNodeExtension(String filename, boolean expected) {
+		var p = Path.of(filename);
+		var result = testObj.hasCipherNodeExtension(p);
+		Assertions.assertEquals(expected, result, "The filename %s is WRONGLY %s".formatted(filename, result ? "accepted" : "rejected"));
 	}
 
 
