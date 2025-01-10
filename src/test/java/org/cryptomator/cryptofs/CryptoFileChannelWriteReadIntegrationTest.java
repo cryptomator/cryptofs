@@ -616,8 +616,8 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			Assertions.assertEquals(-1, bytesRead);
 		}
 
-		@RepeatedTest(50)
-		public void testConcurrentWriteAndTruncate() throws IOException {
+		@RepeatedTest(15)
+		public void testConcurrentWriteAndTruncate() throws IOException, InterruptedException {
 			AtomicBoolean keepWriting = new AtomicBoolean(true);
 			ByteBuffer buf = ByteBuffer.wrap("the quick brown fox jumps over the lazy dog".getBytes(StandardCharsets.UTF_8));
 			var executor = Executors.newCachedThreadPool();
@@ -632,6 +632,7 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 						buf.flip();
 					}
 				});
+				Thread.sleep(1000);
 				try (FileChannel truncatingChannel = FileChannel.open(file, WRITE, TRUNCATE_EXISTING)) {
 					keepWriting.set(false);
 				}

@@ -93,19 +93,20 @@ public class OpenCryptoFileTest {
 	}
 
 	@Test
-	@DisplayName("Opening a file channel with TRUNCATE_EXISTING sets the file size to 0")
+	@DisplayName("Opening a file channel with TRUNCATE_EXISTING calls truncate(0) on the cleartextChannel")
 	public void testFileSizeZerodOnTruncateExisting() throws IOException {
 		EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING), readonlyFlag);
+		var cleartextChannel = mock(CleartextFileChannel.class);
 		Mockito.when(headerHolder.get()).thenReturn(Mockito.mock(FileHeader.class));
 		Mockito.when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
 		Mockito.when(fileHeaderCryptor.headerSize()).thenReturn(42);
 		Mockito.when(openCryptoFileComponent.newChannelComponent()).thenReturn(channelComponentFactory);
 		Mockito.when(channelComponentFactory.create(any(), any(), any())).thenReturn(channelComponent);
-		Mockito.when(channelComponent.channel()).thenReturn(mock(CleartextFileChannel.class));
+		Mockito.when(channelComponent.channel()).thenReturn(cleartextChannel);
 		OpenCryptoFile openCryptoFile = new OpenCryptoFile(closeListener, chunkCache, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, fileSize, lastModified, openCryptoFileComponent);
 
 		openCryptoFile.newFileChannel(options);
-		verify(fileSize).set(0L);
+		verify(cleartextChannel).truncate(0L);
 	}
 
 	@Nested
@@ -258,19 +259,6 @@ public class OpenCryptoFileTest {
 		@DisplayName("getting size succeeds after creating second file channel")
 		public void testGetSizeAfterCreatingSecondFileChannel() {
 			Assertions.assertEquals(0l, openCryptoFile.size().get());
-		}
-
-
-		@Test
-		@Order(20)
-		@DisplayName("TRUNCATE_EXISTING leads to chunk cache invalidation")
-		public void testTruncateExistingInvalidatesChunkCache() throws IOException {
-			Mockito.when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
-			Mockito.when(fileHeaderCryptor.headerSize()).thenReturn(43);
-			Files.write(CURRENT_FILE_PATH.get(), new byte[0]);
-			EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE), readonlyFlag);
-			openCryptoFile.newFileChannel(options);
-			verify(chunkCache).invalidateStale();
 		}
 
 		@Test

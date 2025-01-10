@@ -70,15 +70,13 @@ public class OpenCryptoFile implements Closeable {
 		try {
 			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
 			initFileHeader(options, ciphertextFileChannel);
-			if (options.truncateExisting()) {
-				chunkCache.invalidateStale();
-				ciphertextFileChannel.truncate(cryptor.fileHeaderCryptor().headerSize());
-				fileSize.set(0);
-			}
 			initFileSize(ciphertextFileChannel);
 			cleartextFileChannel = component.newChannelComponent() //
 					.create(ciphertextFileChannel, options, this::cleartextChannelClosed) //
 					.channel();
+			if (options.truncateExisting()) {
+				cleartextFileChannel.truncate(0);
+			}
 		} finally {
 			if (cleartextFileChannel == null) { // i.e. something didn't work
 				cleartextChannelClosed(ciphertextFileChannel);
