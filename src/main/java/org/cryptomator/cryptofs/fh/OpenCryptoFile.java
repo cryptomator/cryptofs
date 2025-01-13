@@ -26,7 +26,6 @@ public class OpenCryptoFile implements Closeable {
 
 	private final FileCloseListener listener;
 	private final AtomicReference<Instant> lastModified;
-	private final ChunkCache chunkCache;
 	private final Cryptor cryptor;
 	private final FileHeaderHolder headerHolder;
 	private final ChunkIO chunkIO;
@@ -37,11 +36,10 @@ public class OpenCryptoFile implements Closeable {
 	private final AtomicInteger openChannelsCount = new AtomicInteger(0);
 
 	@Inject
-	public OpenCryptoFile(FileCloseListener listener, ChunkCache chunkCache, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, //
+	public OpenCryptoFile(FileCloseListener listener, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, //
 						  @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, //
 						  @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
 		this.listener = listener;
-		this.chunkCache = chunkCache;
 		this.cryptor = cryptor;
 		this.headerHolder = headerHolder;
 		this.chunkIO = chunkIO;

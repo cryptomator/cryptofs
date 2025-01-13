@@ -618,7 +618,7 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		}
 
 		@RepeatedTest(10)
-		public void testConcurrentWriteAndTruncate() throws IOException, InterruptedException {
+		void testConcurrentWriteAndTruncate() throws IOException, InterruptedException {
 			AtomicBoolean keepWriting = new AtomicBoolean(true);
 			ByteBuffer buf = ByteBuffer.wrap("the quick brown fox jumps over the lazy dog".getBytes(StandardCharsets.UTF_8));
 			var timer = new CountDownLatch(1);
