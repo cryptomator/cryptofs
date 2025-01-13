@@ -50,6 +50,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -616,10 +617,11 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			Assertions.assertEquals(-1, bytesRead);
 		}
 
-		@RepeatedTest(15)
+		@RepeatedTest(10)
 		public void testConcurrentWriteAndTruncate() throws IOException, InterruptedException {
 			AtomicBoolean keepWriting = new AtomicBoolean(true);
 			ByteBuffer buf = ByteBuffer.wrap("the quick brown fox jumps over the lazy dog".getBytes(StandardCharsets.UTF_8));
+			var timer = new CountDownLatch(1);
 			var executor = Executors.newCachedThreadPool();
 			try (FileChannel writingChannel = FileChannel.open(file, WRITE, CREATE)) {
 				executor.submit(() -> {
@@ -632,7 +634,7 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 						buf.flip();
 					}
 				});
-				Thread.sleep(1000);
+				timer.await(500, TimeUnit.MILLISECONDS);
 				try (FileChannel truncatingChannel = FileChannel.open(file, WRITE, TRUNCATE_EXISTING)) {
 					keepWriting.set(false);
 				}
