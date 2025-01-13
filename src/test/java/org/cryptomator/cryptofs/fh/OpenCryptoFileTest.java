@@ -94,7 +94,7 @@ public class OpenCryptoFileTest {
 
 	@Test
 	@DisplayName("Opening a file channel with TRUNCATE_EXISTING calls truncate(0) on the cleartextChannel")
-	public void testFileSizeZerodOnTruncateExisting() throws IOException {
+	public void testCleartextChannelTruncateCalledOnTruncateExisting() throws IOException {
 		EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING), readonlyFlag);
 		var cleartextChannel = mock(CleartextFileChannel.class);
 		Mockito.when(headerHolder.get()).thenReturn(Mockito.mock(FileHeader.class));
