@@ -62,7 +62,7 @@ public class DirIdCheck implements HealthCheck {
 			if (foundDir) {
 				iter.remove();
 				var expectedDirVaultRel = Path.of(Constants.DATA_DIR_NAME).resolve(expectedDir);
-				if (Files.exists(pathToVault.resolve(expectedDirVaultRel).resolve(Constants.DIR_BACKUP_FILE_NAME))) {
+				if (Files.exists(pathToVault.resolve(expectedDirVaultRel).resolve(Constants.DIR_ID_BACKUP_FILE_NAME))) {
 					resultCollector.accept(new HealthyDir(dirId, dirFile, expectedDirVaultRel));
 				} else {
 					resultCollector.accept(new MissingDirIdBackup(dirId, expectedDirVaultRel));
@@ -116,7 +116,7 @@ public class DirIdCheck implements HealthCheck {
 				return FileVisitResult.CONTINUE;
 			}
 
-			if (attrs.size() > Constants.MAX_DIR_FILE_LENGTH) {
+			if (attrs.size() > Constants.MAX_DIR_ID_LENGTH) {
 				LOG.warn("Encountered dir.c9r file of size {}", attrs.size());
 				resultCollector.accept(new ObeseDirFile(dirFile, attrs.size()));
 			} else if (attrs.size() == 0) {

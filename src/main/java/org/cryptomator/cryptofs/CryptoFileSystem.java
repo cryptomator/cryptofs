@@ -1,5 +1,7 @@
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.common.Constants;
+
 import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
@@ -40,6 +42,26 @@ public abstract class CryptoFileSystem extends FileSystem {
 	 * @throws IOException if an I/O error occurs looking for the ciphertext resource
 	 */
 	public abstract Path getCiphertextPath(Path cleartextPath) throws IOException;
+
+	/**
+	 * Computes from a valid,encrypted node (file or folder) its cleartext name.
+	 * <p>
+	 * Due to the structure of a vault, an encrypted node is valid if:
+	 * <ul>
+	 *     <li>the path points into the vault (duh!)</li>
+	 *     <li>the "file" extension is {@value Constants#CRYPTOMATOR_FILE_SUFFIX} or {@value Constants#DEFLATED_FILE_SUFFIX}</li>
+	 *     <li>the node name is at least {@value Constants#MIN_CIPHER_NAME_LENGTH} characters long</li>
+	 *     <li>it is located at depth 4 from the vault storage root, i.e. d/AB/CDEFG...XYZ/validFile.c9r</li>
+	 * </ul>
+	 *
+	 * @param ciphertextNode path to the ciphertext file or directory
+	 * @return the cleartext name of the ciphertext file or directory
+	 * @throws java.nio.file.NoSuchFileException if the ciphertextFile does not exist
+	 * @throws IOException if an I/O error occurs reading the ciphertext files
+	 * @throws IllegalArgumentException if {@param ciphertextNode} is not a valid ciphertext content node of the vault
+	 * @throws UnsupportedOperationException if the directory containing the {@param ciphertextNode} does not have a {@value Constants#DIR_ID_BACKUP_FILE_NAME} file
+	 */
+	public abstract String getCleartextName(Path ciphertextNode) throws IOException, UnsupportedOperationException;
 
 	/**
 	 * Provides file system performance statistics.

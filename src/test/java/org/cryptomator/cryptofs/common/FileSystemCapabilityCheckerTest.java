@@ -20,18 +20,18 @@ import java.nio.file.spi.FileSystemProvider;
 import java.util.Collections;
 
 public class FileSystemCapabilityCheckerTest {
-	
+
 	@Nested
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 	public class PathLengthLimits {
-		
+
 		private Path pathToVault = Mockito.mock(Path.class);
 		private Path cDir = Mockito.mock(Path.class);
 		private Path fillerDir = Mockito.mock(Path.class);
 		private Path nnnDir = Mockito.mock(Path.class);
 		private FileSystem fileSystem = Mockito.mock(FileSystem.class);
 		private FileSystemProvider fileSystemProvider = Mockito.mock(FileSystemProvider.class);
-		
+
 		@BeforeEach
 		public void setup() throws IOException {
 			Mockito.when(pathToVault.getFileSystem()).thenReturn(fileSystem);
@@ -55,15 +55,14 @@ public class FileSystemCapabilityCheckerTest {
 					String checkFileStr = invocation.getArgument(0);
 					Path checkFileMock = Mockito.mock(Path.class, checkFileStr);
 					Mockito.when(checkFileMock.getFileSystem()).thenReturn(fileSystem);
-					Mockito.when(fileSystemProvider.newByteChannel(Mockito.eq(checkFileMock), Mockito.any()))
-							.thenReturn(new SeekableByteChannelMock(0));
+					Mockito.when(fileSystemProvider.newByteChannel(Mockito.eq(checkFileMock), Mockito.any())).thenReturn(new SeekableByteChannelMock(0));
 					return checkFileMock;
 				});
 				Mockito.when(fileSystemProvider.newDirectoryStream(Mockito.eq(checkDirMock), Mockito.any())).thenReturn(DirectoryStreamMock.empty());
 				return checkDirMock;
 			});
 
-			int determinedLimit = new FileSystemCapabilityChecker().determineSupportedCiphertextFileNameLength(pathToVault);
+			int determinedLimit = FileSystemCapabilityChecker.determineSupportedCiphertextFileNameLength(pathToVault);
 
 			Assertions.assertEquals(220, determinedLimit);
 		}
@@ -80,13 +79,12 @@ public class FileSystemCapabilityCheckerTest {
 					String checkFileStr = invocation.getArgument(0);
 					Path checkFileMock = Mockito.mock(Path.class, checkFileStr);
 					Mockito.when(checkFileMock.getFileSystem()).thenReturn(fileSystem);
-					Mockito.when(fileSystemProvider.newByteChannel(Mockito.eq(checkFileMock), Mockito.any()))
-							.thenReturn(new SeekableByteChannelMock(0));
+					Mockito.when(fileSystemProvider.newByteChannel(Mockito.eq(checkFileMock), Mockito.any())).thenReturn(new SeekableByteChannelMock(0));
 					return checkFileMock;
 				});
 				Mockito.when(fileSystemProvider.newDirectoryStream(Mockito.eq(checkDirMock), Mockito.any())).then(invocation3 -> {
 					Iterable<Path> iterable = Mockito.mock(Iterable.class);
-					if (Integer.valueOf(checkDirStr) > limit) {
+					if (Integer.parseInt(checkDirStr) > limit) {
 						Mockito.when(iterable.iterator()).thenThrow(new DirectoryIteratorException(new IOException("path too long")));
 					} else {
 						Mockito.when(iterable.iterator()).thenReturn(Collections.emptyIterator());
@@ -96,8 +94,8 @@ public class FileSystemCapabilityCheckerTest {
 				return checkDirMock;
 			});
 
-			int determinedLimit = new FileSystemCapabilityChecker().determineSupportedCiphertextFileNameLength(pathToVault);
-			
+			int determinedLimit = FileSystemCapabilityChecker.determineSupportedCiphertextFileNameLength(pathToVault);
+
 			Assertions.assertEquals(limit, determinedLimit);
 		}
 
@@ -113,12 +111,10 @@ public class FileSystemCapabilityCheckerTest {
 					String checkFileStr = invocation.getArgument(0);
 					Path checkFileMock = Mockito.mock(Path.class, checkFileStr);
 					Mockito.when(checkFileMock.getFileSystem()).thenReturn(fileSystem);
-					if (Integer.valueOf(checkDirStr) > limit) {
-						Mockito.when(fileSystemProvider.newByteChannel(Mockito.eq(checkFileMock), Mockito.any()))
-								.thenThrow(new IOException("name too long"));
+					if (Integer.parseInt(checkDirStr) > limit) {
+						Mockito.when(fileSystemProvider.newByteChannel(Mockito.eq(checkFileMock), Mockito.any())).thenThrow(new IOException("name too long"));
 					} else {
-						Mockito.when(fileSystemProvider.newByteChannel(Mockito.eq(checkFileMock), Mockito.any()))
-								.thenReturn(new SeekableByteChannelMock(0));
+						Mockito.when(fileSystemProvider.newByteChannel(Mockito.eq(checkFileMock), Mockito.any())).thenReturn(new SeekableByteChannelMock(0));
 					}
 					return checkFileMock;
 				});
@@ -126,7 +122,7 @@ public class FileSystemCapabilityCheckerTest {
 				return checkDirMock;
 			});
 
-			int determinedLimit = new FileSystemCapabilityChecker().determineSupportedCiphertextFileNameLength(pathToVault);
+			int determinedLimit = FileSystemCapabilityChecker.determineSupportedCiphertextFileNameLength(pathToVault);
 
 			Assertions.assertEquals(limit, determinedLimit);
 		}
@@ -136,14 +132,14 @@ public class FileSystemCapabilityCheckerTest {
 		@CsvSource({"220, 146", "219, 143", "218, 143", "217, 143", "216, 143", "215, 140"})
 		public void testDetermineSupportedCleartextFileNameLength(int ciphertextLimit, int expectedCleartextLimit) throws IOException {
 			Path path = Mockito.mock(Path.class);
-			FileSystemCapabilityChecker checker = Mockito.spy(new FileSystemCapabilityChecker());
-			Mockito.doReturn(ciphertextLimit).when(checker).determineSupportedCiphertextFileNameLength(path);
-
-			int result = checker.determineSupportedCleartextFileNameLength(path);
-
-			Assertions.assertEquals(expectedCleartextLimit, result);
+			try (var staticCheckerMock = Mockito.mockStatic(FileSystemCapabilityChecker.class)) {
+				staticCheckerMock.when(() -> FileSystemCapabilityChecker.determineSupportedCiphertextFileNameLength(path)).thenReturn(ciphertextLimit);
+				staticCheckerMock.when(() -> FileSystemCapabilityChecker.determineSupportedCleartextFileNameLength(path)).thenCallRealMethod();
+				int result = FileSystemCapabilityChecker.determineSupportedCleartextFileNameLength(path);
+				Assertions.assertEquals(expectedCleartextLimit, result);
+			}
 		}
-		
+
 	}
 
 }

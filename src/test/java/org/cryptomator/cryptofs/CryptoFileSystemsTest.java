@@ -41,7 +41,6 @@ public class CryptoFileSystemsTest {
 	private final Path dataDirPath = mock(Path.class, "normalizedVaultPath/d");
 	private final Path preContenRootPath = mock(Path.class, "normalizedVaultPath/d/AB");
 	private final Path contenRootPath = mock(Path.class, "normalizedVaultPath/d/AB/CDEFGHIJKLMNOP");
-	private final FileSystemCapabilityChecker capabilityChecker = mock(FileSystemCapabilityChecker.class);
 	private final CryptoFileSystemProvider provider = mock(CryptoFileSystemProvider.class);
 	private final CryptoFileSystemProperties properties = mock(CryptoFileSystemProperties.class);
 	private final CryptoFileSystemComponent cryptoFileSystemComponent = mock(CryptoFileSystemComponent.class);
@@ -65,7 +64,7 @@ public class CryptoFileSystemsTest {
 	private MockedStatic<CryptorProvider> cryptorProviderClass;
 	private MockedStatic<BackupHelper> backupHelperClass;
 
-	private final CryptoFileSystems inTest = new CryptoFileSystems(cryptoFileSystemComponentFactory, capabilityChecker, csprng);
+	private final CryptoFileSystems inTest = new CryptoFileSystems(cryptoFileSystemComponentFactory, csprng);
 
 	@BeforeEach
 	public void setup() throws IOException, MasterkeyLoadingFailedException {

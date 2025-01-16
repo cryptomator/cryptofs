@@ -17,8 +17,8 @@ import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.common.DeletingFileVisitor;
 import org.cryptomator.cryptofs.common.FinallyUtil;
 import org.cryptomator.cryptofs.dir.CiphertextDirectoryDeleter;
-import org.cryptomator.cryptofs.dir.DirectoryStreamFilters;
 import org.cryptomator.cryptofs.dir.DirectoryStreamFactory;
+import org.cryptomator.cryptofs.dir.DirectoryStreamFilters;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptolib.api.Cryptor;
 
@@ -95,16 +95,17 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	private final CryptoPath rootPath;
 	private final CryptoPath emptyPath;
+	private final FileNameDecryptor fileNameDecryptor;
 
 	private volatile boolean open = true;
 
 	@Inject
-	public CryptoFileSystemImpl(CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, @PathToVault Path pathToVault, Cryptor cryptor,
-								CryptoFileStore fileStore, CryptoFileSystemStats stats, CryptoPathMapper cryptoPathMapper, CryptoPathFactory cryptoPathFactory,
-								PathMatcherFactory pathMatcherFactory, DirectoryStreamFactory directoryStreamFactory, DirectoryIdProvider dirIdProvider, DirectoryIdBackup dirIdBackup,
-								AttributeProvider fileAttributeProvider, AttributeByNameProvider fileAttributeByNameProvider, AttributeViewProvider fileAttributeViewProvider,
-								OpenCryptoFiles openCryptoFiles, Symlinks symlinks, FinallyUtil finallyUtil, CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag,
-								CryptoFileSystemProperties fileSystemProperties) {
+	public CryptoFileSystemImpl(CryptoFileSystemProvider provider, CryptoFileSystems cryptoFileSystems, @PathToVault Path pathToVault, Cryptor cryptor, //
+								CryptoFileStore fileStore, CryptoFileSystemStats stats, CryptoPathMapper cryptoPathMapper, CryptoPathFactory cryptoPathFactory, //
+								PathMatcherFactory pathMatcherFactory, DirectoryStreamFactory directoryStreamFactory, DirectoryIdProvider dirIdProvider, DirectoryIdBackup dirIdBackup, //
+								AttributeProvider fileAttributeProvider, AttributeByNameProvider fileAttributeByNameProvider, AttributeViewProvider fileAttributeViewProvider, //
+								OpenCryptoFiles openCryptoFiles, Symlinks symlinks, FinallyUtil finallyUtil, CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag, //
+								CryptoFileSystemProperties fileSystemProperties, FileNameDecryptor fileNameDecryptor) {
 		this.provider = provider;
 		this.cryptoFileSystems = cryptoFileSystems;
 		this.pathToVault = pathToVault;
@@ -129,6 +130,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 		this.rootPath = cryptoPathFactory.rootFor(this);
 		this.emptyPath = cryptoPathFactory.emptyFor(this);
+		this.fileNameDecryptor = fileNameDecryptor;
 	}
 
 	@Override
@@ -149,6 +151,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		} else {
 			return cipherFile.getFilePath();
 		}
+	}
+
+	@Override
+	public String getCleartextName(Path ciphertextNode) throws IOException, UnsupportedOperationException {
+		return fileNameDecryptor.decryptFilename(ciphertextNode);
 	}
 
 	@Override
@@ -331,7 +338,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		// create dir if and only if the dirFile has been created right now (not if it has been created before):
 		try {
 			Files.createDirectories(ciphertextDir.path());
-			dirIdBackup.execute(ciphertextDir);
+			dirIdBackup.write(ciphertextDir);
 			ciphertextPath.persistLongFileName();
 		} catch (IOException e) {
 			// make sure there is no orphan dir file:

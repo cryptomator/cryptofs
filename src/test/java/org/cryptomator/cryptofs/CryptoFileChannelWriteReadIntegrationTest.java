@@ -50,6 +50,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -617,11 +619,13 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		}
 
 		@RepeatedTest(50)
-		public void testConcurrentWriteAndTruncate() throws IOException {
+		public void testConcurrentWriteAndTruncate() throws IOException, InterruptedException {
 			AtomicBoolean keepWriting = new AtomicBoolean(true);
-			ByteBuffer buf = ByteBuffer.wrap("the quick brown fox jumps over the lazy dog".getBytes(StandardCharsets.UTF_8));
-			var executor = Executors.newCachedThreadPool();
-			try (FileChannel writingChannel = FileChannel.open(file, WRITE, CREATE)) {
+			ByteBuffer buf = ByteBuffer.allocate(50_000); // 50 kiB
+
+			try (ExecutorService executor = Executors.newCachedThreadPool();
+				 FileChannel writingChannel = FileChannel.open(file, WRITE, CREATE)) {
+				var cdl = new CountDownLatch(3);
 				executor.submit(() -> {
 					while (keepWriting.get()) {
 						try {
@@ -630,20 +634,22 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 							throw new UncheckedIOException(e);
 						}
 						buf.flip();
+						cdl.countDown();
 					}
 				});
+				cdl.await();
 				try (FileChannel truncatingChannel = FileChannel.open(file, WRITE, TRUNCATE_EXISTING)) {
 					keepWriting.set(false);
 				}
-				executor.shutdown();
 			}
 
-			Assertions.assertDoesNotThrow(() -> {
-				try (FileChannel readingChannel = FileChannel.open(file, READ)) {
-					var dst = ByteBuffer.allocate(buf.capacity());
+
+			try (FileChannel readingChannel = FileChannel.open(file, READ)) {
+				var dst = ByteBuffer.allocate(buf.capacity());
+				Assertions.assertDoesNotThrow(() -> {
 					readingChannel.read(dst);
-				}
-			});
+				});
+			}
 		}
 
 	}
