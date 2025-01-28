@@ -1,35 +1,28 @@
 package org.cryptomator.cryptofs.event;
 
-public abstract class FilesystemEvent {
+public interface FilesystemEvent {
 
-	private final Type type;
-
-	protected FilesystemEvent(Type type) {
-		this.type = type;
+	static <T extends FilesystemEvent> LockedEvent toLockedEvent(T fse) {
+		return toEvent(fse, LockedEvent.class);
 	}
 
-	LockedEvent toLockedEvent() {
-		return toEvent(LockedEvent.class);
+	static <T extends FilesystemEvent> DecryptionFailedEvent toDecryptionFailedEvent(T fse) throws ClassCastException {
+		return toEvent(fse, DecryptionFailedEvent.class);
 	}
 
-	DecryptionFailedEvent toDecryptionFailedEvent() {
-		return toEvent(DecryptionFailedEvent.class);
+	static <T extends FilesystemEvent> ConflictResolvedEvent toConflictResolvedEvent(T fse) throws ClassCastException {
+		return toEvent(fse, ConflictResolvedEvent.class);
 	}
 
-	<T extends FilesystemEvent> T toEvent(Class<T> clazz) {
-		try {
-			return clazz.cast(this);
-		} catch (ClassCastException e) {
-			throw new IllegalCallerException();
-		}
+	static <T extends FilesystemEvent, U extends FilesystemEvent> T toEvent(U o, Class<T> clazz) throws ClassCastException {
+			return clazz.cast(o);
 	}
 
-	public Type getType() {
-		return type;
-	}
+	Type getType();
 
-	public enum Type {
+	enum Type {
 		DECRYPTION_FAILED,
+		CONFLICT_RESOLVED,
 		LOCKED;
 	}
 

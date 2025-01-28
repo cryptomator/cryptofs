@@ -3,21 +3,17 @@ package org.cryptomator.cryptofs.event;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 
 import java.nio.file.Path;
-import java.util.concurrent.atomic.AtomicReference;
 
-public class DecryptionFailedEvent extends FilesystemEvent {
+/**
+ * Created, if decryption fails.
+ * @param ciphertextPath
+ * @param cleartextPath might be null
+ * @param e
+ */
+public record DecryptionFailedEvent(Path ciphertextPath, Path cleartextPath, AuthenticationFailedException e) implements FilesystemEvent {
 
-	private final Path resource;
-	private final AuthenticationFailedException e;
-
-	public DecryptionFailedEvent(Path resource, AuthenticationFailedException e) {
-		super(Type.DECRYPTION_FAILED);
-		this.resource = resource;
-		this.e = e;
+	@Override
+	public Type getType() {
+		return Type.DECRYPTION_FAILED;
 	}
-
-	public Path getResource() {
-		return resource;
-	}
-
 }

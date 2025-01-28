@@ -1,9 +1,9 @@
 package org.cryptomator.cryptofs.event;
 
-public class LockedEvent extends FilesystemEvent {
+public record LockedEvent() implements FilesystemEvent {
 
-	public LockedEvent() {
-		super(Type.LOCKED);
+	@Override
+	public Type getType() {
+		return Type.LOCKED;
 	}
-
 }
