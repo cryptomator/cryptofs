@@ -5,6 +5,7 @@ import dagger.Subcomponent;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 
 import java.nio.channels.FileChannel;
+import java.util.function.Consumer;
 
 @ChannelScoped
 @Subcomponent
@@ -17,7 +18,7 @@ public interface ChannelComponent {
 
 		ChannelComponent create(@BindsInstance FileChannel ciphertextChannel, //
 								@BindsInstance EffectiveOpenOptions options, //
-								@BindsInstance ChannelCloseListener listener); //
+								@BindsInstance Consumer<FileChannel> closeListener); //
 	}
 
 }

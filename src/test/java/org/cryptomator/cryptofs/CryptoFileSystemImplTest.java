@@ -105,6 +105,7 @@ public class CryptoFileSystemImplTest {
 	private final CiphertextDirectoryDeleter ciphertextDirDeleter = mock(CiphertextDirectoryDeleter.class);
 	private final ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 	private final CryptoFileSystemProperties fileSystemProperties = mock(CryptoFileSystemProperties.class);
+	private final FileNameDecryptor filenameDecryptor = mock(FileNameDecryptor.class);
 
 	private final CryptoPath root = mock(CryptoPath.class);
 	private final CryptoPath empty = mock(CryptoPath.class);
@@ -127,7 +128,7 @@ public class CryptoFileSystemImplTest {
 				pathMatcherFactory, directoryStreamFactory, dirIdProvider, dirIdBackup, //
 				fileAttributeProvider, fileAttributeByNameProvider, fileAttributeViewProvider, //
 				openCryptoFiles, symlinks, finallyUtil, ciphertextDirDeleter, readonlyFlag, //
-				fileSystemProperties);
+				fileSystemProperties, filenameDecryptor);
 	}
 
 	@Test
@@ -1277,7 +1278,7 @@ public class CryptoFileSystemImplTest {
 			inTest.createDirectory(path);
 
 			verify(readonlyFlag).assertWritable();
-			verify(dirIdBackup, Mockito.times(1)).execute(ciphertextDirectoryObject);
+			verify(dirIdBackup, Mockito.times(1)).write(ciphertextDirectoryObject);
 		}
 
 

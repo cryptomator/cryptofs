@@ -43,6 +43,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.function.Consumer;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.mockito.ArgumentMatchers.any;
@@ -76,7 +77,7 @@ public class CleartextFileChannelTest {
 	private AtomicReference<Instant> lastModified = new AtomicReference<>(Instant.ofEpochMilli(0));
 	private BasicFileAttributeView attributeView = mock(BasicFileAttributeView.class);
 	private ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
-	private ChannelCloseListener closeListener = mock(ChannelCloseListener.class);
+	private Consumer<FileChannel> closeListener = mock(Consumer.class);
 	private CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
 
 	private CleartextFileChannel inTest;
@@ -242,9 +243,20 @@ public class CleartextFileChannelTest {
 
 			Assertions.assertThrows(IOException.class, () -> inSpy.implCloseChannel());
 
-			verify(closeListener).closed(inSpy);
+			verify(closeListener).accept(ciphertextFileChannel);
 			verify(ciphertextFileChannel).close();
 			verify(inSpy).persistLastModified();
+		}
+
+		@Test
+		@DisplayName("On close, first flush channel, then unregister")
+		public void testCloseCipherChannelFlushBeforeUnregister() throws IOException {
+			var inSpy = spy(inTest);
+			inSpy.implCloseChannel();
+
+			var ordering = inOrder(inSpy, closeListener);
+			ordering.verify(inSpy).flush();
+			verify(closeListener).accept(ciphertextFileChannel);
 		}
 
 		@Test
@@ -278,8 +290,8 @@ public class CleartextFileChannelTest {
 			var inSpy = Mockito.spy(inTest);
 			Mockito.doThrow(IOException.class).when(inSpy).persistLastModified();
 
-			Assertions.assertDoesNotThrow(() -> inSpy.implCloseChannel());
-			verify(closeListener).closed(inSpy);
+			Assertions.assertDoesNotThrow(inSpy::implCloseChannel);
+			verify(closeListener).accept(ciphertextFileChannel);
 			verify(ciphertextFileChannel).close();
 		}
 

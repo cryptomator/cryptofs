@@ -55,13 +55,13 @@ public class MissingContentDirTest {
 		var dirIdHash = "ridiculous-32-char-pseudo-hashhh";
 		Mockito.doReturn(dirIdHash).when(fileNameCryptor).hashDirectoryId(dirId);
 		try (var dirIdBackupMock = Mockito.mockStatic(DirectoryIdBackup.class)) {
-			dirIdBackupMock.when(() -> DirectoryIdBackup.backupManually(Mockito.any(), Mockito.any())).thenAnswer(Answers.RETURNS_SMART_NULLS);
+			dirIdBackupMock.when(() -> DirectoryIdBackup.write(Mockito.any(), Mockito.any())).thenAnswer(Answers.RETURNS_SMART_NULLS);
 
 			result.fix(pathToVault, cryptor);
 
 			var expectedPath = pathToVault.resolve("d/ri/diculous-32-char-pseudo-hashhh");
 			ArgumentMatcher<CiphertextDirectory> cipherDirMatcher = obj -> obj.dirId().equals(dirId) && obj.path().endsWith(expectedPath);
-			dirIdBackupMock.verify(() -> DirectoryIdBackup.backupManually(Mockito.eq(cryptor), Mockito.argThat(cipherDirMatcher)), Mockito.times(1));
+			dirIdBackupMock.verify(() -> DirectoryIdBackup.write(Mockito.eq(cryptor), Mockito.argThat(cipherDirMatcher)), Mockito.times(1));
 			var attr = Assertions.assertDoesNotThrow(() -> Files.readAttributes(expectedPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS));
 			Assertions.assertTrue(attr.isDirectory());
 		}
@@ -73,7 +73,7 @@ public class MissingContentDirTest {
 		var dirIdHash = "ridiculous-32-char-pseudo-hashhh";
 		try (var dirIdBackupMock = Mockito.mockStatic(DirectoryIdBackup.class)) {
 			Mockito.doReturn(dirIdHash).when(fileNameCryptor).hashDirectoryId(dirId);
-			dirIdBackupMock.when(() -> DirectoryIdBackup.backupManually(Mockito.any(), Mockito.any())).thenThrow(new IOException("Access denied"));
+			dirIdBackupMock.when(() -> DirectoryIdBackup.write(Mockito.any(), Mockito.any())).thenThrow(new IOException("Access denied"));
 
 			Assertions.assertThrows(IOException.class, () -> result.fix(pathToVault, cryptor));
 		}

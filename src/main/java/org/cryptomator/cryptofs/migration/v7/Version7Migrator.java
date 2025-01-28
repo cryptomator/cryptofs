@@ -66,7 +66,7 @@ public class Version7Migrator implements Migrator {
 			LOG.info("Backed up masterkey from {} to {}.", masterkeyFile.getFileName(), masterkeyBackupFile.getFileName());
 
 			// check file system capabilities:
-			int filenameLengthLimit = new FileSystemCapabilityChecker().determineSupportedCiphertextFileNameLength(vaultRoot.resolve("c"), 46, 28, 220);
+			int filenameLengthLimit = FileSystemCapabilityChecker.determineSupportedCiphertextFileNameLength(vaultRoot.resolve("c"), 46, 28, 220);
 			int pathLengthLimit = filenameLengthLimit + 48; // TODO
 			PreMigrationVisitor preMigrationVisitor;
 			if (filenameLengthLimit >= 220) {

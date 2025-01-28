@@ -21,7 +21,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.stream.Stream;
 
 import static org.cryptomator.cryptofs.common.Constants.DIR_FILE_NAME;
-import static org.cryptomator.cryptofs.common.Constants.MAX_DIR_FILE_LENGTH;
+import static org.cryptomator.cryptofs.common.Constants.MAX_DIR_ID_LENGTH;
 import static org.cryptomator.cryptofs.common.Constants.MAX_SYMLINK_LENGTH;
 import static org.cryptomator.cryptofs.common.Constants.SYMLINK_FILE_NAME;
 
@@ -127,7 +127,7 @@ class C9rConflictResolver {
 		if (!Files.exists(canonicalPath)) {
 			Files.move(conflictingPath, canonicalPath); // boom. conflict solved.
 			return true;
-		} else if (hasSameFileContent(conflictingPath.resolve(DIR_FILE_NAME), canonicalPath.resolve(DIR_FILE_NAME), MAX_DIR_FILE_LENGTH)) {
+		} else if (hasSameFileContent(conflictingPath.resolve(DIR_FILE_NAME), canonicalPath.resolve(DIR_FILE_NAME), MAX_DIR_ID_LENGTH)) {
 			LOG.info("Removing conflicting directory {} (identical to {})", conflictingPath, canonicalPath);
 			MoreFiles.deleteRecursively(conflictingPath, RecursiveDeleteOption.ALLOW_INSECURE);
 			return true;

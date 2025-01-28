@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.function.Consumer;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
@@ -53,11 +54,11 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private final AtomicLong fileSize;
 	private final AtomicReference<Instant> lastModified;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
-	private final ChannelCloseListener closeListener;
+	private final Consumer<FileChannel> closeListener;
 	private final CryptoFileSystemStats stats;
 
 	@Inject
-	public CleartextFileChannel(FileChannel ciphertextFileChannel, FileHeaderHolder fileHeaderHolder, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, BufferPool bufferPool, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, @CurrentOpenFilePath AtomicReference<Path> currentPath, ExceptionsDuringWrite exceptionsDuringWrite, ChannelCloseListener closeListener, CryptoFileSystemStats stats) {
+	public CleartextFileChannel(FileChannel ciphertextFileChannel, FileHeaderHolder fileHeaderHolder, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, BufferPool bufferPool, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, @CurrentOpenFilePath AtomicReference<Path> currentPath, ExceptionsDuringWrite exceptionsDuringWrite, Consumer<FileChannel> closeListener, CryptoFileSystemStats stats) {
 		super(readWriteLock);
 		this.ciphertextFileChannel = ciphertextFileChannel;
 		this.fileHeaderHolder = fileHeaderHolder;
@@ -327,7 +328,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	protected void implCloseChannel() throws IOException {
 		var closeActions = List.<CloseAction>of(this::flush, //
 				super::implCloseChannel, //
-				() -> closeListener.closed(this), //
+				() -> closeListener.accept(ciphertextFileChannel),
 				ciphertextFileChannel::close, //
 				this::tryPersistLastModified);
 		tryAll(closeActions.iterator());

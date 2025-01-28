@@ -51,7 +51,7 @@ public class MissingContentDir implements DiagnosticResult {
 		var dirIdHash = cryptor.fileNameCryptor().hashDirectoryId(dirId);
 		Path dirPath = pathToVault.resolve(Constants.DATA_DIR_NAME).resolve(dirIdHash.substring(0, 2)).resolve(dirIdHash.substring(2, 32));
 		Files.createDirectories(dirPath);
-		DirectoryIdBackup.backupManually(cryptor, new CiphertextDirectory(dirId, dirPath));
+		DirectoryIdBackup.write(cryptor, new CiphertextDirectory(dirId, dirPath));
 	}
 
 	@Override

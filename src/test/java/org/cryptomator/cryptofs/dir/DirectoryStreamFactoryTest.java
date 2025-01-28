@@ -3,6 +3,7 @@ package org.cryptomator.cryptofs.dir;
 import org.cryptomator.cryptofs.CiphertextDirectory;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.common.Constants;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -118,10 +119,10 @@ public class DirectoryStreamFactoryTest {
 
 	private static Stream<Arguments> provideFilterExamples() {
 		return Stream.of( //
-				Arguments.of("foo25____25chars_____.c9r", false), //
-				Arguments.of("bar25____25chars_____.c9s", false), //
-				Arguments.of("foo26____26chars______.c9r", true), //
-				Arguments.of("bar26____26chars______.c9s", true));
+				Arguments.of("b".repeat(Constants.MIN_CIPHER_NAME_LENGTH - 5)+".c9r", false), //
+				Arguments.of("b".repeat(Constants.MIN_CIPHER_NAME_LENGTH - 5)+".c9s", false), //
+				Arguments.of("a".repeat(Constants.MIN_CIPHER_NAME_LENGTH - 4)+".c9r", true), //
+				Arguments.of("a".repeat(Constants.MIN_CIPHER_NAME_LENGTH - 4)+".c9s", true));
 	}
 
 }

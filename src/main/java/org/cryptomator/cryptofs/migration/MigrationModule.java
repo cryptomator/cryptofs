@@ -26,11 +26,6 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 class MigrationModule {
 
 	@Provides
-	FileSystemCapabilityChecker provideFileSystemCapabilityChecker() {
-		return new FileSystemCapabilityChecker();
-	}
-
-	@Provides
 	@IntoMap
 	@MigratorKey(Migration.FIVE_TO_SIX)
 	Migrator provideVersion6Migrator(Version6Migrator migrator) {
