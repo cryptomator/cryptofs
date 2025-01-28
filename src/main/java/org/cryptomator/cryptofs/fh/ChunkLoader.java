@@ -17,7 +17,7 @@ import java.util.function.Consumer;
 @OpenFileScoped
 class ChunkLoader {
 
-	private final Consumer<FilesystemEvent> observer;
+	private final Consumer<FilesystemEvent> eventConsumer;
 	private final AtomicReference<Path> path;
 	private final Cryptor cryptor;
 	private final ChunkIO ciphertext;
@@ -26,8 +26,8 @@ class ChunkLoader {
 	private final BufferPool bufferPool;
 
 	@Inject
-	public ChunkLoader(@Named("Babadook") Consumer<FilesystemEvent> observer, @CurrentOpenFilePath AtomicReference<Path> path, Cryptor cryptor, ChunkIO ciphertext, FileHeaderHolder headerHolder, CryptoFileSystemStats stats, BufferPool bufferPool) {
-		this.observer = observer;
+	public ChunkLoader(@Named("Babadook") Consumer<FilesystemEvent> eventConsumer, @CurrentOpenFilePath AtomicReference<Path> path, Cryptor cryptor, ChunkIO ciphertext, FileHeaderHolder headerHolder, CryptoFileSystemStats stats, BufferPool bufferPool) {
+		this.eventConsumer = eventConsumer;
 		this.path = path;
 		this.cryptor = cryptor;
 		this.ciphertext = ciphertext;
@@ -53,7 +53,7 @@ class ChunkLoader {
 			}
 			return cleartextBuf;
 		} catch (AuthenticationFailedException e) {
-			observer.accept(new DecryptionFailedEvent(path.get(), e));
+			eventConsumer.accept(new DecryptionFailedEvent(path.get(), e));
 			throw e;
 		} finally {
 			bufferPool.recycle(ciphertextBuf);

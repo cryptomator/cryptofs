@@ -24,7 +24,7 @@ public class FileHeaderHolder {
 
 	private static final Logger LOG = LoggerFactory.getLogger(FileHeaderHolder.class);
 
-	private final Consumer<FilesystemEvent> observer;
+	private final Consumer<FilesystemEvent> eventConsumer;
 	private final Cryptor cryptor;
 	private final AtomicReference<Path> path;
 	private final AtomicReference<FileHeader> header = new AtomicReference<>();
@@ -32,8 +32,8 @@ public class FileHeaderHolder {
 	private final AtomicBoolean isPersisted = new AtomicBoolean();
 
 	@Inject
-	public FileHeaderHolder(@Named("Babadook") Consumer<FilesystemEvent> observer, Cryptor cryptor, @CurrentOpenFilePath AtomicReference<Path> path) {
-		this.observer = observer;
+	public FileHeaderHolder(@Named("Babadook") Consumer<FilesystemEvent> eventConsumer, Cryptor cryptor, @CurrentOpenFilePath AtomicReference<Path> path) {
+		this.eventConsumer = eventConsumer;
 		this.cryptor = cryptor;
 		this.path = path;
 	}
@@ -81,11 +81,10 @@ public class FileHeaderHolder {
 			header.set(existingHeader);
 			isPersisted.set(true);
 			return existingHeader;
-		} catch (AuthenticationFailedException e) {
-			System.out.println("AuthenticationFailedException occured in cryptofs");
-			observer.accept(new DecryptionFailedEvent(path.get(),e));
-			throw new IOException("Unable to decrypt header of file " + path.get(), e);
 		} catch (IllegalArgumentException | CryptoException e) {
+			if (e instanceof AuthenticationFailedException afe) {
+				eventConsumer.accept(new DecryptionFailedEvent(path.get(), afe));
+			}
 			throw new IOException("Unable to decrypt header of file " + path.get(), e);
 		}
 	}

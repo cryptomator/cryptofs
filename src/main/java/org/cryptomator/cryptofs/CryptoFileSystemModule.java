@@ -21,9 +21,6 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
-import java.util.concurrent.Flow;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.SubmissionPublisher;
 import java.util.function.Consumer;
 
 @Module(subcomponents = {AttributeComponent.class, AttributeViewComponent.class, OpenCryptoFileComponent.class, DirectoryStreamComponent.class})
@@ -45,11 +42,7 @@ class CryptoFileSystemModule {
 	@Provides
 	@CryptoFileSystemScoped
 	@Named("Babadook")
-	public Consumer<FilesystemEvent> provideFilesystemEventPublisher(CryptoFileSystemProperties fsProps) {
-		SubmissionPublisher<FilesystemEvent> publisher = new SubmissionPublisher<>();//ForkJoinPool.commonPool(),200); //TODO: capacity?
-		if(fsProps.filesystemEventSubscriber() != null) {
-			publisher.subscribe(fsProps.filesystemEventSubscriber());
-		}
-		return publisher::submit;
+	public Consumer<FilesystemEvent> provideFilesystemEventConsumer(CryptoFileSystemProperties fsProps) {
+		return (Consumer<FilesystemEvent>) fsProps.get(CryptoFileSystemProperties.PROPERTY_NOTIFY_METHOD);
 	}
 }

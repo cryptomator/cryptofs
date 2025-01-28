@@ -51,7 +51,8 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY)), //
+						anEntry(PROPERTY_NOTIFY_METHOD, DEFAULT_NOTIFY_METHOD)));
 	}
 
 	@Test
@@ -77,7 +78,8 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, 255), //
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, 221), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY)), //
+						anEntry(PROPERTY_NOTIFY_METHOD, DEFAULT_NOTIFY_METHOD)));
 	}
 
 	@Test
@@ -99,7 +101,8 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY)), //
+						anEntry(PROPERTY_NOTIFY_METHOD, DEFAULT_NOTIFY_METHOD)));
 	}
 
 	@Test
@@ -121,7 +124,8 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class))));
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class)), //
+						anEntry(PROPERTY_NOTIFY_METHOD, DEFAULT_NOTIFY_METHOD)));
 	}
 
 	@Test
@@ -173,9 +177,8 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class))
-				)
-		);
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class)), //
+						anEntry(PROPERTY_NOTIFY_METHOD, DEFAULT_NOTIFY_METHOD)));
 	}
 
 	@Test

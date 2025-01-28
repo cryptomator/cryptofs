@@ -1,6 +1,8 @@
 package org.cryptomator.cryptofs.fh;
 
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
+import org.cryptomator.cryptofs.event.DecryptionFailedEvent;
+import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptofs.matchers.ByteBufferMatcher;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -11,11 +13,16 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatcher;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
@@ -25,6 +32,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -44,7 +52,9 @@ public class ChunkLoaderTest {
 	private final FileHeader header = mock(FileHeader.class);
 	private final FileHeaderHolder headerHolder = mock(FileHeaderHolder.class);
 	private final BufferPool bufferPool = mock(BufferPool.class);
-	private final ChunkLoader inTest = new ChunkLoader(null, null,cryptor, chunkIO, headerHolder, stats, bufferPool);
+	private final Consumer<FilesystemEvent> eventConsumer = mock(Consumer.class);
+	private final AtomicReference<Path> filePath = new AtomicReference<>(mock(Path.class, "The filepath"));
+	private final ChunkLoader inTest = new ChunkLoader(eventConsumer, filePath,cryptor, chunkIO, headerHolder, stats, bufferPool);
 
 	@BeforeEach
 	public void setup() throws IOException {
@@ -120,6 +130,23 @@ public class ChunkLoaderTest {
 		assertThat(data, contains(decryptedData.get()));
 		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE - 3, data.remaining());
 		Assertions.assertEquals(CLEARTEXT_CHUNK_SIZE, data.capacity());
+	}
+
+	@Test
+	@DisplayName("load() rethrows on failed decryption the exception and creates an event")
+	public void testLoadThrowsAndNotifiesOnFailedDecryption() throws IOException {
+		long chunkIndex = 482L;
+		long chunkOffset = chunkIndex * CIPHERTEXT_CHUNK_SIZE + HEADER_SIZE;
+		when(chunkIO.read(argThat(hasAtLeastRemaining(CIPHERTEXT_CHUNK_SIZE)), eq(chunkOffset))).then(fillBufferWith((byte) 3, CIPHERTEXT_CHUNK_SIZE));
+		doThrow(new AuthenticationFailedException("FAIL")) //
+			.when(fileContentCryptor).decryptChunk( //
+					argThat(contains(repeat(3).times(CIPHERTEXT_CHUNK_SIZE).asByteBuffer())), //
+					Mockito.any(), eq(chunkIndex), eq(header), eq(true) //
+			);
+
+		Assertions.assertThrows(AuthenticationFailedException.class, () -> inTest.load(chunkIndex));
+		var isDecryptionFailedEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof DecryptionFailedEvent;
+		verify(eventConsumer).accept(ArgumentMatchers.argThat(isDecryptionFailedEvent));
 	}
 
 	private Answer<Integer> fillBufferWith(byte value, int amount) {
