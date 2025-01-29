@@ -41,7 +41,6 @@ class CryptoFileSystemModule {
 
 	@Provides
 	@CryptoFileSystemScoped
-	@Named("Babadook")
 	public Consumer<FilesystemEvent> provideFilesystemEventConsumer(CryptoFileSystemProperties fsProps) {
 		return (Consumer<FilesystemEvent>) fsProps.get(CryptoFileSystemProperties.PROPERTY_NOTIFY_METHOD);
 	}

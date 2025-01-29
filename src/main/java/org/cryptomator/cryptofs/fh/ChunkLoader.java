@@ -26,7 +26,7 @@ class ChunkLoader {
 	private final BufferPool bufferPool;
 
 	@Inject
-	public ChunkLoader(@Named("Babadook") Consumer<FilesystemEvent> eventConsumer, @CurrentOpenFilePath AtomicReference<Path> path, Cryptor cryptor, ChunkIO ciphertext, FileHeaderHolder headerHolder, CryptoFileSystemStats stats, BufferPool bufferPool) {
+	public ChunkLoader(Consumer<FilesystemEvent> eventConsumer, @CurrentOpenFilePath AtomicReference<Path> path, Cryptor cryptor, ChunkIO ciphertext, FileHeaderHolder headerHolder, CryptoFileSystemStats stats, BufferPool bufferPool) {
 		this.eventConsumer = eventConsumer;
 		this.path = path;
 		this.cryptor = cryptor;

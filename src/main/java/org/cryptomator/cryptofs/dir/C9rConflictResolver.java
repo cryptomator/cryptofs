@@ -6,6 +6,8 @@ import com.google.common.io.MoreFiles;
 import com.google.common.io.RecursiveDeleteOption;
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.event.ConflictResolvedEvent;
+import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,10 +16,12 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static org.cryptomator.cryptofs.common.Constants.DIR_FILE_NAME;
@@ -33,14 +37,18 @@ class C9rConflictResolver {
 	private final Cryptor cryptor;
 	private final byte[] dirId;
 	private final int maxC9rFileNameLength;
+	private final Path cleartextPath;
 	private final int maxCleartextFileNameLength;
+	private final Consumer<FilesystemEvent> eventConsumer;
 
 	@Inject
-	public C9rConflictResolver(Cryptor cryptor, @Named("dirId") String dirId, VaultConfig vaultConfig) {
+	public C9rConflictResolver(Cryptor cryptor, @Named("dirId") String dirId, VaultConfig vaultConfig, Consumer<FilesystemEvent> eventConsumer, @Named("cleartextPath") Path cleartextPath) {
 		this.cryptor = cryptor;
 		this.dirId = dirId.getBytes(StandardCharsets.US_ASCII);
 		this.maxC9rFileNameLength = vaultConfig.getShorteningThreshold();
+		this.cleartextPath = cleartextPath;
 		this.maxCleartextFileNameLength = (maxC9rFileNameLength - 4) / 4 * 3 - 16; // math from FileSystemCapabilityChecker.determineSupportedCleartextFileNameLength()
+		this.eventConsumer = eventConsumer;
 	}
 
 	public Stream<Node> process(Node node) {
@@ -62,6 +70,7 @@ class C9rConflictResolver {
 				return resolveConflict(node, canonicalPath);
 			} catch (IOException e) {
 				LOG.error("Failed to resolve conflict for " + node.ciphertextPath, e);
+				//TODO: notify!
 				return Stream.empty();
 			}
 		}
@@ -111,6 +120,7 @@ class C9rConflictResolver {
 		Node node = new Node(alternativePath);
 		node.cleartextName = alternativeCleartext;
 		node.extractedCiphertext = alternativeCiphertext;
+		eventConsumer.accept(new ConflictResolvedEvent(cleartextPath.resolve(cleartext), canonicalPath, cleartextPath.resolve(alternativeCleartext),alternativePath));
 		return node;
 	}
 

@@ -32,7 +32,7 @@ public class FileHeaderHolder {
 	private final AtomicBoolean isPersisted = new AtomicBoolean();
 
 	@Inject
-	public FileHeaderHolder(@Named("Babadook") Consumer<FilesystemEvent> eventConsumer, Cryptor cryptor, @CurrentOpenFilePath AtomicReference<Path> path) {
+	public FileHeaderHolder(Consumer<FilesystemEvent> eventConsumer, Cryptor cryptor, @CurrentOpenFilePath AtomicReference<Path> path) {
 		this.eventConsumer = eventConsumer;
 		this.cryptor = cryptor;
 		this.path = path;
