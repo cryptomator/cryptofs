@@ -5,10 +5,12 @@ import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import java.nio.file.Path;
 
 /**
- * Created, if decryption fails.
- * @param ciphertextPath
- * @param cleartextPath might be null
- * @param e
+ * Emitted, if a decryption operation fails.
+ *
+ * @param cleartextPath path within the cryptographic filesystem
+ * @param ciphertextPath path to the encrypted resource
+ * @param e thrown exception
  */
-public record DecryptionFailedEvent(Path ciphertextPath, Path cleartextPath, AuthenticationFailedException e) implements FilesystemEvent {
+public record DecryptionFailedEvent(Path cleartextPath, Path ciphertextPath, AuthenticationFailedException e) implements FilesystemEvent {
+
 }
