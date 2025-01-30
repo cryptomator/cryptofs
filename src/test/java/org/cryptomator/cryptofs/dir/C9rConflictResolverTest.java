@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs.dir;
 
 import org.cryptomator.cryptofs.VaultConfig;
+import org.cryptomator.cryptofs.event.ConflictResolutionFailedEvent;
 import org.cryptomator.cryptofs.event.ConflictResolvedEvent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -161,6 +162,26 @@ public class C9rConflictResolverTest {
 		Assertions.assertEquals("foo.c9r", resolved.fullCiphertextFileName);
 		Assertions.assertTrue(Files.exists(resolved.ciphertextPath));
 		Assertions.assertFalse(Files.exists(unresolved.ciphertextPath));
+	}
+
+	@Test
+	public void testConflictResolutionFails(@TempDir Path dir) throws IOException {
+		var p1 = Files.createFile(dir.resolve("foo (1).c9r"));
+		var p2 = Files.createFile(dir.resolve("foo.c9r"));
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn("baz");
+		Node unresolved = new Node(dir.resolve("foo (1).c9r"));
+		unresolved.cleartextName = "bar.txt";
+		unresolved.extractedCiphertext = "foo";
+
+		var conflictResolverSpy = Mockito.spy(conflictResolver);
+		Mockito.doThrow(IOException.class).when(conflictResolverSpy).resolveConflict(Mockito.any(), Mockito.any());
+
+		Stream<Node> result = Assertions.assertDoesNotThrow(() -> conflictResolverSpy.process(unresolved));
+		Assertions.assertEquals(0, result.toList().size());
+		Assertions.assertTrue(Files.exists(p1));
+		Assertions.assertTrue(Files.exists(p2));
+		var isConflictResolutionFailedEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof ConflictResolutionFailedEvent;
+		verify(eventConsumer).accept(ArgumentMatchers.argThat(isConflictResolutionFailedEvent));
 	}
 
 }

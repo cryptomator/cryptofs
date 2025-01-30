@@ -6,6 +6,7 @@ import com.google.common.io.MoreFiles;
 import com.google.common.io.RecursiveDeleteOption;
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.event.ConflictResolutionFailedEvent;
 import org.cryptomator.cryptofs.event.ConflictResolvedEvent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -69,14 +70,15 @@ class C9rConflictResolver {
 				Path canonicalPath = node.ciphertextPath.resolveSibling(canonicalCiphertextFileName);
 				return resolveConflict(node, canonicalPath);
 			} catch (IOException e) {
-				LOG.error("Failed to resolve conflict for " + node.ciphertextPath, e);
-				//TODO: notify!
+				eventConsumer.accept(new ConflictResolutionFailedEvent(cleartextPath.resolve(node.cleartextName), node.ciphertextPath.resolve(node.fullCiphertextFileName), e));
+				LOG.error("Failed to resolve conflict for {}", node.ciphertextPath, e);
 				return Stream.empty();
 			}
 		}
 	}
 
-	private Stream<Node> resolveConflict(Node conflicting, Path canonicalPath) throws IOException {
+	//visible for testing
+	Stream<Node> resolveConflict(Node conflicting, Path canonicalPath) throws IOException {
 		Path conflictingPath = conflicting.ciphertextPath;
 		if (resolveConflictTrivially(canonicalPath, conflictingPath)) {
 			Node resolved = new Node(canonicalPath);

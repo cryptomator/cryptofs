@@ -14,6 +14,10 @@ public interface FilesystemEvent {
 		return toEvent(fse, ConflictResolvedEvent.class);
 	}
 
+	static <T extends FilesystemEvent> ConflictResolutionFailedEvent toConflictResolutionFailedEvent(T fse) throws ClassCastException {
+		return toEvent(fse, ConflictResolutionFailedEvent.class);
+	}
+
 	static <T extends FilesystemEvent, U extends FilesystemEvent> T toEvent(U o, Class<T> clazz) throws ClassCastException {
 			return clazz.cast(o);
 	}
@@ -23,6 +27,7 @@ public interface FilesystemEvent {
 	enum Type {
 		DECRYPTION_FAILED,
 		CONFLICT_RESOLVED,
+		CONFLICT_RESOLUTION_FAILED,
 		LOCKED;
 	}
 
