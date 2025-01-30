@@ -165,10 +165,6 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		return (int) get(PROPERTY_SHORTENING_THRESHOLD);
 	}
 
-	Flow.Subscriber<FilesystemEvent> filesystemEventSubscriber() {
-		return (Flow.Subscriber<FilesystemEvent>) get("fsSubscriber");
-	}
-
 	@Override
 	public Set<Entry<String, Object>> entrySet() {
 		return entries;
