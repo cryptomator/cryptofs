@@ -11,9 +11,4 @@ import java.nio.file.Path;
  * @param e
  */
 public record DecryptionFailedEvent(Path ciphertextPath, Path cleartextPath, AuthenticationFailedException e) implements FilesystemEvent {
-
-	@Override
-	public Type getType() {
-		return Type.DECRYPTION_FAILED;
-	}
 }
