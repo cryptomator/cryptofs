@@ -31,7 +31,7 @@ public class C9rConflictResolverTest {
 		fileNameCryptor = Mockito.mock(FileNameCryptor.class);
 		vaultConfig = Mockito.mock(VaultConfig.class);
 		Mockito.when(cryptor.fileNameCryptor()).thenReturn(fileNameCryptor);
-		Mockito.when(vaultConfig.getShorteningThreshold()).thenReturn(44); // results in max cleartext size = 14
+		Mockito.when(vaultConfig.getShorteningThreshold()).thenReturn(84); // results in max cleartext size = 44
 		conflictResolver = new C9rConflictResolver(cryptor, "foo", vaultConfig);
 	}
 	
@@ -60,10 +60,10 @@ public class C9rConflictResolverTest {
 
 	@Test
 	public void testResolveConflictingFileByChoosingNewName(@TempDir Path dir) throws IOException {
-		Files.createFile(dir.resolve("foo (1).c9r"));
+		Files.createFile(dir.resolve("foo (Created by Alice).c9r"));
 		Files.createFile(dir.resolve("foo.c9r"));
 		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn("baz");
-		Node unresolved = new Node(dir.resolve("foo (1).c9r"));
+		Node unresolved = new Node(dir.resolve("foo (Created by Alice).c9r"));
 		unresolved.cleartextName = "bar.txt";
 		unresolved.extractedCiphertext = "foo";
 
@@ -72,6 +72,26 @@ public class C9rConflictResolverTest {
 
 		Assertions.assertNotEquals(unresolved, resolved);
 		Assertions.assertEquals("baz.c9r", resolved.fullCiphertextFileName);
+		Assertions.assertEquals("bar (Created by Alice).txt", resolved.cleartextName);
+		Assertions.assertTrue(Files.exists(resolved.ciphertextPath));
+		Assertions.assertFalse(Files.exists(unresolved.ciphertextPath));
+	}
+
+	@Test
+	public void testResolveConflictingFileByAddingNumericSuffix(@TempDir Path dir) throws IOException {
+		Files.createFile(dir.resolve("foo (Created by Alice).c9r"));
+		Files.createFile(dir.resolve("foo.c9r"));
+		Files.createFile(dir.resolve("baz.c9r")); // resolved name already occupied, try cux next!
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn("baz").thenReturn("qux");
+		Node unresolved = new Node(dir.resolve("foo (Created by Alice).c9r"));
+		unresolved.cleartextName = "bar.txt";
+		unresolved.extractedCiphertext = "foo";
+
+		Stream<Node> result = conflictResolver.process(unresolved);
+		Node resolved = result.findAny().get();
+
+		Assertions.assertNotEquals(unresolved, resolved);
+		Assertions.assertEquals("qux.c9r", resolved.fullCiphertextFileName);
 		Assertions.assertEquals("bar (1).txt", resolved.cleartextName);
 		Assertions.assertTrue(Files.exists(resolved.ciphertextPath));
 		Assertions.assertFalse(Files.exists(unresolved.ciphertextPath));
@@ -79,11 +99,11 @@ public class C9rConflictResolverTest {
 
 	@Test
 	public void testResolveConflictingFileByChoosingNewLengthLimitedName(@TempDir Path dir) throws IOException {
-		Files.createFile(dir.resolve("foo (1).c9r"));
+		Files.createFile(dir.resolve("foo (Created by Alice on 2024-01-31).c9r"));
 		Files.createFile(dir.resolve("foo.c9r"));
 		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn("baz");
-		Node unresolved = new Node(dir.resolve("foo (1).c9r"));
-		unresolved.cleartextName = "hello world.txt";
+		Node unresolved = new Node(dir.resolve("foo (Created by Alice on 2024-01-31).c9r"));
+		unresolved.cleartextName = "this is a rather long file name.txt";
 		unresolved.extractedCiphertext = "foo";
 
 		Stream<Node> result = conflictResolver.process(unresolved);
@@ -91,7 +111,7 @@ public class C9rConflictResolverTest {
 
 		Assertions.assertNotEquals(unresolved, resolved);
 		Assertions.assertEquals("baz.c9r", resolved.fullCiphertextFileName);
-		Assertions.assertEquals("hello (1).txt", resolved.cleartextName);
+		Assertions.assertEquals("this is a rather lon (Created by Alice o.txt", resolved.cleartextName);
 		Assertions.assertTrue(Files.exists(resolved.ciphertextPath));
 		Assertions.assertFalse(Files.exists(unresolved.ciphertextPath));
 	}
