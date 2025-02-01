@@ -27,6 +27,7 @@
 
 		<!-- test dependencies -->
 		<junit.jupiter.version>5.11.3</junit.jupiter.version>
+		<jmh.version>1.37</jmh.version>
 		<mockito.version>5.14.2</mockito.version>
 		<hamcrest.version>3.0</hamcrest.version>
 		<jimfs.version>1.3.0</jimfs.version>
@@ -124,6 +125,18 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
+			<groupId>org.openjdk.jmh</groupId>
+			<artifactId>jmh-core</artifactId>
+			<version>${jmh.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.openjdk.jmh</groupId>
+			<artifactId>jmh-generator-annprocess</artifactId>
+			<version>${jmh.version}</version>
+			<scope>provided</scope> <!-- only required during compilation -->
+		</dependency>
+		<dependency>
 			<groupId>org.mockito</groupId>
 			<artifactId>mockito-core</artifactId>
 			<version>${mockito.version}</version>
@@ -162,6 +175,11 @@
 							<groupId>com.google.dagger</groupId>
 							<artifactId>dagger-compiler</artifactId>
 							<version>${dagger.version}</version>
+						</path>
+						<path>
+							<groupId>org.openjdk.jmh</groupId>
+							<artifactId>jmh-generator-annprocess</artifactId>
+							<version>${jmh.version}</version>
 						</path>
 					</annotationProcessorPaths>
 				</configuration>

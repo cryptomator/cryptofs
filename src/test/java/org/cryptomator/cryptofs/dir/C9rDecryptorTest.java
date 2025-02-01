@@ -34,9 +34,7 @@ public class C9rDecryptorTest {
 			"aaaaBBBBccccDDDDeeeeFFFF",
 			"aaaaBBBBccccDDDDeeeeFFF=",
 			"aaaaBBBBccccDDDDeeeeFF==",
-			"aaaaBBBBccccDDDDeeeeF===",
-			"aaaaBBBBccccDDDDeeee====",
-			"aaaaBBBB0123456789-_====",
+			"aaaaBBBBcc0123456789_-==",
 			"aaaaBBBBccccDDDDeeeeFFFFggggHH==",
 	})
 	public void testValidBase64Pattern(String input) {
@@ -47,7 +45,9 @@ public class C9rDecryptorTest {
 	@ValueSource(strings = {
 			"aaaaBBBBccccDDDDeeee", // too short
 			"aaaaBBBBccccDDDDeeeeFFF", // unpadded
-			"====BBBBccccDDDDeeeeFFFF", // padding not at end
+			"aaaaBBBBccccDDDDeeeeF===", // too much padding
+			"aaaaBBBBccccDDDDeeee====", // too much padding
+			"==aaBBBBccccDDDDeeeeFFFF", // padding not at end
 			"????BBBBccccDDDDeeeeFFFF", // invalid chars
 			"conflict aaaaBBBBccccDDDDeeeeFFFF", // only a partial match
 			"aaaaBBBBccccDDDDeeeeFFFF conflict", // only a partial match

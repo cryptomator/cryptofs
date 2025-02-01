@@ -20,7 +20,7 @@ import java.util.stream.Stream;
 class C9rDecryptor {
 
 	// visible for testing:
-	static final Pattern BASE64_PATTERN = Pattern.compile("([a-zA-Z0-9-_]{4})*[a-zA-Z0-9-_]{20}[a-zA-Z0-9-_=]{4}");
+	static final Pattern BASE64_PATTERN = Pattern.compile("[a-zA-Z0-9-_]{20}(?:[a-zA-Z0-9-_]{4})*(?:[a-zA-Z0-9-_]{4}|[a-zA-Z0-9-_]{3}=|[a-zA-Z0-9-_]{2}==)");
 	private static final CharMatcher DELIM_MATCHER = CharMatcher.anyOf("_-");
 
 	private final Cryptor cryptor;
@@ -36,11 +36,7 @@ class C9rDecryptor {
 		String basename = StringUtils.removeEnd(node.fullCiphertextFileName, Constants.CRYPTOMATOR_FILE_SUFFIX);
 		Matcher matcher = BASE64_PATTERN.matcher(basename);
 		Optional<Node> match = extractCiphertext(node, matcher, 0, basename.length());
-		if (match.isPresent()) {
-			return Stream.of(match.get());
-		} else {
-			return Stream.empty();
-		}
+		return match.stream();
 	}
 
 	private Optional<Node> extractCiphertext(Node node, Matcher matcher, int start, int end) {
