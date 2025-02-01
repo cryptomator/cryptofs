@@ -112,12 +112,12 @@ class C9rConflictResolver {
 		String alternativeCiphertextName = alternativeCiphertext + Constants.CRYPTOMATOR_FILE_SUFFIX;
 		Path alternativePath = canonicalPath.resolveSibling(alternativeCiphertextName);
 		for (int i = 1; Files.exists(alternativePath); i++) {
-			alternativeCleartext = lengthRestrictedBasename + " (" + i++ + ")" + cleartextFileExt;
+			alternativeCleartext = lengthRestrictedBasename + " (" + i + ")" + cleartextFileExt;
 			alternativeCiphertext = cryptor.fileNameCryptor().encryptFilename(BaseEncoding.base64Url(), alternativeCleartext, dirId);
 			alternativeCiphertextName = alternativeCiphertext + Constants.CRYPTOMATOR_FILE_SUFFIX;
 			alternativePath = canonicalPath.resolveSibling(alternativeCiphertextName);
 		}
-		
+
 		assert alternativeCiphertextName.length() <= maxC9rFileNameLength;
 		LOG.info("Moving conflicting file {} to {}", conflicting.ciphertextPath, alternativePath);
 		Files.move(conflicting.ciphertextPath, alternativePath, StandardCopyOption.ATOMIC_MOVE);
