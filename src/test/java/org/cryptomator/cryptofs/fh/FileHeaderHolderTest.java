@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.fh;
 
+import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.event.DecryptionFailedEvent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
@@ -39,8 +40,9 @@ public class FileHeaderHolderTest {
 
 	private final FileHeaderCryptor fileHeaderCryptor = mock(FileHeaderCryptor.class);
 	private final Cryptor cryptor = mock(Cryptor.class);
-	private final Path path = mock(Path.class, "openFile.txt");
-	private final AtomicReference<Path> pathRef = new AtomicReference<>(path);
+	private final Path cipherPath = mock(Path.class, "cipherFile.c9r");
+	private final CryptoPath clearPath = mock(CryptoPath.class, "openFile.txt");
+	private final AtomicReference<ClearAndCipherPath> pathRef = new AtomicReference<>(new ClearAndCipherPath(clearPath, cipherPath));
 	private final Consumer<FilesystemEvent> eventConsumer = mock(Consumer.class);
 
 	private FileHeaderHolder inTest;

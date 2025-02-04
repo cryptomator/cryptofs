@@ -10,11 +10,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import javax.inject.Named;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -26,16 +24,16 @@ public class FileHeaderHolder {
 
 	private final Consumer<FilesystemEvent> eventConsumer;
 	private final Cryptor cryptor;
-	private final AtomicReference<Path> path;
+	private final AtomicReference<ClearAndCipherPath> paths;
 	private final AtomicReference<FileHeader> header = new AtomicReference<>();
 	private final AtomicReference<ByteBuffer> encryptedHeader = new AtomicReference<>();
 	private final AtomicBoolean isPersisted = new AtomicBoolean();
 
 	@Inject
-	public FileHeaderHolder(Consumer<FilesystemEvent> eventConsumer, Cryptor cryptor, @CurrentOpenFilePath AtomicReference<Path> path) {
+	public FileHeaderHolder(Consumer<FilesystemEvent> eventConsumer, Cryptor cryptor, @CurrentOpenFilePaths AtomicReference<ClearAndCipherPath> paths) {
 		this.eventConsumer = eventConsumer;
 		this.cryptor = cryptor;
-		this.path = path;
+		this.paths = paths;
 	}
 
 	public FileHeader get() {
@@ -55,7 +53,7 @@ public class FileHeaderHolder {
 	}
 
 	FileHeader createNew() {
-		LOG.trace("Generating file header for {}", path.get());
+		LOG.trace("Generating file header for {}", paths.get().ciphertextPath());
 		FileHeader newHeader = cryptor.fileHeaderCryptor().create();
 		encryptedHeader.set(cryptor.fileHeaderCryptor().encryptHeader(newHeader).asReadOnlyBuffer()); //to prevent NONCE reuse, we already encrypt the header and cache it
 		header.set(newHeader);
@@ -71,7 +69,7 @@ public class FileHeaderHolder {
 	 * @throws IOException if the file header cannot be read or decrypted
 	 */
 	FileHeader loadExisting(FileChannel ch) throws IOException {
-		LOG.trace("Reading file header from {}", path.get());
+		LOG.trace("Reading file header from {}", paths.get().cleartextPath());
 		ByteBuffer existingHeaderBuf = ByteBuffer.allocate(cryptor.fileHeaderCryptor().headerSize());
 		ch.read(existingHeaderBuf, 0);
 		existingHeaderBuf.flip();
@@ -82,10 +80,11 @@ public class FileHeaderHolder {
 			isPersisted.set(true);
 			return existingHeader;
 		} catch (IllegalArgumentException | CryptoException e) {
+			var ps = paths.get();
 			if (e instanceof AuthenticationFailedException afe) {
-				eventConsumer.accept(new DecryptionFailedEvent(null, path.get(), afe));
+				eventConsumer.accept(new DecryptionFailedEvent(ps.cleartextPath(), ps.ciphertextPath(), afe));
 			}
-			throw new IOException("Unable to decrypt header of file " + path.get(), e);
+			throw new IOException("Unable to decrypt header of file " + ps.ciphertextPath(), e);
 		}
 	}
 

@@ -7,10 +7,8 @@ import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 
 import javax.inject.Inject;
-import javax.inject.Named;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -18,7 +16,7 @@ import java.util.function.Consumer;
 class ChunkLoader {
 
 	private final Consumer<FilesystemEvent> eventConsumer;
-	private final AtomicReference<Path> path;
+	private final AtomicReference<ClearAndCipherPath> paths;
 	private final Cryptor cryptor;
 	private final ChunkIO ciphertext;
 	private final FileHeaderHolder headerHolder;
@@ -26,9 +24,9 @@ class ChunkLoader {
 	private final BufferPool bufferPool;
 
 	@Inject
-	public ChunkLoader(Consumer<FilesystemEvent> eventConsumer, @CurrentOpenFilePath AtomicReference<Path> path, Cryptor cryptor, ChunkIO ciphertext, FileHeaderHolder headerHolder, CryptoFileSystemStats stats, BufferPool bufferPool) {
+	public ChunkLoader(Consumer<FilesystemEvent> eventConsumer, @CurrentOpenFilePaths AtomicReference<ClearAndCipherPath> paths, Cryptor cryptor, ChunkIO ciphertext, FileHeaderHolder headerHolder, CryptoFileSystemStats stats, BufferPool bufferPool) {
 		this.eventConsumer = eventConsumer;
-		this.path = path;
+		this.paths = paths;
 		this.cryptor = cryptor;
 		this.ciphertext = ciphertext;
 		this.headerHolder = headerHolder;
@@ -53,7 +51,8 @@ class ChunkLoader {
 			}
 			return cleartextBuf;
 		} catch (AuthenticationFailedException e) {
-			eventConsumer.accept(new DecryptionFailedEvent(null, path.get(), e));
+			var tmp = paths.get();
+			eventConsumer.accept(new DecryptionFailedEvent(tmp.cleartextPath(), tmp.ciphertextPath(), e));
 			throw e;
 		} finally {
 			bufferPool.recycle(ciphertextBuf);

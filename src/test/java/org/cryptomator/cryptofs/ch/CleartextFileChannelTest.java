@@ -1,10 +1,12 @@
 package org.cryptomator.cryptofs.ch;
 
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
+import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.fh.BufferPool;
 import org.cryptomator.cryptofs.fh.Chunk;
 import org.cryptomator.cryptofs.fh.ChunkCache;
+import org.cryptomator.cryptofs.fh.ClearAndCipherPath;
 import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptofs.fh.FileHeaderHolder;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -71,8 +73,9 @@ public class CleartextFileChannelTest {
 	private FileHeaderHolder headerHolder = mock(FileHeaderHolder.class);
 	private AtomicBoolean headerIsPersisted = mock(AtomicBoolean.class);
 	private EffectiveOpenOptions options = mock(EffectiveOpenOptions.class);
-	private Path filePath = Mockito.mock(Path.class, "/foo/bar");
-	private AtomicReference<Path> currentFilePath = new AtomicReference<>(filePath);
+	private Path cipherPath = Mockito.mock(Path.class, "/foo/bar");
+	private CryptoPath clearPath = Mockito.mock(CryptoPath.class, "/clear/text");
+	private AtomicReference<ClearAndCipherPath> currentFilePaths = new AtomicReference<>(new ClearAndCipherPath(clearPath, cipherPath));
 	private AtomicLong fileSize = new AtomicLong(100);
 	private AtomicReference<Instant> lastModified = new AtomicReference<>(Instant.ofEpochMilli(0));
 	private BasicFileAttributeView attributeView = mock(BasicFileAttributeView.class);
@@ -96,13 +99,13 @@ public class CleartextFileChannelTest {
 		when(fileContentCryptor.ciphertextChunkSize()).thenReturn(110);
 		var fs = Mockito.mock(FileSystem.class);
 		var fsProvider = Mockito.mock(FileSystemProvider.class);
-		when(filePath.getFileSystem()).thenReturn(fs);
+		when(cipherPath.getFileSystem()).thenReturn(fs);
 		when(fs.provider()).thenReturn(fsProvider);
-		when(fsProvider.getFileAttributeView(filePath, BasicFileAttributeView.class)).thenReturn(attributeView);
+		when(fsProvider.getFileAttributeView(cipherPath, BasicFileAttributeView.class)).thenReturn(attributeView);
 		when(readWriteLock.readLock()).thenReturn(readLock);
 		when(readWriteLock.writeLock()).thenReturn(writeLock);
 
-		inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, exceptionsDuringWrite, closeListener, stats);
+		inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePaths, exceptionsDuringWrite, closeListener, stats);
 	}
 
 	@Test
@@ -397,7 +400,7 @@ public class CleartextFileChannelTest {
 			fileSize.set(5_000_000_100l); // initial cleartext size will be 5_000_000_100l
 			when(options.readable()).thenReturn(true);
 
-			inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, exceptionsDuringWrite, closeListener, stats);
+			inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePaths, exceptionsDuringWrite, closeListener, stats);
 			ByteBuffer buf = ByteBuffer.allocate(10);
 
 			// A read from frist chunk:
@@ -569,7 +572,7 @@ public class CleartextFileChannelTest {
 		public void testDontRewriteHeader() throws IOException {
 			when(options.writable()).thenReturn(true);
 			when(headerIsPersisted.get()).thenReturn(true);
-			inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, exceptionsDuringWrite, closeListener, stats);
+			inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePaths, exceptionsDuringWrite, closeListener, stats);
 
 			inTest.force(true);
 

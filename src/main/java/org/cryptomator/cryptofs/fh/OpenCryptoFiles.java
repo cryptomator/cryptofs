@@ -9,6 +9,7 @@
 package org.cryptomator.cryptofs.fh;
 
 import org.cryptomator.cryptofs.CryptoFileSystemScoped;
+import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 
 import javax.inject.Inject;
@@ -54,23 +55,24 @@ public class OpenCryptoFiles implements Closeable {
 	 * Opens a file to {@link OpenCryptoFile#newFileChannel(EffectiveOpenOptions, java.nio.file.attribute.FileAttribute[]) retrieve a FileChannel}. If this file is already opened, a shared instance is returned.
 	 * Getting the file channel should be the next invocation, since the {@link OpenFileScoped lifecycle} of the OpenFile strictly depends on the lifecycle of the channel.
 	 *
+	 * @param cleartextPath Cleartext path
 	 * @param ciphertextPath Path of the file to open
 	 * @return The opened file.
 	 * @see #get(Path)
 	 */
-	public OpenCryptoFile getOrCreate(Path ciphertextPath) {
+	public OpenCryptoFile getOrCreate(CryptoPath cleartextPath, Path ciphertextPath) {
 		Path normalizedPath = ciphertextPath.toAbsolutePath().normalize();
-		return openCryptoFiles.computeIfAbsent(normalizedPath, p -> openCryptoFileComponentFactory.create(p, openCryptoFiles::remove).openCryptoFile()); // computeIfAbsent is atomic, "create" is called at most once
+		return openCryptoFiles.computeIfAbsent(normalizedPath, p -> openCryptoFileComponentFactory.create(new ClearAndCipherPath(cleartextPath, ciphertextPath), openCryptoFiles::remove).openCryptoFile()); // computeIfAbsent is atomic, "create" is called at most once
 	}
 
-	public void writeCiphertextFile(Path ciphertextPath, EffectiveOpenOptions openOptions, ByteBuffer contents) throws IOException {
-		try (OpenCryptoFile f = getOrCreate(ciphertextPath); FileChannel ch = f.newFileChannel(openOptions)) {
+	public void writeCiphertextFile(CryptoPath cleartextPath, Path ciphertextPath, EffectiveOpenOptions openOptions, ByteBuffer contents) throws IOException {
+		try (OpenCryptoFile f = getOrCreate(cleartextPath, ciphertextPath); FileChannel ch = f.newFileChannel(openOptions)) {
 			ch.write(contents);
 		}
 	}
 
-	public ByteBuffer readCiphertextFile(Path ciphertextPath, EffectiveOpenOptions openOptions, int maxBufferSize) throws BufferUnderflowException, IOException {
-		try (OpenCryptoFile f = getOrCreate(ciphertextPath); FileChannel ch = f.newFileChannel(openOptions)) {
+	public ByteBuffer readCiphertextFile(CryptoPath cleartextPath, Path ciphertextPath, EffectiveOpenOptions openOptions, int maxBufferSize) throws BufferUnderflowException, IOException {
+		try (OpenCryptoFile f = getOrCreate(cleartextPath, ciphertextPath); FileChannel ch = f.newFileChannel(openOptions)) {
 			if (ch.size() > maxBufferSize) {
 				throw new BufferUnderflowException();
 			}
@@ -99,13 +101,14 @@ public class OpenCryptoFiles implements Closeable {
 	 * Prepares to update any open file references during a move operation.
 	 * MUST be invoked using a try-with-resource statement and committed after the physical file move succeeded.
 	 *
-	 * @param src The ciphertext file path before the move
-	 * @param dst The ciphertext file path after the move
+	 * @param ciphertextSrc The ciphertext file path before the move
+	 * @param cleartextDst The cleartext path after the move
+	 * @param ciphertextDst The ciphertext file path after the move
 	 * @return Utility to update OpenCryptoFile references.
 	 * @throws FileAlreadyExistsException Thrown if the destination file is an existing file that is currently opened.
 	 */
-	public TwoPhaseMove prepareMove(Path src, Path dst) throws FileAlreadyExistsException {
-		return new TwoPhaseMove(src, dst);
+	public TwoPhaseMove prepareMove(Path ciphertextSrc, CryptoPath cleartextDst, Path ciphertextDst) throws FileAlreadyExistsException {
+		return new TwoPhaseMove(ciphertextSrc, cleartextDst, ciphertextDst);
 	}
 
 	/**
@@ -123,26 +126,29 @@ public class OpenCryptoFiles implements Closeable {
 
 	public class TwoPhaseMove implements AutoCloseable {
 
-		private final Path src;
-		private final Path dst;
+		private final Path ciphertextSrc;
+		private final CryptoPath cleartextDst;
+		private final Path ciphertextDst;
 		private final OpenCryptoFile openCryptoFile;
 		private boolean committed;
 		private boolean rolledBack;
 
-		private TwoPhaseMove(Path src, Path dst) throws FileAlreadyExistsException {
-			this.src = Objects.requireNonNull(src);
-			this.dst = Objects.requireNonNull(dst);
+
+		public TwoPhaseMove(Path ciphertextSrc, CryptoPath cleartextDst, Path ciphertextDst) throws FileAlreadyExistsException {
+			this.ciphertextSrc = Objects.requireNonNull(ciphertextSrc);
+			this.cleartextDst = cleartextDst;
+			this.ciphertextDst = Objects.requireNonNull(ciphertextDst);
 			try {
 				// ConcurrentHashMap.compute is atomic:
-				this.openCryptoFile = openCryptoFiles.compute(dst, (k, v) -> {
+				this.openCryptoFile = openCryptoFiles.compute(this.ciphertextDst, (k, v) -> {
 					if (v == null) {
-						return openCryptoFiles.get(src);
+						return openCryptoFiles.get(this.ciphertextSrc);
 					} else {
 						throw new AlreadyMappedException();
 					}
 				});
 			} catch (AlreadyMappedException e) {
-				throw new FileAlreadyExistsException(dst.toString(), null, "Destination file currently accessed by another thread.");
+				throw new FileAlreadyExistsException(this.ciphertextDst.toString(), null, "Destination file currently accessed by another thread.");
 			}
 		}
 
@@ -151,9 +157,9 @@ public class OpenCryptoFiles implements Closeable {
 				throw new IllegalStateException();
 			}
 			if (openCryptoFile != null) {
-				openCryptoFile.updateCurrentFilePath(dst);
+				openCryptoFile.updateCurrentFilePath(new ClearAndCipherPath(cleartextDst, ciphertextDst));
 			}
-			openCryptoFiles.remove(src, openCryptoFile);
+			openCryptoFiles.remove(ciphertextSrc, openCryptoFile);
 			committed = true;
 		}
 
@@ -161,7 +167,7 @@ public class OpenCryptoFiles implements Closeable {
 			if (committed) {
 				throw new IllegalStateException();
 			}
-			openCryptoFiles.remove(dst, openCryptoFile);
+			openCryptoFiles.remove(ciphertextDst, openCryptoFile);
 			rolledBack = true;
 		}
 

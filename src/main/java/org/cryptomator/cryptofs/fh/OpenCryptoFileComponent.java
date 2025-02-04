@@ -17,7 +17,7 @@ public interface OpenCryptoFileComponent {
 	@Subcomponent.Factory
 	interface Factory {
 
-		OpenCryptoFileComponent create(@BindsInstance @OriginalOpenFilePath Path path, //
+		OpenCryptoFileComponent create(@BindsInstance @OriginalOpenFilePaths ClearAndCipherPath clearAndCipherPath, //
 									   @BindsInstance FileCloseListener onCloseListener);
 	}
 

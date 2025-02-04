@@ -17,7 +17,6 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -122,7 +121,7 @@ class C9rConflictResolver {
 		Node node = new Node(alternativePath);
 		node.cleartextName = alternativeCleartext;
 		node.extractedCiphertext = alternativeCiphertext;
-		eventConsumer.accept(new ConflictResolvedEvent(cleartextPath.resolve(cleartext), canonicalPath, cleartextPath.resolve(alternativeCleartext),alternativePath));
+		eventConsumer.accept(new ConflictResolvedEvent(cleartextPath.resolve(cleartext), canonicalPath, cleartextPath.resolve(alternativeCleartext), alternativePath));
 		return node;
 	}
 

@@ -7,7 +7,8 @@ import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.fh.BufferPool;
 import org.cryptomator.cryptofs.fh.Chunk;
 import org.cryptomator.cryptofs.fh.ChunkCache;
-import org.cryptomator.cryptofs.fh.CurrentOpenFilePath;
+import org.cryptomator.cryptofs.fh.ClearAndCipherPath;
+import org.cryptomator.cryptofs.fh.CurrentOpenFilePaths;
 import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptofs.fh.FileHeaderHolder;
 import org.cryptomator.cryptofs.fh.OpenFileModifiedDate;
@@ -25,7 +26,6 @@ import java.nio.channels.FileLock;
 import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
 import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
@@ -50,7 +50,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private final ChunkCache chunkCache;
 	private final BufferPool bufferPool;
 	private final EffectiveOpenOptions options;
-	private final AtomicReference<Path> currentFilePath;
+	private final AtomicReference<ClearAndCipherPath> currentFilePaths;
 	private final AtomicLong fileSize;
 	private final AtomicReference<Instant> lastModified;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
@@ -58,7 +58,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private final CryptoFileSystemStats stats;
 
 	@Inject
-	public CleartextFileChannel(FileChannel ciphertextFileChannel, FileHeaderHolder fileHeaderHolder, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, BufferPool bufferPool, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, @CurrentOpenFilePath AtomicReference<Path> currentPath, ExceptionsDuringWrite exceptionsDuringWrite, Consumer<FileChannel> closeListener, CryptoFileSystemStats stats) {
+	public CleartextFileChannel(FileChannel ciphertextFileChannel, FileHeaderHolder fileHeaderHolder, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, BufferPool bufferPool, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, @CurrentOpenFilePaths AtomicReference<ClearAndCipherPath> currentPaths, ExceptionsDuringWrite exceptionsDuringWrite, Consumer<FileChannel> closeListener, CryptoFileSystemStats stats) {
 		super(readWriteLock);
 		this.ciphertextFileChannel = ciphertextFileChannel;
 		this.fileHeaderHolder = fileHeaderHolder;
@@ -66,7 +66,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		this.chunkCache = chunkCache;
 		this.bufferPool = bufferPool;
 		this.options = options;
-		this.currentFilePath = currentPath;
+		this.currentFilePaths = currentPaths;
 		this.fileSize = fileSize;
 		this.lastModified = lastModified;
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
@@ -254,10 +254,11 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	void persistLastModified() throws IOException {
 		FileTime lastModifiedTime = isWritable() ? FileTime.from(lastModified.get()) : null;
 		FileTime lastAccessTime = FileTime.from(Instant.now());
-		var p = currentFilePath.get();
-		if (p != null) {
-			p.getFileSystem().provider()//
-					.getFileAttributeView(p, BasicFileAttributeView.class)
+		var ps = currentFilePaths.get();
+		if (ps != null) {
+			var ciphertextPath = ps.ciphertextPath();
+			ciphertextPath.getFileSystem().provider()//
+					.getFileAttributeView(ciphertextPath, BasicFileAttributeView.class)
 					.setTimes(lastModifiedTime, lastAccessTime, null);
 		}
 
