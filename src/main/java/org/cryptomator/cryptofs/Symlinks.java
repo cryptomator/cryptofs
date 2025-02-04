@@ -27,14 +27,12 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class Symlinks {
 
 	private final CryptoPathMapper cryptoPathMapper;
-	private final LongFileNameProvider longFileNameProvider;
 	private final OpenCryptoFiles openCryptoFiles;
 	private final ReadonlyFlag readonlyFlag;
 
 	@Inject
-	Symlinks(CryptoPathMapper cryptoPathMapper, LongFileNameProvider longFileNameProvider, OpenCryptoFiles openCryptoFiles, ReadonlyFlag readonlyFlag) {
+	Symlinks(CryptoPathMapper cryptoPathMapper, OpenCryptoFiles openCryptoFiles, ReadonlyFlag readonlyFlag) {
 		this.cryptoPathMapper = cryptoPathMapper;
-		this.longFileNameProvider = longFileNameProvider;
 		this.openCryptoFiles = openCryptoFiles;
 		this.readonlyFlag = readonlyFlag;
 	}
@@ -48,7 +46,7 @@ public class Symlinks {
 		EffectiveOpenOptions openOptions = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW), readonlyFlag);
 		ByteBuffer content = UTF_8.encode(target.toString());
 		Files.createDirectory(ciphertextFilePath.getRawPath());
-		openCryptoFiles.writeCiphertextFile(ciphertextFilePath.getSymlinkFilePath(), openOptions, content);
+		openCryptoFiles.writeCiphertextFile(cleartextPath, ciphertextFilePath.getSymlinkFilePath(), openOptions, content);
 		ciphertextFilePath.persistLongFileName();
 	}
 
@@ -57,7 +55,7 @@ public class Symlinks {
 		EffectiveOpenOptions openOptions = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.READ), readonlyFlag);
 		assertIsSymlink(cleartextPath, ciphertextSymlinkFile);
 		try {
-			ByteBuffer content = openCryptoFiles.readCiphertextFile(ciphertextSymlinkFile, openOptions, Constants.MAX_SYMLINK_LENGTH);
+			ByteBuffer content = openCryptoFiles.readCiphertextFile(cleartextPath, ciphertextSymlinkFile, openOptions, Constants.MAX_SYMLINK_LENGTH);
 			return cleartextPath.getFileSystem().getPath(UTF_8.decode(content).toString());
 		} catch (BufferUnderflowException e) {
 			throw new NotLinkException(cleartextPath.toString(), null, "Unreasonably large symlink file");

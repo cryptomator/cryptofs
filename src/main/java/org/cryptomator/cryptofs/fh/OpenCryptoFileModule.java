@@ -6,7 +6,6 @@ import dagger.Provides;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
@@ -15,7 +14,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Supplier;
 
 @Module
 public class OpenCryptoFileModule {
@@ -28,16 +26,16 @@ public class OpenCryptoFileModule {
 
 	@Provides
 	@OpenFileScoped
-	@CurrentOpenFilePath
-	public AtomicReference<Path> provideCurrentPath(@OriginalOpenFilePath Path originalPath) {
-		return new AtomicReference<>(originalPath);
+	@CurrentOpenFilePaths
+	public AtomicReference<ClearAndCipherPath> provideCurrentPaths(@OriginalOpenFilePaths ClearAndCipherPath paths) {
+		return new AtomicReference<>(paths);
 	}
 
 	@Provides
 	@OpenFileScoped
 	@OpenFileModifiedDate
-	public AtomicReference<Instant> provideLastModifiedDate(@OriginalOpenFilePath Path originalPath) {
-		Instant lastModifiedDate = readBasicAttributes(originalPath).map(BasicFileAttributes::lastModifiedTime).map(FileTime::toInstant).orElse(Instant.EPOCH);
+	public AtomicReference<Instant> provideLastModifiedDate(@OriginalOpenFilePaths ClearAndCipherPath originalPaths) {
+		Instant lastModifiedDate = readBasicAttributes(originalPaths.ciphertextPath()).map(BasicFileAttributes::lastModifiedTime).map(FileTime::toInstant).orElse(Instant.EPOCH);
 		return new AtomicReference<>(lastModifiedDate);
 	}
 

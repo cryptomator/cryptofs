@@ -29,7 +29,7 @@ public class OpenCryptoFile implements Closeable {
 	private final Cryptor cryptor;
 	private final FileHeaderHolder headerHolder;
 	private final ChunkIO chunkIO;
-	private final AtomicReference<Path> currentFilePath;
+	private final AtomicReference<ClearAndCipherPath> currentFilePaths;
 	private final AtomicLong fileSize;
 	private final OpenCryptoFileComponent component;
 
@@ -37,13 +37,13 @@ public class OpenCryptoFile implements Closeable {
 
 	@Inject
 	public OpenCryptoFile(FileCloseListener listener, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, //
-						  @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, //
+						  @CurrentOpenFilePaths AtomicReference<ClearAndCipherPath> currentFilePaths, @OpenFileSize AtomicLong fileSize, //
 						  @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
 		this.listener = listener;
 		this.cryptor = cryptor;
 		this.headerHolder = headerHolder;
 		this.chunkIO = chunkIO;
-		this.currentFilePath = currentFilePath;
+		this.currentFilePaths = currentFilePaths;
 		this.fileSize = fileSize;
 		this.component = component;
 		this.lastModified = lastModified;
@@ -57,7 +57,7 @@ public class OpenCryptoFile implements Closeable {
 	 * @throws IOException
 	 */
 	public synchronized FileChannel newFileChannel(EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
-		Path path = currentFilePath.get();
+		Path path = currentFilePaths.get().ciphertextPath();
 		if (path == null) {
 			throw new IllegalStateException("Cannot create file channel to deleted file");
 		}
@@ -159,16 +159,16 @@ public class OpenCryptoFile implements Closeable {
 		lastModified.set(lastModifiedTime.toInstant());
 	}
 
-	public Path getCurrentFilePath() {
-		return currentFilePath.get();
+	public ClearAndCipherPath getCurrentFilePaths() {
+		return currentFilePaths.get();
 	}
 
 	/**
 	 * Updates the current ciphertext file path, if it is not already set to null (i.e., the openCryptoFile is deleted)
-	 * @param newFilePath new ciphertext path
+	 * @param newPaths the new clear- & ciphertext paths
 	 */
-	public void updateCurrentFilePath(Path newFilePath) {
-		currentFilePath.updateAndGet(p -> p == null ? null : newFilePath);
+	public void updateCurrentFilePath(ClearAndCipherPath newPaths) {
+		currentFilePaths.updateAndGet(p -> p == null ? null : newPaths);
 	}
 
 	private synchronized void cleartextChannelClosed(FileChannel ciphertextFileChannel) {
@@ -182,14 +182,14 @@ public class OpenCryptoFile implements Closeable {
 
 	@Override
 	public void close() {
-		var p = currentFilePath.get();
+		var p = currentFilePaths.get();
 		if(p != null) {
-			listener.close(p, this);
+			listener.close(p.ciphertextPath(), this);
 		}
 	}
 
 	@Override
 	public String toString() {
-		return "OpenCryptoFile(path=" + currentFilePath.toString() + ")";
+		return "OpenCryptoFile(path=" + currentFilePaths.get().ciphertextPath().toString() + ")";
 	}
 }

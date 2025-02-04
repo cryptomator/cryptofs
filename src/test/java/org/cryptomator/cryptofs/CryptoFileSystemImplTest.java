@@ -453,7 +453,7 @@ public class CryptoFileSystemImplTest {
 			when(cryptoPathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
 			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextPath);
 			when(ciphertextPath.getFilePath()).thenReturn(ciphertextFilePath);
-			when(openCryptoFiles.getOrCreate(ciphertextFilePath)).thenReturn(openCryptoFile);
+			when(openCryptoFiles.getOrCreate(cleartextPath, ciphertextFilePath)).thenReturn(openCryptoFile);
 			when(ciphertextFilePath.getName(3)).thenReturn(mock(CryptoPath.class, "path.c9r"));
 			when(openCryptoFile.newFileChannel(any(), any(FileAttribute[].class))).thenReturn(fileChannel);
 		}
@@ -752,7 +752,7 @@ public class CryptoFileSystemImplTest {
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.SYMLINK);
 				when(cryptoPathMapper.getCiphertextFileType(cleartextDestination)).thenThrow(NoSuchFileException.class);
 				TwoPhaseMove openFileMove = Mockito.mock(TwoPhaseMove.class);
-				Mockito.when(openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextDestinationFile)).thenReturn(openFileMove);
+				Mockito.when(openCryptoFiles.prepareMove(ciphertextSourceFile, cleartextDestination, ciphertextDestinationFile)).thenReturn(openFileMove);
 
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);
@@ -769,7 +769,7 @@ public class CryptoFileSystemImplTest {
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.FILE);
 				when(cryptoPathMapper.getCiphertextFileType(cleartextDestination)).thenThrow(NoSuchFileException.class);
 				TwoPhaseMove openFileMove = Mockito.mock(TwoPhaseMove.class);
-				Mockito.when(openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextDestinationFile)).thenReturn(openFileMove);
+				Mockito.when(openCryptoFiles.prepareMove(ciphertextSourceFile, cleartextDestination, ciphertextDestinationFile)).thenReturn(openFileMove);
 
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);

@@ -9,10 +9,10 @@ import javax.inject.Qualifier;
 
 /**
  * The Path used to create an OpenCryptoFile
- * @see CurrentOpenFilePath
+ * @see CurrentOpenFilePaths
  */
 @Qualifier
 @Documented
 @Retention(RUNTIME)
-@interface OriginalOpenFilePath {
+@interface OriginalOpenFilePaths {
 }

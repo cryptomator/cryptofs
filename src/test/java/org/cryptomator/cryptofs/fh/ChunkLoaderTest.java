@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs.fh;
 
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
+import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.event.DecryptionFailedEvent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptofs.matchers.ByteBufferMatcher;
@@ -53,8 +54,8 @@ public class ChunkLoaderTest {
 	private final FileHeaderHolder headerHolder = mock(FileHeaderHolder.class);
 	private final BufferPool bufferPool = mock(BufferPool.class);
 	private final Consumer<FilesystemEvent> eventConsumer = mock(Consumer.class);
-	private final AtomicReference<Path> filePath = new AtomicReference<>(mock(Path.class, "The filepath"));
-	private final ChunkLoader inTest = new ChunkLoader(eventConsumer, filePath,cryptor, chunkIO, headerHolder, stats, bufferPool);
+	private final AtomicReference<ClearAndCipherPath> filePaths = new AtomicReference<>(new ClearAndCipherPath(mock(CryptoPath.class, "cleartext path"), mock(Path.class, "ciphertext filepath")));
+	private final ChunkLoader inTest = new ChunkLoader(eventConsumer, filePaths, cryptor, chunkIO, headerHolder, stats, bufferPool);
 
 	@BeforeEach
 	public void setup() throws IOException {

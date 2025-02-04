@@ -8,10 +8,10 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * The current Path of an OpenCryptoFile.
- * @see OriginalOpenFilePath
+ * @see OriginalOpenFilePaths
  */
 @Qualifier
 @Documented
 @Retention(RUNTIME)
-public @interface CurrentOpenFilePath {
+public @interface CurrentOpenFilePaths {
 }

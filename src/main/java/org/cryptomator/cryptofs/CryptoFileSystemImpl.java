@@ -402,7 +402,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			Files.createDirectories(ciphertextPath.getRawPath()); // suppresses FileAlreadyExists
 		}
 
-		FileChannel ch = openCryptoFiles.getOrCreate(ciphertextFilePath).newFileChannel(options, attrs); // might throw FileAlreadyExists
+		FileChannel ch = openCryptoFiles.getOrCreate(cleartextFilePath, ciphertextFilePath).newFileChannel(options, attrs); // might throw FileAlreadyExists
 		try {
 			if (options.writable()) {
 				ciphertextPath.persistLongFileName();
@@ -588,7 +588,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		// "the symbolic link itself, not the target of the link, is moved"
 		CiphertextFilePath ciphertextSource = cryptoPathMapper.getCiphertextFilePath(cleartextSource);
 		CiphertextFilePath ciphertextTarget = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath())) {
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getRawPath(), cleartextTarget, ciphertextTarget.getRawPath())) {
 			Files.move(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath(), options);
 			if (ciphertextTarget.isShortened()) {
 				ciphertextTarget.persistLongFileName();
@@ -604,7 +604,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		// we need to re-map the OpenCryptoFile entry.
 		CiphertextFilePath ciphertextSource = cryptoPathMapper.getCiphertextFilePath(cleartextSource);
 		CiphertextFilePath ciphertextTarget = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath())) {
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getRawPath(), cleartextTarget, ciphertextTarget.getRawPath())) {
 			if (ciphertextTarget.isShortened()) {
 				Files.createDirectories(ciphertextTarget.getRawPath());
 				ciphertextTarget.persistLongFileName();
