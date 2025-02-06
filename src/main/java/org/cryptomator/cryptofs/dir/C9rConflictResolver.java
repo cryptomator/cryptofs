@@ -69,7 +69,7 @@ class C9rConflictResolver {
 				Path canonicalPath = node.ciphertextPath.resolveSibling(canonicalCiphertextFileName);
 				return resolveConflict(node, canonicalPath);
 			} catch (IOException e) {
-				eventConsumer.accept(new ConflictResolutionFailedEvent(cleartextPath.resolve(node.cleartextName), node.ciphertextPath.resolve(node.fullCiphertextFileName), e));
+				eventConsumer.accept(new ConflictResolutionFailedEvent(cleartextPath.resolve(node.cleartextName), node.ciphertextPath, e));
 				LOG.error("Failed to resolve conflict for {}", node.ciphertextPath, e);
 				return Stream.empty();
 			}
