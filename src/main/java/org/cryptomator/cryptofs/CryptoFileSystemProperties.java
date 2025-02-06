@@ -164,6 +164,10 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		return (int) get(PROPERTY_SHORTENING_THRESHOLD);
 	}
 
+	Consumer<FilesystemEvent> fsEventConsumner() {
+		return (Consumer<FilesystemEvent>) get(PROPERTY_NOTIFY_METHOD);
+	}
+
 	@Override
 	public Set<Entry<String, Object>> entrySet() {
 		return entries;
