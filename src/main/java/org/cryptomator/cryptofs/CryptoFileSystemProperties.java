@@ -86,9 +86,9 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 *
 	 * @since 2.9.0
 	 */
-	public static final String PROPERTY_NOTIFY_METHOD = "notificationConsumer";
+	public static final String PROPERTY_EVENT_CONSUMER = "notificationConsumer";
 
-	static final Consumer<FilesystemEvent> DEFAULT_NOTIFY_METHOD = (FilesystemEvent e) -> {};
+	static final Consumer<FilesystemEvent> DEFAULT_EVENT_CONSUMER = ignored -> {};
 
 	/**
 	 * Key identifying the filesystem flags.
@@ -123,7 +123,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 				Map.entry(PROPERTY_FILESYSTEM_FLAGS, builder.flags), //
 				Map.entry(PROPERTY_VAULTCONFIG_FILENAME, builder.vaultConfigFilename), //
 				Map.entry(PROPERTY_MASTERKEY_FILENAME, builder.masterkeyFilename), //
-				Map.entry(PROPERTY_NOTIFY_METHOD, builder.eventConsumer), //
+				Map.entry(PROPERTY_EVENT_CONSUMER, builder.eventConsumer), //
 				Map.entry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, builder.maxCleartextNameLength), //
 				Map.entry(PROPERTY_SHORTENING_THRESHOLD, builder.shorteningThreshold), //
 				Map.entry(PROPERTY_CIPHER_COMBO, builder.cipherCombo) //
@@ -165,7 +165,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	}
 
 	Consumer<FilesystemEvent> fsEventConsumner() {
-		return (Consumer<FilesystemEvent>) get(PROPERTY_NOTIFY_METHOD);
+		return (Consumer<FilesystemEvent>) get(PROPERTY_EVENT_CONSUMER);
 	}
 
 	@Override
@@ -223,7 +223,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		private String masterkeyFilename = DEFAULT_MASTERKEY_FILENAME;
 		private int maxCleartextNameLength = DEFAULT_MAX_CLEARTEXT_NAME_LENGTH;
 		private int shorteningThreshold = DEFAULT_SHORTENING_THRESHOLD;
-		private Consumer<FilesystemEvent> eventConsumer = DEFAULT_NOTIFY_METHOD;
+		private Consumer<FilesystemEvent> eventConsumer = DEFAULT_EVENT_CONSUMER;
 
 		private Builder() {
 		}
@@ -236,7 +236,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 			checkedSet(Integer.class, PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, properties, this::withMaxCleartextNameLength);
 			checkedSet(Integer.class, PROPERTY_SHORTENING_THRESHOLD, properties, this::withShorteningThreshold);
 			checkedSet(CryptorProvider.Scheme.class, PROPERTY_CIPHER_COMBO, properties, this::withCipherCombo);
-			checkedSet(Consumer.class, PROPERTY_NOTIFY_METHOD, properties, this::withFilesystemEventConsumer);
+			checkedSet(Consumer.class, PROPERTY_EVENT_CONSUMER, properties, this::withFilesystemEventConsumer);
 		}
 
 		private <T> void checkedSet(Class<T> type, String key, Map<String, ?> properties, Consumer<T> setter) {

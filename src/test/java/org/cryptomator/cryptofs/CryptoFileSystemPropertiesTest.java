@@ -52,7 +52,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY)), //
-						anEntry(PROPERTY_NOTIFY_METHOD, DEFAULT_NOTIFY_METHOD)));
+						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER)));
 	}
 
 	@Test
@@ -79,7 +79,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, 221), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY)), //
-						anEntry(PROPERTY_NOTIFY_METHOD, DEFAULT_NOTIFY_METHOD)));
+						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER)));
 	}
 
 	@Test
@@ -102,7 +102,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY)), //
-						anEntry(PROPERTY_NOTIFY_METHOD, DEFAULT_NOTIFY_METHOD)));
+						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER)));
 	}
 
 	@Test
@@ -125,7 +125,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class)), //
-						anEntry(PROPERTY_NOTIFY_METHOD, DEFAULT_NOTIFY_METHOD)));
+						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER)));
 	}
 
 	@Test
@@ -178,7 +178,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class)), //
-						anEntry(PROPERTY_NOTIFY_METHOD, DEFAULT_NOTIFY_METHOD)));
+						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER)));
 	}
 
 	@Test
