@@ -355,6 +355,9 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		 * @since 2.8.0
 		 */
 		public Builder withFilesystemEventConsumer(Consumer<FilesystemEvent> eventConsumer) {
+			if (eventConsumer == null) {
+				throw new IllegalArgumentException("Parameter eventConsumer must not be null");
+			}
 			this.eventConsumer = eventConsumer;
 			return this;
 		}
