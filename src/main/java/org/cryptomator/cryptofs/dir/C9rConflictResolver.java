@@ -14,7 +14,6 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -123,18 +122,17 @@ class C9rConflictResolver {
 		}
 
 		assert alternativeCiphertextName.length() <= maxC9rFileNameLength;
-		try {
-			Files.move(conflicting.ciphertextPath, alternativePath, StandardCopyOption.ATOMIC_MOVE);
-			LOG.info("Renamed conflicting file {} to {}...", conflicting.ciphertextPath, alternativePath);
-			Node node = new Node(alternativePath);
-			node.cleartextName = alternativeCleartext;
-			node.extractedCiphertext = alternativeCiphertext;
-			return Stream.of(node);
-		} catch (FileAlreadyExistsException e) {
-			// TODO notify user about unresolved conflict: `canonicalPath`
-			LOG.warn("Failed to rename conflicting file {} to {}. Keeping original name.", conflicting.ciphertextPath, alternativePath);
+		if (Files.exists(alternativePath)) {
+			LOG.warn("Failed finding alternative name for {}. Keeping original name.", conflicting.ciphertextPath);
 			return Stream.empty();
 		}
+
+		Files.move(conflicting.ciphertextPath, alternativePath, StandardCopyOption.ATOMIC_MOVE);
+		LOG.info("Renamed conflicting file {} to {}...", conflicting.ciphertextPath, alternativePath);
+		Node node = new Node(alternativePath);
+		node.cleartextName = alternativeCleartext;
+		node.extractedCiphertext = alternativeCiphertext;
+		return Stream.of(node);
 	}
 
 

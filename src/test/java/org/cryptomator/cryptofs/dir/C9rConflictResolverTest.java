@@ -8,7 +8,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
@@ -114,6 +113,22 @@ public class C9rConflictResolverTest {
 		Assertions.assertEquals("this is a rather lon (Created by Alice o.txt", resolved.cleartextName);
 		Assertions.assertTrue(Files.exists(resolved.ciphertextPath));
 		Assertions.assertFalse(Files.exists(unresolved.ciphertextPath));
+	}
+
+	@Test
+	public void testResolveConflictFailedAlternativeNamesReserved(@TempDir Path dir) throws IOException {
+		Files.createFile(dir.resolve("foo (Created by Alice on 2024-01-31).c9r"));
+		Files.createFile(dir.resolve("foo.c9r"));
+		Files.createFile(dir.resolve("baz.c9r"));
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn("baz");
+		Node unresolved = new Node(dir.resolve("foo (Created by Alice on 2024-01-31).c9r"));
+		unresolved.cleartextName = "this is a rather long file name.txt";
+		unresolved.extractedCiphertext = "foo";
+
+		Stream<Node> result = conflictResolver.process(unresolved);
+		Assertions.assertTrue(result.findAny().isEmpty());
+		Assertions.assertTrue(Files.exists(unresolved.ciphertextPath));
+		Mockito.verify(fileNameCryptor, Mockito.times(10)).encryptFilename(Mockito.any(), Mockito.any(), Mockito.any());
 	}
 
 	@Test
