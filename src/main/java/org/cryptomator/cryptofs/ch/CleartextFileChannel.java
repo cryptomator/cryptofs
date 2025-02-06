@@ -254,7 +254,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	void persistLastModified() throws IOException {
 		FileTime lastModifiedTime = isWritable() ? FileTime.from(lastModified.get()) : null;
 		FileTime lastAccessTime = FileTime.from(Instant.now());
-		var ps = currentFilePaths.get();;
+		var ps = currentFilePaths.get();
 		if (ps != null) {
 			var ciphertextPath = ps.ciphertextPath();
 			ciphertextPath.getFileSystem().provider()//
