@@ -21,7 +21,6 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 
 import static java.util.Arrays.asList;
@@ -89,7 +88,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 */
 	public static final String PROPERTY_NOTIFY_METHOD = "notificationConsumer";
 
-	static final Consumer<FilesystemEvent> DEFAULT_NOTIFY_METHOD = (FilesystemEvent e) -> {} ;
+	static final Consumer<FilesystemEvent> DEFAULT_NOTIFY_METHOD = (FilesystemEvent e) -> {};
 
 	/**
 	 * Key identifying the filesystem flags.
