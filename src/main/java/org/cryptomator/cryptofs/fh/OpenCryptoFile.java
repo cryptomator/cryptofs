@@ -10,7 +10,6 @@ import javax.inject.Inject;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
-import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
@@ -57,8 +56,8 @@ public class OpenCryptoFile implements Closeable {
 	 * @throws IOException
 	 */
 	public synchronized FileChannel newFileChannel(EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
-		Path path = currentFilePaths.get().ciphertextPath();
-		if (path == null) {
+		var paths = currentFilePaths.get();
+		if (paths == null) {
 			throw new IllegalStateException("Cannot create file channel to deleted file");
 		}
 		FileChannel ciphertextFileChannel = null;
@@ -66,7 +65,8 @@ public class OpenCryptoFile implements Closeable {
 
 		openChannelsCount.incrementAndGet(); // synchronized context, hence we can proactively increase the number
 		try {
-			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
+			var ciphertextPath = paths.ciphertextPath();
+			ciphertextFileChannel = ciphertextPath.getFileSystem().provider().newFileChannel(ciphertextPath, options.createOpenOptionsForEncryptedFile(), attrs);
 			initFileHeader(options, ciphertextFileChannel);
 			initFileSize(ciphertextFileChannel);
 			cleartextFileChannel = component.newChannelComponent() //
@@ -165,6 +165,7 @@ public class OpenCryptoFile implements Closeable {
 
 	/**
 	 * Updates the current ciphertext file path, if it is not already set to null (i.e., the openCryptoFile is deleted)
+	 *
 	 * @param newPaths the new clear- & ciphertext paths
 	 */
 	public void updateCurrentFilePath(ClearAndCipherPath newPaths) {
@@ -183,13 +184,14 @@ public class OpenCryptoFile implements Closeable {
 	@Override
 	public void close() {
 		var p = currentFilePaths.get();
-		if(p != null) {
+		if (p != null) {
 			listener.close(p.ciphertextPath(), this);
 		}
 	}
 
 	@Override
 	public String toString() {
-		return "OpenCryptoFile(path=" + currentFilePaths.get().ciphertextPath().toString() + ")";
+		var paths = currentFilePaths.get();
+		return "OpenCryptoFile(path=" + (paths != null ? paths.ciphertextPath().toString() : "[deleted]") + ")";
 	}
 }
