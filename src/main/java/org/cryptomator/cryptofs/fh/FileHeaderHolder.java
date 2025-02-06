@@ -82,7 +82,7 @@ public class FileHeaderHolder {
 			return existingHeader;
 		} catch (IllegalArgumentException | CryptoException e) {
 			if (e instanceof AuthenticationFailedException afe) {
-				eventConsumer.accept(new DecryptionFailedEvent(null, path.get(), afe));
+				eventConsumer.accept(new DecryptionFailedEvent(path.get(), afe));
 			}
 			throw new IOException("Unable to decrypt header of file " + path.get(), e);
 		}

@@ -53,7 +53,7 @@ class ChunkLoader {
 			}
 			return cleartextBuf;
 		} catch (AuthenticationFailedException e) {
-			eventConsumer.accept(new DecryptionFailedEvent(null, path.get(), e));
+			eventConsumer.accept(new DecryptionFailedEvent(path.get(), e));
 			throw e;
 		} finally {
 			bufferPool.recycle(ciphertextBuf);
