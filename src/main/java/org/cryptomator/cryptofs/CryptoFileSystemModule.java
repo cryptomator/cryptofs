@@ -41,7 +41,7 @@ class CryptoFileSystemModule {
 	@Provides
 	@CryptoFileSystemScoped
 	public Consumer<FilesystemEvent> provideFilesystemEventConsumer(CryptoFileSystemProperties fsProps) {
-		var eventConsumer = fsProps.fsEventConsumner();
+		var eventConsumer = fsProps.filesystemEventConsumer();
 		return event -> {
 			try {
 				eventConsumer.accept(event);

@@ -164,7 +164,8 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		return (int) get(PROPERTY_SHORTENING_THRESHOLD);
 	}
 
-	Consumer<FilesystemEvent> fsEventConsumner() {
+	@SuppressWarnings("unchecked")
+	Consumer<FilesystemEvent> filesystemEventConsumer() {
 		return (Consumer<FilesystemEvent>) get(PROPERTY_EVENT_CONSUMER);
 	}
 

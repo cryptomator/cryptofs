@@ -25,7 +25,7 @@ public class CryptoFileSystemModuleTest {
 		var eventConsumer = (Consumer<FilesystemEvent>) mock(Consumer.class);
 		doThrow(new RuntimeException("fail")).when(eventConsumer).accept(event);
 		var props = mock(CryptoFileSystemProperties.class);
-		when(props.fsEventConsumner()).thenReturn(eventConsumer);
+		when(props.filesystemEventConsumer()).thenReturn(eventConsumer);
 
 		var decoratedConsumer = inTest.provideFilesystemEventConsumer(props);
 		Assertions.assertDoesNotThrow(() -> decoratedConsumer.accept(event));
