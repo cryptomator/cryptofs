@@ -11,15 +11,19 @@ package org.cryptomator.cryptofs;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import java.util.concurrent.CompletionException;
 
 @CryptoFileSystemScoped
 class DirectoryIdProvider {
 
+	private static final Logger LOG = LoggerFactory.getLogger(DirectoryIdProvider.class);
 	private static final int MAX_CACHE_SIZE = 5000;
 
 	private final LoadingCache<Path, String> ids;
@@ -32,8 +36,9 @@ class DirectoryIdProvider {
 	public String load(Path dirFilePath) throws IOException {
 		try {
 			return ids.get(dirFilePath);
-		} catch (UncheckedIOException e) {
-			throw new IOException("Failed to load contents of directory file at path " + dirFilePath, e);
+		} catch (CompletionException e) {
+			LOG.warn("Failed to load directory id from {}", dirFilePath, e.getCause());
+			throw (IOException) e.getCause();
 		}
 	}
 

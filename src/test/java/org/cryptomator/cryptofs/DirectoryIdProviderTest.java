@@ -39,15 +39,14 @@ public class DirectoryIdProviderTest {
 	}
 
 	@Test
-	public void testIOExceptionFromLoaderIsWrappedAndRethrown() {
+	public void testIOExceptionFromLoaderIsRethrown() throws IOException {
 		IOException originalIoException = new IOException();
-		when(loader.load(aPath)).thenThrow(new UncheckedIOException(originalIoException));
+		when(loader.load(aPath)).thenThrow(originalIoException);
 
 		IOException e = Assertions.assertThrows(IOException.class, () -> {
 			inTest.load(aPath);
 		});
-		Assertions.assertTrue(e.getCause() instanceof UncheckedIOException);
-		Assertions.assertEquals(originalIoException, e.getCause().getCause());
+		Assertions.assertSame(originalIoException, e);
 	}
 
 	@Test

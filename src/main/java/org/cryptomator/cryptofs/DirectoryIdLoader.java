@@ -24,7 +24,7 @@ class DirectoryIdLoader implements CacheLoader<Path, String> {
 	}
 
 	@Override
-	public String load(Path dirFilePath) throws UncheckedIOException {
+	public String load(Path dirFilePath) throws IOException {
 		try (FileChannel ch = FileChannel.open(dirFilePath, StandardOpenOption.READ);
 			 InputStream in = Channels.newInputStream(ch)) {
 			long size = ch.size();
@@ -40,8 +40,6 @@ class DirectoryIdLoader implements CacheLoader<Path, String> {
 			}
 		} catch (NoSuchFileException e) {
 			return UUID.randomUUID().toString();
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
 		}
 	}
 
