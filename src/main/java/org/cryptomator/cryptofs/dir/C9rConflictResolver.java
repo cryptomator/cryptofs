@@ -61,7 +61,7 @@ class C9rConflictResolver {
 				Path canonicalPath = node.ciphertextPath.resolveSibling(canonicalCiphertextFileName);
 				return resolveConflict(node, canonicalPath);
 			} catch (IOException e) {
-				LOG.error("Failed to resolve conflict for " + node.ciphertextPath, e);
+				LOG.error("Failed to resolve conflict for {}", node.ciphertextPath, e);
 				return Stream.empty();
 			}
 		}
@@ -75,7 +75,7 @@ class C9rConflictResolver {
 			resolved.extractedCiphertext = conflicting.extractedCiphertext;
 			return Stream.of(resolved);
 		} else {
-			return Stream.of(renameConflictingFile(canonicalPath, conflictingPath, conflicting.cleartextName));
+			return renameConflictingFile(canonicalPath, conflicting);
 		}
 	}
 
@@ -83,35 +83,56 @@ class C9rConflictResolver {
 	 * Resolves a conflict by renaming the conflicting file.
 	 *
 	 * @param canonicalPath The path to the original (conflict-free) file.
-	 * @param conflictingPath The path to the potentially conflicting file.
-	 * @param cleartext The cleartext name of the conflicting file.
-	 * @return The newly created Node after renaming the conflicting file.
-	 * @throws IOException
+	 * @param conflicting The conflicting file.
+	 * @return The newly created Node if rename succeeded or an empty stream otherwise.
+	 * @throws IOException If an unexpected I/O exception occurs during rename
 	 */
-	private Node renameConflictingFile(Path canonicalPath, Path conflictingPath, String cleartext) throws IOException {
+	private Stream<Node> renameConflictingFile(Path canonicalPath, Node conflicting) throws IOException {
 		assert Files.exists(canonicalPath);
-		final int beginOfFileExtension = cleartext.lastIndexOf('.');
-		final String fileExtension = (beginOfFileExtension > 0) ? cleartext.substring(beginOfFileExtension) : "";
-		final String basename = (beginOfFileExtension > 0) ? cleartext.substring(0, beginOfFileExtension) : cleartext;
-		final String lengthRestrictedBasename = basename.substring(0, Math.min(basename.length(), maxCleartextFileNameLength - fileExtension.length() - 5)); // 5 chars for conflict suffix " (42)"
-		String alternativeCleartext;
-		String alternativeCiphertext;
-		String alternativeCiphertextName;
-		Path alternativePath;
-		int i = 1;
-		do {
-			alternativeCleartext = lengthRestrictedBasename + " (" + i++ + ")" + fileExtension;
+		assert conflicting.fullCiphertextFileName.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX);
+		assert conflicting.fullCiphertextFileName.contains(conflicting.extractedCiphertext);
+
+		final String cleartext = conflicting.cleartextName;
+		final int beginOfCleartextExt = cleartext.lastIndexOf('.');
+		final String cleartextFileExt = (beginOfCleartextExt > 0) ? cleartext.substring(beginOfCleartextExt) : "";
+		final String cleartextBasename = (beginOfCleartextExt > 0) ? cleartext.substring(0, beginOfCleartextExt) : cleartext;
+
+		// let's assume that some the sync conflict string is added at the end of the file name, but before .c9r:
+		final int endOfCiphertext = conflicting.fullCiphertextFileName.indexOf(conflicting.extractedCiphertext) + conflicting.extractedCiphertext.length();
+		final String originalConflictSuffix = conflicting.fullCiphertextFileName.substring(endOfCiphertext, conflicting.fullCiphertextFileName.length() - Constants.CRYPTOMATOR_FILE_SUFFIX.length());
+
+		// split available maxCleartextFileNameLength between basename, conflict suffix, and file extension:
+		final int netCleartext = maxCleartextFileNameLength - cleartextFileExt.length(); // file extension must be preserved
+		final String conflictSuffix = originalConflictSuffix.substring(0, Math.min(originalConflictSuffix.length(), netCleartext / 2)); // max 50% of available space
+		final int conflictSuffixLen = Math.max(4, conflictSuffix.length()); // prefer to use original conflict suffix, but reserver at least 4 chars for numerical fallback: " (9)"
+		final String lengthRestrictedBasename = cleartextBasename.substring(0, Math.min(cleartextBasename.length(), netCleartext - conflictSuffixLen)); // remaining space for basename
+
+		// attempt to use original conflict suffix:
+		String alternativeCleartext = lengthRestrictedBasename + conflictSuffix + cleartextFileExt;
+		String alternativeCiphertext = cryptor.fileNameCryptor().encryptFilename(BaseEncoding.base64Url(), alternativeCleartext, dirId);
+		String alternativeCiphertextName = alternativeCiphertext + Constants.CRYPTOMATOR_FILE_SUFFIX;
+		Path alternativePath = canonicalPath.resolveSibling(alternativeCiphertextName);
+
+		// fallback to number conflic suffix, if file with alternative path already exists:
+		for (int i = 1; i < 10 && Files.exists(alternativePath); i++) {
+			alternativeCleartext = lengthRestrictedBasename + " (" + i + ")" + cleartextFileExt;
 			alternativeCiphertext = cryptor.fileNameCryptor().encryptFilename(BaseEncoding.base64Url(), alternativeCleartext, dirId);
 			alternativeCiphertextName = alternativeCiphertext + Constants.CRYPTOMATOR_FILE_SUFFIX;
 			alternativePath = canonicalPath.resolveSibling(alternativeCiphertextName);
-		} while (Files.exists(alternativePath));
+		}
+
 		assert alternativeCiphertextName.length() <= maxC9rFileNameLength;
-		LOG.info("Moving conflicting file {} to {}", conflictingPath, alternativePath);
-		Files.move(conflictingPath, alternativePath, StandardCopyOption.ATOMIC_MOVE);
+		if (Files.exists(alternativePath)) {
+			LOG.warn("Failed finding alternative name for {}. Keeping original name.", conflicting.ciphertextPath);
+			return Stream.empty();
+		}
+
+		Files.move(conflicting.ciphertextPath, alternativePath, StandardCopyOption.ATOMIC_MOVE);
+		LOG.info("Renamed conflicting file {} to {}...", conflicting.ciphertextPath, alternativePath);
 		Node node = new Node(alternativePath);
 		node.cleartextName = alternativeCleartext;
 		node.extractedCiphertext = alternativeCiphertext;
-		return node;
+		return Stream.of(node);
 	}
 
 
