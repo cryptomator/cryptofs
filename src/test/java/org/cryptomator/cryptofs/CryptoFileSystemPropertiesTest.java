@@ -162,6 +162,22 @@ public class CryptoFileSystemPropertiesTest {
 	}
 
 	@Test
+	public void testWrapMapWithNullEventConsumer() {
+		Map<String, Object> map = new HashMap<>();
+		map.put(PROPERTY_MASTERKEY_FILENAME, "any");
+		map.put(PROPERTY_EVENT_CONSUMER, null);
+
+		Assertions.assertThrows(IllegalArgumentException.class, () -> {
+			CryptoFileSystemProperties.wrap(map);
+		});
+	}
+
+	@Test
+	public void testNullEventConsumerThrowsIAE() {
+		Assertions.assertThrows(IllegalArgumentException.class, () -> CryptoFileSystemProperties.cryptoFileSystemProperties().withFilesystemEventConsumer(null));
+	}
+
+	@Test
 	public void testWrapMapWithoutReadonly() {
 		Map<String, Object> map = new HashMap<>();
 		map.put(PROPERTY_KEYLOADER, keyLoader);
