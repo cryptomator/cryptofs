@@ -30,11 +30,7 @@ class DirectoryIdProvider {
 	}
 
 	public String load(Path dirFilePath) throws IOException {
-		try {
-			return ids.get(dirFilePath);
-		} catch (UncheckedIOException e) {
-			throw new IOException("Failed to load contents of directory file at path " + dirFilePath, e);
-		}
+		return ids.get(dirFilePath);
 	}
 
 	/**
