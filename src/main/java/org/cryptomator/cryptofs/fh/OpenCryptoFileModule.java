@@ -46,7 +46,7 @@ public class OpenCryptoFileModule {
 	@OpenFileSize
 	public AtomicLong provideFileSize() {
 		// will be initialized when first creating a FileChannel. See OpenCryptoFile#size()
-		return new AtomicLong(-1l);
+		return new AtomicLong(-1L);
 	}
 
 	private Optional<BasicFileAttributes> readBasicAttributes(Path path) {
