@@ -86,7 +86,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	 *
 	 * @since 2.9.0
 	 */
-	public static final String PROPERTY_EVENT_CONSUMER = "notificationConsumer";
+	public static final String PROPERTY_EVENT_CONSUMER = "fsEventConsumer";
 
 	static final Consumer<FilesystemEvent> DEFAULT_EVENT_CONSUMER = ignored -> {};
 
