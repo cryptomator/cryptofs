@@ -6,6 +6,9 @@ import com.google.common.io.MoreFiles;
 import com.google.common.io.RecursiveDeleteOption;
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.event.ConflictResolutionFailedEvent;
+import org.cryptomator.cryptofs.event.ConflictResolvedEvent;
+import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static org.cryptomator.cryptofs.common.Constants.DIR_FILE_NAME;
@@ -33,14 +37,18 @@ class C9rConflictResolver {
 	private final Cryptor cryptor;
 	private final byte[] dirId;
 	private final int maxC9rFileNameLength;
+	private final Path cleartextPath;
 	private final int maxCleartextFileNameLength;
+	private final Consumer<FilesystemEvent> eventConsumer;
 
 	@Inject
-	public C9rConflictResolver(Cryptor cryptor, @Named("dirId") String dirId, VaultConfig vaultConfig) {
+	public C9rConflictResolver(Cryptor cryptor, @Named("dirId") String dirId, VaultConfig vaultConfig, Consumer<FilesystemEvent> eventConsumer, @Named("cleartextPath") Path cleartextPath) {
 		this.cryptor = cryptor;
 		this.dirId = dirId.getBytes(StandardCharsets.US_ASCII);
 		this.maxC9rFileNameLength = vaultConfig.getShorteningThreshold();
+		this.cleartextPath = cleartextPath;
 		this.maxCleartextFileNameLength = (maxC9rFileNameLength - 4) / 4 * 3 - 16; // math from FileSystemCapabilityChecker.determineSupportedCleartextFileNameLength()
+		this.eventConsumer = eventConsumer;
 	}
 
 	public Stream<Node> process(Node node) {
@@ -61,13 +69,15 @@ class C9rConflictResolver {
 				Path canonicalPath = node.ciphertextPath.resolveSibling(canonicalCiphertextFileName);
 				return resolveConflict(node, canonicalPath);
 			} catch (IOException e) {
+				eventConsumer.accept(new ConflictResolutionFailedEvent(cleartextPath.resolve(node.cleartextName), node.ciphertextPath, e));
 				LOG.error("Failed to resolve conflict for {}", node.ciphertextPath, e);
 				return Stream.empty();
 			}
 		}
 	}
 
-	private Stream<Node> resolveConflict(Node conflicting, Path canonicalPath) throws IOException {
+	//visible for testing
+	Stream<Node> resolveConflict(Node conflicting, Path canonicalPath) throws IOException {
 		Path conflictingPath = conflicting.ciphertextPath;
 		if (resolveConflictTrivially(canonicalPath, conflictingPath)) {
 			Node resolved = new Node(canonicalPath);
@@ -132,6 +142,7 @@ class C9rConflictResolver {
 		Node node = new Node(alternativePath);
 		node.cleartextName = alternativeCleartext;
 		node.extractedCiphertext = alternativeCiphertext;
+		eventConsumer.accept(new ConflictResolvedEvent(cleartextPath.resolve(cleartext), conflicting.ciphertextPath, cleartextPath.resolve(alternativeCleartext), alternativePath));
 		return Stream.of(node);
 	}
 

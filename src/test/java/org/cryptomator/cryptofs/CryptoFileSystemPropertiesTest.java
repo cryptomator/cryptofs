@@ -51,7 +51,8 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY)), //
+						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER)));
 	}
 
 	@Test
@@ -77,7 +78,8 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, 255), //
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, 221), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY)), //
+						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER)));
 	}
 
 	@Test
@@ -99,7 +101,8 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY))));
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY)), //
+						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER)));
 	}
 
 	@Test
@@ -121,7 +124,8 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class))));
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class)), //
+						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER)));
 	}
 
 	@Test
@@ -158,6 +162,22 @@ public class CryptoFileSystemPropertiesTest {
 	}
 
 	@Test
+	public void testWrapMapWithNullEventConsumer() {
+		Map<String, Object> map = new HashMap<>();
+		map.put(PROPERTY_MASTERKEY_FILENAME, "any");
+		map.put(PROPERTY_EVENT_CONSUMER, null);
+
+		Assertions.assertThrows(IllegalArgumentException.class, () -> {
+			CryptoFileSystemProperties.wrap(map);
+		});
+	}
+
+	@Test
+	public void testNullEventConsumerThrowsIAE() {
+		Assertions.assertThrows(IllegalArgumentException.class, () -> CryptoFileSystemProperties.cryptoFileSystemProperties().withFilesystemEventConsumer(null));
+	}
+
+	@Test
 	public void testWrapMapWithoutReadonly() {
 		Map<String, Object> map = new HashMap<>();
 		map.put(PROPERTY_KEYLOADER, keyLoader);
@@ -173,9 +193,8 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, DEFAULT_MAX_CLEARTEXT_NAME_LENGTH), //
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
-						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class))
-				)
-		);
+						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class)), //
+						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER)));
 	}
 
 	@Test

@@ -1,5 +1,7 @@
 package org.cryptomator.cryptofs.fh;
 
+import org.cryptomator.cryptofs.event.DecryptionFailedEvent;
+import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
@@ -10,6 +12,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatcher;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -18,8 +22,10 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -36,13 +42,15 @@ public class FileHeaderHolderTest {
 	private final Cryptor cryptor = mock(Cryptor.class);
 	private final Path path = mock(Path.class, "openFile.txt");
 	private final AtomicReference<Path> pathRef = new AtomicReference<>(path);
+	private final Consumer<FilesystemEvent> eventConsumer = mock(Consumer.class);
 
-	private final FileHeaderHolder inTest = new FileHeaderHolder(cryptor, pathRef);
+	private FileHeaderHolder inTest;
 
 	@BeforeEach
 	public void setup() throws IOException {
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
 		when(fileHeaderCryptor.encryptHeader(Mockito.any())).thenReturn(ByteBuffer.wrap(new byte[0]));
+		inTest = new FileHeaderHolder(eventConsumer, cryptor, pathRef);
 	}
 
 	@Nested
@@ -66,7 +74,7 @@ public class FileHeaderHolderTest {
 		}
 
 		@Test
-		@DisplayName("load")
+		@DisplayName("load success")
 		public void testLoadExisting() throws IOException, AuthenticationFailedException {
 			FileHeader loadedHeader1 = inTest.loadExisting(channel);
 			FileHeader loadedHeader2 = inTest.get();
@@ -79,6 +87,26 @@ public class FileHeaderHolderTest {
 			Assertions.assertNotNull(inTest.get());
 			Assertions.assertNotNull(inTest.getEncrypted());
 			Assertions.assertTrue(inTest.headerIsPersisted().get());
+		}
+
+		@Test
+		@DisplayName("load failure due to authenticationFailedException")
+		public void testLoadExistingFailureWithAuthFailed() {
+			Mockito.doThrow(AuthenticationFailedException.class).when(fileHeaderCryptor).decryptHeader(Mockito.any());
+
+			Assertions.assertThrows(IOException.class, () -> inTest.loadExisting(channel));
+			var isDecryptionFailedEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof DecryptionFailedEvent;
+			verify(eventConsumer).accept(ArgumentMatchers.argThat(isDecryptionFailedEvent));
+		}
+
+		@Test
+		@DisplayName("load failure due to IllegalArgumentException")
+		public void testLoadExistingFailureWithIllegalArgument() {
+			Mockito.doThrow(IllegalArgumentException.class).when(fileHeaderCryptor).decryptHeader(Mockito.any());
+
+			Assertions.assertThrows(IOException.class, () -> inTest.loadExisting(channel));
+			var isDecryptionFailedEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof DecryptionFailedEvent;
+			verify(eventConsumer, never()).accept(ArgumentMatchers.argThat(isDecryptionFailedEvent));
 		}
 
 	}

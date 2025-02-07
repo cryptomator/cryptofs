@@ -10,6 +10,7 @@ import dagger.Provides;
 import org.cryptomator.cryptofs.attr.AttributeComponent;
 import org.cryptomator.cryptofs.attr.AttributeViewComponent;
 import org.cryptomator.cryptofs.dir.DirectoryStreamComponent;
+import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,7 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 @Module(subcomponents = {AttributeComponent.class, AttributeViewComponent.class, OpenCryptoFileComponent.class, DirectoryStreamComponent.class})
 class CryptoFileSystemModule {
@@ -34,5 +36,18 @@ class CryptoFileSystemModule {
 			LOG.warn("Failed to get file store for " + pathToVault, e);
 			return Optional.empty();
 		}
+	}
+
+	@Provides
+	@CryptoFileSystemScoped
+	public Consumer<FilesystemEvent> provideFilesystemEventConsumer(CryptoFileSystemProperties fsProps) {
+		var eventConsumer = fsProps.filesystemEventConsumer();
+		return event -> {
+			try {
+				eventConsumer.accept(event);
+			} catch (RuntimeException e) {
+				LOG.warn("Filesystem event consumer failed with exception when processing event {}", event, e);
+			}
+		};
 	}
 }
