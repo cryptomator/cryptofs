@@ -11,8 +11,8 @@ import java.util.function.Consumer;
  * {@code
  * FilesystemEvent fse;
  * switch (fse) {
- *   case DecryptionFailedEvent dfe -> //do stuff
- *   case ConflictResolvedEvent cre -> //do other stuff
+ *   case DecryptionFailedEvent e -> //do stuff
+ *   case ConflictResolvedEvent e -> //do other stuff
  *   //other cases
  * }
  * if( fse instanceof DecryptionFailedEvent dfe) {

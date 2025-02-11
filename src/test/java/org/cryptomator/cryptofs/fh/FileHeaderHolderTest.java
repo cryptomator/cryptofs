@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -91,8 +92,8 @@ public class FileHeaderHolderTest {
 		}
 
 		@Test
-		@DisplayName("load failure")
-		public void testLoadExistingFailure() {
+		@DisplayName("load failure due to authenticationFailedException")
+		public void testLoadExistingFailureWithAuthFailed() {
 			Mockito.doThrow(AuthenticationFailedException.class).when(fileHeaderCryptor).decryptHeader(Mockito.any());
 
 			Assertions.assertThrows(IOException.class, () -> inTest.loadExisting(channel));
@@ -100,6 +101,15 @@ public class FileHeaderHolderTest {
 			verify(eventConsumer).accept(ArgumentMatchers.argThat(isDecryptionFailedEvent));
 		}
 
+		@Test
+		@DisplayName("load failure due to IllegalArgumentException")
+		public void testLoadExistingFailureWithIllegalArgument() {
+			Mockito.doThrow(IllegalArgumentException.class).when(fileHeaderCryptor).decryptHeader(Mockito.any());
+
+			Assertions.assertThrows(IOException.class, () -> inTest.loadExisting(channel));
+			var isDecryptionFailedEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof DecryptionFailedEvent;
+			verify(eventConsumer, never()).accept(ArgumentMatchers.argThat(isDecryptionFailedEvent));
+		}
 	}
 
 	@Nested

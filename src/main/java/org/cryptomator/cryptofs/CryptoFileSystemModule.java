@@ -41,6 +41,13 @@ class CryptoFileSystemModule {
 	@Provides
 	@CryptoFileSystemScoped
 	public Consumer<FilesystemEvent> provideFilesystemEventConsumer(CryptoFileSystemProperties fsProps) {
-		return (Consumer<FilesystemEvent>) fsProps.get(CryptoFileSystemProperties.PROPERTY_NOTIFY_METHOD);
+		var eventConsumer = fsProps.filesystemEventConsumer();
+		return event -> {
+			try {
+				eventConsumer.accept(event);
+			} catch (RuntimeException e) {
+				LOG.warn("Filesystem event consumer failed with exception when processing event {}", event, e);
+			}
+		};
 	}
 }

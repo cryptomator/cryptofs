@@ -5,10 +5,10 @@ import java.nio.file.Path;
 /**
  * Emitted, if the conflict resolution inside an encrypted directory failed
  *
- * @param cleartextPath path within the cryptographic filesystem
- * @param ciphertextPath path to the encrypted resource with the broken filename
+ * @param canonicalCleartextPath path of the canonical file within the cryptographic filesystem
+ * @param conflictingCiphertextPath path of the encrypted, conflicting file
  * @param reason exception, why the resolution failed
  */
-public record ConflictResolutionFailedEvent(Path cleartextPath, Path ciphertextPath, Exception reason) implements FilesystemEvent {
+public record ConflictResolutionFailedEvent(Path canonicalCleartextPath, Path conflictingCiphertextPath, Exception reason) implements FilesystemEvent {
 
 }

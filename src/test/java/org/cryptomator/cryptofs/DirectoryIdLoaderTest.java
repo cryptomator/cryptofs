@@ -84,10 +84,10 @@ public class DirectoryIdLoaderTest {
 		when(provider.newFileChannel(eq(dirFilePath), any())).thenReturn(channel);
 		when(channel.size()).thenReturn(0l);
 
-		UncheckedIOException e = Assertions.assertThrows(UncheckedIOException.class, () -> {
+		var ioException = Assertions.assertThrows(IOException.class, () -> {
 			inTest.load(dirFilePath);
 		});
-		MatcherAssert.assertThat(e.getCause().getMessage(), containsString("Invalid, empty directory file"));
+		MatcherAssert.assertThat(ioException.getMessage(), containsString("Invalid, empty directory file"));
 	}
 
 	@Test
@@ -96,10 +96,10 @@ public class DirectoryIdLoaderTest {
 		when(provider.newFileChannel(eq(dirFilePath), any())).thenReturn(channel);
 		when(channel.size()).thenReturn((long) Integer.MAX_VALUE);
 
-		UncheckedIOException e = Assertions.assertThrows(UncheckedIOException.class, () -> {
+		var ioException = Assertions.assertThrows(IOException.class, () -> {
 			inTest.load(dirFilePath);
 		});
-		MatcherAssert.assertThat(e.getCause().getMessage(), containsString("Unexpectedly large directory file"));
+		MatcherAssert.assertThat(ioException.getMessage(), containsString("Unexpectedly large directory file"));
 	}
 
 }
