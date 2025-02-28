@@ -2,7 +2,6 @@ package org.cryptomator.cryptofs.fh;
 
 import org.cryptomator.cryptofs.event.DecryptionFailedEvent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
-import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
@@ -81,9 +80,7 @@ public class FileHeaderHolder {
 			isPersisted.set(true);
 			return existingHeader;
 		} catch (IllegalArgumentException | CryptoException e) {
-			if (e instanceof AuthenticationFailedException afe) {
-				eventConsumer.accept(new DecryptionFailedEvent(path.get(), afe));
-			}
+			eventConsumer.accept(new DecryptionFailedEvent(path.get(), e));
 			throw new IOException("Unable to decrypt header of file " + path.get(), e);
 		}
 	}

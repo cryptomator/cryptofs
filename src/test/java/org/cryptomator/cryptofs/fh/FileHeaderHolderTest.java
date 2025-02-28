@@ -12,6 +12,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentMatcher;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
@@ -25,7 +27,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -89,24 +90,15 @@ public class FileHeaderHolderTest {
 			Assertions.assertTrue(inTest.headerIsPersisted().get());
 		}
 
-		@Test
+		@ParameterizedTest(name = "Failures in decryption")
 		@DisplayName("load failure due to authenticationFailedException")
-		public void testLoadExistingFailureWithAuthFailed() {
-			Mockito.doThrow(AuthenticationFailedException.class).when(fileHeaderCryptor).decryptHeader(Mockito.any());
+		@ValueSource(classes = {AuthenticationFailedException.class, IllegalArgumentException.class})
+		public void testLoadExistingFailure(Class<? extends Exception> clazz) {
+			Mockito.doThrow(clazz).when(fileHeaderCryptor).decryptHeader(Mockito.any());
 
 			Assertions.assertThrows(IOException.class, () -> inTest.loadExisting(channel));
 			var isDecryptionFailedEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof DecryptionFailedEvent;
 			verify(eventConsumer).accept(ArgumentMatchers.argThat(isDecryptionFailedEvent));
-		}
-
-		@Test
-		@DisplayName("load failure due to IllegalArgumentException")
-		public void testLoadExistingFailureWithIllegalArgument() {
-			Mockito.doThrow(IllegalArgumentException.class).when(fileHeaderCryptor).decryptHeader(Mockito.any());
-
-			Assertions.assertThrows(IOException.class, () -> inTest.loadExisting(channel));
-			var isDecryptionFailedEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof DecryptionFailedEvent;
-			verify(eventConsumer, never()).accept(ArgumentMatchers.argThat(isDecryptionFailedEvent));
 		}
 
 	}
