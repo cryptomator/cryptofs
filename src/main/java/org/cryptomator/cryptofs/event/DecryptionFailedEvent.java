@@ -1,7 +1,5 @@
 package org.cryptomator.cryptofs.event;
 
-import org.cryptomator.cryptolib.api.AuthenticationFailedException;
-
 import java.nio.file.Path;
 
 /**
@@ -11,5 +9,4 @@ import java.nio.file.Path;
  * @param e thrown exception
  */
 public record DecryptionFailedEvent(Path ciphertextPath, Exception e) implements FilesystemEvent {
-
 }
