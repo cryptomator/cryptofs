@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs;
 
 import com.google.common.base.Strings;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
+import org.cryptomator.cryptofs.event.BrokenFileNodeEvent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
@@ -18,6 +19,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.ArgumentMatcher;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
@@ -33,6 +37,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 public class CryptoPathMapperTest {
 
@@ -339,7 +344,70 @@ public class CryptoPathMapperTest {
 			Assertions.assertEquals(CiphertextFileType.FILE, type);
 		}
 
-		//TODO: Tests for determining filetype order and failure including event emit
+		@DisplayName("Test ciphertextFileType detection priority")
+		@ParameterizedTest
+		@CsvSource(value = {"true, true, true", "true, false, true", "true, true, false", "false, true, true"})
+		public void testDetectionPriority(boolean dirFileExists, boolean symlinkFileExists, boolean contentsFileExists) throws IOException {
+			Mockito.when(underlyingFileSystemProvider.readAttributes(c9rPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(c9rAttrs);
+			Mockito.when(c9rAttrs.isDirectory()).thenReturn(true);
+			var dirFileAttr = Mockito.mock(BasicFileAttributes.class);
+			var symlinkFileAttr = Mockito.mock(BasicFileAttributes.class);
+			var contentsFileAttr = Mockito.mock(BasicFileAttributes.class);
+			if (dirFileExists) {
+				Mockito.when(underlyingFileSystemProvider.readAttributes(dirFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(dirFileAttr);
+			} else {
+				Mockito.when(underlyingFileSystemProvider.readAttributes(dirFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(NoSuchFileException.class);
+			}
+			if (symlinkFileExists) {
+				Mockito.when(underlyingFileSystemProvider.readAttributes(symlinkFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(symlinkFileAttr);
+			} else {
+				Mockito.when(underlyingFileSystemProvider.readAttributes(symlinkFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(NoSuchFileException.class);
+			}
+			if (contentsFileExists) {
+				Mockito.when(underlyingFileSystemProvider.readAttributes(contentsFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(contentsFileAttr);
+			} else {
+				Mockito.when(underlyingFileSystemProvider.readAttributes(contentsFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(NoSuchFileException.class);
+			}
+
+			CiphertextFileType expectedType;
+			if (dirFileExists) {
+				expectedType = CiphertextFileType.DIRECTORY;
+			} else if (symlinkFileExists) {
+				expectedType = CiphertextFileType.SYMLINK;
+			} else {
+				expectedType = CiphertextFileType.FILE;
+			}
+
+			Mockito.when(underlyingFileSystemProvider.exists(dirFilePath, LinkOption.NOFOLLOW_LINKS)).thenReturn(dirFileExists);
+			Mockito.when(underlyingFileSystemProvider.exists(symlinkFilePath, LinkOption.NOFOLLOW_LINKS)).thenReturn(symlinkFileExists);
+			Mockito.when(underlyingFileSystemProvider.exists(contentsFilePath, LinkOption.NOFOLLOW_LINKS)).thenReturn(contentsFileExists);
+
+			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig, eventConsumer);
+
+			CryptoPath path = fileSystem.getPath("/CLEAR");
+			CiphertextFileType type = mapper.getCiphertextFileType(path);
+			Assertions.assertEquals(expectedType, type);
+		}
+
+		@Test
+		@DisplayName("Throw NoSuchFileException if no known file exists")
+		public void testNoKnownFileExists() throws IOException {
+			Mockito.when(underlyingFileSystemProvider.readAttributes(c9rPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(c9rAttrs);
+			Mockito.when(c9rAttrs.isDirectory()).thenReturn(true);
+			Mockito.when(underlyingFileSystemProvider.readAttributes(dirFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(NoSuchFileException.class);
+			Mockito.when(underlyingFileSystemProvider.readAttributes(symlinkFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(NoSuchFileException.class);
+			Mockito.when(underlyingFileSystemProvider.readAttributes(contentsFilePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(NoSuchFileException.class);
+			Mockito.when(underlyingFileSystemProvider.exists(dirFilePath, LinkOption.NOFOLLOW_LINKS)).thenReturn(false);
+			Mockito.when(underlyingFileSystemProvider.exists(symlinkFilePath, LinkOption.NOFOLLOW_LINKS)).thenReturn(false);
+			Mockito.when(underlyingFileSystemProvider.exists(contentsFilePath, LinkOption.NOFOLLOW_LINKS)).thenReturn(false);
+
+			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig, eventConsumer);
+
+			CryptoPath path = fileSystem.getPath("/CLEAR");
+			Assertions.assertThrows(NoSuchFileException.class, () -> mapper.getCiphertextFileType(path));
+			var isBrokenFileNodeEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof BrokenFileNodeEvent;
+			verify(eventConsumer).accept(ArgumentMatchers.argThat(isBrokenFileNodeEvent));
+		}
 
 	}
 
