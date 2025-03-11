@@ -22,6 +22,6 @@ import java.util.function.Consumer;
  *
  * @apiNote Events might have occured a long time ago in a galaxy far, far away... therefore, any feedback method is non-blocking and might fail due to changes in the filesystem.
  */
-public sealed interface FilesystemEvent permits ConflictResolutionFailedEvent, ConflictResolvedEvent, DecryptionFailedEvent {
+public sealed interface FilesystemEvent permits BrokenDirFileEvent, BrokenFileNodeEvent, ConflictResolutionFailedEvent, ConflictResolvedEvent, DecryptionFailedEvent {
 
 }
