@@ -44,12 +44,12 @@ abstract class AttributeViewModule {
 
 	@Provides
 	@AttributeViewScoped
-	public static Optional<FileAttributeView> provideAttributeView(Map<Class<?>, Provider<FileAttributeView>> providers, Class<? extends FileAttributeView> requestedType) {
-		Provider<FileAttributeView> provider = providers.get(requestedType);
-		if (provider == null) {
+	public static Optional<FileAttributeView> provideAttributeView(Map<Class<?>, FileAttributeView> providers, Class<? extends FileAttributeView> requestedType) {
+		var view = providers.get(requestedType);
+		if (view == null) {
 			return Optional.empty();
 		} else {
-			return Optional.of(provider.get());
+			return Optional.of(view);
 		}
 	}
 
