@@ -187,6 +187,7 @@
 							<version>${jmh.version}</version>
 						</path>
 					</annotationProcessorPaths>
+					<compilerArgs>-Adagger.useBindingGraphFix=ENABLED</compilerArgs>
 				</configuration>
 			</plugin>
 			<plugin>
