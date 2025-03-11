@@ -2,7 +2,7 @@ package org.cryptomator.cryptofs.fh;
 
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.io.IOException;
 
 /**

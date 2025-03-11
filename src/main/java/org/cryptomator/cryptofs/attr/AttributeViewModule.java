@@ -6,7 +6,7 @@ import dagger.Provides;
 import dagger.multibindings.ClassKey;
 import dagger.multibindings.IntoMap;
 
-import javax.inject.Provider;
+import jakarta.inject.Provider;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.FileAttributeView;

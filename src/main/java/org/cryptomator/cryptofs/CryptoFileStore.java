@@ -10,7 +10,7 @@ package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.attr.AttributeViewType;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.attribute.FileAttributeView;

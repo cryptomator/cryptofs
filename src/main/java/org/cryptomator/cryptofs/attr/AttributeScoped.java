@@ -1,6 +1,6 @@
 package org.cryptomator.cryptofs.attr;
 
-import javax.inject.Scope;
+import jakarta.inject.Scope;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;

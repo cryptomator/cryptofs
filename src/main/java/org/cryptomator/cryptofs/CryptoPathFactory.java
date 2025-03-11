@@ -2,7 +2,7 @@ package org.cryptomator.cryptofs;
 
 import com.google.common.base.Splitter;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.text.Normalizer;
 import java.util.Collections;
 import java.util.stream.Stream;

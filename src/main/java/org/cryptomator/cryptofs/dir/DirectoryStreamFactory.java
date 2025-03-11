@@ -6,7 +6,7 @@ import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.common.Constants;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.file.ClosedFileSystemException;
 import java.nio.file.DirectoryStream;

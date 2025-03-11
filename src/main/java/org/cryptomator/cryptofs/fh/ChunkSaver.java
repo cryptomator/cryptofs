@@ -3,7 +3,7 @@ package org.cryptomator.cryptofs.fh;
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptolib.api.Cryptor;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 

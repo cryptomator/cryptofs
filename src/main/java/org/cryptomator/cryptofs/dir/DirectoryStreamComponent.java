@@ -3,7 +3,7 @@ package org.cryptomator.cryptofs.dir;
 import dagger.BindsInstance;
 import dagger.Subcomponent;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Path;
 import java.util.function.Consumer;

@@ -1,7 +1,7 @@
 package org.cryptomator.cryptofs;
 
-import javax.inject.Inject;
-import javax.inject.Singleton;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.nio.file.PathMatcher;
 import java.util.regex.Pattern;
 
