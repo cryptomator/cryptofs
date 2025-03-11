@@ -85,7 +85,8 @@ public class CryptoPathMapper {
 	/**
 	 * @param cleartextPath A path
 	 * @return The file type for the given path (if it exists)
-	 * @throws NoSuchFileException If no node exists at the given path for any known type
+	 * @throws NoSuchFileException If the ciphertext path does not exist
+	 * @throws InvalidFileNodeException If the node points to a ciphertext directory, which does not contain an identification file
 	 * @throws IOException
 	 */
 	public CiphertextFileType getCiphertextFileType(CryptoPath cleartextPath) throws NoSuchFileException, IOException {
