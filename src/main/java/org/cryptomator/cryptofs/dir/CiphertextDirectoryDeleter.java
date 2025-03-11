@@ -4,7 +4,7 @@ import org.cryptomator.cryptofs.CryptoFileSystemScoped;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.common.DeletingFileVisitor;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.DirectoryStream;

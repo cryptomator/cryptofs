@@ -6,7 +6,7 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.channels.FileChannel;

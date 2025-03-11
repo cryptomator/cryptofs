@@ -1,7 +1,7 @@
 package org.cryptomator.cryptofs.common;
 
-import javax.inject.Inject;
-import javax.inject.Singleton;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.stream.Stream;

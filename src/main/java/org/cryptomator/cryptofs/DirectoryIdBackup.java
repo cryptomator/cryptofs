@@ -6,7 +6,7 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.common.DecryptingReadableByteChannel;
 import org.cryptomator.cryptolib.common.EncryptingWritableByteChannel;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;

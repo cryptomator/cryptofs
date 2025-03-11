@@ -14,7 +14,7 @@ import org.cryptomator.cryptofs.ReadonlyFlag;
 import org.cryptomator.cryptofs.Symlinks;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.file.LinkOption;
 import java.nio.file.attribute.BasicFileAttributeView;

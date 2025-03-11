@@ -15,7 +15,7 @@ import org.cryptomator.cryptofs.Symlinks;
 import org.cryptomator.cryptofs.common.ArrayUtils;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;

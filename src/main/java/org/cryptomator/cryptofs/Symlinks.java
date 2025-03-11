@@ -4,7 +4,7 @@ import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;

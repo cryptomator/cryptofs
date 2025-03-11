@@ -4,7 +4,7 @@ import com.github.benmanes.caffeine.cache.CacheLoader;
 import org.cryptomator.cryptofs.event.BrokenDirFileEvent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.Channels;

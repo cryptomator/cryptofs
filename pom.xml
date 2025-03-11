@@ -20,7 +20,7 @@
 		<!-- dependencies -->
 		<cryptolib.version>2.2.0</cryptolib.version>
 		<jwt.version>4.5.0</jwt.version>
-		<dagger.version>2.51.1</dagger.version>
+		<dagger.version>2.55</dagger.version>
 		<guava.version>33.4.0-jre</guava.version>
 		<caffeine.version>3.2.0</caffeine.version>
 		<slf4j.version>2.0.17</slf4j.version>
@@ -90,6 +90,11 @@
 			<groupId>com.google.dagger</groupId>
 			<artifactId>dagger</artifactId>
 			<version>${dagger.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>jakarta.inject</groupId>
+			<artifactId>jakarta.inject-api</artifactId>
+			<version>2.0.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.guava</groupId>
@@ -182,6 +187,7 @@
 							<version>${jmh.version}</version>
 						</path>
 					</annotationProcessorPaths>
+					<compilerArgs>-Adagger.useBindingGraphFix=ENABLED</compilerArgs>
 				</configuration>
 			</plugin>
 			<plugin>

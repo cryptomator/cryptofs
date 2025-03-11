@@ -1,6 +1,6 @@
 package org.cryptomator.cryptofs.fh;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;

@@ -19,6 +19,7 @@ module org.cryptomator.cryptofs {
 	// https://github.com/javax-inject/javax-inject/issues/33
 	// May be provided by another lib during runtime
 	requires static javax.inject;
+	requires jakarta.inject;
 	requires java.compiler;
 
 	exports org.cryptomator.cryptofs;

@@ -2,8 +2,8 @@ package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.common.ArrayUtils;
 
-import javax.inject.Inject;
-import javax.inject.Singleton;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.CopyOption;

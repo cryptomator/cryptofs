@@ -7,8 +7,8 @@ import org.cryptomator.cryptofs.common.StringUtils;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 
-import javax.inject.Inject;
-import javax.inject.Named;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.regex.MatchResult;

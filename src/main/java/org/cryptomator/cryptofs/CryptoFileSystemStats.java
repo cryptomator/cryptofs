@@ -4,7 +4,7 @@ import static java.lang.Math.max;
 
 import java.util.concurrent.atomic.LongAdder;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 /**
  * Provides access to file system performance metrics.
