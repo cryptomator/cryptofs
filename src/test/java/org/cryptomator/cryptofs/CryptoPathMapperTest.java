@@ -390,7 +390,7 @@ public class CryptoPathMapperTest {
 		}
 
 		@Test
-		@DisplayName("Throw NoSuchFileException if no known file exists")
+		@DisplayName("Throw a FileSystemException if no id file exists")
 		public void testNoKnownFileExists() throws IOException {
 			Mockito.when(underlyingFileSystemProvider.readAttributes(c9rPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(c9rAttrs);
 			Mockito.when(c9rAttrs.isDirectory()).thenReturn(true);
@@ -404,7 +404,7 @@ public class CryptoPathMapperTest {
 			CryptoPathMapper mapper = new CryptoPathMapper(pathToVault, cryptor, dirIdProvider, longFileNameProvider, vaultConfig, eventConsumer);
 
 			CryptoPath path = fileSystem.getPath("/CLEAR");
-			Assertions.assertThrows(NoSuchFileException.class, () -> mapper.getCiphertextFileType(path));
+			Assertions.assertThrows(InvalidFileNodeException.class, () -> mapper.getCiphertextFileType(path));
 			var isBrokenFileNodeEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof BrokenFileNodeEvent;
 			verify(eventConsumer).accept(ArgumentMatchers.argThat(isBrokenFileNodeEvent));
 		}

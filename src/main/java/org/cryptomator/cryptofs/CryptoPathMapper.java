@@ -105,7 +105,7 @@ public class CryptoPathMapper {
 				} else {
 					eventConsumer.accept(new BrokenFileNodeEvent(cleartextPath, ciphertextPath.getRawPath()));
 					LOG.warn("Did not find valid content inside of {}", ciphertextPath.getRawPath());
-					throw new NoSuchFileException(cleartextPath.toString(), null, "Could not determine type of file " + ciphertextPath.getRawPath());
+					throw new InvalidFileNodeException(cleartextPath.toString(), ciphertextPath.getRawPath().toString());
 				}
 			} else {
 				// assume "file" if not a directory (even if it isn't a "regular" file, see issue #81):
@@ -117,7 +117,7 @@ public class CryptoPathMapper {
 	public CiphertextFilePath getCiphertextFilePath(CryptoPath cleartextPath) throws IOException {
 		CryptoPath parentPath = cleartextPath.getParent();
 		if (parentPath == null) {
-			throw new IllegalArgumentException("Invalid file path (must have a parent): " + cleartextPath); //TODO: cleartext path in Logs!
+			throw new IllegalArgumentException("Invalid file path (must have a parent): " + cleartextPath);
 		}
 		CiphertextDirectory parent = getCiphertextDir(parentPath);
 		String cleartextName = cleartextPath.getFileName().toString();
