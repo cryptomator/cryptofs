@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.event;
 
+import java.time.Instant;
 import java.util.function.Consumer;
 
 /**
@@ -11,12 +12,12 @@ import java.util.function.Consumer;
  * {@code
  * FilesystemEvent fse;
  * switch (fse) {
- *   case DecryptionFailedEvent e -> //do stuff
- *   case ConflictResolvedEvent e -> //do other stuff
- *   //other cases
+ * case DecryptionFailedEvent e -> //do stuff
+ * case ConflictResolvedEvent e -> //do other stuff
+ * //other cases
  * }
  * if( fse instanceof DecryptionFailedEvent dfe) {
- *   //do more stuff
+ * //do more stuff
  * }
  * }.
  *
@@ -24,4 +25,10 @@ import java.util.function.Consumer;
  */
 public sealed interface FilesystemEvent permits BrokenDirFileEvent, BrokenFileNodeEvent, ConflictResolutionFailedEvent, ConflictResolvedEvent, DecryptionFailedEvent {
 
+	/**
+	 * Gets the timestamp when the event occurred.
+	 *
+	 * @return the event timestamp as an {@link Instant}
+	 */
+	Instant getTimestamp();
 }
