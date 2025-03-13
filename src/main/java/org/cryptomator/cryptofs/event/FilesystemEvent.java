@@ -12,12 +12,12 @@ import java.util.function.Consumer;
  * {@code
  * FilesystemEvent fse;
  * switch (fse) {
- * case DecryptionFailedEvent e -> //do stuff
- * case ConflictResolvedEvent e -> //do other stuff
- * //other cases
+ *   case ConflictResolvedEvent e -> //do other stuff
+ *   case DecryptionFailedEvent(Instant timestamp, Path ciphertext, Exception ex)  -> //do stuff
+ *   //... other cases
  * }
- * if( fse instanceof DecryptionFailedEvent dfe) {
- * //do more stuff
+ * if( fse instanceof DecryptionFailedEvent(Instant timestamp, Path ciphertext, Exception ex) {
+ *   //do more stuff
  * }
  * }.
  *
