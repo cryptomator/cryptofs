@@ -98,6 +98,13 @@ public class DirectoryIdBackupTest {
 		}
 
 		@Test
+		@DisplayName("If the given path is not a cipherContentDir, throw IllegalArgumentException")
+		public void wrongPath() throws IOException {
+			var dirIdBackupSpy = spy(dirIdBackup);
+			Assertions.assertThrows(IllegalArgumentException.class, () -> dirIdBackupSpy.read(testDir));
+		}
+
+		@Test
 		@DisplayName("If the directory id is longer than 36 characters, throw IllegalStateException")
 		public void contentLongerThan36Chars() throws IOException {
 			var dirIdBackupSpy = spy(dirIdBackup);
