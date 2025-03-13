@@ -43,7 +43,7 @@ class FileNameDecryptor {
 	String decryptFilenameInternal(Path ciphertextNode) throws IOException, UnsupportedOperationException {
 		byte[] dirId = null;
 		try {
-			dirId = dirIdBackup.read(ciphertextNode);
+			dirId = dirIdBackup.read(ciphertextNode.getParent());
 		} catch (NoSuchFileException e) {
 			throw new UnsupportedOperationException("Directory does not have a " + Constants.DIR_ID_BACKUP_FILE_NAME + " file.");
 		} catch (CryptoException | IllegalStateException e) {
