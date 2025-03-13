@@ -1,7 +1,7 @@
 package org.cryptomator.cryptofs;
 
+import com.google.common.io.BaseEncoding;
 import org.cryptomator.cryptofs.common.Constants;
-import org.cryptomator.cryptofs.health.dirid.OrphanContentDirTest;
 import org.cryptomator.cryptofs.util.TestCryptoException;
 import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -28,7 +28,7 @@ import static org.mockito.Mockito.spy;
 public class DirectoryIdBackupTest {
 
 	@TempDir
-	Path contentPath;
+	Path testDir;
 
 	private String dirId = "12345678";
 	private Cryptor cryptor;
@@ -50,7 +50,7 @@ public class DirectoryIdBackupTest {
 
 		@BeforeEach
 		public void beforeEachWriteTest() {
-			ciphertextDirectoryObject = new CiphertextDirectory(dirId, contentPath);
+			ciphertextDirectoryObject = new CiphertextDirectory(dirId, testDir);
 			encChannel = Mockito.mock(EncryptingWritableByteChannel.class);
 		}
 
@@ -62,7 +62,7 @@ public class DirectoryIdBackupTest {
 
 			dirIdBackupSpy.write(ciphertextDirectoryObject);
 
-			Assertions.assertTrue(Files.exists(contentPath.resolve(Constants.DIR_ID_BACKUP_FILE_NAME)));
+			Assertions.assertTrue(Files.exists(testDir.resolve(Constants.DIR_ID_BACKUP_FILE_NAME)));
 		}
 
 		@Test
@@ -83,10 +83,15 @@ public class DirectoryIdBackupTest {
 	public class Read {
 
 		private DecryptingReadableByteChannel decChannel;
+		private Path cipherContentDir;
 
 		@BeforeEach
 		public void beforeEachRead() throws IOException {
-			var backupFile = contentPath.resolve(Constants.DIR_ID_BACKUP_FILE_NAME);
+			var dirNames = BaseEncoding.base32().encode(new byte [20]); //a directory id hash is due to SHA1 always 20 bytes long
+			var twoCharDir = testDir.resolve(dirNames.substring(0,2));
+			cipherContentDir = twoCharDir.resolve(dirNames.substring(2));
+			var backupFile = cipherContentDir.resolve(Constants.DIR_ID_BACKUP_FILE_NAME);
+			Files.createDirectories(cipherContentDir);
 			Files.writeString(backupFile, dirId, StandardCharsets.US_ASCII, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
 
 			decChannel = mock(DecryptingReadableByteChannel.class);
@@ -98,7 +103,7 @@ public class DirectoryIdBackupTest {
 			var dirIdBackupSpy = spy(dirIdBackup);
 			Mockito.when(dirIdBackupSpy.wrapDecryptionAround(Mockito.any(), Mockito.eq(cryptor))).thenReturn(decChannel);
 			Mockito.when(decChannel.read(Mockito.any())).thenReturn(Constants.MAX_DIR_ID_LENGTH + 1);
-			Assertions.assertThrows(IllegalStateException.class, () -> dirIdBackupSpy.read(contentPath));
+			Assertions.assertThrows(IllegalStateException.class, () -> dirIdBackupSpy.read(cipherContentDir));
 		}
 
 		@Test
@@ -108,7 +113,7 @@ public class DirectoryIdBackupTest {
 			var expectedException = new TestCryptoException();
 			Mockito.when(dirIdBackupSpy.wrapDecryptionAround(Mockito.any(), Mockito.eq(cryptor))).thenReturn(decChannel);
 			Mockito.when(decChannel.read(Mockito.any())).thenThrow(expectedException);
-			var actual = Assertions.assertThrows(CryptoException.class, () -> dirIdBackupSpy.read(contentPath));
+			var actual = Assertions.assertThrows(CryptoException.class, () -> dirIdBackupSpy.read(cipherContentDir));
 			Assertions.assertEquals(expectedException, actual);
 		}
 
@@ -119,7 +124,7 @@ public class DirectoryIdBackupTest {
 			var expectedException = new IOException("my oh my");
 			Mockito.when(dirIdBackupSpy.wrapDecryptionAround(Mockito.any(), Mockito.eq(cryptor))).thenReturn(decChannel);
 			Mockito.when(decChannel.read(Mockito.any())).thenThrow(expectedException);
-			var actual = Assertions.assertThrows(IOException.class, () -> dirIdBackupSpy.read(contentPath));
+			var actual = Assertions.assertThrows(IOException.class, () -> dirIdBackupSpy.read(cipherContentDir));
 			Assertions.assertEquals(expectedException, actual);
 		}
 
@@ -136,9 +141,10 @@ public class DirectoryIdBackupTest {
 				return expectedArray.length;
 			}).when(decChannel).read(Mockito.any());
 
-			var readDirId = dirIdBackupSpy.read(contentPath);
+			var readDirId = dirIdBackupSpy.read(cipherContentDir);
 			Assertions.assertArrayEquals(expectedArray, readDirId);
 		}
+
 	}
 
 
