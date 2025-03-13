@@ -32,6 +32,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.mockito.Mockito.mockStatic;
+
 public class OrphanContentDirTest {
 
 	@TempDir
@@ -157,8 +159,8 @@ public class OrphanContentDirTest {
 		@Test
 		@DisplayName("prepareStepParent() runs without error on not-existing stepparent")
 		public void testPrepareStepParent() throws IOException {
-			try (var uuidClass = Mockito.mockStatic(UUID.class); //
-				 var dirIdBackupClass = Mockito.mockStatic(DirectoryIdBackup.class)) {
+			try (var uuidClass = mockStatic(UUID.class); //
+				 var dirIdBackupClass = mockStatic(DirectoryIdBackup.class)) {
 				UUID uuid = Mockito.mock(UUID.class);
 				uuidClass.when(UUID::randomUUID).thenReturn(uuid);
 				Mockito.doReturn("aaaaaa").when(uuid).toString();
@@ -181,8 +183,8 @@ public class OrphanContentDirTest {
 			Path cipherStepparent = dataDir.resolve("22/2222");
 			Files.createDirectories(cipherStepparent);
 
-			try (var uuidClass = Mockito.mockStatic(UUID.class); //
-				 var dirIdBackupClass = Mockito.mockStatic(DirectoryIdBackup.class)) {
+			try (var uuidClass = mockStatic(UUID.class); //
+				 var dirIdBackupClass = mockStatic(DirectoryIdBackup.class)) {
 				UUID uuid = Mockito.mock(UUID.class);
 				uuidClass.when(UUID::randomUUID).thenReturn(uuid);
 				Mockito.doReturn("aaaaaa").when(uuid).toString();
@@ -205,8 +207,8 @@ public class OrphanContentDirTest {
 			Path cipherStepparent = dataDir.resolve("22/2222");
 			Files.createDirectories(cipherStepparent);
 
-			try (var uuidClass = Mockito.mockStatic(UUID.class); //
-				 var dirIdBackupClass = Mockito.mockStatic(DirectoryIdBackup.class)) {
+			try (var uuidClass = mockStatic(UUID.class); //
+				 var dirIdBackupClass = mockStatic(DirectoryIdBackup.class)) {
 				UUID uuid = Mockito.mock(UUID.class);
 				uuidClass.when(UUID::randomUUID).thenReturn(uuid);
 				Mockito.doReturn("aaaaaa").when(uuid).toString();
@@ -238,7 +240,7 @@ public class OrphanContentDirTest {
 		@DisplayName("Successful reading dirId from backup file")
 		public void success() {
 			var dirId = new byte[]{'f', 'o', 'o'};
-			try (var dirIdBackupMock = Mockito.mockStatic(DirectoryIdBackup.class)) {
+			try (var dirIdBackupMock = mockStatic(DirectoryIdBackup.class)) {
 				dirIdBackupMock.when(() -> DirectoryIdBackup.read(cryptor, cipherOrphan)).thenReturn(dirId);
 				var result = resultSpy.retrieveDirId(cipherOrphan, cryptor);
 				Assertions.assertTrue(result.isPresent());
@@ -250,7 +252,7 @@ public class OrphanContentDirTest {
 		@DisplayName("retrieveDirId returns an empty optional on any exception")
 		@FieldSource("expectedExceptions")
 		public void testRetrieveDirIdIOExceptionReadingFile(Throwable t) throws IOException {
-			try (var dirIdBackupMock = Mockito.mockStatic(DirectoryIdBackup.class)) {
+			try (var dirIdBackupMock = mockStatic(DirectoryIdBackup.class)) {
 				dirIdBackupMock.when(() -> DirectoryIdBackup.read(cryptor, cipherOrphan)).thenThrow(t);
 				var notExistingResult = resultSpy.retrieveDirId(cipherOrphan, cryptor);
 				Assertions.assertTrue(notExistingResult.isEmpty());
@@ -339,7 +341,7 @@ public class OrphanContentDirTest {
 			Files.createDirectories(stepParentDir.path());
 
 			Mockito.doReturn("adopted").when(fileNameCryptor).encryptFilename(Mockito.any(), Mockito.any(), Mockito.any());
-			try (var baseEncodingClass = Mockito.mockStatic(BaseEncoding.class)) {
+			try (var baseEncodingClass = mockStatic(BaseEncoding.class)) {
 				MessageDigest sha1 = Mockito.mock(MessageDigest.class);
 				Mockito.doReturn(new byte[]{}).when(sha1).digest(Mockito.any());
 
@@ -367,7 +369,7 @@ public class OrphanContentDirTest {
 			Files.createDirectories(stepParentDir.path());
 
 			Mockito.doReturn("adopted").when(fileNameCryptor).encryptFilename(Mockito.any(), Mockito.any(), Mockito.any());
-			try (var baseEncodingClass = Mockito.mockStatic(BaseEncoding.class)) {
+			try (var baseEncodingClass = mockStatic(BaseEncoding.class)) {
 				MessageDigest sha1 = Mockito.mock(MessageDigest.class);
 				Mockito.doReturn(new byte[]{}).when(sha1).digest(Mockito.any());
 
@@ -410,7 +412,11 @@ public class OrphanContentDirTest {
 			return null;
 		}).when(resultSpy).adoptOrphanedResource(Mockito.any(), Mockito.any(), Mockito.anyBoolean(), Mockito.eq(stepParentDir), Mockito.eq(fileNameCryptor), Mockito.any());
 
-		resultSpy.fix(pathToVault, config, masterkey, cryptor);
+		try ( var dirIdBackup = mockStatic(DirectoryIdBackup.class)) {
+			dirIdBackup.when(() -> DirectoryIdBackup.read(cryptor, cipherOrphan)).thenThrow(IllegalStateException.class);
+			resultSpy.fix(pathToVault, config, masterkey, cryptor);
+		}
+
 
 		Mockito.verify(resultSpy, Mockito.times(2)).adoptOrphanedResource(Mockito.any(), Mockito.any(), Mockito.anyBoolean(), Mockito.eq(stepParentDir), Mockito.eq(fileNameCryptor), Mockito.any());
 		Assertions.assertTrue(Files.notExists(cipherOrphan));

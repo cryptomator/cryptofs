@@ -1,12 +1,12 @@
 package org.cryptomator.cryptofs;
 
+import jakarta.inject.Inject;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.common.DecryptingReadableByteChannel;
 import org.cryptomator.cryptolib.common.EncryptingWritableByteChannel;
 
-import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
@@ -65,6 +65,9 @@ public class DirectoryIdBackup {
 	 * @throws IllegalStateException if the directory id exceeds {@value Constants#MAX_DIR_ID_LENGTH} chars
 	 */
 	public byte[] read(Path ciphertextContentDir) throws IOException, CryptoException, IllegalStateException {
+		if (!CiphertextPathValidations.isCiphertextContentDir(ciphertextContentDir)) {
+			throw new IllegalArgumentException("Directory %s is not a ciphertext content dir".formatted(ciphertextContentDir));
+		}
 		var dirIdBackupFile = getBackupFilePath(ciphertextContentDir);
 		var dirIdBuffer = ByteBuffer.allocate(Constants.MAX_DIR_ID_LENGTH + 1); //a dir id contains at most 36 ascii chars, we add for security checks one more
 

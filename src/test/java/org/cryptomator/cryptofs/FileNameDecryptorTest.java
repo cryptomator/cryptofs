@@ -54,7 +54,7 @@ public class FileNameDecryptorTest {
 		var ciphertextNode = tmpPath.resolve(ciphertextNodeNameName + fileExtension);
 		var dirId = new byte[]{'f', 'o', 'o', 'b', 'a', 'r'};
 		var expectedClearName = "veryClearText";
-		when(dirIdBackup.read(ciphertextNode)).thenReturn(dirId);
+		when(dirIdBackup.read(tmpPath)).thenReturn(dirId);
 		when(longFileNameProvider.inflate(ciphertextNode)).thenReturn(ciphertextNodeNameName);
 		when(fileNameCryptor.decryptFilename(any(), eq(ciphertextNodeNameName), eq(dirId))).thenReturn(expectedClearName);
 
@@ -78,7 +78,7 @@ public class FileNameDecryptorTest {
 	@DisplayName("If the dirId backup file does not exists, throw UnsupportedOperationException")
 	public void notExistingDirIdFile() throws IOException {
 		var ciphertextNode = tmpPath.resolve("toDecrypt.c9r");
-		when(dirIdBackup.read(ciphertextNode)).thenThrow(NoSuchFileException.class);
+		when(dirIdBackup.read(tmpPath)).thenThrow(NoSuchFileException.class);
 
 		Assertions.assertThrows(UnsupportedOperationException.class, () -> testObjSpy.decryptFilenameInternal(ciphertextNode));
 	}
@@ -87,7 +87,7 @@ public class FileNameDecryptorTest {
 	@DisplayName("If the dirId cannot be read, throw FileSystemException")
 	public void notReadableDirIdFile() throws IOException {
 		var ciphertextNode = tmpPath.resolve("toDecrypt.c9r");
-		when(dirIdBackup.read(ciphertextNode)) //
+		when(dirIdBackup.read(tmpPath)) //
 				.thenThrow(TestCryptoException.class) //
 				.thenThrow(IllegalStateException.class);
 		Assertions.assertThrows(FileSystemException.class, () -> testObjSpy.decryptFilenameInternal(ciphertextNode));
@@ -101,7 +101,7 @@ public class FileNameDecryptorTest {
 		var ciphertextNode = tmpPath.resolve(name + ".c9s");
 		var dirId = new byte[]{'f', 'o', 'o', 'b', 'a', 'r'};
 		var expectedException = new IOException("Inflation failed");
-		when(dirIdBackup.read(ciphertextNode)).thenReturn(dirId);
+		when(dirIdBackup.read(tmpPath)).thenReturn(dirId);
 		when(longFileNameProvider.inflate(ciphertextNode)).thenThrow(expectedException);
 
 		var actual = Assertions.assertThrows(IOException.class, () -> testObjSpy.decryptFilenameInternal(ciphertextNode));
@@ -114,7 +114,7 @@ public class FileNameDecryptorTest {
 		var name = "toDecrypt";
 		var ciphertextNode = tmpPath.resolve(name + ".c9r");
 		var dirId = new byte[]{'f', 'o', 'o', 'b', 'a', 'r'};
-		when(dirIdBackup.read(ciphertextNode)).thenReturn(dirId);
+		when(dirIdBackup.read(tmpPath)).thenReturn(dirId);
 		when(fileNameCryptor.decryptFilename(any(), eq(name), eq(dirId))).thenThrow(TestCryptoException.class);
 
 		Assertions.assertThrows(FileSystemException.class, () -> testObjSpy.decryptFilenameInternal(ciphertextNode));
