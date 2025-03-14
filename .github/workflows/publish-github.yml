@@ -22,17 +22,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.RELEASES_GPG_PASSPHRASE }}
-          MAVEN_GPG_KEY: ${{ secrets.RELEASES_GPG_PRIVATE_KEY }} # Value of the GPG private key to import
+          MAVEN_GPG_KEY: ${{ secrets.RELEASES_GPG_PRIVATE_KEY }}
           MAVEN_GPG_KEY_FINGERPRINT: ${{ vars.RELEASES_GPG_KEY_FINGERPRINT }}
-      - name: Slack Notification
-        uses: rtCamp/action-slack-notify@v2
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_USERNAME: 'Cryptobot'
-          SLACK_ICON:
-          SLACK_ICON_EMOJI: ':bot:'
-          SLACK_CHANNEL: 'cryptomator-desktop'
-          SLACK_TITLE: "Published ${{ github.event.repository.name }} ${{ github.event.release.tag_name }}"
-          SLACK_MESSAGE: "Ready to <https://github.com/${{ github.repository }}/actions/workflows/publish-central.yml|deploy to Maven Central>."
-          SLACK_FOOTER:
-          MSG_MINIMAL: true
