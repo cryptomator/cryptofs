@@ -10,7 +10,7 @@
 	<scm>
 		<connection>scm:git:git@github.com:cryptomator/cryptofs.git</connection>
 		<developerConnection>scm:git:git@github.com:cryptomator/cryptofs.git</developerConnection>
-		<url>git@github.com:cryptomator/cryptofs.git</url>
+		<url>https://github.com/cryptomator/cryptofs</url>
 	</scm>
 
 	<properties>
