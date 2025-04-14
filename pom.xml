@@ -18,10 +18,10 @@
 		<maven.compiler.release>21</maven.compiler.release>
 
 		<!-- dependencies -->
-		<cryptolib.version>2.2.0</cryptolib.version>
+		<cryptolib.version>2.2.1</cryptolib.version>
 		<jwt.version>4.5.0</jwt.version>
 		<dagger.version>2.55</dagger.version>
-		<guava.version>33.4.0-jre</guava.version>
+		<guava.version>33.4.7-jre</guava.version>
 		<caffeine.version>3.2.0</caffeine.version>
 		<slf4j.version>2.0.17</slf4j.version>
 
@@ -94,7 +94,7 @@
 		<dependency>
 			<groupId>jakarta.inject</groupId>
 			<artifactId>jakarta.inject-api</artifactId>
-			<version>2.0.1</version>
+			<version>2.0.1.MR</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.guava</groupId>
