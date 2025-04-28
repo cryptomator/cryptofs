@@ -3,7 +3,7 @@ package org.cryptomator.cryptofs;
 import dagger.BindsInstance;
 import dagger.Component;
 
-import javax.inject.Singleton;
+import jakarta.inject.Singleton;
 import java.security.SecureRandom;
 
 @Singleton

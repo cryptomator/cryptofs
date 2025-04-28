@@ -6,7 +6,7 @@ import dagger.Provides;
 import dagger.multibindings.ClassKey;
 import dagger.multibindings.IntoMap;
 
-import javax.inject.Provider;
+import jakarta.inject.Provider;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.FileAttributeView;
@@ -44,12 +44,12 @@ abstract class AttributeViewModule {
 
 	@Provides
 	@AttributeViewScoped
-	public static Optional<FileAttributeView> provideAttributeView(Map<Class<?>, Provider<FileAttributeView>> providers, Class<? extends FileAttributeView> requestedType) {
-		Provider<FileAttributeView> provider = providers.get(requestedType);
-		if (provider == null) {
+	public static Optional<FileAttributeView> provideAttributeView(Map<Class<?>, FileAttributeView> providers, Class<? extends FileAttributeView> requestedType) {
+		var view = providers.get(requestedType);
+		if (view == null) {
 			return Optional.empty();
 		} else {
-			return Optional.of(provider.get());
+			return Optional.of(view);
 		}
 	}
 

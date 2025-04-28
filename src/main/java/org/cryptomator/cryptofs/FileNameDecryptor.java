@@ -8,7 +8,7 @@ import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.file.FileSystemException;
 import java.nio.file.NoSuchFileException;
@@ -43,7 +43,7 @@ class FileNameDecryptor {
 	String decryptFilenameInternal(Path ciphertextNode) throws IOException, UnsupportedOperationException {
 		byte[] dirId = null;
 		try {
-			dirId = dirIdBackup.read(ciphertextNode);
+			dirId = dirIdBackup.read(ciphertextNode.getParent());
 		} catch (NoSuchFileException e) {
 			throw new UnsupportedOperationException("Directory does not have a " + Constants.DIR_ID_BACKUP_FILE_NAME + " file.");
 		} catch (CryptoException | IllegalStateException e) {

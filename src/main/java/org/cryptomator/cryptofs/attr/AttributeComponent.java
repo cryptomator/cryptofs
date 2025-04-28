@@ -4,7 +4,7 @@ import dagger.BindsInstance;
 import dagger.Subcomponent;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
 
-import javax.inject.Named;
+import jakarta.inject.Named;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 

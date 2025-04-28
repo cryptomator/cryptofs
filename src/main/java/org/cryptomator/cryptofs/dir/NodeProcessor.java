@@ -2,7 +2,7 @@ package org.cryptomator.cryptofs.dir;
 
 import org.cryptomator.cryptofs.common.Constants;
 
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 import java.util.stream.Stream;
 
 @DirectoryStreamScoped

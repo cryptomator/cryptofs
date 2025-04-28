@@ -1,26 +1,32 @@
 package org.cryptomator.cryptofs;
 
+import org.cryptomator.cryptofs.event.BrokenDirFileEvent;
+import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatcher;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileSystem;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.function.Consumer;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class DirectoryIdLoaderTest {
@@ -29,14 +35,16 @@ public class DirectoryIdLoaderTest {
 	private final FileSystem fileSystem = mock(FileSystem.class);
 	private final Path dirFilePath = mock(Path.class);
 	private final Path otherDirFilePath = mock(Path.class);
+	private final Consumer<FilesystemEvent> eventConsumer = mock(Consumer.class);
 
-	private final DirectoryIdLoader inTest = new DirectoryIdLoader();
+	private final DirectoryIdLoader inTest = new DirectoryIdLoader(eventConsumer);
 
 	@BeforeEach
 	public void setup() {
 		when(dirFilePath.getFileSystem()).thenReturn(fileSystem);
 		when(otherDirFilePath.getFileSystem()).thenReturn(fileSystem);
 		when(fileSystem.provider()).thenReturn(provider);
+		doNothing().when(eventConsumer).accept(any());
 	}
 
 	@Test
@@ -84,10 +92,12 @@ public class DirectoryIdLoaderTest {
 		when(provider.newFileChannel(eq(dirFilePath), any())).thenReturn(channel);
 		when(channel.size()).thenReturn(0l);
 
-		UncheckedIOException e = Assertions.assertThrows(UncheckedIOException.class, () -> {
+		var ioException = Assertions.assertThrows(IOException.class, () -> {
 			inTest.load(dirFilePath);
 		});
-		MatcherAssert.assertThat(e.getCause().getMessage(), containsString("Invalid, empty directory file"));
+		MatcherAssert.assertThat(ioException.getMessage(), containsString("Invalid, empty directory file"));
+		var isBrokenDirFileEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof BrokenDirFileEvent;
+		verify(eventConsumer).accept(ArgumentMatchers.argThat(isBrokenDirFileEvent));
 	}
 
 	@Test
@@ -96,10 +106,12 @@ public class DirectoryIdLoaderTest {
 		when(provider.newFileChannel(eq(dirFilePath), any())).thenReturn(channel);
 		when(channel.size()).thenReturn((long) Integer.MAX_VALUE);
 
-		UncheckedIOException e = Assertions.assertThrows(UncheckedIOException.class, () -> {
+		var ioException = Assertions.assertThrows(IOException.class, () -> {
 			inTest.load(dirFilePath);
 		});
-		MatcherAssert.assertThat(e.getCause().getMessage(), containsString("Unexpectedly large directory file"));
+		MatcherAssert.assertThat(ioException.getMessage(), containsString("Unexpectedly large directory file"));
+		var isBrokenDirFileEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof BrokenDirFileEvent;
+		verify(eventConsumer).accept(ArgumentMatchers.argThat(isBrokenDirFileEvent));
 	}
 
 }
