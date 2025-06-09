@@ -22,7 +22,7 @@
 		<jwt.version>4.5.0</jwt.version>
 		<dagger.version>2.55</dagger.version>
 		<guava.version>33.4.8-jre</guava.version>
-		<caffeine.version>3.2.0</caffeine.version>
+		<caffeine.version>3.2.1</caffeine.version>
 		<slf4j.version>2.0.17</slf4j.version>
 
 		<!-- test dependencies -->
