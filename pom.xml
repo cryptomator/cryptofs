@@ -41,7 +41,7 @@
 		<mvn-javadoc.version>3.11.2</mvn-javadoc.version>
 		<mvn-gpg.version>3.2.7</mvn-gpg.version>
 
-		<dependency-check.version>12.1.1</dependency-check.version>
+		<dependency-check.version>12.1.2</dependency-check.version>
 		<junit-tree-reporter.version>1.4.0</junit-tree-reporter.version>
 		<jacoco.version>0.8.13</jacoco.version>
 		<central-publishing.version>0.7.0</central-publishing.version>
