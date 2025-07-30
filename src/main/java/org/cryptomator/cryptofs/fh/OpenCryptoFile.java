@@ -1,16 +1,19 @@
 package org.cryptomator.cryptofs.fh;
 
+import jakarta.inject.Inject;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import jakarta.inject.Inject;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
@@ -34,6 +37,7 @@ public class OpenCryptoFile implements Closeable {
 	private final OpenCryptoFileComponent component;
 
 	private final AtomicInteger openChannelsCount = new AtomicInteger(0);
+	private volatile SeekableByteChannel inUseFileChannel;
 
 	@Inject
 	public OpenCryptoFile(FileCloseListener listener, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, //
@@ -64,7 +68,11 @@ public class OpenCryptoFile implements Closeable {
 		FileChannel ciphertextFileChannel = null;
 		CleartextFileChannel cleartextFileChannel = null;
 
-		openChannelsCount.incrementAndGet(); // synchronized context, hence we can proactively increase the number
+		var openChannels = openChannelsCount.incrementAndGet(); // synchronized context, hence we can proactively increase the number
+		// in-use section
+		if (openChannels == 1) {
+			createInUseFile(path);
+		}
 		try {
 			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
 			initFileHeader(options, ciphertextFileChannel);
@@ -81,10 +89,29 @@ public class OpenCryptoFile implements Closeable {
 				closeQuietly(ciphertextFileChannel);
 			}
 		}
-
 		assert cleartextFileChannel != null; // otherwise there would have been an exception
 		chunkIO.registerChannel(ciphertextFileChannel, options.writable());
 		return cleartextFileChannel;
+	}
+
+	void createInUseFile(Path ciphertextPath) throws IOException {
+		var inUseFilePath = getInUseFilePath(ciphertextPath);
+		this.inUseFileChannel = Files.newByteChannel(inUseFilePath, StandardOpenOption.DELETE_ON_CLOSE, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
+	}
+
+	void deleteInUseFile() {
+		if (inUseFileChannel != null) {
+			try {
+				inUseFileChannel.close(); //TODO: DELETE_ON_CLOSE should clean up. Do we need a dedicated cleanup routine?
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+	}
+
+	private Path getInUseFilePath(Path p) {
+		var ciphertextName = p.getFileName().toString();
+		return p.resolveSibling(ciphertextName.substring(0, ciphertextName.length() - 3) + "c9l");
 	}
 
 	//visible for testing
@@ -183,8 +210,9 @@ public class OpenCryptoFile implements Closeable {
 	@Override
 	public void close() {
 		var p = currentFilePath.get();
-		if(p != null) {
+		if (p != null) {
 			listener.close(p, this);
+			deleteInUseFile();
 		}
 	}
 
