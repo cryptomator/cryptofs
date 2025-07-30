@@ -11,6 +11,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -69,11 +70,11 @@ public class OpenCryptoFile implements Closeable {
 		CleartextFileChannel cleartextFileChannel = null;
 
 		var openChannels = openChannelsCount.incrementAndGet(); // synchronized context, hence we can proactively increase the number
-		// in-use section
-		if (openChannels == 1) {
-			createInUseFile(path);
-		}
 		try {
+			// in-use section
+			if (openChannels == 1 && isFileInUse(path)) { //add ignore mechanic
+				throw new FileIsInUseException(path);
+			}
 			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
 			initFileHeader(options, ciphertextFileChannel);
 			initFileSize(ciphertextFileChannel);
@@ -94,9 +95,38 @@ public class OpenCryptoFile implements Closeable {
 		return cleartextFileChannel;
 	}
 
-	void createInUseFile(Path ciphertextPath) throws IOException {
+	boolean isFileInUse(Path ciphertextPath) {
 		var inUseFilePath = getInUseFilePath(ciphertextPath);
+		try {
+			createInUseFile(inUseFilePath);
+			return true;
+		} catch (FileAlreadyExistsException e) {
+			Object content = readInUseFile(inUseFilePath);
+			//check if file belongs to us
+			//if yes, do stuff and return false
+			//otherwise notify user and return true
+		} catch (IOException e) {
+			LOG.warn("Failed to create in-use file for {}.", ciphertextPath, e);
+		}
+		return false;
+	}
+
+	void createInUseFile(Path inUseFilePath) throws IOException {
 		this.inUseFileChannel = Files.newByteChannel(inUseFilePath, StandardOpenOption.DELETE_ON_CLOSE, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
+	}
+
+	Object readInUseFile(Path inUseFilePath) {
+		try {
+			if (Files.size(inUseFilePath) > 4_000) {
+				throw new IOException("in-use-file exceeds max size of 4000KB");
+			}
+			var bytes = Files.readAllBytes(inUseFilePath);
+			//TODO: convert to JSON an extract info
+			return new Object();
+		} catch (IOException e) {
+			LOG.warn("Unable to read in-use-file", e);
+			return new Object(); //default object
+		}
 	}
 
 	void deleteInUseFile() {

@@ -37,11 +37,13 @@ import java.util.function.Consumer;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class OpenCryptoFileTest {
 
@@ -88,6 +90,7 @@ public class OpenCryptoFileTest {
 		EffectiveOpenOptions options = Mockito.mock(EffectiveOpenOptions.class);
 		Mockito.when(options.createOpenOptionsForEncryptedFile()).thenThrow(expectedException);
 		OpenCryptoFile openCryptoFile = spy(new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, fileSize, lastModified, openCryptoFileComponent));
+		when(openCryptoFile.isFileInUse(CURRENT_FILE_PATH.get())).thenReturn(false);
 
 		UncheckedIOException exception = Assertions.assertThrows(UncheckedIOException.class, () -> {
 			openCryptoFile.newFileChannel(options);
@@ -95,6 +98,20 @@ public class OpenCryptoFileTest {
 		Assertions.assertSame(expectedException, exception);
 		verify(openCryptoFile).close();
 	}
+
+	@Test
+	@DisplayName("if the file is in use, throw exception")
+	public void testInUseFileThrowsException() {
+		EffectiveOpenOptions options = Mockito.mock(EffectiveOpenOptions.class);
+		OpenCryptoFile openCryptoFile = spy(new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, fileSize, lastModified, openCryptoFileComponent));
+		when(openCryptoFile.isFileInUse(CURRENT_FILE_PATH.get())).thenReturn(true);
+
+		Assertions.assertThrows(FileIsInUseException.class, () -> {
+			openCryptoFile.newFileChannel(options);
+		});
+	}
+
+	//TODO: test, if in-use-file-exists, but it is ignored with flag
 
 	@Test
 	@DisplayName("if the second file channel fails to open, do nothing")
@@ -113,7 +130,7 @@ public class OpenCryptoFileTest {
 		EffectiveOpenOptions failingOptions = Mockito.mock(EffectiveOpenOptions.class);
 		Mockito.when(failingOptions.createOpenOptionsForEncryptedFile()).thenThrow(expectedException);
 		OpenCryptoFile openCryptoFile = spy(new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, fileSize, lastModified, openCryptoFileComponent));
-		doNothing().when(openCryptoFile).createInUseFile(any());
+		when(openCryptoFile.isFileInUse(CURRENT_FILE_PATH.get())).thenReturn(false);
 		doNothing().when(openCryptoFile).deleteInUseFile();
 
 		try (var channel = openCryptoFile.newFileChannel(options)) {
@@ -138,7 +155,7 @@ public class OpenCryptoFileTest {
 		Mockito.when(channelComponentFactory.create(any(), any(), any())).thenReturn(channelComponent);
 		Mockito.when(channelComponent.channel()).thenReturn(cleartextChannel);
 		OpenCryptoFile openCryptoFile = spy(new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, fileSize, lastModified, openCryptoFileComponent));
-		doNothing().when(openCryptoFile).createInUseFile(any());
+		when(openCryptoFile.isFileInUse(CURRENT_FILE_PATH.get())).thenReturn(false);
 		doNothing().when(openCryptoFile).deleteInUseFile();
 
 		openCryptoFile.newFileChannel(options);
@@ -263,11 +280,11 @@ public class OpenCryptoFileTest {
 			var attrs = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwxr-x---"));
 			EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), readonlyFlag);
 			var openCryptoFileSpy = spy(openCryptoFile);
-			doNothing().when(openCryptoFileSpy).createInUseFile(any());
+			doReturn(false).when(openCryptoFileSpy).isFileInUse(any());
 			FileChannel ch = openCryptoFileSpy.newFileChannel(options, attrs);
 			Assertions.assertSame(cleartextFileChannel, ch);
 			verify(chunkIO).registerChannel(ciphertextChannel.get(), true);
-			verify(openCryptoFileSpy).createInUseFile(CURRENT_FILE_PATH.get());
+			verify(openCryptoFileSpy).isFileInUse(CURRENT_FILE_PATH.get());
 		}
 
 		@Test
