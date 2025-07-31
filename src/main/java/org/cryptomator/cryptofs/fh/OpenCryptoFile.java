@@ -3,6 +3,8 @@ package org.cryptomator.cryptofs.fh;
 import jakarta.inject.Inject;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
+import org.cryptomator.cryptofs.common.FileTooBigException;
+import org.cryptomator.cryptofs.common.FileUtil;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +15,7 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
@@ -98,34 +101,41 @@ public class OpenCryptoFile implements Closeable {
 	boolean isFileInUse(Path ciphertextPath) {
 		var inUseFilePath = getInUseFilePath(ciphertextPath);
 		try {
-			createInUseFile(inUseFilePath);
-			return true;
-		} catch (FileAlreadyExistsException e) {
 			Object content = readInUseFile(inUseFilePath);
 			//check if file belongs to us
 			//if yes, do stuff and return false
 			//otherwise notify user and return true
+			return true;
+		} catch (NoSuchFileException e) {
+			createInUseFile(inUseFilePath);
+		} catch (FileTooBigException e) {
+			LOG.info("Found invalid in-use-file for {}. Owning it.", ciphertextPath, e);
+			ownInUseFile(inUseFilePath);
 		} catch (IOException e) {
-			LOG.warn("Failed to create in-use file for {}.", ciphertextPath, e);
+			LOG.warn("Failed to read in-use file for {}. Ignoring it.", ciphertextPath, e);
 		}
 		return false;
 	}
 
-	void createInUseFile(Path inUseFilePath) throws IOException {
-		this.inUseFileChannel = Files.newByteChannel(inUseFilePath, StandardOpenOption.DELETE_ON_CLOSE, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
+	Object readInUseFile(Path inUseFilePath) throws IOException {
+		var bytes = FileUtil.readAllBytesSizeRestricted(inUseFilePath, 4_000);
+		//TODO: convert to JSON an extract info
+		return new Object();
 	}
 
-	Object readInUseFile(Path inUseFilePath) {
+	void createInUseFile(Path inUseFilePath) {
 		try {
-			if (Files.size(inUseFilePath) > 4_000) {
-				throw new IOException("in-use-file exceeds max size of 4000KB");
-			}
-			var bytes = Files.readAllBytes(inUseFilePath);
-			//TODO: convert to JSON an extract info
-			return new Object();
+			this.inUseFileChannel = Files.newByteChannel(inUseFilePath, StandardOpenOption.DELETE_ON_CLOSE, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
 		} catch (IOException e) {
-			LOG.warn("Unable to read in-use-file", e);
-			return new Object(); //default object
+			LOG.warn("Failed to create in-use file for {}.", inUseFilePath, e);
+		}
+	}
+
+	void ownInUseFile(Path inUseFilePath) {
+		try {
+			this.inUseFileChannel = Files.newByteChannel(inUseFilePath, StandardOpenOption.DELETE_ON_CLOSE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
+		} catch (IOException e) {
+			LOG.warn("Failed to create in-use file for {}.", inUseFilePath, e);
 		}
 	}
 
