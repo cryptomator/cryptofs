@@ -16,14 +16,20 @@ import java.util.function.Consumer;
  *   case DecryptionFailedEvent(Instant timestamp, Path ciphertext, Exception ex)  -> //do stuff
  *   //... other cases
  * }
- * if( fse instanceof DecryptionFailedEvent(Instant timestamp, Path ciphertext, Exception ex) {
+ * if( fse instanceof DecryptionFailedEvent(Instant timestamp, Path ciphertext, Exception ex)) {
  *   //do more stuff
  * }
  * }.
  *
  * @apiNote Events might have occured a long time ago in a galaxy far, far away... therefore, any feedback method is non-blocking and might fail due to changes in the filesystem.
  */
-public sealed interface FilesystemEvent permits BrokenDirFileEvent, BrokenFileNodeEvent, ConflictResolutionFailedEvent, ConflictResolvedEvent, DecryptionFailedEvent {
+public sealed interface FilesystemEvent permits //
+		BrokenDirFileEvent, //
+		BrokenFileNodeEvent, //
+		ConflictResolutionFailedEvent, //
+		ConflictResolvedEvent, //
+		DecryptionFailedEvent, //
+		FileIsInUseEvent {
 
 	/**
 	 * Gets the timestamp when the event occurred.

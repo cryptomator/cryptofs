@@ -3,43 +3,58 @@ package org.cryptomator.cryptofs.fh;
 import jakarta.inject.Inject;
 import org.cryptomator.cryptofs.common.FileTooBigException;
 import org.cryptomator.cryptofs.common.FileUtil;
+import org.cryptomator.cryptofs.event.FileIsInUseEvent;
+import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 @OpenFileScoped
 public class InUseFile implements Closeable {
 
 	private static final Logger LOG = LoggerFactory.getLogger(InUseFile.class);
 
+	private final String fileSystemOwner;
+	private final Properties info;
 	private final AtomicReference<Path> currentFilePath;
+	private final Consumer<FilesystemEvent> eventConsumer;
 	private SeekableByteChannel inUseFileChannel;
 
 	@Inject
-	public InUseFile(@CurrentOpenFilePath AtomicReference<Path> currentFilePath) {
-		//TODO: add notifier
+	public InUseFile(@CurrentOpenFilePath AtomicReference<Path> currentFilePath, Consumer<FilesystemEvent> eventConsumer) {
 		this.currentFilePath = currentFilePath;
+		this.eventConsumer = eventConsumer;
+		this.fileSystemOwner = System.getenv("USERDOMAIN") + "\"" + System.getenv("USERNAME"); //TODO: read from CryptoFileSystemProperties
+		this.info = new Properties();
+		info.put("owner", fileSystemOwner);
 	}
 
 	boolean checkOrOwn() {
 		var ciphertextPath = currentFilePath.get();
 		var inUseFilePath = getInUseFilePath(ciphertextPath);
 		try {
-			Object content = readInUseFile(inUseFilePath);
-			//check if file belongs to us
-			//if yes, do stuff and return false
-			//otherwise notify user and return true
-			return true;
+			Properties content = readInUseFile(inUseFilePath);
+			if (content.get("owner").equals(fileSystemOwner)) {
+				//update timestamps
+				info.putAll(content);
+				return false;
+			} else {
+				eventConsumer.accept(new FileIsInUseEvent(Path.of("yadda"), ciphertextPath, info));
+				return true;
+			}
 		} catch (NoSuchFileException e) {
 			LOG.debug("No in-use-file for {} found. Creating it.", ciphertextPath, e);
 			createInUseFile(inUseFilePath);
@@ -52,10 +67,14 @@ public class InUseFile implements Closeable {
 		return false;
 	}
 
-	Object readInUseFile(Path inUseFilePath) throws IOException {
+	Properties readInUseFile(Path inUseFilePath) throws IOException {
+		//TODO: decryption
 		var bytes = FileUtil.readAllBytesSizeRestricted(inUseFilePath, 4_000);
 		//TODO: convert to JSON an extract info
-		return new Object();
+		//	for now we use properties
+		var props = new Properties();
+		props.load(new ByteArrayInputStream(bytes));
+		return props;
 	}
 
 	void createInUseFile(Path inUseFilePath) {
@@ -77,7 +96,10 @@ public class InUseFile implements Closeable {
 	}
 
 	void writeInUseInfo() throws IOException {
-		this.inUseFileChannel.write(ByteBuffer.wrap("Test String".getBytes(StandardCharsets.UTF_8)));
+		var rawInfo = new ByteArrayOutputStream(4_000);
+		info.store(rawInfo, "UNENCRYPTED Cryptomator inUse file");
+		//TODO: encryption
+		this.inUseFileChannel.write(ByteBuffer.wrap(rawInfo.toByteArray()));
 	}
 
 
@@ -88,12 +110,15 @@ public class InUseFile implements Closeable {
 				inUseFileChannel.close(); //TODO: DELETE_ON_CLOSE should clean up. Do we need a dedicated cleanup routine?
 			} catch (IOException e) {
 				LOG.error("Unable to delete in-use-file. Must be cleaned manually.");
-				//throw new RuntimeException(e);
 			}
 		}
 	}
 
-	private Path getInUseFilePath(Path p) {
+	/**
+	 * @param p a path with a filename with a 3 character file extension
+	 * @return a sibling path with the file extension replaced by "c9l"
+	 */
+	Path getInUseFilePath(Path p) {
 		var ciphertextName = p.getFileName().toString();
 		return p.resolveSibling(ciphertextName.substring(0, ciphertextName.length() - 3) + "c9l");
 	}
