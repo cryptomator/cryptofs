@@ -3,8 +3,6 @@ package org.cryptomator.cryptofs.fh;
 import jakarta.inject.Inject;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
-import org.cryptomator.cryptofs.common.FileTooBigException;
-import org.cryptomator.cryptofs.common.FileUtil;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,12 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
-import java.nio.channels.SeekableByteChannel;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
@@ -33,6 +26,7 @@ public class OpenCryptoFile implements Closeable {
 
 	private final FileCloseListener listener;
 	private final AtomicReference<Instant> lastModified;
+	private final InUseFile inUseFile;
 	private final Cryptor cryptor;
 	private final FileHeaderHolder headerHolder;
 	private final ChunkIO chunkIO;
@@ -41,12 +35,12 @@ public class OpenCryptoFile implements Closeable {
 	private final OpenCryptoFileComponent component;
 
 	private final AtomicInteger openChannelsCount = new AtomicInteger(0);
-	private volatile SeekableByteChannel inUseFileChannel;
 
 	@Inject
 	public OpenCryptoFile(FileCloseListener listener, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, //
 						  @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, //
-						  @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component) {
+						  @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component, //
+						  InUseFile inUseFile) {
 		this.listener = listener;
 		this.cryptor = cryptor;
 		this.headerHolder = headerHolder;
@@ -55,6 +49,7 @@ public class OpenCryptoFile implements Closeable {
 		this.fileSize = fileSize;
 		this.component = component;
 		this.lastModified = lastModified;
+		this.inUseFile = inUseFile;
 	}
 
 	/**
@@ -75,7 +70,7 @@ public class OpenCryptoFile implements Closeable {
 		var openChannels = openChannelsCount.incrementAndGet(); // synchronized context, hence we can proactively increase the number
 		try {
 			// in-use section
-			if (openChannels == 1 && isFileInUse(path)) { //add ignore mechanic
+			if (openChannels == 1 && inUseFile.checkOrOwn()) { //add ignore mechanic
 				throw new FileIsInUseException(path);
 			}
 			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
@@ -96,62 +91,6 @@ public class OpenCryptoFile implements Closeable {
 		assert cleartextFileChannel != null; // otherwise there would have been an exception
 		chunkIO.registerChannel(ciphertextFileChannel, options.writable());
 		return cleartextFileChannel;
-	}
-
-	boolean isFileInUse(Path ciphertextPath) {
-		var inUseFilePath = getInUseFilePath(ciphertextPath);
-		try {
-			Object content = readInUseFile(inUseFilePath);
-			//check if file belongs to us
-			//if yes, do stuff and return false
-			//otherwise notify user and return true
-			return true;
-		} catch (NoSuchFileException e) {
-			createInUseFile(inUseFilePath);
-		} catch (FileTooBigException e) {
-			LOG.info("Found invalid in-use-file for {}. Owning it.", ciphertextPath, e);
-			ownInUseFile(inUseFilePath);
-		} catch (IOException e) {
-			LOG.warn("Failed to read in-use file for {}. Ignoring it.", ciphertextPath, e);
-		}
-		return false;
-	}
-
-	Object readInUseFile(Path inUseFilePath) throws IOException {
-		var bytes = FileUtil.readAllBytesSizeRestricted(inUseFilePath, 4_000);
-		//TODO: convert to JSON an extract info
-		return new Object();
-	}
-
-	void createInUseFile(Path inUseFilePath) {
-		try {
-			this.inUseFileChannel = Files.newByteChannel(inUseFilePath, StandardOpenOption.DELETE_ON_CLOSE, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
-		} catch (IOException e) {
-			LOG.warn("Failed to create in-use file for {}.", inUseFilePath, e);
-		}
-	}
-
-	void ownInUseFile(Path inUseFilePath) {
-		try {
-			this.inUseFileChannel = Files.newByteChannel(inUseFilePath, StandardOpenOption.DELETE_ON_CLOSE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
-		} catch (IOException e) {
-			LOG.warn("Failed to create in-use file for {}.", inUseFilePath, e);
-		}
-	}
-
-	void deleteInUseFile() {
-		if (inUseFileChannel != null) {
-			try {
-				inUseFileChannel.close(); //TODO: DELETE_ON_CLOSE should clean up. Do we need a dedicated cleanup routine?
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
-		}
-	}
-
-	private Path getInUseFilePath(Path p) {
-		var ciphertextName = p.getFileName().toString();
-		return p.resolveSibling(ciphertextName.substring(0, ciphertextName.length() - 3) + "c9l");
 	}
 
 	//visible for testing
@@ -252,7 +191,7 @@ public class OpenCryptoFile implements Closeable {
 		var p = currentFilePath.get();
 		if (p != null) {
 			listener.close(p, this);
-			deleteInUseFile();
+			inUseFile.close();
 		}
 	}
 
