@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs.fh;
 
 import jakarta.inject.Inject;
+import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptofs.common.FileTooBigException;
 import org.cryptomator.cryptofs.common.FileUtil;
 import org.cryptomator.cryptofs.event.FileIsInUseEvent;
@@ -34,10 +35,10 @@ public class InUseFile implements Closeable {
 	private SeekableByteChannel inUseFileChannel;
 
 	@Inject
-	public InUseFile(@CurrentOpenFilePath AtomicReference<Path> currentFilePath, Consumer<FilesystemEvent> eventConsumer) {
+	public InUseFile(@CurrentOpenFilePath AtomicReference<Path> currentFilePath, Consumer<FilesystemEvent> eventConsumer, CryptoFileSystemProperties fsProps) {
 		this.currentFilePath = currentFilePath;
 		this.eventConsumer = eventConsumer;
-		this.fileSystemOwner = System.getenv("USERDOMAIN") + "\"" + System.getenv("USERNAME"); //TODO: read from CryptoFileSystemProperties
+		this.fileSystemOwner = (String) fsProps.getOrDefault("owner", "cryptobot");
 		this.info = new Properties();
 		info.put("owner", fileSystemOwner);
 	}
@@ -47,6 +48,7 @@ public class InUseFile implements Closeable {
 		var inUseFilePath = getInUseFilePath(ciphertextPath);
 		try {
 			Properties content = readInUseFile(inUseFilePath);
+			validate(content);
 			if (content.get("owner").equals(fileSystemOwner)) {
 				//update timestamps
 				info.putAll(content);
@@ -57,8 +59,9 @@ public class InUseFile implements Closeable {
 			}
 		} catch (NoSuchFileException e) {
 			LOG.debug("No in-use-file for {} found. Creating it.", ciphertextPath, e);
+			//TODO: delay creation with a CompletionStage (to prevent spam)
 			createInUseFile(inUseFilePath);
-		} catch (FileTooBigException e) {
+		} catch (FileTooBigException | IllegalArgumentException e) {
 			LOG.info("Found invalid in-use-file for {}. Owning it.", ciphertextPath, e);
 			ownInUseFile(inUseFilePath);
 		} catch (IOException e) {
@@ -67,14 +70,22 @@ public class InUseFile implements Closeable {
 		return false;
 	}
 
+	private void validate(Properties content) throws IllegalArgumentException {
+		if (!content.containsKey("owner")) {
+			throw new IllegalArgumentException("Invalid in-use-file. Missing key \"owner\"");
+		}
+	}
+
 	Properties readInUseFile(Path inUseFilePath) throws IOException {
 		//TODO: decryption
 		var bytes = FileUtil.readAllBytesSizeRestricted(inUseFilePath, 4_000);
 		//TODO: convert to JSON an extract info
 		//	for now we use properties
 		var props = new Properties();
-		props.load(new ByteArrayInputStream(bytes));
-		return props;
+		try (var stream = new ByteArrayInputStream(bytes)) {
+			props.load(stream);
+			return props;
+		}
 	}
 
 	void createInUseFile(Path inUseFilePath) {
@@ -107,6 +118,7 @@ public class InUseFile implements Closeable {
 	public void close() {
 		if (inUseFileChannel != null) {
 			try {
+				//delay closing with a completionStage
 				inUseFileChannel.close(); //TODO: DELETE_ON_CLOSE should clean up. Do we need a dedicated cleanup routine?
 			} catch (IOException e) {
 				LOG.error("Unable to delete in-use-file. Must be cleaned manually.");
