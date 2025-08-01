@@ -151,11 +151,12 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		private FileSystem fileSystem;
 
 		private Path file;
+		private Path vaultPath;
 
 		@BeforeAll
 		public void beforeAll() throws IOException, MasterkeyLoadingFailedException {
 			inMemoryFs = Jimfs.newFileSystem();
-			Path vaultPath = inMemoryFs.getPath("vault");
+			vaultPath = inMemoryFs.getPath("vault");
 			Files.createDirectories(vaultPath);
 			MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
 			Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
@@ -174,6 +175,17 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		@AfterEach
 		public void afterEach() throws IOException {
 			Files.deleteIfExists(file);
+		}
+
+		@Test
+		@DisplayName("Opening a file channel creates an in-use file and removes it on close")
+		public void testOpeningFCCreatesInUseFile() throws IOException {
+			try (var writer = FileChannel.open(file, CREATE, WRITE)) {
+				var inUseFileExists = Files.walk(vaultPath.resolve("d")).anyMatch( p -> p.getFileName().toString().endsWith(".c9l"));
+				Assertions.assertTrue(inUseFileExists);
+			}
+			var inUseFileExists = Files.walk(vaultPath.resolve("d")).anyMatch( p -> p.getFileName().toString().endsWith(".c9l"));
+			Assertions.assertFalse(inUseFileExists);
 		}
 
 		//https://github.com/cryptomator/cryptofs/issues/173
