@@ -43,20 +43,17 @@ public class InUseFile implements Closeable {
 		info.put("owner", fileSystemOwner);
 	}
 
-	boolean checkOrOwn() {
+	synchronized boolean checkOrOwn() {
 		var ciphertextPath = currentFilePath.get();
 		var inUseFilePath = getInUseFilePath(ciphertextPath);
 		try {
 			Properties content = readInUseFile(inUseFilePath);
-			validate(content);
-			if (content.get("owner").equals(fileSystemOwner)) {
-				//update timestamps
-				info.putAll(content);
-				return false;
-			} else {
+			if (!content.get("owner").equals(fileSystemOwner)) {
 				eventConsumer.accept(new FileIsInUseEvent(Path.of("yadda"), ciphertextPath, info));
 				return true;
 			}
+			//update timestamps
+			info.putAll(content);
 		} catch (NoSuchFileException e) {
 			LOG.debug("No in-use-file for {} found. Creating it.", ciphertextPath, e);
 			//TODO: delay creation with a CompletionStage (to prevent spam)
@@ -70,13 +67,7 @@ public class InUseFile implements Closeable {
 		return false;
 	}
 
-	private void validate(Properties content) throws IllegalArgumentException {
-		if (!content.containsKey("owner")) {
-			throw new IllegalArgumentException("Invalid in-use-file. Missing key \"owner\"");
-		}
-	}
-
-	Properties readInUseFile(Path inUseFilePath) throws IOException {
+	Properties readInUseFile(Path inUseFilePath) throws IOException, IllegalArgumentException {
 		//TODO: decryption
 		var bytes = FileUtil.readAllBytesSizeRestricted(inUseFilePath, 4_000);
 		//TODO: convert to JSON an extract info
@@ -84,13 +75,21 @@ public class InUseFile implements Closeable {
 		var props = new Properties();
 		try (var stream = new ByteArrayInputStream(bytes)) {
 			props.load(stream);
+			validate(props);
 			return props;
 		}
 	}
 
+	private void validate(Properties content) throws IllegalArgumentException {
+		if (!content.containsKey("owner")) {
+			throw new IllegalArgumentException("Invalid in-use-file. Missing key \"owner\"");
+		}
+		//TODO: more keys
+	}
+
 	void createInUseFile(Path inUseFilePath) {
 		try {
-			this.inUseFileChannel = Files.newByteChannel(inUseFilePath, StandardOpenOption.DELETE_ON_CLOSE, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
+			this.inUseFileChannel = Files.newByteChannel(inUseFilePath, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW); //TODO: delete on close?
 			writeInUseInfo();
 		} catch (IOException e) {
 			LOG.warn("Failed to create in-use file for {}.", inUseFilePath, e);
@@ -99,7 +98,7 @@ public class InUseFile implements Closeable {
 
 	void ownInUseFile(Path inUseFilePath) {
 		try {
-			this.inUseFileChannel = Files.newByteChannel(inUseFilePath, StandardOpenOption.DELETE_ON_CLOSE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE);
+			this.inUseFileChannel = Files.newByteChannel(inUseFilePath, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE); //TODO: delete on close?
 			writeInUseInfo();
 		} catch (IOException e) {
 			LOG.warn("Failed to create in-use file for {}.", inUseFilePath, e);
@@ -113,13 +112,20 @@ public class InUseFile implements Closeable {
 		this.inUseFileChannel.write(ByteBuffer.wrap(rawInfo.toByteArray()));
 	}
 
+	//for testing
+	void deleteInUseFile(Path inUseFilePath) throws IOException {
+		Files.deleteIfExists(inUseFilePath);
+	}
+
 
 	@Override
-	public void close() {
+	public synchronized void close() {
 		if (inUseFileChannel != null) {
 			try {
 				//delay closing with a completionStage
-				inUseFileChannel.close(); //TODO: DELETE_ON_CLOSE should clean up. Do we need a dedicated cleanup routine?
+				inUseFileChannel.close();
+				var inUsePath = getInUseFilePath(currentFilePath.get());
+				deleteInUseFile(inUsePath);
 			} catch (IOException e) {
 				LOG.error("Unable to delete in-use-file. Must be cleaned manually.");
 			}
@@ -133,5 +139,15 @@ public class InUseFile implements Closeable {
 	Path getInUseFilePath(Path p) {
 		var ciphertextName = p.getFileName().toString();
 		return p.resolveSibling(ciphertextName.substring(0, ciphertextName.length() - 3) + "c9l");
+	}
+
+	//-- for testing only
+
+	InUseFile(AtomicReference<Path> currentFilePath, Consumer<FilesystemEvent> eventConsumer, String fileSystemOwner, SeekableByteChannel inUseFileChannel, Properties info) {
+		this.currentFilePath = currentFilePath;
+		this.eventConsumer = eventConsumer;
+		this.fileSystemOwner = fileSystemOwner;
+		this.inUseFileChannel = inUseFileChannel;
+		this.info = info;
 	}
 }

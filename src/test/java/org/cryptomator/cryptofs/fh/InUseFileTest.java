@@ -1,6 +1,5 @@
 package org.cryptomator.cryptofs.fh;
 
-import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptofs.event.FileIsInUseEvent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.junit.jupiter.api.Assertions;
@@ -12,6 +11,7 @@ import org.mockito.ArgumentMatcher;
 import org.mockito.ArgumentMatchers;
 
 import java.io.IOException;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Properties;
@@ -26,7 +26,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 public class InUseFileTest {
 
@@ -43,13 +42,13 @@ public class InUseFileTest {
 
 	AtomicReference<Path> currentFilePath = new AtomicReference<>();
 	Consumer<FilesystemEvent> eventConsumer = mock(Consumer.class);
-	CryptoFileSystemProperties fsProps = mock(CryptoFileSystemProperties.class);
+	SeekableByteChannel inUseChannel = mock(SeekableByteChannel.class);
+	Properties info = new Properties();
 	InUseFile inUseFile;
 
 	@BeforeEach
 	public void beforeEach() {
-		when(fsProps.getOrDefault("owner", "cryptobot")).thenReturn("cryptobot");
-		inUseFile = new InUseFile(currentFilePath, eventConsumer, fsProps);
+		inUseFile = new InUseFile(currentFilePath, eventConsumer, "cryptobot", inUseChannel, info);
 	}
 
 	@Test
@@ -97,11 +96,9 @@ public class InUseFileTest {
 	public void testCheckOrOwnReadExistingInvalid() throws IOException {
 		var inUseFileSpy = spy(inUseFile);
 
-		var inUseInfo = new Properties();
-
 		Path inUsePath = mock(Path.class, "inUseFilePath");
 		doReturn(inUsePath).when(inUseFileSpy).getInUseFilePath(any());
-		doReturn(inUseInfo).when(inUseFileSpy).readInUseFile(inUsePath);
+		doThrow(IllegalArgumentException.class).when(inUseFileSpy).readInUseFile(inUsePath);
 		doNothing().when(inUseFileSpy).ownInUseFile(inUsePath);
 		var isInUse = inUseFileSpy.checkOrOwn();
 
@@ -152,6 +149,34 @@ public class InUseFileTest {
 
 		Assertions.assertTrue(result.toString().endsWith(".c9l"));
 		Assertions.assertEquals(rootChild.getParent(), result.getParent());
+	}
+
+	@Test
+	@DisplayName("Close closes inUseFileChannel and removes inUse file")
+	public void testClose() throws IOException {
+		var inUseFileSpy = spy(inUseFile);
+		Path inUsePath = mock(Path.class, "inUseFilePath");
+		doReturn(inUsePath).when(inUseFileSpy).getInUseFilePath(any());
+		doNothing().when(inUseFileSpy).deleteInUseFile(any());
+
+		inUseFileSpy.close();
+
+		verify(inUseChannel).close();
+		verify(inUseFileSpy).deleteInUseFile(inUsePath);
+	}
+
+	@Test
+	@DisplayName("Close does not propagate IO exception")
+	public void testCloseFailing() throws IOException {
+		var inUseFileSpy = spy(inUseFile);
+		Path inUsePath = mock(Path.class, "inUseFilePath");
+		doReturn(inUsePath).when(inUseFileSpy).getInUseFilePath(any());
+		doThrow(IOException.class).when(inUseFileSpy).deleteInUseFile(any());
+
+		Assertions.assertDoesNotThrow(inUseFileSpy::close);
+
+		doThrow(IOException.class).when(inUseChannel).close();
+		Assertions.assertDoesNotThrow(inUseFileSpy::close);
 
 	}
 
