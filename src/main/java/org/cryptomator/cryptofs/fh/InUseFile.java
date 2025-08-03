@@ -2,6 +2,7 @@ package org.cryptomator.cryptofs.fh;
 
 import jakarta.inject.Inject;
 import org.cryptomator.cryptofs.CryptoFileSystemProperties;
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileTooBigException;
 import org.cryptomator.cryptofs.common.FileUtil;
 import org.cryptomator.cryptofs.event.FileIsInUseEvent;
@@ -133,12 +134,13 @@ public class InUseFile implements Closeable {
 	}
 
 	/**
-	 * @param p a path with a filename with a 3 character file extension
-	 * @return a sibling path with the file extension replaced by "c9l"
+	 * @param p a path with a filename ending with {@value Constants#CRYPTOMATOR_FILE_SUFFIX}
+	 * @return a sibling path with the file extension {@value Constants#INUSE_FILE_SUFFIX}
 	 */
-	Path getInUseFilePath(Path p) {
-		var ciphertextName = p.getFileName().toString();
-		return p.resolveSibling(ciphertextName.substring(0, ciphertextName.length() - 3) + "c9l");
+	public static Path getInUseFilePath(Path p) {
+		var tmp = p.getFileName().toString();
+		var fileName = tmp.substring(0, tmp.length() - Constants.CRYPTOMATOR_FILE_SUFFIX.length());
+		return p.resolveSibling(fileName + Constants.INUSE_FILE_SUFFIX);
 	}
 
 	//-- for testing only

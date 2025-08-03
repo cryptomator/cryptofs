@@ -610,6 +610,9 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 				ciphertextTarget.persistLongFileName();
 			}
 			Files.move(ciphertextSource.getFilePath(), ciphertextTarget.getFilePath(), options);
+			//TODO: test
+			// question: what should happen
+			Files.move(ciphertextSource.getInUseFilePath(), ciphertextTarget.getInUseFilePath());
 			if (ciphertextSource.isShortened()) {
 				Files.walkFileTree(ciphertextSource.getRawPath(), DeletingFileVisitor.INSTANCE);
 			}

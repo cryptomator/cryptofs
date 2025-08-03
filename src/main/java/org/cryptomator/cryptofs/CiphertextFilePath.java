@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.fh.InUseFile;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -39,6 +40,10 @@ public class CiphertextFilePath {
 	
 	public Path getInflatedNamePath() {
 		return path.resolve(Constants.INFLATED_FILE_NAME);
+	}
+
+	public Path getInUseFilePath() {
+		return InUseFile.getInUseFilePath(getFilePath());
 	}
 
 	@Override
