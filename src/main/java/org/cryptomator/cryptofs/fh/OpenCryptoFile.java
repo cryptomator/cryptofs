@@ -70,7 +70,7 @@ public class OpenCryptoFile implements Closeable {
 		var openChannels = openChannelsCount.incrementAndGet(); // synchronized context, hence we can proactively increase the number
 		try {
 			// in-use section
-			if (openChannels == 1 && inUseFile.checkOrOwn()) { //add ignore mechanic
+			if (openChannels == 1 && inUseFile.tryMarkInUse()) { //add ignore mechanic
 				throw new FileIsInUseException(path);
 			}
 			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);

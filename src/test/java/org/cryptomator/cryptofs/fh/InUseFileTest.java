@@ -19,10 +19,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -53,85 +54,92 @@ public class InUseFileTest {
 
 	@Test
 	@DisplayName("CheckOrOwn for existing, valid inUseFile with same owner")
-	public void testCheckOrOwnReadExistingSameOwner() throws IOException {
+	public void testTryMarkInUseReadExistingSameOwner() throws IOException {
 		var inUseFileSpy = spy(inUseFile);
 
 		var inUseInfo = new Properties();
 		inUseInfo.put("owner", "cryptobot");
 		Path inUsePath = mock(Path.class, "inUseFilePath");
-		doReturn(inUsePath).when(inUseFileSpy).getInUseFilePath(any());
-		doReturn(inUseInfo).when(inUseFileSpy).readInUseFile(inUsePath);
+		try (var classMock = mockStatic(InUseFile.class)) {
+			classMock.when(() -> InUseFile.readInUseFile(inUsePath)).thenReturn(inUseInfo);
+			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
 
-		var isInUse = inUseFileSpy.checkOrOwn();
+			var isInUse = inUseFileSpy.tryMarkInUse();
 
-		Assertions.assertFalse(isInUse);
-		verify(inUseFileSpy, never()).createInUseFile(inUsePath);
-		verify(inUseFileSpy, never()).ownInUseFile(inUsePath);
-
-		//TODO: check, that inUse file is updated
+			Assertions.assertFalse(isInUse);
+			verify(inUseFileSpy, never()).createInUseFile(inUsePath);
+			verify(inUseFileSpy, never()).ownInUseFile(inUsePath);
+			//TODO: check, that inUse file is updated
+		}
 	}
 
 	@Test
 	@DisplayName("CheckOrOwn for existing, valid inUseFile with different owner")
-	public void testCheckOrOwnReadExistingDifferentOwner() throws IOException {
+	public void testTryMarkInUseReadExistingDifferentOwner() throws IOException {
 		var inUseFileSpy = spy(inUseFile);
 
 		var inUseInfo = new Properties();
 		inUseInfo.put("owner", "cryptobot3000");
 		Path inUsePath = mock(Path.class, "inUseFilePath");
-		doReturn(inUsePath).when(inUseFileSpy).getInUseFilePath(any());
-		doReturn(inUseInfo).when(inUseFileSpy).readInUseFile(inUsePath);
-		var isInUse = inUseFileSpy.checkOrOwn();
+		try (var classMock = mockStatic(InUseFile.class)) {
+			classMock.when(() -> InUseFile.readInUseFile(inUsePath)).thenReturn(inUseInfo);
+			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenCallRealMethod();
+			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
 
-		Assertions.assertTrue(isInUse);
-		verify(inUseFileSpy, never()).createInUseFile(inUsePath);
-		verify(inUseFileSpy, never()).ownInUseFile(inUsePath);
+			var isInUse = inUseFileSpy.tryMarkInUse();
 
-		var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent;
-		verify(eventConsumer).accept(ArgumentMatchers.argThat(isFileIsInUseEvent));
+			Assertions.assertTrue(isInUse);
+			verify(inUseFileSpy, never()).createInUseFile(inUsePath);
+			verify(inUseFileSpy, never()).ownInUseFile(inUsePath);
+			var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent;
+			verify(eventConsumer).accept(ArgumentMatchers.argThat(isFileIsInUseEvent));
+		}
 	}
 
 	@Test
 	@DisplayName("CheckOrOwn for existing, invalid inUseFile owns it")
-	public void testCheckOrOwnReadExistingInvalid() throws IOException {
+	public void testTryMarkInUseReadExistingInvalid() throws IOException {
 		var inUseFileSpy = spy(inUseFile);
-
 		Path inUsePath = mock(Path.class, "inUseFilePath");
-		doReturn(inUsePath).when(inUseFileSpy).getInUseFilePath(any());
-		doThrow(IllegalArgumentException.class).when(inUseFileSpy).readInUseFile(inUsePath);
 		doNothing().when(inUseFileSpy).ownInUseFile(inUsePath);
-		var isInUse = inUseFileSpy.checkOrOwn();
+		try (var classMock = mockStatic(InUseFile.class)) {
+			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenCallRealMethod();
+			classMock.when(() -> InUseFile.readInUseFile(inUsePath)).thenThrow(IllegalArgumentException.class);
+			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
 
-		Assertions.assertFalse(isInUse);
-		verify(inUseFileSpy).ownInUseFile(inUsePath);
-		verify(inUseFileSpy, never()).createInUseFile(inUsePath);
+			var isInUse = inUseFileSpy.tryMarkInUse();
+
+			Assertions.assertFalse(isInUse);
+			verify(inUseFileSpy).ownInUseFile(inUsePath);
+			verify(inUseFileSpy, never()).createInUseFile(inUsePath);
+		}
 	}
 
 	@Test
 	@DisplayName("CheckOrOwn creates inUseFile if it does not exist")
-	public void testCheckOrOwnCreateNew() throws IOException {
+	public void testTryMarkInUseCreateNew() throws IOException {
 		var inUseFileSpy = spy(inUseFile);
-
 		Path inUsePath = mock(Path.class, "inUseFilePath");
-		doReturn(inUsePath).when(inUseFileSpy).getInUseFilePath(any());
-		doThrow(NoSuchFileException.class).when(inUseFileSpy).readInUseFile(inUsePath);
 		doNothing().when(inUseFileSpy).createInUseFile(inUsePath);
-		var isInUse = inUseFileSpy.checkOrOwn();
+		try (var classMock = mockStatic(InUseFile.class)) {
+			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenCallRealMethod();
+			classMock.when(() -> InUseFile.readInUseFile(inUsePath)).thenThrow(NoSuchFileException.class);
+			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
 
-		Assertions.assertFalse(isInUse);
-		verify(inUseFileSpy).createInUseFile(inUsePath);
-		verify(inUseFileSpy, never()).ownInUseFile(inUsePath);
+			var isInUse = inUseFileSpy.tryMarkInUse();
+
+			Assertions.assertFalse(isInUse);
+			verify(inUseFileSpy).createInUseFile(inUsePath);
+			verify(inUseFileSpy, never()).ownInUseFile(inUsePath);
+		}
 	}
 
 
 	@Test
 	@DisplayName("Lock files end with .c9l and are in the same directory as the content file")
-	public void testGetInUseFilePath(@TempDir Path tmpDir) {
-		var currentPath = mock(Path.class, "currentPath");
-		currentFilePath.set(currentPath);
-
+	public void testComputeInUseFilePath(@TempDir Path tmpDir) {
 		var path = tmpDir.resolve("hello.abc");
-		var result = inUseFile.getInUseFilePath(path);
+		var result = InUseFile.computeInUseFilePath(path);
 
 		Assertions.assertTrue(result.toString().endsWith(".c9l"));
 		Assertions.assertEquals(path.getParent(), result.getParent());
@@ -140,12 +148,10 @@ public class InUseFileTest {
 
 	@Test
 	@DisplayName("Lock files also work with direct root childs")
-	public void testGetInUseFilePathWithRoot(@TempDir Path tmpDir) {
-		var currentPath = mock(Path.class, "currentPath");
-		currentFilePath.set(currentPath);
+	public void testComputeInUseFilePathWithRoot(@TempDir Path tmpDir) {
 		var rootChild = tmpDir.getRoot().resolve("test3000.abc");
 
-		var result = inUseFile.getInUseFilePath(rootChild);
+		var result = InUseFile.computeInUseFilePath(rootChild);
 
 		Assertions.assertTrue(result.toString().endsWith(".c9l"));
 		Assertions.assertEquals(rootChild.getParent(), result.getParent());
@@ -156,13 +162,15 @@ public class InUseFileTest {
 	public void testClose() throws IOException {
 		var inUseFileSpy = spy(inUseFile);
 		Path inUsePath = mock(Path.class, "inUseFilePath");
-		doReturn(inUsePath).when(inUseFileSpy).getInUseFilePath(any());
-		doNothing().when(inUseFileSpy).deleteInUseFile(any());
+		try (var classMock = mockStatic(InUseFile.class)) {
+			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
+			doNothing().when(inUseFileSpy).deleteInUseFile(any());
 
-		inUseFileSpy.close();
+			inUseFileSpy.close();
 
-		verify(inUseChannel).close();
-		verify(inUseFileSpy).deleteInUseFile(inUsePath);
+			verify(inUseChannel).close();
+			verify(inUseFileSpy).deleteInUseFile(inUsePath);
+		}
 	}
 
 	@Test
@@ -170,14 +178,15 @@ public class InUseFileTest {
 	public void testCloseFailing() throws IOException {
 		var inUseFileSpy = spy(inUseFile);
 		Path inUsePath = mock(Path.class, "inUseFilePath");
-		doReturn(inUsePath).when(inUseFileSpy).getInUseFilePath(any());
-		doThrow(IOException.class).when(inUseFileSpy).deleteInUseFile(any());
+		try (var classMock = mockStatic(InUseFile.class)) {
+			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
+			doThrow(IOException.class).when(inUseFileSpy).deleteInUseFile(any());
 
-		Assertions.assertDoesNotThrow(inUseFileSpy::close);
+			Assertions.assertDoesNotThrow(inUseFileSpy::close);
 
-		doThrow(IOException.class).when(inUseChannel).close();
-		Assertions.assertDoesNotThrow(inUseFileSpy::close);
-
+			doThrow(IOException.class).when(inUseChannel).close();
+			Assertions.assertDoesNotThrow(inUseFileSpy::close);
+		}
 	}
 
 
