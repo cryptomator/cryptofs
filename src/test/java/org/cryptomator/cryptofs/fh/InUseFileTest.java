@@ -69,7 +69,7 @@ public class InUseFileTest {
 
 			Assertions.assertFalse(isInUse);
 			verify(inUseFileSpy, never()).createInUseFile(inUsePath);
-			verify(inUseFileSpy, never()).ownInUseFile(inUsePath);
+			verify(inUseFileSpy, never()).stealInUseFile(inUsePath);
 			//TODO: check, that inUse file is updated
 		}
 	}
@@ -91,7 +91,7 @@ public class InUseFileTest {
 
 			Assertions.assertTrue(isInUse);
 			verify(inUseFileSpy, never()).createInUseFile(inUsePath);
-			verify(inUseFileSpy, never()).ownInUseFile(inUsePath);
+			verify(inUseFileSpy, never()).stealInUseFile(inUsePath);
 			var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent;
 			verify(eventConsumer).accept(ArgumentMatchers.argThat(isFileIsInUseEvent));
 		}
@@ -102,7 +102,7 @@ public class InUseFileTest {
 	public void testTryMarkInUseReadExistingInvalid() throws IOException {
 		var inUseFileSpy = spy(inUseFile);
 		Path inUsePath = mock(Path.class, "inUseFilePath");
-		doNothing().when(inUseFileSpy).ownInUseFile(inUsePath);
+		doNothing().when(inUseFileSpy).stealInUseFile(inUsePath);
 		try (var classMock = mockStatic(InUseFile.class)) {
 			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenCallRealMethod();
 			classMock.when(() -> InUseFile.readInUseFile(inUsePath)).thenThrow(IllegalArgumentException.class);
@@ -111,7 +111,7 @@ public class InUseFileTest {
 			var isInUse = inUseFileSpy.tryMarkInUse();
 
 			Assertions.assertFalse(isInUse);
-			verify(inUseFileSpy).ownInUseFile(inUsePath);
+			verify(inUseFileSpy).stealInUseFile(inUsePath);
 			verify(inUseFileSpy, never()).createInUseFile(inUsePath);
 		}
 	}
@@ -131,7 +131,7 @@ public class InUseFileTest {
 
 			Assertions.assertFalse(isInUse);
 			verify(inUseFileSpy).createInUseFile(inUsePath);
-			verify(inUseFileSpy, never()).ownInUseFile(inUsePath);
+			verify(inUseFileSpy, never()).stealInUseFile(inUsePath);
 		}
 	}
 

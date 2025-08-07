@@ -59,7 +59,7 @@ public class InUseFile implements Closeable {
 			createInUseFile(inUseFilePath);
 		} catch (FileTooBigException | IllegalArgumentException e) {
 			LOG.info("Found invalid in-use-file for {}. Owning it.", ciphertextPath, e);
-			ownInUseFile(inUseFilePath);
+			stealInUseFile(inUseFilePath);
 		} catch (IOException e) {
 			LOG.warn("Failed to read in-use file for {}. Ignoring it.", ciphertextPath, e);
 		}
@@ -113,7 +113,7 @@ public class InUseFile implements Closeable {
 		}
 	}
 
-	void ownInUseFile(Path inUseFilePath) {
+	void stealInUseFile(Path inUseFilePath) {
 		try {
 			this.inUseFileChannel = Files.newByteChannel(inUseFilePath, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE); //TODO: delete on close?
 			writeInUseInfo();
