@@ -9,6 +9,7 @@
 package org.cryptomator.cryptofs;
 
 import com.google.common.jimfs.Jimfs;
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.util.ByteBuffers;
 import org.cryptomator.cryptolib.api.Masterkey;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
@@ -181,11 +182,11 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		@DisplayName("Opening a file channel creates an in-use file and removes it on close")
 		public void testOpeningFCCreatesInUseFile() throws IOException {
 			try (var writer = FileChannel.open(file, CREATE, WRITE)) {
-				var inUseFileExists = Files.walk(vaultPath.resolve("d")).anyMatch( p -> p.getFileName().toString().endsWith(".c9l"));
-				Assertions.assertTrue(inUseFileExists);
+				var inUseFiles = Files.walk(vaultPath.resolve("d")).filter( p -> p.getFileName().toString().endsWith(Constants.INUSE_FILE_SUFFIX)).toList();
+				Assertions.assertEquals(1, inUseFiles.size());
 			}
-			var inUseFileExists = Files.walk(vaultPath.resolve("d")).anyMatch( p -> p.getFileName().toString().endsWith(".c9l"));
-			Assertions.assertFalse(inUseFileExists);
+			var inUseFiles = Files.walk(vaultPath.resolve("d")).filter( p -> p.getFileName().toString().endsWith(Constants.INUSE_FILE_SUFFIX)).toList();
+			Assertions.assertEquals(0, inUseFiles.size());
 		}
 
 		//https://github.com/cryptomator/cryptofs/issues/173

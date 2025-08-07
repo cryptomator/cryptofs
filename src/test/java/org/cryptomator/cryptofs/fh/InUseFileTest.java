@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.fh;
 
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.event.FileIsInUseEvent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.junit.jupiter.api.Assertions;
@@ -136,12 +137,12 @@ public class InUseFileTest {
 
 
 	@Test
-	@DisplayName("Lock files end with .c9l and are in the same directory as the content file")
+	@DisplayName("Lock files end with .c9u and are in the same directory as the content file")
 	public void testComputeInUseFilePath(@TempDir Path tmpDir) {
 		var path = tmpDir.resolve("hello.abc");
 		var result = InUseFile.computeInUseFilePath(path);
 
-		Assertions.assertTrue(result.toString().endsWith(".c9l"));
+		Assertions.assertTrue(result.toString().endsWith(Constants.INUSE_FILE_SUFFIX));
 		Assertions.assertEquals(path.getParent(), result.getParent());
 
 	}
@@ -153,7 +154,7 @@ public class InUseFileTest {
 
 		var result = InUseFile.computeInUseFilePath(rootChild);
 
-		Assertions.assertTrue(result.toString().endsWith(".c9l"));
+		Assertions.assertTrue(result.toString().endsWith(Constants.INUSE_FILE_SUFFIX));
 		Assertions.assertEquals(rootChild.getParent(), result.getParent());
 	}
 
