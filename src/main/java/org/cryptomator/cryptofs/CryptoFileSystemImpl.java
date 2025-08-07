@@ -605,14 +605,12 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		CiphertextFilePath ciphertextSource = cryptoPathMapper.getCiphertextFilePath(cleartextSource);
 		CiphertextFilePath ciphertextTarget = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
 		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath())) {
+			//TODO: fail, if foreign inUseFile exists
 			if (ciphertextTarget.isShortened()) {
 				Files.createDirectories(ciphertextTarget.getRawPath());
 				ciphertextTarget.persistLongFileName();
 			}
 			Files.move(ciphertextSource.getFilePath(), ciphertextTarget.getFilePath(), options);
-			//TODO: test
-			// question: what should happen
-			Files.move(ciphertextSource.getInUseFilePath(), ciphertextTarget.getInUseFilePath());
 			if (ciphertextSource.isShortened()) {
 				Files.walkFileTree(ciphertextSource.getRawPath(), DeletingFileVisitor.INSTANCE);
 			}

@@ -42,10 +42,6 @@ public class CiphertextFilePath {
 		return path.resolve(Constants.INFLATED_FILE_NAME);
 	}
 
-	public Path getInUseFilePath() {
-		return InUseFile.getInUseFilePath(getFilePath());
-	}
-
 	@Override
 	public int hashCode() {
 		return Objects.hash(path, deflatedFileName);
