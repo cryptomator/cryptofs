@@ -7,6 +7,7 @@ package org.cryptomator.cryptofs;
 
 import dagger.Module;
 import dagger.Provides;
+import jakarta.inject.Named;
 import org.cryptomator.cryptofs.attr.AttributeComponent;
 import org.cryptomator.cryptofs.attr.AttributeViewComponent;
 import org.cryptomator.cryptofs.dir.DirectoryStreamComponent;
@@ -20,6 +21,8 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 
 @Module(subcomponents = {AttributeComponent.class, AttributeViewComponent.class, OpenCryptoFileComponent.class, DirectoryStreamComponent.class})
@@ -49,5 +52,12 @@ class CryptoFileSystemModule {
 				LOG.warn("Filesystem event consumer failed with exception when processing event {}", event, e);
 			}
 		};
+	}
+
+	@Provides
+	@CryptoFileSystemScoped
+	@Named("selfUsedFiles")
+	public ConcurrentMap<Path, Boolean> provideSelfUsedFiles() {
+		return new ConcurrentHashMap<>();
 	}
 }

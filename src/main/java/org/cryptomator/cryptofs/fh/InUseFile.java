@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs.fh;
 
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileTooBigException;
@@ -18,9 +19,12 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -30,16 +34,21 @@ public class InUseFile implements Closeable {
 	private static final Logger LOG = LoggerFactory.getLogger(InUseFile.class);
 
 	private final String fileSystemOwner;
+	private final ConcurrentMap<Path, Boolean> selfUsedFiles;
 	private final Properties info;
 	private final AtomicReference<Path> currentFilePath;
 	private final Consumer<FilesystemEvent> eventConsumer;
 	private SeekableByteChannel inUseFileChannel;
 
 	@Inject
-	public InUseFile(@CurrentOpenFilePath AtomicReference<Path> currentFilePath, Consumer<FilesystemEvent> eventConsumer, CryptoFileSystemProperties fsProps) {
+	public InUseFile(@CurrentOpenFilePath AtomicReference<Path> currentFilePath, //
+					 Consumer<FilesystemEvent> eventConsumer, //
+					 CryptoFileSystemProperties fsProps, //
+					 @Named("selfUsedFiles") ConcurrentMap<Path, Boolean> selfUsedFiles) {
 		this.currentFilePath = currentFilePath;
 		this.eventConsumer = eventConsumer;
 		this.fileSystemOwner = (String) fsProps.getOrDefault("owner", "cryptobot");
+		this.selfUsedFiles = selfUsedFiles;
 		this.info = new Properties();
 		info.put("owner", fileSystemOwner);
 	}
@@ -47,23 +56,33 @@ public class InUseFile implements Closeable {
 	synchronized boolean tryMarkInUse() {
 		var ciphertextPath = currentFilePath.get();
 		var inUseFilePath = computeInUseFilePath(ciphertextPath);
+		var selfUseSuccessful = false;
 		try {
 			if (isInUse(inUseFilePath, fileSystemOwner)) {
 				eventConsumer.accept(new FileIsInUseEvent(Path.of("yadda"), ciphertextPath, info));
 				return true;
 			}
-			//TODO: update timestamps
+			selfUseSuccessful = updateInUseFile(inUseFilePath);
 		} catch (NoSuchFileException e) {
 			LOG.debug("No in-use-file for {} found. Creating it.", ciphertextPath, e);
 			//TODO: delay creation with a CompletionStage (to prevent spam)
-			createInUseFile(inUseFilePath);
+			selfUseSuccessful = createInUseFile(inUseFilePath);
 		} catch (FileTooBigException | IllegalArgumentException e) {
 			LOG.info("Found invalid in-use-file for {}. Owning it.", ciphertextPath, e);
-			stealInUseFile(inUseFilePath);
+			selfUseSuccessful = stealInUseFile(inUseFilePath);
 		} catch (IOException e) {
 			LOG.warn("Failed to read in-use file for {}. Ignoring it.", ciphertextPath, e);
 		}
+
+		if (selfUseSuccessful) {
+			selfUsedFiles.put(ciphertextPath, Boolean.TRUE);
+		}
 		return false;
+	}
+
+	private boolean updateInUseFile(Path inUseFilePath) {
+		//TODO
+		return true;
 	}
 
 	/**
@@ -77,7 +96,7 @@ public class InUseFile implements Closeable {
 	 */
 	public static boolean isInUse(Path inUseFilePath, String fileSystemOwner) throws IOException, IllegalArgumentException {
 		Properties content = readInUseFile(inUseFilePath);
-		if(!content.get("owner").equals(fileSystemOwner)) {
+		if (!content.get("owner").equals(fileSystemOwner)) {
 			//TODO: check also timestamps
 			return true;
 		}
@@ -104,29 +123,32 @@ public class InUseFile implements Closeable {
 		//TODO: more keys
 	}
 
-	void createInUseFile(Path inUseFilePath) {
+	boolean createInUseFile(Path inUseFilePath) {
 		try {
-			this.inUseFileChannel = Files.newByteChannel(inUseFilePath, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW); //TODO: delete on close?
-			writeInUseInfo();
+			return writeInUseFile(inUseFilePath, Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW));
 		} catch (IOException e) {
 			LOG.warn("Failed to create in-use file for {}.", inUseFilePath, e);
+			return false;
 		}
 	}
 
-	void stealInUseFile(Path inUseFilePath) {
+	boolean stealInUseFile(Path inUseFilePath) {
 		try {
-			this.inUseFileChannel = Files.newByteChannel(inUseFilePath, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE); //TODO: delete on close?
-			writeInUseInfo();
+			return writeInUseFile(inUseFilePath, Set.of(StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE));
 		} catch (IOException e) {
-			LOG.warn("Failed to create in-use file for {}.", inUseFilePath, e);
+			LOG.warn("Failed to steal in-use file for {}.", inUseFilePath, e);
+			return false;
 		}
 	}
 
-	void writeInUseInfo() throws IOException {
+	boolean writeInUseFile(Path inUseFilePath, Set<OpenOption> openOptions) throws IOException {
+		this.inUseFileChannel = Files.newByteChannel(inUseFilePath, openOptions); //TODO: delete on close?
 		var rawInfo = new ByteArrayOutputStream(4_000);
 		info.store(rawInfo, "UNENCRYPTED Cryptomator inUse file");
 		//TODO: encryption
-		this.inUseFileChannel.write(ByteBuffer.wrap(rawInfo.toByteArray()));
+		inUseFileChannel.write(ByteBuffer.wrap(rawInfo.toByteArray()));
+		inUseFileChannel.position(0);
+		return true;
 	}
 
 	//for testing
@@ -137,11 +159,13 @@ public class InUseFile implements Closeable {
 
 	@Override
 	public synchronized void close() {
+		var ciphertextPath = currentFilePath.get();
+		selfUsedFiles.remove(ciphertextPath);
 		if (inUseFileChannel != null) {
 			try {
 				//delay closing with a completionStage
 				inUseFileChannel.close();
-				var inUsePath = computeInUseFilePath(currentFilePath.get());
+				var inUsePath = computeInUseFilePath(ciphertextPath);
 				deleteInUseFile(inUsePath);
 			} catch (IOException e) {
 				LOG.error("Unable to delete in-use-file. Must be cleaned manually.");
@@ -161,11 +185,17 @@ public class InUseFile implements Closeable {
 
 	//-- for testing only
 
-	InUseFile(AtomicReference<Path> currentFilePath, Consumer<FilesystemEvent> eventConsumer, String fileSystemOwner, SeekableByteChannel inUseFileChannel, Properties info) {
+	InUseFile(AtomicReference<Path> currentFilePath, //
+			  Consumer<FilesystemEvent> eventConsumer, //
+			  String fileSystemOwner, //
+			  SeekableByteChannel inUseFileChannel, //
+			  Properties info, //
+			  ConcurrentMap<Path, Boolean> selfUsedFiles) {
 		this.currentFilePath = currentFilePath;
 		this.eventConsumer = eventConsumer;
 		this.fileSystemOwner = fileSystemOwner;
 		this.inUseFileChannel = inUseFileChannel;
 		this.info = info;
+		this.selfUsedFiles = selfUsedFiles;
 	}
 }
