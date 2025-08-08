@@ -34,7 +34,7 @@ public class CryptoDosFileAttributesTest {
 
 	@BeforeEach
 	public void setup() {
-		when(delegate.size()).thenReturn(0l);
+		when(delegate.size()).thenReturn(0L);
 		when(cryptor.fileHeaderCryptor()).thenReturn(headerCryptor);
 		when(cryptor.fileContentCryptor()).thenReturn(contentCryptor);
 		when(headerCryptor.headerSize()).thenReturn(0);
@@ -61,7 +61,7 @@ public class CryptoDosFileAttributesTest {
 			inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), cryptoFileSystemProperties);
 
 			verify(delegate, times(1)).isArchive();
-			Assertions.assertSame(value, inTest.isArchive());
+			Assertions.assertEquals(value, inTest.isArchive());
 			verify(delegate, times(1)).isArchive();
 		}
 
@@ -73,7 +73,7 @@ public class CryptoDosFileAttributesTest {
 			inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), cryptoFileSystemProperties);
 
 			verify(delegate, times(1)).isHidden();
-			Assertions.assertSame(value, inTest.isHidden());
+			Assertions.assertEquals(value, inTest.isHidden());
 			verify(delegate, times(1)).isHidden();
 		}
 
@@ -85,7 +85,7 @@ public class CryptoDosFileAttributesTest {
 			inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), cryptoFileSystemProperties);
 
 			verify(delegate, times(1)).isReadOnly();
-			Assertions.assertSame(value, inTest.isReadOnly());
+			Assertions.assertEquals(value, inTest.isReadOnly());
 			verify(delegate, times(1)).isReadOnly();
 		}
 
@@ -97,7 +97,7 @@ public class CryptoDosFileAttributesTest {
 			inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), cryptoFileSystemProperties);
 
 			verify(delegate, times(1)).isSystem();
-			Assertions.assertSame(value, inTest.isSystem());
+			Assertions.assertEquals(value, inTest.isSystem());
 			verify(delegate, times(1)).isSystem();
 		}
 
@@ -122,6 +122,6 @@ public class CryptoDosFileAttributesTest {
 			verify(delegate, times(1)).isReadOnly();
 			Assertions.assertTrue(inTest.isReadOnly());
 			verify(delegate, times(1)).isReadOnly();
-
+		}
 	}
 }
