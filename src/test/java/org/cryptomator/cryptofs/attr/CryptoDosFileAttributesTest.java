@@ -7,10 +7,9 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
@@ -19,9 +18,10 @@ import java.util.Optional;
 
 import static org.cryptomator.cryptofs.common.CiphertextFileType.FILE;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class CryptoDosFileAttributesTest {
 
 	private DosFileAttributes delegate = mock(DosFileAttributes.class);
@@ -32,7 +32,7 @@ public class CryptoDosFileAttributesTest {
 	private OpenCryptoFile openCryptoFile = mock(OpenCryptoFile.class);
 	private CryptoFileSystemProperties cryptoFileSystemProperties = mock(CryptoFileSystemProperties.class);
 
-	@BeforeAll
+	@BeforeEach
 	public void setup() {
 		when(delegate.size()).thenReturn(0l);
 		when(cryptor.fileHeaderCryptor()).thenReturn(headerCryptor);
@@ -43,67 +43,73 @@ public class CryptoDosFileAttributesTest {
 	}
 
 	@Nested
-	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 	@DisplayName("on read-write filesystem")
 	public class ReadWriteFileSystem {
 
 		private CryptoDosFileAttributes inTest;
 
-		@BeforeAll
-		public void setup() {
+		@BeforeEach
+		public void beforeEach() {
 			when(cryptoFileSystemProperties.readonly()).thenReturn(false);
-			inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), cryptoFileSystemProperties);
 		}
 
 		@DisplayName("isArchive()")
 		@ParameterizedTest(name = "is {0} if delegate.isArchive() is {0}")
 		@CsvSource({"true", "false"})
-		public void testIsArchiveDelegates(boolean value) {
+		public void testIsArchiveImmutable(boolean value) {
 			when(delegate.isArchive()).thenReturn(value);
+			inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), cryptoFileSystemProperties);
 
+			verify(delegate, times(1)).isArchive();
 			Assertions.assertSame(value, inTest.isArchive());
+			verify(delegate, times(1)).isArchive();
 		}
 
 		@DisplayName("isHidden()")
 		@ParameterizedTest(name = "is {0} if delegate.isHidden() is {0}")
 		@CsvSource({"true", "false"})
-		public void testIsHiddenDelegates(boolean value) {
+		public void testIsHiddenImmutable(boolean value) {
 			when(delegate.isHidden()).thenReturn(value);
+			inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), cryptoFileSystemProperties);
 
+			verify(delegate, times(1)).isHidden();
 			Assertions.assertSame(value, inTest.isHidden());
+			verify(delegate, times(1)).isHidden();
 		}
 
 		@DisplayName("isReadOnly()")
 		@ParameterizedTest(name = "is {0} if delegate.readOnly() is {0}")
 		@CsvSource({"true", "false"})
-		public void testIsReadOnlyDelegates(boolean value) {
+		public void testIsReadOnlyImmutable(boolean value) {
 			when(delegate.isReadOnly()).thenReturn(value);
+			inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), cryptoFileSystemProperties);
 
+			verify(delegate, times(1)).isReadOnly();
 			Assertions.assertSame(value, inTest.isReadOnly());
+			verify(delegate, times(1)).isReadOnly();
 		}
 
 		@DisplayName("isSystem()")
 		@ParameterizedTest(name = "is {0} if delegate.isSystem() is {0}")
 		@CsvSource({"true", "false"})
-		public void testIsSystemDelegates(boolean value) {
+		public void testIsSystemImmutable(boolean value) {
 			when(delegate.isSystem()).thenReturn(value);
+			inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), cryptoFileSystemProperties);
 
+			verify(delegate, times(1)).isSystem();
 			Assertions.assertSame(value, inTest.isSystem());
+			verify(delegate, times(1)).isSystem();
 		}
 
 	}
 
 	@Nested
-	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 	@DisplayName("on read-only filesystem")
 	public class ReadOnlyFileSystem {
 
-		private CryptoDosFileAttributes inTest;
-
-		@BeforeAll
-		public void setup() {
+		@BeforeEach
+		public void beforeEach() {
 			when(cryptoFileSystemProperties.readonly()).thenReturn(true);
-			inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), cryptoFileSystemProperties);
 		}
 
 		@DisplayName("isReadOnly()")
@@ -111,8 +117,11 @@ public class CryptoDosFileAttributesTest {
 		@CsvSource({"true", "false"})
 		public void testIsReadOnlyForReadonlyFileSystem(boolean value) {
 			when(delegate.isReadOnly()).thenReturn(value);
+			var inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), cryptoFileSystemProperties);
 
+			verify(delegate, times(1)).isSystem();
 			Assertions.assertTrue(inTest.isReadOnly());
+			verify(delegate, times(1)).isSystem();
 		}
 
 	}
