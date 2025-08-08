@@ -119,10 +119,9 @@ public class CryptoDosFileAttributesTest {
 			when(delegate.isReadOnly()).thenReturn(value);
 			var inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), cryptoFileSystemProperties);
 
-			verify(delegate, times(1)).isSystem();
+			verify(delegate, times(1)).isReadOnly();
 			Assertions.assertTrue(inTest.isReadOnly());
-			verify(delegate, times(1)).isSystem();
-		}
+			verify(delegate, times(1)).isReadOnly();
 
 	}
 }
