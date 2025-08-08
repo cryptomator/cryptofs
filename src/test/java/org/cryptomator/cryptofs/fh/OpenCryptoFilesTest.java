@@ -16,6 +16,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mock;
 
 public class OpenCryptoFilesTest {
@@ -32,7 +33,7 @@ public class OpenCryptoFilesTest {
 		Mockito.when(subComponent.openCryptoFile()).thenReturn(file);
 
 		Mockito.when(openCryptoFileComponentFactory.create(Mockito.any(), Mockito.any())).thenReturn(subComponent);
-		Mockito.when(file.newFileChannel(Mockito.any())).thenReturn(ciphertextFileChannel);
+		Mockito.when(file.newFileChannel(Mockito.any(), anyBoolean())).thenReturn(ciphertextFileChannel);
 
 		inTest = new OpenCryptoFiles(openCryptoFileComponentFactory);
 	}

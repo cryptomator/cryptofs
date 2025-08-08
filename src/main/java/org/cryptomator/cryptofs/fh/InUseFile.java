@@ -53,16 +53,18 @@ public class InUseFile implements Closeable {
 		info.put("owner", fileSystemOwner);
 	}
 
-	synchronized boolean tryMarkInUse() {
+	synchronized boolean acquire() throws FileAlreadyInUseException {
 		var ciphertextPath = currentFilePath.get();
 		var inUseFilePath = computeInUseFilePath(ciphertextPath);
 		var selfUseSuccessful = false;
 		try {
 			if (isInUse(inUseFilePath, fileSystemOwner)) {
-				eventConsumer.accept(new FileIsInUseEvent(Path.of("yadda"), ciphertextPath, info));
-				return true;
+				eventConsumer.accept(new FileIsInUseEvent(Path.of("dummyCleartextPath"), ciphertextPath, info));
+				throw new FileAlreadyInUseException(ciphertextPath);
 			}
 			selfUseSuccessful = updateInUseFile(inUseFilePath);
+		} catch (FileAlreadyInUseException e) {
+			throw e;
 		} catch (NoSuchFileException e) {
 			LOG.debug("No in-use-file for {} found. Creating it.", ciphertextPath, e);
 			//TODO: delay creation with a CompletionStage (to prevent spam)
@@ -77,7 +79,7 @@ public class InUseFile implements Closeable {
 		if (selfUseSuccessful) {
 			selfUsedFiles.put(ciphertextPath, Boolean.TRUE);
 		}
-		return false;
+		return selfUseSuccessful;
 	}
 
 	private boolean updateInUseFile(Path inUseFilePath) {
@@ -94,7 +96,7 @@ public class InUseFile implements Closeable {
 	 * @throws IOException if the in-use-file does not exist or cannot be read
 	 * @throws IllegalArgumentException if the in-use-file is invalid
 	 */
-	public static boolean isInUse(Path inUseFilePath, String fileSystemOwner) throws IOException, IllegalArgumentException {
+	static boolean isInUse(Path inUseFilePath, String fileSystemOwner) throws IOException, IllegalArgumentException {
 		Properties content = readInUseFile(inUseFilePath);
 		if (!content.get("owner").equals(fileSystemOwner)) {
 			//TODO: check also timestamps

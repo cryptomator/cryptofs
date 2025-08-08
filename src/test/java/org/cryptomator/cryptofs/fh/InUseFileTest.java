@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentMatcher;
 import org.mockito.ArgumentMatchers;
@@ -23,21 +24,13 @@ import java.util.function.Consumer;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 public class InUseFileTest {
 
 	/*
 		To test:
-		* checkOrOwn
+		* acquire
 		* readInUseFile
 		* createInUseFile
 		* writeInUseFile
@@ -61,20 +54,18 @@ public class InUseFileTest {
 	}
 
 	@Test
-	@DisplayName("CheckOrOwn for existing, valid inUseFile with same owner")
-	public void testTryMarkInUseReadExistingSameOwner() throws IOException {
+	@DisplayName("Acquiring existing, valid inUseFile")
+	public void testAcquireExistingSameOwner() throws IOException {
 		var inUseFileSpy = spy(inUseFile);
 
-		var inUseInfo = new Properties();
-		inUseInfo.put("owner", "cryptobot");
 		Path inUsePath = mock(Path.class, "inUseFilePath");
 		try (var classMock = mockStatic(InUseFile.class)) {
-			classMock.when(() -> InUseFile.readInUseFile(inUsePath)).thenReturn(inUseInfo);
+			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenReturn(false);
 			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
 
-			var isInUse = inUseFileSpy.tryMarkInUse();
+			var isInUse = inUseFileSpy.acquire();
 
-			Assertions.assertFalse(isInUse);
+			Assertions.assertTrue(isInUse);
 			verify(inUseFileSpy, never()).createInUseFile(inUsePath);
 			verify(inUseFileSpy, never()).stealInUseFile(inUsePath);
 			verify(selfUsedFiles).put(ciphertextPath, true);
@@ -83,21 +74,19 @@ public class InUseFileTest {
 	}
 
 	@Test
-	@DisplayName("CheckOrOwn for existing, valid inUseFile with different owner")
-	public void testTryMarkInUseReadExistingDifferentOwner() throws IOException {
+	@DisplayName("Acquiring existing, valid inUseFile with different owner throws exception")
+	public void testAcquireExistingDifferentOwnerThrows() throws IOException {
 		var inUseFileSpy = spy(inUseFile);
 
-		var inUseInfo = new Properties();
-		inUseInfo.put("owner", "cryptobot3000");
 		Path inUsePath = mock(Path.class, "inUseFilePath");
 		try (var classMock = mockStatic(InUseFile.class)) {
-			classMock.when(() -> InUseFile.readInUseFile(inUsePath)).thenReturn(inUseInfo);
-			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenCallRealMethod();
+			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenReturn(true);
 			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
 
-			var isInUse = inUseFileSpy.tryMarkInUse();
+			Executable test = () -> inUseFile.acquire();
 
-			Assertions.assertTrue(isInUse);
+			Assertions.assertThrows(FileAlreadyInUseException.class, test);
+
 			verify(inUseFileSpy, never()).createInUseFile(inUsePath);
 			verify(inUseFileSpy, never()).stealInUseFile(inUsePath);
 			var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent;
@@ -107,19 +96,18 @@ public class InUseFileTest {
 	}
 
 	@Test
-	@DisplayName("CheckOrOwn for existing, invalid inUseFile steals it")
-	public void testTryMarkInUseReadExistingInvalid() throws IOException {
+	@DisplayName("Acquire existing, invalid inUseFile steals it")
+	public void testAcquireReadExistingInvalid() throws IOException {
 		var inUseFileSpy = spy(inUseFile);
 		Path inUsePath = mock(Path.class, "inUseFilePath");
 		doReturn(true).when(inUseFileSpy).stealInUseFile(inUsePath);
 		try (var classMock = mockStatic(InUseFile.class)) {
-			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenCallRealMethod();
-			classMock.when(() -> InUseFile.readInUseFile(inUsePath)).thenThrow(IllegalArgumentException.class);
+			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenThrow(IllegalArgumentException.class);
 			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
 
-			var isInUse = inUseFileSpy.tryMarkInUse();
+			var isAcquired = inUseFileSpy.acquire();
 
-			Assertions.assertFalse(isInUse);
+			Assertions.assertTrue(isAcquired);
 			verify(inUseFileSpy).stealInUseFile(inUsePath);
 			verify(inUseFileSpy, never()).createInUseFile(inUsePath);
 			verify(selfUsedFiles).put(ciphertextPath, true);
@@ -127,19 +115,19 @@ public class InUseFileTest {
 	}
 
 	@Test
-	@DisplayName("tryMarkInUse for existing, invalid inUseFile with failing steal does nothing")
-	public void testTryMarkInUseReadExistingInvalidFailedSteal() throws IOException {
+	@DisplayName("Acquire existing, invalid inUseFile with failing steal")
+	public void testAcquireReadExistingInvalidFailedSteal() throws IOException {
 		var inUseFileSpy = spy(inUseFile);
 		Path inUsePath = mock(Path.class, "inUseFilePath");
 		doReturn(false).when(inUseFileSpy).stealInUseFile(inUsePath);
 		try (var classMock = mockStatic(InUseFile.class)) {
-			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenCallRealMethod();
-			classMock.when(() -> InUseFile.readInUseFile(inUsePath)).thenThrow(IllegalArgumentException.class);
+			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenThrow(IllegalArgumentException.class);
 			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
+			when(inUseFileSpy.stealInUseFile(inUsePath)).thenReturn(false);
 
-			var isInUse = inUseFileSpy.tryMarkInUse();
+			var isAcquired = inUseFileSpy.acquire();
 
-			Assertions.assertFalse(isInUse);
+			Assertions.assertFalse(isAcquired);
 			verify(inUseFileSpy).stealInUseFile(inUsePath);
 			verify(inUseFileSpy, never()).createInUseFile(inUsePath);
 			verify(selfUsedFiles, never()).put(any(), anyBoolean());
@@ -147,19 +135,18 @@ public class InUseFileTest {
 	}
 
 	@Test
-	@DisplayName("tryMarkInUse creates inUseFile if it does not exist")
-	public void testTryMarkInUseCreateNew() throws IOException {
+	@DisplayName("Acquire not existing inUseFile creates it")
+	public void testAcquireCreateNew() throws IOException {
 		var inUseFileSpy = spy(inUseFile);
 		Path inUsePath = mock(Path.class, "inUseFilePath");
 		doReturn(true).when(inUseFileSpy).createInUseFile(inUsePath);
 		try (var classMock = mockStatic(InUseFile.class)) {
-			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenCallRealMethod();
-			classMock.when(() -> InUseFile.readInUseFile(inUsePath)).thenThrow(NoSuchFileException.class);
+			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenThrow(NoSuchFileException.class);
 			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
 
-			var isInUse = inUseFileSpy.tryMarkInUse();
+			var isAcquired = inUseFileSpy.acquire();
 
-			Assertions.assertFalse(isInUse);
+			Assertions.assertTrue(isAcquired);
 			verify(inUseFileSpy).createInUseFile(inUsePath);
 			verify(inUseFileSpy, never()).stealInUseFile(inUsePath);
 			verify(selfUsedFiles).put(ciphertextPath, true);
@@ -167,19 +154,19 @@ public class InUseFileTest {
 	}
 
 	@Test
-	@DisplayName("tryMarkInUse with failing create inUseFile")
-	public void testTryMarkInUseCreateNewFailing() throws IOException {
+	@DisplayName("Acquire not existing inUseFile with failing create")
+	public void testAcquireCreateNewFailing() throws IOException {
 		var inUseFileSpy = spy(inUseFile);
 		Path inUsePath = mock(Path.class, "inUseFilePath");
 		doReturn(false).when(inUseFileSpy).createInUseFile(inUsePath);
 		try (var classMock = mockStatic(InUseFile.class)) {
-			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenCallRealMethod();
-			classMock.when(() -> InUseFile.readInUseFile(inUsePath)).thenThrow(NoSuchFileException.class);
+			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenThrow(NoSuchFileException.class);
 			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
+			when(inUseFileSpy.createInUseFile(inUsePath)).thenReturn(false);
 
-			var isInUse = inUseFileSpy.tryMarkInUse();
+			var isAcquired = inUseFileSpy.acquire();
 
-			Assertions.assertFalse(isInUse);
+			Assertions.assertFalse(isAcquired);
 			verify(inUseFileSpy).createInUseFile(inUsePath);
 			verify(inUseFileSpy, never()).stealInUseFile(inUsePath);
 			verify(selfUsedFiles, never()).put(any(), anyBoolean());

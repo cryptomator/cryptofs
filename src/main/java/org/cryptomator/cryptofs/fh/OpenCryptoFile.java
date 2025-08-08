@@ -59,7 +59,7 @@ public class OpenCryptoFile implements Closeable {
 	 * @return A new file channel. Ideally used in a try-with-resource statement. If the channel is not properly closed, this OpenCryptoFile will stay open indefinite.
 	 * @throws IOException
 	 */
-	public synchronized FileChannel newFileChannel(EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
+	public synchronized FileChannel newFileChannel(EffectiveOpenOptions options, boolean skipUsageCheck, FileAttribute<?>... attrs) throws IOException {
 		Path path = currentFilePath.get();
 		if (path == null) {
 			throw new IllegalStateException("Cannot create file channel to deleted file");
@@ -69,9 +69,9 @@ public class OpenCryptoFile implements Closeable {
 
 		var openChannels = openChannelsCount.incrementAndGet(); // synchronized context, hence we can proactively increase the number
 		try {
-			// in-use section
-			if (openChannels == 1 && inUseFile.tryMarkInUse()) { //TODO: add ignore mechanic
-				throw new FileIsInUseException(path);
+			//TODO: what about read-only file channels? Then we need to update logic, that first writable channel needs to create this file
+			if (openChannels == 1 && !skipUsageCheck) {
+				inUseFile.acquire();
 			}
 			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
 			initFileHeader(options, ciphertextFileChannel);

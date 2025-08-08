@@ -8,10 +8,10 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.fh;
 
+import jakarta.inject.Inject;
 import org.cryptomator.cryptofs.CryptoFileSystemScoped;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 
-import jakarta.inject.Inject;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;
@@ -51,7 +51,7 @@ public class OpenCryptoFiles implements Closeable {
 	}
 
 	/**
-	 * Opens a file to {@link OpenCryptoFile#newFileChannel(EffectiveOpenOptions, java.nio.file.attribute.FileAttribute[]) retrieve a FileChannel}. If this file is already opened, a shared instance is returned.
+	 * Opens a file to {@link OpenCryptoFile#newFileChannel(EffectiveOpenOptions, boolean, java.nio.file.attribute.FileAttribute[]) retrieve a FileChannel}. If this file is already opened, a shared instance is returned.
 	 * Getting the file channel should be the next invocation, since the {@link OpenFileScoped lifecycle} of the OpenFile strictly depends on the lifecycle of the channel.
 	 *
 	 * @param ciphertextPath Path of the file to open
@@ -64,13 +64,13 @@ public class OpenCryptoFiles implements Closeable {
 	}
 
 	public void writeCiphertextFile(Path ciphertextPath, EffectiveOpenOptions openOptions, ByteBuffer contents) throws IOException {
-		try (OpenCryptoFile f = getOrCreate(ciphertextPath); FileChannel ch = f.newFileChannel(openOptions)) {
+		try (OpenCryptoFile f = getOrCreate(ciphertextPath); FileChannel ch = f.newFileChannel(openOptions, false)) { //TODO: test
 			ch.write(contents);
 		}
 	}
 
 	public ByteBuffer readCiphertextFile(Path ciphertextPath, EffectiveOpenOptions openOptions, int maxBufferSize) throws BufferUnderflowException, IOException {
-		try (OpenCryptoFile f = getOrCreate(ciphertextPath); FileChannel ch = f.newFileChannel(openOptions)) {
+		try (OpenCryptoFile f = getOrCreate(ciphertextPath); FileChannel ch = f.newFileChannel(openOptions, false)) {
 			if (ch.size() > maxBufferSize) {
 				throw new BufferUnderflowException();
 			}

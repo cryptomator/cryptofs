@@ -83,29 +83,46 @@ public class OpenCryptoFileTest {
 	// tests https://github.com/cryptomator/cryptofs/issues/51
 	@Test
 	@DisplayName("if the first file channel fails to open, call OpenCryptoFile::close")
-	public void testFailedFirstFileChannelImmediatelyCallsClose() {
+	public void testFailedFirstFileChannelImmediatelyCallsClose() throws FileAlreadyInUseException {
 		UncheckedIOException expectedException = new UncheckedIOException(new IOException("fail!"));
 		EffectiveOpenOptions options = Mockito.mock(EffectiveOpenOptions.class);
 		Mockito.when(options.createOpenOptionsForEncryptedFile()).thenThrow(expectedException);
-		when(inUseFile.tryMarkInUse()).thenReturn(false);
+		when(inUseFile.acquire()).thenReturn(true);
 		OpenCryptoFile openCryptoFile = spy(new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, fileSize, lastModified, openCryptoFileComponent, inUseFile));
 
 		UncheckedIOException exception = Assertions.assertThrows(UncheckedIOException.class, () -> {
-			openCryptoFile.newFileChannel(options);
+			openCryptoFile.newFileChannel(options, false);
 		});
 		Assertions.assertSame(expectedException, exception);
 		verify(openCryptoFile).close();
 	}
 
 	@Test
-	@DisplayName("if the file is in use, throw exception")
-	public void testInUseFileThrowsException() {
+	@DisplayName("skip inUseFile, if flag is set")
+	public void testSkipInUseCheck() throws FileAlreadyInUseException {
+		UncheckedIOException expectedException = new UncheckedIOException(new IOException("fail!"));
 		EffectiveOpenOptions options = Mockito.mock(EffectiveOpenOptions.class);
-		when(inUseFile.tryMarkInUse()).thenReturn(true);
+		Mockito.when(options.createOpenOptionsForEncryptedFile()).thenThrow(expectedException);
+		when(inUseFile.acquire()).thenThrow(FileAlreadyInUseException.class);
+		OpenCryptoFile openCryptoFile = spy(new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, fileSize, lastModified, openCryptoFileComponent, inUseFile));
+
+		UncheckedIOException exception = Assertions.assertThrows(UncheckedIOException.class, () -> {
+			openCryptoFile.newFileChannel(options, true);
+		});
+		Assertions.assertSame(expectedException, exception);
+		verify(openCryptoFile).close();
+		verify(inUseFile, never()).acquire();
+	}
+
+	@Test
+	@DisplayName("if the file is in use, throw exception")
+	public void testInUseFileThrowsException() throws FileAlreadyInUseException {
+		EffectiveOpenOptions options = Mockito.mock(EffectiveOpenOptions.class);
+		when(inUseFile.acquire()).thenThrow(FileAlreadyInUseException.class);
 		OpenCryptoFile openCryptoFile = new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, fileSize, lastModified, openCryptoFileComponent, inUseFile);
 
-		Assertions.assertThrows(FileIsInUseException.class, () -> {
-			openCryptoFile.newFileChannel(options);
+		Assertions.assertThrows(FileAlreadyInUseException.class, () -> {
+			openCryptoFile.newFileChannel(options, false);
 		});
 	}
 
@@ -124,19 +141,20 @@ public class OpenCryptoFileTest {
 		Mockito.when(openCryptoFileComponent.newChannelComponent()).thenReturn(channelComponentFactory);
 		Mockito.when(channelComponentFactory.create(any(), any(), any())).thenReturn(channelComponent);
 		Mockito.when(channelComponent.channel()).thenReturn(cleartextChannel);
-		when(inUseFile.tryMarkInUse()).thenReturn(false);
+		when(inUseFile.acquire()).thenReturn(false);
 
 		EffectiveOpenOptions failingOptions = Mockito.mock(EffectiveOpenOptions.class);
 		Mockito.when(failingOptions.createOpenOptionsForEncryptedFile()).thenThrow(expectedException);
 		OpenCryptoFile openCryptoFile = spy(new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, fileSize, lastModified, openCryptoFileComponent, inUseFile));
 
-		try (var channel = openCryptoFile.newFileChannel(options)) {
+		try (var channel = openCryptoFile.newFileChannel(options, false)) {
 			UncheckedIOException exception = Assertions.assertThrows(UncheckedIOException.class, () -> {
-				openCryptoFile.newFileChannel(failingOptions);
+				openCryptoFile.newFileChannel(failingOptions, false);
 			});
 			Assertions.assertSame(expectedException, exception);
 			verify(openCryptoFile, never()).close();
 		}
+		verify(inUseFile, times(1)).acquire();
 	}
 
 	@Test
@@ -152,9 +170,9 @@ public class OpenCryptoFileTest {
 		Mockito.when(channelComponentFactory.create(any(), any(), any())).thenReturn(channelComponent);
 		Mockito.when(channelComponent.channel()).thenReturn(cleartextChannel);
 		OpenCryptoFile openCryptoFile = new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, fileSize, lastModified, openCryptoFileComponent, inUseFile);
-		when(inUseFile.tryMarkInUse()).thenReturn(false);
+		when(inUseFile.acquire()).thenReturn(true);
 
-		openCryptoFile.newFileChannel(options);
+		openCryptoFile.newFileChannel(options, false);
 		verify(cleartextChannel).truncate(0L);
 	}
 
@@ -275,11 +293,11 @@ public class OpenCryptoFileTest {
 		public void createFileChannel() throws IOException {
 			var attrs = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwxr-x---"));
 			EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), readonlyFlag);
-			when(inUseFile.tryMarkInUse()).thenReturn(false);
-			FileChannel ch = openCryptoFile.newFileChannel(options, attrs);
+			when(inUseFile.acquire()).thenReturn(false);
+			FileChannel ch = openCryptoFile.newFileChannel(options, false, attrs);
 			Assertions.assertSame(cleartextFileChannel, ch);
 			verify(chunkIO).registerChannel(ciphertextChannel.get(), true);
-			verify(inUseFile).tryMarkInUse();
+			verify(inUseFile).acquire();
 		}
 
 		@Test
@@ -299,7 +317,7 @@ public class OpenCryptoFileTest {
 			Mockito.when(options.createOpenOptionsForEncryptedFile()).thenThrow(expectedException);
 
 			UncheckedIOException exception = Assertions.assertThrows(UncheckedIOException.class, () -> {
-				openCryptoFile.newFileChannel(options);
+				openCryptoFile.newFileChannel(options, false);
 			});
 			Assertions.assertSame(expectedException, exception);
 			verify(closeListener, Mockito.never()).close(CURRENT_FILE_PATH.get(), openCryptoFile);

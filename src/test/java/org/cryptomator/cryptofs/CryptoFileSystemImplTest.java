@@ -71,6 +71,8 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -455,7 +457,7 @@ public class CryptoFileSystemImplTest {
 			when(ciphertextPath.getFilePath()).thenReturn(ciphertextFilePath);
 			when(openCryptoFiles.getOrCreate(ciphertextFilePath)).thenReturn(openCryptoFile);
 			when(ciphertextFilePath.getName(3)).thenReturn(mock(CryptoPath.class, "path.c9r"));
-			when(openCryptoFile.newFileChannel(any(), any(FileAttribute[].class))).thenReturn(fileChannel);
+			when(openCryptoFile.newFileChannel(any(), anyBoolean(),  any(FileAttribute[].class))).thenReturn(fileChannel);
 		}
 
 		@Nested
@@ -509,7 +511,7 @@ public class CryptoFileSystemImplTest {
 				FileChannel ch = inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), attrs);
 
 				Assertions.assertSame(fileChannel, ch);
-				verify(openCryptoFile).newFileChannel(Mockito.any(), Mockito.eq(attrs));
+				verify(openCryptoFile).newFileChannel(Mockito.any(), eq(false), Mockito.eq(attrs));
 			}
 
 		}
