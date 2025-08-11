@@ -17,6 +17,7 @@ import java.nio.file.attribute.DosFileAttributes;
 import java.util.Optional;
 
 import static org.cryptomator.cryptofs.common.CiphertextFileType.FILE;
+import static org.mockito.Mockito.atMostOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -119,9 +120,9 @@ public class CryptoDosFileAttributesTest {
 			when(delegate.isReadOnly()).thenReturn(value);
 			var inTest = new CryptoDosFileAttributes(delegate, FILE, path, cryptor, Optional.of(openCryptoFile), cryptoFileSystemProperties);
 
-			verify(delegate, Mockito.atMostOnce()).isReadOnly();
+			verify(delegate, atMostOnce()).isReadOnly();
 			Assertions.assertTrue(inTest.isReadOnly());
-			verify(delegate, Mockito.atMostOnce()).isReadOnly();
+			verify(delegate, atMostOnce()).isReadOnly();
 		}
 	}
 }
