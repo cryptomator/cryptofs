@@ -51,7 +51,7 @@ public class InUseFileTest {
 
 		Path inUsePath = mock(Path.class, "inUseFilePath");
 		try (var classMock = mockStatic(InUseFile.class)) {
-			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenReturn(false);
+			classMock.when(() -> InUseFile.isInUseInternal(eq(inUsePath), any())).thenReturn(false);
 			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
 
 			var isInUse = inUseFileSpy.acquire();
@@ -70,7 +70,7 @@ public class InUseFileTest {
 
 		Path inUsePath = mock(Path.class, "inUseFilePath");
 		try (var classMock = mockStatic(InUseFile.class)) {
-			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenReturn(true);
+			classMock.when(() -> InUseFile.isInUseInternal(eq(inUsePath), any())).thenReturn(true);
 			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
 
 			Executable test = () -> inUseFile.acquire();
@@ -89,7 +89,7 @@ public class InUseFileTest {
 		Path inUsePath = mock(Path.class, "inUseFilePath");
 		doReturn(true).when(inUseFileSpy).stealInUseFile(inUsePath);
 		try (var classMock = mockStatic(InUseFile.class)) {
-			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenThrow(IllegalArgumentException.class);
+			classMock.when(() -> InUseFile.isInUseInternal(eq(inUsePath), any())).thenThrow(IllegalArgumentException.class);
 			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
 
 			var isAcquired = inUseFileSpy.acquire();
@@ -107,7 +107,7 @@ public class InUseFileTest {
 		Path inUsePath = mock(Path.class, "inUseFilePath");
 		doReturn(false).when(inUseFileSpy).stealInUseFile(inUsePath);
 		try (var classMock = mockStatic(InUseFile.class)) {
-			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenThrow(IllegalArgumentException.class);
+			classMock.when(() -> InUseFile.isInUseInternal(eq(inUsePath), any())).thenThrow(IllegalArgumentException.class);
 			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
 			when(inUseFileSpy.stealInUseFile(inUsePath)).thenReturn(false);
 
@@ -126,7 +126,7 @@ public class InUseFileTest {
 		Path inUsePath = mock(Path.class, "inUseFilePath");
 		doReturn(true).when(inUseFileSpy).createInUseFile(inUsePath);
 		try (var classMock = mockStatic(InUseFile.class)) {
-			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenThrow(NoSuchFileException.class);
+			classMock.when(() -> InUseFile.isInUseInternal(eq(inUsePath), any())).thenThrow(NoSuchFileException.class);
 			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
 
 			var isAcquired = inUseFileSpy.acquire();
@@ -144,7 +144,7 @@ public class InUseFileTest {
 		Path inUsePath = mock(Path.class, "inUseFilePath");
 		doReturn(false).when(inUseFileSpy).createInUseFile(inUsePath);
 		try (var classMock = mockStatic(InUseFile.class)) {
-			classMock.when(() -> InUseFile.isInUse(eq(inUsePath), any())).thenThrow(NoSuchFileException.class);
+			classMock.when(() -> InUseFile.isInUseInternal(eq(inUsePath), any())).thenThrow(NoSuchFileException.class);
 			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
 			when(inUseFileSpy.createInUseFile(inUsePath)).thenReturn(false);
 

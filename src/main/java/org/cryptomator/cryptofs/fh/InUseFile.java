@@ -49,7 +49,7 @@ public class InUseFile implements Closeable {
 		var inUseFilePath = computeInUseFilePath(ciphertextPath);
 		var selfUseSuccessful = false;
 		try {
-			if (isInUse(inUseFilePath, fileSystemOwner)) {
+			if (isInUseInternal(inUseFilePath, fileSystemOwner)) {
 				throw new FileAlreadyInUseException(ciphertextPath);
 			}
 			selfUseSuccessful = updateInUseFile(inUseFilePath);
@@ -82,7 +82,7 @@ public class InUseFile implements Closeable {
 	 * @throws IOException if the in-use-file does not exist or cannot be read
 	 * @throws IllegalArgumentException if the in-use-file is invalid
 	 */
-	static boolean isInUse(Path inUseFilePath, String fileSystemOwner) throws IOException, IllegalArgumentException {
+	static boolean isInUseInternal(Path inUseFilePath, String fileSystemOwner) throws IOException, IllegalArgumentException {
 		Properties content = readInUseFile(inUseFilePath);
 		if (!content.get("owner").equals(fileSystemOwner)) {
 			//TODO: check also timestamps
