@@ -19,6 +19,10 @@ import org.cryptomator.cryptofs.common.FinallyUtil;
 import org.cryptomator.cryptofs.dir.CiphertextDirectoryDeleter;
 import org.cryptomator.cryptofs.dir.DirectoryStreamFactory;
 import org.cryptomator.cryptofs.dir.DirectoryStreamFilters;
+import org.cryptomator.cryptofs.event.FileIsInUseEvent;
+import org.cryptomator.cryptofs.event.FilesystemEvent;
+import org.cryptomator.cryptofs.fh.FileAlreadyInUseException;
+import org.cryptomator.cryptofs.fh.InUseFile;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptolib.api.Cryptor;
 
@@ -61,7 +65,9 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -96,6 +102,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	private final CryptoPath rootPath;
 	private final CryptoPath emptyPath;
 	private final FileNameDecryptor fileNameDecryptor;
+	private final Consumer<FilesystemEvent> eventConsumer;
 
 	private volatile boolean open = true;
 
@@ -105,7 +112,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 								PathMatcherFactory pathMatcherFactory, DirectoryStreamFactory directoryStreamFactory, DirectoryIdProvider dirIdProvider, DirectoryIdBackup dirIdBackup, //
 								AttributeProvider fileAttributeProvider, AttributeByNameProvider fileAttributeByNameProvider, AttributeViewProvider fileAttributeViewProvider, //
 								OpenCryptoFiles openCryptoFiles, Symlinks symlinks, FinallyUtil finallyUtil, CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag, //
-								CryptoFileSystemProperties fileSystemProperties, FileNameDecryptor fileNameDecryptor) {
+								CryptoFileSystemProperties fileSystemProperties, FileNameDecryptor fileNameDecryptor, Consumer<FilesystemEvent> eventConsumer) {
 		this.provider = provider;
 		this.cryptoFileSystems = cryptoFileSystems;
 		this.pathToVault = pathToVault;
@@ -131,6 +138,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		this.rootPath = cryptoPathFactory.rootFor(this);
 		this.emptyPath = cryptoPathFactory.emptyFor(this);
 		this.fileNameDecryptor = fileNameDecryptor;
+		this.eventConsumer = eventConsumer;
 	}
 
 	@Override
@@ -402,8 +410,9 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			Files.createDirectories(ciphertextPath.getRawPath()); // suppresses FileAlreadyExists
 		}
 
-		FileChannel ch = openCryptoFiles.getOrCreate(ciphertextFilePath).newFileChannel(options,false, attrs); // might throw FileAlreadyExists
+		FileChannel ch = null;
 		try {
+			ch = openCryptoFiles.getOrCreate(ciphertextFilePath).newFileChannel(options,false, attrs); // might throw FileAlreadyExists
 			if (options.writable()) {
 				ciphertextPath.persistLongFileName();
 				stats.incrementAccessesWritten();
@@ -414,7 +423,12 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			stats.incrementAccesses();
 			return ch;
 		} catch (Exception e) {
-			ch.close();
+			if (e instanceof FileAlreadyInUseException) {
+				eventConsumer.accept(new FileIsInUseEvent(cleartextFilePath, ciphertextFilePath, new Properties())); //TODO: properties?
+			}
+			if(ch != null) {
+				ch.close();
+			}
 			throw e;
 		}
 	}

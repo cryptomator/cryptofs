@@ -9,6 +9,10 @@ import org.cryptomator.cryptofs.common.FinallyUtil;
 import org.cryptomator.cryptofs.common.RunnableThrowingException;
 import org.cryptomator.cryptofs.dir.CiphertextDirectoryDeleter;
 import org.cryptomator.cryptofs.dir.DirectoryStreamFactory;
+import org.cryptomator.cryptofs.event.FileIsInUseEvent;
+import org.cryptomator.cryptofs.event.FilesystemEvent;
+import org.cryptomator.cryptofs.fh.FileAlreadyInUseException;
+import org.cryptomator.cryptofs.fh.InUseFile;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles.TwoPhaseMove;
@@ -22,6 +26,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatcher;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -64,6 +70,7 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
@@ -108,6 +115,7 @@ public class CryptoFileSystemImplTest {
 	private final ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 	private final CryptoFileSystemProperties fileSystemProperties = mock(CryptoFileSystemProperties.class);
 	private final FileNameDecryptor filenameDecryptor = mock(FileNameDecryptor.class);
+	private final Consumer<FilesystemEvent> eventConsumer = mock(Consumer.class);
 
 	private final CryptoPath root = mock(CryptoPath.class);
 	private final CryptoPath empty = mock(CryptoPath.class);
@@ -130,7 +138,7 @@ public class CryptoFileSystemImplTest {
 				pathMatcherFactory, directoryStreamFactory, dirIdProvider, dirIdBackup, //
 				fileAttributeProvider, fileAttributeByNameProvider, fileAttributeViewProvider, //
 				openCryptoFiles, symlinks, finallyUtil, ciphertextDirDeleter, readonlyFlag, //
-				fileSystemProperties, filenameDecryptor);
+				fileSystemProperties, filenameDecryptor, eventConsumer);
 	}
 
 	@Test
@@ -552,6 +560,17 @@ public class CryptoFileSystemImplTest {
 			Assertions.assertSame(fileChannel, ch);
 			verify(readonlyFlag, Mockito.atLeastOnce()).assertWritable();
 			verify(ciphertextPath).persistLongFileName();
+		}
+
+		@Test
+		@DisplayName("newFileChannel fails if used by another file")
+		public void testNewFileChannelInUseFailure() throws IOException {
+			when(openCryptoFile.newFileChannel(any(), eq(false))).thenThrow(FileAlreadyInUseException.class);
+
+			Assertions.assertThrows(FileAlreadyInUseException.class, () -> inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.WRITE)));
+			var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent
+					&& ((FileIsInUseEvent) ev).cleartext().equals(cleartextPath);
+			verify(eventConsumer).accept(ArgumentMatchers.argThat(isFileIsInUseEvent));
 		}
 
 	}

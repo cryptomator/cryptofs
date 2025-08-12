@@ -1,47 +1,39 @@
 package org.cryptomator.cryptofs.fh;
 
 import org.cryptomator.cryptofs.common.Constants;
-import org.cryptomator.cryptofs.event.FileIsInUseEvent;
-import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.io.TempDir;
-import org.mockito.ArgumentMatcher;
-import org.mockito.ArgumentMatchers;
 
 import java.io.IOException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Properties;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-public class InUseFileTest {
 
-	/*
-		To test:
-		* acquire
-		* readInUseFile
-		* createInUseFile
-		* writeInUseFile
-		* ownInUseFile
-		* close
-		* getInUseFilePath
-	 */
+/*
+	To test:
+	* acquire
+	* readInUseFile
+	* createInUseFile
+	* writeInUseFile
+	* ownInUseFile
+	* close
+	* getInUseFilePath
+ */
+public class InUseFileTest {
 
 	Path ciphertextPath = mock(Path.class, "ciphertextPath");
 	AtomicReference<Path> currentFilePath = new AtomicReference<>();
-	Consumer<FilesystemEvent> eventConsumer = mock(Consumer.class);
 	SeekableByteChannel inUseChannel = mock(SeekableByteChannel.class);
 	Properties info = new Properties();
 	InUseFile inUseFile;
@@ -49,7 +41,7 @@ public class InUseFileTest {
 	@BeforeEach
 	public void beforeEach() {
 		currentFilePath.set(ciphertextPath);
-		inUseFile = new InUseFile(currentFilePath, eventConsumer, "cryptobot", inUseChannel, info);
+		inUseFile = new InUseFile(currentFilePath, "cryptobot", inUseChannel, info);
 	}
 
 	@Test
@@ -87,8 +79,6 @@ public class InUseFileTest {
 
 			verify(inUseFileSpy, never()).createInUseFile(inUsePath);
 			verify(inUseFileSpy, never()).stealInUseFile(inUsePath);
-			var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent;
-			verify(eventConsumer).accept(ArgumentMatchers.argThat(isFileIsInUseEvent));
 		}
 	}
 
@@ -212,8 +202,8 @@ public class InUseFileTest {
 		Path inUsePath = mock(Path.class, "inUseFilePath");
 		try (var classMock = mockStatic(InUseFile.class)) {
 			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
-			doThrow(IOException.class).when(inUseFileSpy).deleteInUseFile(any());
 
+			doThrow(IOException.class).when(inUseFileSpy).deleteInUseFile(any());
 			Assertions.assertDoesNotThrow(inUseFileSpy::close);
 
 			doThrow(IOException.class).when(inUseChannel).close();
@@ -221,5 +211,58 @@ public class InUseFileTest {
 		}
 	}
 
+	@Test
+	@DisplayName("Closing after first close() does nothing")
+	public void testClosedForGood() throws IOException {
+		var inUseFileSpy = spy(inUseFile);
+		Path inUsePath = mock(Path.class, "inUseFilePath");
+		try (var classMock = mockStatic(InUseFile.class)) {
+			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
+			doNothing().when(inUseFileSpy).deleteInUseFile(any());
+			doNothing().when(inUseChannel).close();
 
+			Assertions.assertDoesNotThrow(inUseFileSpy::close);
+			verify(inUseChannel, times(1)).close();
+			verify(inUseFileSpy, times(1)).deleteInUseFile(inUsePath);
+
+			Assertions.assertDoesNotThrow(inUseFileSpy::close);
+			verifyNoMoreInteractions(inUseChannel);
+			verify(inUseFileSpy, times(1)).deleteInUseFile(inUsePath);
+		}
+	}
+
+	@Test
+	@DisplayName("Closing with failure still marks the file as closed")
+	public void testClosedForGoodWithFailure() throws IOException {
+		var inUseFileSpy = spy(inUseFile);
+		Path inUsePath = mock(Path.class, "inUseFilePath");
+		try (var classMock = mockStatic(InUseFile.class)) {
+			classMock.when(() -> InUseFile.computeInUseFilePath(any())).thenReturn(inUsePath);
+			doThrow(IOException.class).when(inUseFileSpy).deleteInUseFile(any());
+			doThrow(IOException.class).when(inUseChannel).close();
+
+			Assertions.assertDoesNotThrow(inUseFileSpy::close);
+			verify(inUseChannel, times(1)).close();
+			verify(inUseFileSpy, times(1)).deleteInUseFile(inUsePath);
+
+			Assertions.assertDoesNotThrow(inUseFileSpy::close);
+			verifyNoMoreInteractions(inUseChannel);
+			verify(inUseFileSpy, times(1)).deleteInUseFile(inUsePath);
+		}
+	}
+
+	@Test
+	@DisplayName("Closing with null as currentFilePath skips deletion")
+	public void testCloseWithNullFilePath() throws IOException {
+		currentFilePath.set(null);
+		var inUseFileSpy = spy(inUseFile);
+		try (var classMock = mockStatic(InUseFile.class)) {
+			doNothing().when(inUseChannel).close();
+
+			Assertions.assertDoesNotThrow(inUseFileSpy::close);
+
+			verify(inUseFileSpy, never()).deleteInUseFile(any());
+			classMock.verify(() -> InUseFile.computeInUseFilePath(any()), never());
+		}
+	}
 }
