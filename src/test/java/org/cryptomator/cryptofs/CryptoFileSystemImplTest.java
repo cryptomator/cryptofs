@@ -604,12 +604,41 @@ public class CryptoFileSystemImplTest {
 		}
 
 		@Test
-		public void testDeleteExistingFile() throws IOException {
+		public void testDeleteRegularExistingFile() throws IOException {
+			var inUsePath = mock(Path.class, "in use file");
+			when(inUsePath.getFileSystem()).thenReturn(physicalFs);
+			when(cryptoPathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
+			when(physicalFsProv.deleteIfExists(ciphertextRawPath)).thenReturn(true);
+			when(physicalFsProv.deleteIfExists(inUsePath)).thenReturn(true);
+			doNothing().when(openCryptoFiles).delete(Mockito.any());
+			when(ciphertextPath.isShortened()).thenReturn(false);
+
+
+			try(var inUseClassMock = mockStatic(InUseFile.class)) {
+				inUseClassMock.when(() -> InUseFile.computeInUseFilePath(ciphertextFilePath)).thenReturn(inUsePath);
+				inTest.delete(cleartextPath);
+
+				inUseClassMock.verify(() -> InUseFile.computeInUseFilePath(ciphertextFilePath));
+			}
+
+			verify(readonlyFlag).assertWritable();
+			verify(openCryptoFiles).delete(ciphertextFilePath);
+			verify(physicalFsProv).deleteIfExists(ciphertextRawPath);
+			verify(physicalFsProv).deleteIfExists(inUsePath);
+		}
+
+		@Test
+		public void testDeleteShortenedExistingFile() throws IOException {
 			when(cryptoPathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
 			when(physicalFsProv.deleteIfExists(ciphertextRawPath)).thenReturn(true);
 			doNothing().when(openCryptoFiles).delete(Mockito.any());
+			when(ciphertextPath.isShortened()).thenReturn(true);
 
-			inTest.delete(cleartextPath);
+			try(var inUseClassMock = mockStatic(InUseFile.class)) {
+				inTest.delete(cleartextPath);
+
+				inUseClassMock.verify(() -> InUseFile.computeInUseFilePath(ciphertextFilePath), never());
+			}
 
 			verify(readonlyFlag).assertWritable();
 			verify(openCryptoFiles).delete(ciphertextFilePath);

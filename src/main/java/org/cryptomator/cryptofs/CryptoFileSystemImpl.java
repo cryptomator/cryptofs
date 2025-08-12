@@ -442,11 +442,25 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		CiphertextFilePath ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextPath);
 		switch (ciphertextFileType) {
 			case DIRECTORY -> deleteDirectory(cleartextPath, ciphertextPath);
-			case FILE, SYMLINK -> deleteFileOrSymlink(ciphertextPath);
+			case FILE -> deleteFile(ciphertextPath);
+			case SYMLINK -> deleteSymlink(ciphertextPath);
 		}
 	}
 
-	private void deleteFileOrSymlink(CiphertextFilePath ciphertextPath) throws IOException {
+	private void deleteFile(CiphertextFilePath ciphertextPath) throws IOException {
+		openCryptoFiles.delete(ciphertextPath.getFilePath());
+		Files.walkFileTree(ciphertextPath.getRawPath(), DeletingFileVisitor.INSTANCE);
+		if(!ciphertextPath.isShortened()) {
+			try {
+				Files.deleteIfExists(InUseFile.computeInUseFilePath(ciphertextPath.getFilePath()));
+			} catch (IOException e) {
+				//no-op
+				//TODO: log as info?
+			}
+		}
+	}
+
+	private void deleteSymlink(CiphertextFilePath ciphertextPath) throws IOException {
 		openCryptoFiles.delete(ciphertextPath.getFilePath());
 		Files.walkFileTree(ciphertextPath.getRawPath(), DeletingFileVisitor.INSTANCE);
 	}
