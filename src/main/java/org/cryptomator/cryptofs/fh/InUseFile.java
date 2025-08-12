@@ -1,7 +1,6 @@
 package org.cryptomator.cryptofs.fh;
 
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileTooBigException;
@@ -24,7 +23,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -34,21 +32,20 @@ public class InUseFile implements Closeable {
 	private static final Logger LOG = LoggerFactory.getLogger(InUseFile.class);
 
 	private final String fileSystemOwner;
-	private final ConcurrentMap<Path, Boolean> selfUsedFiles;
 	private final Properties info;
 	private final AtomicReference<Path> currentFilePath;
 	private final Consumer<FilesystemEvent> eventConsumer;
 	private SeekableByteChannel inUseFileChannel;
 
+	private volatile Path lastKnownPath;
+
 	@Inject
 	public InUseFile(@CurrentOpenFilePath AtomicReference<Path> currentFilePath, //
 					 Consumer<FilesystemEvent> eventConsumer, //
-					 CryptoFileSystemProperties fsProps, //
-					 @Named("selfUsedFiles") ConcurrentMap<Path, Boolean> selfUsedFiles) {
+					 CryptoFileSystemProperties fsProps) {
 		this.currentFilePath = currentFilePath;
 		this.eventConsumer = eventConsumer;
 		this.fileSystemOwner = (String) fsProps.getOrDefault("owner", "cryptobot");
-		this.selfUsedFiles = selfUsedFiles;
 		this.info = new Properties();
 		info.put("owner", fileSystemOwner);
 	}
@@ -77,7 +74,7 @@ public class InUseFile implements Closeable {
 		}
 
 		if (selfUseSuccessful) {
-			selfUsedFiles.put(ciphertextPath, Boolean.TRUE);
+			lastKnownPath = inUseFilePath; //TODO: to prevent two files point to the same file (and might delete the owner file on close, we need a map)
 		}
 		return selfUseSuccessful;
 	}
@@ -162,15 +159,14 @@ public class InUseFile implements Closeable {
 	@Override
 	public synchronized void close() {
 		var ciphertextPath = currentFilePath.get();
-		selfUsedFiles.remove(ciphertextPath);
 		if (inUseFileChannel != null) {
 			try {
 				//delay closing with a completionStage
 				inUseFileChannel.close();
-				var inUsePath = computeInUseFilePath(ciphertextPath);
+				var inUsePath = ciphertextPath != null? computeInUseFilePath(ciphertextPath) : lastKnownPath; //currentFilePath takes precedence
 				deleteInUseFile(inUsePath);
 			} catch (IOException e) {
-				LOG.error("Unable to delete in-use-file. Must be cleaned manually.");
+				LOG.warn("Unable to delete in-use-file. Must be cleaned manually.");
 			}
 		}
 	}
@@ -191,13 +187,11 @@ public class InUseFile implements Closeable {
 			  Consumer<FilesystemEvent> eventConsumer, //
 			  String fileSystemOwner, //
 			  SeekableByteChannel inUseFileChannel, //
-			  Properties info, //
-			  ConcurrentMap<Path, Boolean> selfUsedFiles) {
+			  Properties info) {
 		this.currentFilePath = currentFilePath;
 		this.eventConsumer = eventConsumer;
 		this.fileSystemOwner = fileSystemOwner;
 		this.inUseFileChannel = inUseFileChannel;
 		this.info = info;
-		this.selfUsedFiles = selfUsedFiles;
 	}
 }

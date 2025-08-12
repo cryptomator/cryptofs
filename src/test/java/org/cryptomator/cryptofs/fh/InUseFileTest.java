@@ -43,14 +43,13 @@ public class InUseFileTest {
 	AtomicReference<Path> currentFilePath = new AtomicReference<>();
 	Consumer<FilesystemEvent> eventConsumer = mock(Consumer.class);
 	SeekableByteChannel inUseChannel = mock(SeekableByteChannel.class);
-	ConcurrentMap<Path, Boolean> selfUsedFiles = mock(ConcurrentMap.class);
 	Properties info = new Properties();
 	InUseFile inUseFile;
 
 	@BeforeEach
 	public void beforeEach() {
 		currentFilePath.set(ciphertextPath);
-		inUseFile = new InUseFile(currentFilePath, eventConsumer, "cryptobot", inUseChannel, info, selfUsedFiles);
+		inUseFile = new InUseFile(currentFilePath, eventConsumer, "cryptobot", inUseChannel, info);
 	}
 
 	@Test
@@ -68,7 +67,6 @@ public class InUseFileTest {
 			Assertions.assertTrue(isInUse);
 			verify(inUseFileSpy, never()).createInUseFile(inUsePath);
 			verify(inUseFileSpy, never()).stealInUseFile(inUsePath);
-			verify(selfUsedFiles).put(ciphertextPath, true);
 			//TODO: check, that inUse file is updated
 		}
 	}
@@ -91,7 +89,6 @@ public class InUseFileTest {
 			verify(inUseFileSpy, never()).stealInUseFile(inUsePath);
 			var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent;
 			verify(eventConsumer).accept(ArgumentMatchers.argThat(isFileIsInUseEvent));
-			verify(selfUsedFiles, never()).put(any(), anyBoolean());
 		}
 	}
 
@@ -110,7 +107,6 @@ public class InUseFileTest {
 			Assertions.assertTrue(isAcquired);
 			verify(inUseFileSpy).stealInUseFile(inUsePath);
 			verify(inUseFileSpy, never()).createInUseFile(inUsePath);
-			verify(selfUsedFiles).put(ciphertextPath, true);
 		}
 	}
 
@@ -130,7 +126,6 @@ public class InUseFileTest {
 			Assertions.assertFalse(isAcquired);
 			verify(inUseFileSpy).stealInUseFile(inUsePath);
 			verify(inUseFileSpy, never()).createInUseFile(inUsePath);
-			verify(selfUsedFiles, never()).put(any(), anyBoolean());
 		}
 	}
 
@@ -149,7 +144,6 @@ public class InUseFileTest {
 			Assertions.assertTrue(isAcquired);
 			verify(inUseFileSpy).createInUseFile(inUsePath);
 			verify(inUseFileSpy, never()).stealInUseFile(inUsePath);
-			verify(selfUsedFiles).put(ciphertextPath, true);
 		}
 	}
 
@@ -169,7 +163,6 @@ public class InUseFileTest {
 			Assertions.assertFalse(isAcquired);
 			verify(inUseFileSpy).createInUseFile(inUsePath);
 			verify(inUseFileSpy, never()).stealInUseFile(inUsePath);
-			verify(selfUsedFiles, never()).put(any(), anyBoolean());
 		}
 	}
 
@@ -207,7 +200,6 @@ public class InUseFileTest {
 
 			inUseFileSpy.close();
 
-			verify(selfUsedFiles).remove(ciphertextPath);
 			verify(inUseChannel).close();
 			verify(inUseFileSpy).deleteInUseFile(inUsePath);
 		}
@@ -223,11 +215,9 @@ public class InUseFileTest {
 			doThrow(IOException.class).when(inUseFileSpy).deleteInUseFile(any());
 
 			Assertions.assertDoesNotThrow(inUseFileSpy::close);
-			verify(selfUsedFiles).remove(ciphertextPath);
 
 			doThrow(IOException.class).when(inUseChannel).close();
 			Assertions.assertDoesNotThrow(inUseFileSpy::close);
-			verify(selfUsedFiles, times(2)).remove(ciphertextPath);
 		}
 	}
 
