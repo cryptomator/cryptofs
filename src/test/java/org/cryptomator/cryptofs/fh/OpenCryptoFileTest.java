@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -126,8 +127,6 @@ public class OpenCryptoFileTest {
 		});
 	}
 
-	//TODO: test, if in-use-file-exists, but it is ignored with flag
-
 	@Test
 	@DisplayName("if the second file channel fails to open, do nothing")
 	public void testFailedSecondFileChannelDoesNothing() throws IOException {
@@ -175,6 +174,32 @@ public class OpenCryptoFileTest {
 		openCryptoFile.newFileChannel(options, false);
 		verify(cleartextChannel).truncate(0L);
 	}
+
+	@Test
+	@DisplayName("Updating the current file path moves the inUse file")
+	public void testUpdateCurrentPath() {
+		var currentPath = mock(Path.class, "current Path");
+		var newPath = mock(Path.class, "new Path");
+		var currentPathWrapper = new AtomicReference<>(currentPath);
+		OpenCryptoFile openCryptoFile = new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, currentPathWrapper, fileSize, lastModified, openCryptoFileComponent, inUseFile);
+
+		doNothing().when(inUseFile).move(currentPath);
+
+		openCryptoFile.updateCurrentFilePath(newPath);
+		verify(inUseFile).move(currentPath);
+	}
+
+	@Test
+	@DisplayName("Updating the current file path with null skips in-use-file")
+	public void testUpdateCurrentPathWithNull() {
+		var currentPath = mock(Path.class, "current Path");
+		var currentPathWrapper = new AtomicReference<>(currentPath);
+		OpenCryptoFile openCryptoFile = new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, currentPathWrapper, fileSize, lastModified, openCryptoFileComponent, inUseFile);
+
+		openCryptoFile.updateCurrentFilePath(null);
+		verify(inUseFile, never()).move(any());
+	}
+
 
 	@Nested
 	@DisplayName("Testing ::initFileHeader")

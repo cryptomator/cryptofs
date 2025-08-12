@@ -174,7 +174,10 @@ public class OpenCryptoFile implements Closeable {
 	 * @param newFilePath new ciphertext path
 	 */
 	public void updateCurrentFilePath(Path newFilePath) {
-		currentFilePath.updateAndGet(p -> p == null ? null : newFilePath);
+		var oldPath = currentFilePath.getAndUpdate(p -> p == null ? null : newFilePath);
+		if(newFilePath != null) { //otherwise file got deleted
+			inUseFile.move(oldPath);
+		}
 	}
 
 	private synchronized void cleartextChannelClosed(FileChannel ciphertextFileChannel) {

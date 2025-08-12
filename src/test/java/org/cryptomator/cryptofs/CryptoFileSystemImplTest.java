@@ -80,15 +80,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.mockito.internal.verification.VerificationModeFactory.atLeast;
 
 public class CryptoFileSystemImplTest {
@@ -795,12 +787,46 @@ public class CryptoFileSystemImplTest {
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);
 
-				inTest.move(cleartextSource, cleartextDestination, option1, option2);
+				try (var inUseClass = mockStatic(InUseFile.class)) {
+					inUseClass.when(() -> InUseFile.isInUse(eq(ciphertextDestinationFile), any())).thenReturn(false);
+					inTest.move(cleartextSource, cleartextDestination, option1, option2);
+				}
 
 				verify(readonlyFlag).assertWritable();
 				verify(physicalFsProv).move(ciphertextSourceFile, ciphertextDestinationFile, option1, option2);
 				verify(openFileMove).commit();
 			}
+
+			@Test
+			public void moveFileWithSourceInUse() throws IOException {
+				moveFileWithXInUse(ciphertextSourceFile, cleartextSource);
+			}
+
+			@Test
+			public void moveFileWithTargetInUse() throws IOException {
+				moveFileWithXInUse(ciphertextDestinationFile, cleartextDestination);
+			}
+
+			private void moveFileWithXInUse(Path usedCipherPath, CryptoPath usedClearPath) throws IOException {
+				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.FILE);
+				when(cryptoPathMapper.getCiphertextFileType(cleartextDestination)).thenThrow(NoSuchFileException.class);
+				TwoPhaseMove openFileMove = Mockito.mock(TwoPhaseMove.class);
+				Mockito.when(openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextDestinationFile)).thenReturn(openFileMove);
+
+				CopyOption option1 = mock(CopyOption.class);
+				CopyOption option2 = mock(CopyOption.class);
+
+				try (var inUseClass = mockStatic(InUseFile.class)) {
+					inUseClass.when(() -> InUseFile.isInUse(eq(usedCipherPath), any())).thenReturn(true);
+					Assertions.assertThrows(FileAlreadyInUseException.class, () -> inTest.move(cleartextSource, cleartextDestination, option1, option2));
+				}
+				verify(readonlyFlag).assertWritable();
+				verify(physicalFsProv, never()).move(ciphertextSourceFile, ciphertextDestinationFile, option1, option2);
+				var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent
+						&& ((FileIsInUseEvent) ev).cleartext().equals(usedClearPath);
+				verify(eventConsumer).accept(ArgumentMatchers.argThat(isFileIsInUseEvent));
+			}
+
 
 			@Test
 			public void moveDirectoryDontReplaceExisting() throws IOException {

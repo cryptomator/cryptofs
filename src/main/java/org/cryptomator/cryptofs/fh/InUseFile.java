@@ -76,6 +76,20 @@ public class InUseFile implements Closeable {
 	/**
 	 * Reads the in-use-file at the given path, validates it and checks if this in-use-file belongs to the running cryptofile system.
 	 *
+	 * @return {@code true} if the in-use-file exists, is valid, but owned by different user. Otherwise {@code false}.
+	 */
+	public static boolean isInUse(Path ciphertextPath, String owner) {
+		var inUseFile = computeInUseFilePath(ciphertextPath);
+		try {
+			return isInUseInternal(inUseFile, owner);
+		} catch (IllegalArgumentException | IOException e) {
+			return false;
+		}
+	}
+
+	/**
+	 * Reads the in-use-file at the given path, validates it and checks if this in-use-file belongs to the running cryptofile system.
+	 *
 	 * @param inUseFilePath
 	 * @param fileSystemOwner name of the filesystem owner
 	 * @return {@code true} if the in-use-file exists, but owned by different user
@@ -142,6 +156,15 @@ public class InUseFile implements Closeable {
 	//for testing
 	void deleteInUseFile(Path inUseFilePath) throws IOException {
 		Files.deleteIfExists(inUseFilePath);
+	}
+
+	synchronized void move(Path source) {
+		var target = currentFilePath.get();
+		try {
+			Files.move(source, target);
+		} catch (IOException e) {
+			LOG.warn("Could not move in-use-file from {} to {}", source, target, e);
+		}
 	}
 
 

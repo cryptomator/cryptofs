@@ -619,7 +619,14 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		CiphertextFilePath ciphertextSource = cryptoPathMapper.getCiphertextFilePath(cleartextSource);
 		CiphertextFilePath ciphertextTarget = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
 		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath())) {
-			//TODO: fail, if foreign inUseFile exists
+			if (InUseFile.isInUse(ciphertextSource.getFilePath(), "owner")) { ; //TODO: get the filesystemowner
+				eventConsumer.accept(new FileIsInUseEvent(cleartextSource, ciphertextSource.getRawPath(), new Properties())); //TODO: properties??
+				throw new FileAlreadyInUseException(ciphertextSource.getRawPath());
+			}
+			if (InUseFile.isInUse(ciphertextTarget.getFilePath(), "owner")) { ; //TODO: get the filesystemowner
+				eventConsumer.accept(new FileIsInUseEvent(cleartextTarget, ciphertextTarget.getRawPath(), new Properties())); //TODO: properties??
+				throw new FileAlreadyInUseException(ciphertextTarget.getRawPath());
+			}
 			if (ciphertextTarget.isShortened()) {
 				Files.createDirectories(ciphertextTarget.getRawPath());
 				ciphertextTarget.persistLongFileName();
