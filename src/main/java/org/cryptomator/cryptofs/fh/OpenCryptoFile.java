@@ -121,36 +121,35 @@ public class OpenCryptoFile implements Closeable {
 	}
 
 	/**
-	 * Called by {@link #newFileChannel(EffectiveOpenOptions, FileAttribute[])} to determine the fileSize.
+	 * Called by {@link #newFileChannel(EffectiveOpenOptions, boolean, FileAttribute[])} to determine the fileSize.
 	 * <p>
 	 * Before the size is initialized (i.e. before a channel has been created), {@link #size()} must not be called.
 	 * <p>
 	 * Initialization happens at most once per open file. Subsequent invocations are no-ops.
 	 */
 	private void initFileSize(FileChannel ciphertextFileChannel) throws IOException {
-		if (fileSize.get() == -1l) {
+		if (fileSize.get() == -1L) {
 			LOG.trace("First channel for this openFile. Initializing file size...");
-			long cleartextSize = 0l;
+			long cleartextSize = 0L;
 			try {
 				long ciphertextSize = ciphertextFileChannel.size();
-				if (ciphertextSize > 0l) {
+				if (ciphertextSize > 0L) {
 					long payloadSize = ciphertextSize - cryptor.fileHeaderCryptor().headerSize();
 					cleartextSize = cryptor.fileContentCryptor().cleartextSize(payloadSize);
 				}
 			} catch (IllegalArgumentException e) {
 				LOG.warn("Invalid cipher text file size. Assuming empty file.", e);
-				assert cleartextSize == 0l;
 			}
-			fileSize.compareAndSet(-1l, cleartextSize);
+			fileSize.compareAndSet(-1L, cleartextSize);
 		}
 	}
 
 	/**
-	 * @return The size of the opened file. Note that the filesize is unknown until a {@link #newFileChannel(EffectiveOpenOptions, FileAttribute[])} is opened. In this case this method returns an empty optional.
+	 * @return The size of the opened file. Note that the filesize is unknown until a {@link #newFileChannel(EffectiveOpenOptions, boolean, FileAttribute[])} is opened. In this case this method returns an empty optional.
 	 */
 	public Optional<Long> size() {
 		long val = fileSize.get();
-		if (val == -1l) {
+		if (val == -1L) {
 			return Optional.empty();
 		} else {
 			return Optional.of(val);
@@ -171,13 +170,15 @@ public class OpenCryptoFile implements Closeable {
 
 	/**
 	 * Updates the current ciphertext file path, if it is not already set to null (i.e., the openCryptoFile is deleted)
+	 *
 	 * @param newFilePath new ciphertext path
 	 */
 	public void updateCurrentFilePath(Path newFilePath) {
 		var oldPath = currentFilePath.getAndUpdate(p -> p == null ? null : newFilePath);
-		if(newFilePath != null) { //otherwise file got deleted
+		if (newFilePath != null) {
 			inUseFile.move(oldPath);
 		}
+		//else file got deleted and the in-use-file will be deleted in {@link CryptoFileSystem#delete}
 	}
 
 	private synchronized void cleartextChannelClosed(FileChannel ciphertextFileChannel) {
