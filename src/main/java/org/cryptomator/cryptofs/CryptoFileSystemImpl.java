@@ -442,12 +442,13 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		CiphertextFilePath ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextPath);
 		switch (ciphertextFileType) {
 			case DIRECTORY -> deleteDirectory(cleartextPath, ciphertextPath);
-			case FILE -> deleteFile(ciphertextPath);
+			case FILE -> deleteFile(cleartextPath, ciphertextPath);
 			case SYMLINK -> deleteSymlink(ciphertextPath);
 		}
 	}
 
-	private void deleteFile(CiphertextFilePath ciphertextPath) throws IOException {
+	private void deleteFile(CryptoPath cleartextPath, CiphertextFilePath ciphertextPath) throws IOException {
+		checkUsage(cleartextPath, ciphertextPath);
 		openCryptoFiles.delete(ciphertextPath.getFilePath());
 		Files.walkFileTree(ciphertextPath.getRawPath(), DeletingFileVisitor.INSTANCE);
 		if(!ciphertextPath.isShortened()) {
@@ -633,14 +634,9 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		CiphertextFilePath ciphertextSource = cryptoPathMapper.getCiphertextFilePath(cleartextSource);
 		CiphertextFilePath ciphertextTarget = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
 		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath())) {
-			if (InUseFile.isInUse(ciphertextSource.getFilePath(), "owner")) { ; //TODO: get the filesystemowner
-				eventConsumer.accept(new FileIsInUseEvent(cleartextSource, ciphertextSource.getRawPath(), new Properties())); //TODO: properties??
-				throw new FileAlreadyInUseException(ciphertextSource.getRawPath());
-			}
-			if (InUseFile.isInUse(ciphertextTarget.getFilePath(), "owner")) { ; //TODO: get the filesystemowner
-				eventConsumer.accept(new FileIsInUseEvent(cleartextTarget, ciphertextTarget.getRawPath(), new Properties())); //TODO: properties??
-				throw new FileAlreadyInUseException(ciphertextTarget.getRawPath());
-			}
+			//TODO: skip this if owner is not set in Properties
+			checkUsage(cleartextSource, ciphertextSource);
+			checkUsage(cleartextTarget, ciphertextTarget);
 			if (ciphertextTarget.isShortened()) {
 				Files.createDirectories(ciphertextTarget.getRawPath());
 				ciphertextTarget.persistLongFileName();
@@ -734,6 +730,13 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	@Override
 	public String toString() {
 		return format("%sCryptoFileSystem(%s)", open ? "" : "closed ", pathToVault);
+	}
+
+	private void checkUsage(CryptoPath cleartextPath, CiphertextFilePath ciphertextPath) throws FileAlreadyInUseException {
+		if (InUseFile.isInUse(ciphertextPath.getFilePath(), "owner")) { ; //TODO: get the filesystemowner
+			eventConsumer.accept(new FileIsInUseEvent(cleartextPath, ciphertextPath.getRawPath(), new Properties())); //TODO: properties??
+			throw new FileAlreadyInUseException(ciphertextPath.getRawPath());
+		}
 	}
 
 }
