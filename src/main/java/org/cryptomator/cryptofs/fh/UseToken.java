@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.fh;
 
+import org.cryptomator.cryptofs.common.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,53 +24,79 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+/**
+ * Class to represent a file is "in use" by this filesystem.
+ * <p>
+ * The actual persistence of the "in use"-state with a file is delayed by {@value Constants#IN_USE_DELAY_MILLIS} milliseconds.
+ * The content of the in-use-file is a JSON containing
+ * <li>
+ *     <ul>owner - name of the filesystem owner</ul>
+ *     <ul>since - UTC-timestamp encoded as epoch seconds from the standard Java epoch of 1970-01-01T00:00:00Z</ul>
+ * </li>
+ * The JSON data is encrypted with the vault masterkey.
+ * If the token is closed before the persistence started, the persistence is not performed.
+ */
 public class UseToken implements Closeable {
 
-	public static UseToken createWithNewFile(Path p, ConcurrentMap<Path, UseToken> useTokens) {
-		return new UseToken(p, useTokens, ActivationType.CREATE);
+	public static UseToken createWithNewFile(Path p, String owner, ConcurrentMap<Path, UseToken> useTokens) {
+		return new UseToken(p, owner, useTokens, ActivationType.CREATE);
 	}
 
-	public static UseToken createWithExistingFile(Path p, ConcurrentMap<Path, UseToken> useTokens) {
-		return new UseToken(p, useTokens, ActivationType.UPDATE);
+	public static UseToken createWithExistingFile(Path p, String owner, ConcurrentMap<Path, UseToken> useTokens) {
+		return new UseToken(p, owner, useTokens, ActivationType.UPDATE);
 	}
 
-	public static UseToken createWithExistingInvalidFile(Path p, ConcurrentMap<Path, UseToken> useTokens) {
-		return new UseToken(p, useTokens, ActivationType.STEAL);
+	public static UseToken createWithExistingInvalidFile(Path p, String owner, ConcurrentMap<Path, UseToken> useTokens) {
+		return new UseToken(p, owner, useTokens, ActivationType.STEAL);
+	}
+
+	public static UseToken createInvalid(Path p, ConcurrentMap<Path, UseToken> useTokens) {
+		return new UseToken(p, "unused", useTokens, ActivationType.NONE);
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(UseToken.class);
 
+	private final String owner;
 	private final CompletableFuture<Void> creationTask;
 	private final ConcurrentMap<Path, UseToken> useTokens;
 	private final ReentrantReadWriteLock.WriteLock fileCreationSync = new ReentrantReadWriteLock().writeLock();
 
 	private volatile Path filePath;
 	private volatile SeekableByteChannel channel;
-	private volatile boolean closed = false;
+	private volatile boolean closed;
 
-	private UseToken(Path filePath, ConcurrentMap<Path, UseToken> useTokens, ActivationType m) {
+	private UseToken(Path filePath, String owner, ConcurrentMap<Path, UseToken> useTokens, ActivationType m) {
+		this.owner = owner;
 		this.filePath = filePath;
 		this.useTokens = useTokens;
 		FileOperation method = switch (m) {
 			case STEAL -> this::stealInUseFile;
 			case UPDATE -> this::updateInUseFile;
 			case CREATE -> this::createInUseFile;
+			case NONE -> () -> {};
 		};
 
-		this.creationTask = CompletableFuture.runAsync(() -> {
-			try {
-				fileCreationSync.lock();
-				if (closed) {
-					return;
+		if (m == ActivationType.NONE) {
+			this.closed = true;
+			this.creationTask = CompletableFuture.completedFuture(null);
+		} else {
+			this.closed = false;
+			this.creationTask = CompletableFuture.runAsync(() -> {
+				try {
+					fileCreationSync.lock();
+					if (closed) {
+						return;
+					}
+					//Do critical stuff
+					method.execute();
+				} catch (IOException e) {
+					close();
+				} finally {
+					fileCreationSync.unlock();
 				}
-				//Do critical stuff
-				method.execute();
-			} catch (IOException e) {
-				close();
-			} finally {
-				fileCreationSync.unlock();
-			}
-		}, CompletableFuture.delayedExecutor(5, TimeUnit.SECONDS, Executors.newVirtualThreadPerTaskExecutor()));
+			}, CompletableFuture.delayedExecutor(Constants.IN_USE_DELAY_MILLIS, TimeUnit.MILLISECONDS, Executors.newVirtualThreadPerTaskExecutor()));
+		}
+
 	}
 
 	private void stealInUseFile() throws IOException {
@@ -103,8 +130,8 @@ public class UseToken implements Closeable {
 		this.channel = Files.newByteChannel(inUseFilePath, openOptions);
 		var rawInfo = new ByteArrayOutputStream(4_000);
 		var prop = new Properties();
-		prop.put("owner", "owner"); //TODO: add real info
-		prop.put("owningSince", Instant.now().toString());
+		prop.put("owner", owner);
+		prop.put("since", Instant.now().toString());
 		prop.store(rawInfo, "UNENCRYPTED Cryptomator inUse file");
 		//TODO: encryption
 		channel.write(ByteBuffer.wrap(rawInfo.toByteArray()));
@@ -174,7 +201,8 @@ public class UseToken implements Closeable {
 	enum ActivationType {
 		UPDATE,
 		CREATE,
-		STEAL;
+		STEAL,
+		NONE;
 	}
 
 	@FunctionalInterface
