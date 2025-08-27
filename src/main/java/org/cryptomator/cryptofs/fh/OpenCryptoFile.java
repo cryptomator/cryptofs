@@ -3,6 +3,7 @@ package org.cryptomator.cryptofs.fh;
 import jakarta.inject.Inject;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
+import org.cryptomator.cryptofs.inuse.RealInUseManager;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +27,7 @@ public class OpenCryptoFile implements Closeable {
 
 	private final FileCloseListener listener;
 	private final AtomicReference<Instant> lastModified;
-	private final InUseFile inUseFile;
+	private final RealInUseManager inUseManager;
 	private final Cryptor cryptor;
 	private final FileHeaderHolder headerHolder;
 	private final ChunkIO chunkIO;
@@ -35,12 +36,13 @@ public class OpenCryptoFile implements Closeable {
 	private final OpenCryptoFileComponent component;
 
 	private final AtomicInteger openChannelsCount = new AtomicInteger(0);
+	private volatile UseToken useToken;
 
 	@Inject
 	public OpenCryptoFile(FileCloseListener listener, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, //
 						  @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, //
 						  @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component, //
-						  InUseFile inUseFile) {
+						  RealInUseManager inUseManager) {
 		this.listener = listener;
 		this.cryptor = cryptor;
 		this.headerHolder = headerHolder;
@@ -49,7 +51,7 @@ public class OpenCryptoFile implements Closeable {
 		this.fileSize = fileSize;
 		this.component = component;
 		this.lastModified = lastModified;
-		this.inUseFile = inUseFile;
+		this.inUseManager = inUseManager;
 	}
 
 	/**
@@ -67,11 +69,11 @@ public class OpenCryptoFile implements Closeable {
 		FileChannel ciphertextFileChannel = null;
 		CleartextFileChannel cleartextFileChannel = null;
 
-		var openChannels = openChannelsCount.incrementAndGet(); // synchronized context, hence we can proactively increase the number
+		openChannelsCount.incrementAndGet(); // synchronized context, hence we can proactively increase the number
 		try {
 			//TODO: what about read-only file channels? Then we need to update logic, that first writable channel needs to create this file
-			if (openChannels == 1 && !skipUsageCheck) {
-				inUseFile.acquire();
+			if (useToken == null || useToken.isClosed()) {
+				useToken = inUseManager.use(path);
 			}
 			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
 			initFileHeader(options, ciphertextFileChannel);
@@ -174,9 +176,9 @@ public class OpenCryptoFile implements Closeable {
 	 * @param newFilePath new ciphertext path
 	 */
 	public void updateCurrentFilePath(Path newFilePath) {
-		var oldPath = currentFilePath.getAndUpdate(p -> p == null ? null : newFilePath);
-		if (newFilePath != null) {
-			inUseFile.move(oldPath);
+		currentFilePath.getAndUpdate(p -> p == null ? null : newFilePath);
+		if (newFilePath != null && useToken != null) {
+			useToken.move(newFilePath);
 		}
 		//else file got deleted and the in-use-file will be deleted in {@link CryptoFileSystem#delete}
 	}
@@ -194,8 +196,10 @@ public class OpenCryptoFile implements Closeable {
 	public void close() {
 		var p = currentFilePath.get();
 		if (p != null) {
+			if( useToken != null) {
+				useToken.close();
+			}
 			listener.close(p, this);
-			inUseFile.close();
 		}
 	}
 

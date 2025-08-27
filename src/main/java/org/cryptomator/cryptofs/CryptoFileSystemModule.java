@@ -11,7 +11,10 @@ import org.cryptomator.cryptofs.attr.AttributeComponent;
 import org.cryptomator.cryptofs.attr.AttributeViewComponent;
 import org.cryptomator.cryptofs.dir.DirectoryStreamComponent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
+import org.cryptomator.cryptofs.inuse.IgnoringInUseManager;
+import org.cryptomator.cryptofs.inuse.InUseManager;
 import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
+import org.cryptomator.cryptofs.inuse.RealInUseManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,5 +52,17 @@ class CryptoFileSystemModule {
 				LOG.warn("Filesystem event consumer failed with exception when processing event {}", event, e);
 			}
 		};
+	}
+
+	@Provides
+	@CryptoFileSystemScoped
+	public InUseManager provideInUseManager(CryptoFileSystemProperties fsProps) {
+		var owner = (String) fsProps.get("owner"); //TODO
+		if(owner != null) {
+			return new RealInUseManager(owner);
+		} else {
+			return new IgnoringInUseManager();
+		}
+
 	}
 }
