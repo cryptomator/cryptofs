@@ -24,6 +24,7 @@ import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptofs.fh.FileAlreadyInUseException;
 import org.cryptomator.cryptofs.fh.InUseFile;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
+import org.cryptomator.cryptofs.inuse.InUseManager;
 import org.cryptomator.cryptolib.api.Cryptor;
 
 import jakarta.inject.Inject;
@@ -98,7 +99,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	private final CiphertextDirectoryDeleter ciphertextDirDeleter;
 	private final ReadonlyFlag readonlyFlag;
 	private final CryptoFileSystemProperties fileSystemProperties;
-
+	private final InUseManager inUseManager;
 	private final CryptoPath rootPath;
 	private final CryptoPath emptyPath;
 	private final FileNameDecryptor fileNameDecryptor;
@@ -112,7 +113,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 								PathMatcherFactory pathMatcherFactory, DirectoryStreamFactory directoryStreamFactory, DirectoryIdProvider dirIdProvider, DirectoryIdBackup dirIdBackup, //
 								AttributeProvider fileAttributeProvider, AttributeByNameProvider fileAttributeByNameProvider, AttributeViewProvider fileAttributeViewProvider, //
 								OpenCryptoFiles openCryptoFiles, Symlinks symlinks, FinallyUtil finallyUtil, CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag, //
-								CryptoFileSystemProperties fileSystemProperties, FileNameDecryptor fileNameDecryptor, Consumer<FilesystemEvent> eventConsumer) {
+								CryptoFileSystemProperties fileSystemProperties, InUseManager inUseManager, FileNameDecryptor fileNameDecryptor, Consumer<FilesystemEvent> eventConsumer) {
 		this.provider = provider;
 		this.cryptoFileSystems = cryptoFileSystems;
 		this.pathToVault = pathToVault;
@@ -137,6 +138,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 		this.rootPath = cryptoPathFactory.rootFor(this);
 		this.emptyPath = cryptoPathFactory.emptyFor(this);
+		this.inUseManager = inUseManager;
 		this.fileNameDecryptor = fileNameDecryptor;
 		this.eventConsumer = eventConsumer;
 	}
@@ -733,7 +735,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	private void checkUsage(CryptoPath cleartextPath, CiphertextFilePath ciphertextPath) throws FileAlreadyInUseException {
-		if (InUseFile.isInUse(ciphertextPath.getFilePath(), "owner")) { ; //TODO: get the filesystemowner
+		if (inUseManager.isInUseByOthers(ciphertextPath.getFilePath())) {
 			eventConsumer.accept(new FileIsInUseEvent(cleartextPath, ciphertextPath.getRawPath(), new Properties())); //TODO: properties??
 			throw new FileAlreadyInUseException(ciphertextPath.getRawPath());
 		}

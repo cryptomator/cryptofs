@@ -10,7 +10,7 @@ import java.nio.file.Path;
  */
 public interface InUseManager {
 
-	boolean isInUseByOthers(Path ciphertextPath) throws IOException, IllegalArgumentException;
+	boolean isInUseByOthers(Path ciphertextPath);
 
 	UseToken use(Path ciphertextPath) throws FileAlreadyInUseException;
 

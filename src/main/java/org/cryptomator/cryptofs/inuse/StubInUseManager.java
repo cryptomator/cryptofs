@@ -8,7 +8,7 @@ import java.nio.file.Path;
 public class StubInUseManager implements InUseManager {
 
 	@Override
-	public boolean isInUseByOthers(Path ciphertextPath) throws IOException, IllegalArgumentException {
+	public boolean isInUseByOthers(Path ciphertextPath) {
 		return false;
 	}
 

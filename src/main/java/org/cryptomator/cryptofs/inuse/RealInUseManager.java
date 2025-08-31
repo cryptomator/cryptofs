@@ -35,21 +35,31 @@ public class RealInUseManager implements InUseManager {
 		this.owner = owner;
 	}
 
-	/**
-	 * Reads the in-use-file at the given path, validates it and checks if this in-use-file belongs to the running crypto filesystem.
-	 *
-	 * @param ciphertextPath
-	 * @return {@code true} if the in-use-file exists, but owned by different user
-	 * @throws IOException if the in-use-file does not exist or cannot be read
-	 * @throws IllegalArgumentException if the in-use-file is invalid
-	 */
+
 	@Override
-	public boolean isInUseByOthers(Path ciphertextPath) throws IOException, IllegalArgumentException {
+	public boolean isInUseByOthers(Path ciphertextPath) {
 		if(useTokens.containsKey(ciphertextPath)) {
 			return false;
 		}
 
-		Properties content = readInUseFile(computeInUseFilePath(ciphertextPath));
+		try {
+			var inUseFilePath = computeInUseFilePath(ciphertextPath);
+			return isInUseInternal(inUseFilePath);
+		} catch (IllegalArgumentException | IOException e) {
+			return false;
+		}
+	}
+
+	/**
+	 * Reads the in-use-file at the given path, validates it and checks if this in-use-file belongs to the running crypto filesystem.
+	 *
+	 * @param inUseFilePath
+	 * @return {@code true} if the in-use-file exists, but owned by different user
+	 * @throws IOException if the in-use-file does not exist or cannot be read
+	 * @throws IllegalArgumentException if the in-use-file is invalid
+	 */
+	boolean isInUseInternal(Path inUseFilePath) throws IOException, IllegalArgumentException {
+		Properties content = readInUseFile(inUseFilePath);
 		if (!content.get("owner").equals(owner)) {
 			//TODO: check also timestamps
 			return true;
@@ -93,7 +103,7 @@ public class RealInUseManager implements InUseManager {
 	RealUseToken createInternal(Path ciphertextPath) throws UncheckedIOException {
 		var inUseFilePath = computeInUseFilePath(ciphertextPath);
 		try {
-			if (isInUseByOthers(inUseFilePath)) { //TODO: return also filechannel
+			if (isInUseInternal(inUseFilePath)) { //TODO: return also filechannel
 				throw new FileAlreadyInUseException(ciphertextPath);
 			}
 			return RealUseToken.createWithExistingFile(inUseFilePath, owner, useTokens);
