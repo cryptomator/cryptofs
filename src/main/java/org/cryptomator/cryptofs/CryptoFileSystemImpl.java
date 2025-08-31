@@ -8,6 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import jakarta.inject.Inject;
 import org.cryptomator.cryptofs.attr.AttributeByNameProvider;
 import org.cryptomator.cryptofs.attr.AttributeProvider;
 import org.cryptomator.cryptofs.attr.AttributeViewProvider;
@@ -22,12 +23,10 @@ import org.cryptomator.cryptofs.dir.DirectoryStreamFilters;
 import org.cryptomator.cryptofs.event.FileIsInUseEvent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptofs.fh.FileAlreadyInUseException;
-import org.cryptomator.cryptofs.fh.InUseFile;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptofs.inuse.InUseManager;
 import org.cryptomator.cryptolib.api.Cryptor;
 
-import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.AccessDeniedException;
@@ -453,14 +452,6 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		checkUsage(cleartextPath, ciphertextPath);
 		openCryptoFiles.delete(ciphertextPath.getFilePath());
 		Files.walkFileTree(ciphertextPath.getRawPath(), DeletingFileVisitor.INSTANCE);
-		if(!ciphertextPath.isShortened()) {
-			try {
-				Files.deleteIfExists(InUseFile.computeInUseFilePath(ciphertextPath.getFilePath()));
-			} catch (IOException e) {
-				//no-op
-				//TODO: log as info?
-			}
-		}
 	}
 
 	private void deleteSymlink(CiphertextFilePath ciphertextPath) throws IOException {

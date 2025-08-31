@@ -74,7 +74,7 @@ public class OpenCryptoFile implements Closeable {
 		openChannelsCount.incrementAndGet(); // synchronized context, hence we can proactively increase the number
 		try {
 			//TODO: what about read-only file channels? Then we need to update logic, that first writable channel needs to create this file
-			if( useToken instanceof UseToken.InitToken) {
+			if (useToken instanceof UseToken.InitToken) {
 				//just an idea
 			}
 			useToken = inUseManager.use(path); //TODO: performance, because this causes a hashmap access
@@ -182,8 +182,9 @@ public class OpenCryptoFile implements Closeable {
 		currentFilePath.getAndUpdate(p -> p == null ? null : newFilePath);
 		if (newFilePath != null) {
 			useToken.moveTo(newFilePath);
+		} else {
+			useToken.close(); //encrypted file will be deleted, hence we can stop checking usage
 		}
-		//else file got deleted and the in-use-file will be deleted in {@link CryptoFileSystem#delete}
 	}
 
 	private synchronized void cleartextChannelClosed(FileChannel ciphertextFileChannel) {
