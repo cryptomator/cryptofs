@@ -3,7 +3,8 @@ package org.cryptomator.cryptofs.fh;
 import jakarta.inject.Inject;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
-import org.cryptomator.cryptofs.inuse.RealInUseManager;
+import org.cryptomator.cryptofs.inuse.InUseManager;
+import org.cryptomator.cryptofs.inuse.UseToken;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +28,7 @@ public class OpenCryptoFile implements Closeable {
 
 	private final FileCloseListener listener;
 	private final AtomicReference<Instant> lastModified;
-	private final RealInUseManager inUseManager;
+	private final InUseManager inUseManager;
 	private final Cryptor cryptor;
 	private final FileHeaderHolder headerHolder;
 	private final ChunkIO chunkIO;
@@ -42,7 +43,7 @@ public class OpenCryptoFile implements Closeable {
 	public OpenCryptoFile(FileCloseListener listener, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, //
 						  @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, //
 						  @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component, //
-						  RealInUseManager inUseManager) {
+						  InUseManager inUseManager) {
 		this.listener = listener;
 		this.cryptor = cryptor;
 		this.headerHolder = headerHolder;
@@ -52,6 +53,7 @@ public class OpenCryptoFile implements Closeable {
 		this.component = component;
 		this.lastModified = lastModified;
 		this.inUseManager = inUseManager;
+		this.useToken = UseToken.INIT_TOKEN;
 	}
 
 	/**
@@ -72,9 +74,10 @@ public class OpenCryptoFile implements Closeable {
 		openChannelsCount.incrementAndGet(); // synchronized context, hence we can proactively increase the number
 		try {
 			//TODO: what about read-only file channels? Then we need to update logic, that first writable channel needs to create this file
-			if (useToken == null || useToken.isClosed()) {
-				useToken = inUseManager.use(path);
+			if( useToken instanceof UseToken.InitToken) {
+				//just an idea
 			}
+			useToken = inUseManager.use(path); //TODO: performance, because this causes a hashmap access
 			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
 			initFileHeader(options, ciphertextFileChannel);
 			initFileSize(ciphertextFileChannel);
@@ -177,8 +180,8 @@ public class OpenCryptoFile implements Closeable {
 	 */
 	public void updateCurrentFilePath(Path newFilePath) {
 		currentFilePath.getAndUpdate(p -> p == null ? null : newFilePath);
-		if (newFilePath != null && useToken != null) {
-			useToken.move(newFilePath);
+		if (newFilePath != null) {
+			useToken.moveTo(newFilePath);
 		}
 		//else file got deleted and the in-use-file will be deleted in {@link CryptoFileSystem#delete}
 	}
@@ -196,9 +199,7 @@ public class OpenCryptoFile implements Closeable {
 	public void close() {
 		var p = currentFilePath.get();
 		if (p != null) {
-			if( useToken != null) {
-				useToken.close();
-			}
+			useToken.close();
 			listener.close(p, this);
 		}
 	}

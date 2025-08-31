@@ -4,7 +4,6 @@ import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileTooBigException;
 import org.cryptomator.cryptofs.common.FileUtil;
 import org.cryptomator.cryptofs.fh.FileAlreadyInUseException;
-import org.cryptomator.cryptofs.fh.UseToken;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,16 +19,16 @@ import java.util.concurrent.ConcurrentMap;
 
 /**
  * Management object for the in-use-state of encrypted files.
- *
- * You can just check, if a file is in use with {@link #isInUse(Path)} or try to mark a file as in-use by this crypto filesystem with {@link #use(Path)}
- *
+ * <p>
+ * You can just check, if a file is in use with {@link #isInUseByOthers(Path)} or try to mark a file as in-use by this crypto filesystem with {@link #use(Path)}
+ * <p>
  * The persistence file of a token has the {@value Constants#INUSE_FILE_SUFFIX} file extension.
  */
 public class RealInUseManager implements InUseManager {
 
 	private static final Logger LOG = LoggerFactory.getLogger(RealInUseManager.class);
 
-	private final ConcurrentMap<Path, UseToken> useTokens = new ConcurrentHashMap<>();
+	private final ConcurrentMap<Path, RealUseToken> useTokens = new ConcurrentHashMap<>();
 	private final String owner;
 
 	public RealInUseManager(@NonNull String owner) {
@@ -39,14 +38,18 @@ public class RealInUseManager implements InUseManager {
 	/**
 	 * Reads the in-use-file at the given path, validates it and checks if this in-use-file belongs to the running crypto filesystem.
 	 *
-	 * @param inUseFilePath
+	 * @param ciphertextPath
 	 * @return {@code true} if the in-use-file exists, but owned by different user
 	 * @throws IOException if the in-use-file does not exist or cannot be read
 	 * @throws IllegalArgumentException if the in-use-file is invalid
 	 */
 	@Override
-	public boolean isInUse(Path inUseFilePath) throws IOException, IllegalArgumentException {
-		Properties content = readInUseFile(inUseFilePath);
+	public boolean isInUseByOthers(Path ciphertextPath) throws IOException, IllegalArgumentException {
+		if(useTokens.containsKey(ciphertextPath)) {
+			return false;
+		}
+
+		Properties content = readInUseFile(computeInUseFilePath(ciphertextPath));
 		if (!content.get("owner").equals(owner)) {
 			//TODO: check also timestamps
 			return true;
@@ -87,24 +90,24 @@ public class RealInUseManager implements InUseManager {
 		}
 	}
 
-	UseToken createInternal(Path ciphertextPath) throws UncheckedIOException {
+	RealUseToken createInternal(Path ciphertextPath) throws UncheckedIOException {
 		var inUseFilePath = computeInUseFilePath(ciphertextPath);
 		try {
-			if (isInUse(inUseFilePath)) { //TODO: return also filechannel
+			if (isInUseByOthers(inUseFilePath)) { //TODO: return also filechannel
 				throw new FileAlreadyInUseException(ciphertextPath);
 			}
-			return UseToken.createWithExistingFile(inUseFilePath, owner, useTokens);
+			return RealUseToken.createWithExistingFile(inUseFilePath, owner, useTokens);
 		} catch (FileAlreadyInUseException e) {
 			throw new UncheckedIOException(e); //wrapped due to Map::compute method
 		} catch (NoSuchFileException e) {
 			LOG.debug("No in-use-file for {} found. Creating it.", ciphertextPath, e);
-			return UseToken.createWithNewFile(inUseFilePath, owner, useTokens);
+			return RealUseToken.createWithNewFile(inUseFilePath, owner, useTokens);
 		} catch (FileTooBigException | IllegalArgumentException e) {
 			LOG.info("Found invalid in-use-file for {}. Owning it.", ciphertextPath, e);
-			return UseToken.createWithExistingInvalidFile(inUseFilePath, owner, useTokens);
-		} catch (IOException e) {
+			return RealUseToken.createWithExistingInvalidFile(inUseFilePath, owner, useTokens);
+		} catch (IOException e) { //TODO: check if we need to pt the token into the map
 			LOG.warn("Failed to read in-use file for {}. Ignoring it.", ciphertextPath, e);
-			return UseToken.createInvalid(inUseFilePath, useTokens);
+			return RealUseToken.createInvalid(inUseFilePath, useTokens);
 		}
 	}
 

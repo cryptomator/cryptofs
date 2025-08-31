@@ -1,11 +1,10 @@
-package org.cryptomator.cryptofs.fh;
+package org.cryptomator.cryptofs.inuse;
 
 import org.cryptomator.cryptofs.common.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
-import java.io.Closeable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
@@ -36,36 +35,36 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * The JSON data is encrypted with the vault masterkey.
  * If the token is closed before the persistence started, the persistence is not performed.
  */
-public class UseToken implements Closeable {
+public final class RealUseToken implements UseToken {
 
-	public static UseToken createWithNewFile(Path p, String owner, ConcurrentMap<Path, UseToken> useTokens) {
-		return new UseToken(p, owner, useTokens, ActivationType.CREATE);
+	public static RealUseToken createWithNewFile(Path p, String owner, ConcurrentMap<Path, RealUseToken> useTokens) {
+		return new RealUseToken(p, owner, useTokens, ActivationType.CREATE);
 	}
 
-	public static UseToken createWithExistingFile(Path p, String owner, ConcurrentMap<Path, UseToken> useTokens) {
-		return new UseToken(p, owner, useTokens, ActivationType.UPDATE);
+	public static RealUseToken createWithExistingFile(Path p, String owner, ConcurrentMap<Path, RealUseToken> useTokens) {
+		return new RealUseToken(p, owner, useTokens, ActivationType.UPDATE);
 	}
 
-	public static UseToken createWithExistingInvalidFile(Path p, String owner, ConcurrentMap<Path, UseToken> useTokens) {
-		return new UseToken(p, owner, useTokens, ActivationType.STEAL);
+	public static RealUseToken createWithExistingInvalidFile(Path p, String owner, ConcurrentMap<Path, RealUseToken> useTokens) {
+		return new RealUseToken(p, owner, useTokens, ActivationType.STEAL);
 	}
 
-	public static UseToken createInvalid(Path p, ConcurrentMap<Path, UseToken> useTokens) {
-		return new UseToken(p, "unused", useTokens, ActivationType.NONE);
+	public static RealUseToken createInvalid(Path p, ConcurrentMap<Path, RealUseToken> useTokens) {
+		return new RealUseToken(p, "unused", useTokens, ActivationType.NONE);
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(UseToken.class);
+	private static final Logger LOG = LoggerFactory.getLogger(RealUseToken.class);
 
 	private final String owner;
 	private final CompletableFuture<Void> creationTask;
-	private final ConcurrentMap<Path, UseToken> useTokens;
+	private final ConcurrentMap<Path, RealUseToken> useTokens;
 	private final ReentrantReadWriteLock.WriteLock fileCreationSync = new ReentrantReadWriteLock().writeLock();
 
 	private volatile Path filePath;
 	private volatile SeekableByteChannel channel;
 	private volatile boolean closed;
 
-	private UseToken(Path filePath, String owner, ConcurrentMap<Path, UseToken> useTokens, ActivationType m) {
+	private RealUseToken(Path filePath, String owner, ConcurrentMap<Path, RealUseToken> useTokens, ActivationType m) {
 		this.owner = owner;
 		this.filePath = filePath;
 		this.useTokens = useTokens;
@@ -138,7 +137,8 @@ public class UseToken implements Closeable {
 		channel.position(0);
 	}
 
-	void move(Path newPath) {
+	@Override
+	public void moveTo(Path newPath) {
 		try {
 			//sync with file creation
 			fileCreationSync.lock();
@@ -166,7 +166,8 @@ public class UseToken implements Closeable {
 		}
 	}
 
-	boolean isClosed() {
+	@Override
+	public boolean isClosed() {
 		return closed;
 	}
 

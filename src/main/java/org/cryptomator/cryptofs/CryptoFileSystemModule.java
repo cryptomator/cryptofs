@@ -11,7 +11,7 @@ import org.cryptomator.cryptofs.attr.AttributeComponent;
 import org.cryptomator.cryptofs.attr.AttributeViewComponent;
 import org.cryptomator.cryptofs.dir.DirectoryStreamComponent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
-import org.cryptomator.cryptofs.inuse.IgnoringInUseManager;
+import org.cryptomator.cryptofs.inuse.StubInUseManager;
 import org.cryptomator.cryptofs.inuse.InUseManager;
 import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
 import org.cryptomator.cryptofs.inuse.RealInUseManager;
@@ -61,7 +61,7 @@ class CryptoFileSystemModule {
 		if(owner != null) {
 			return new RealInUseManager(owner);
 		} else {
-			return new IgnoringInUseManager();
+			return new StubInUseManager();
 		}
 
 	}
