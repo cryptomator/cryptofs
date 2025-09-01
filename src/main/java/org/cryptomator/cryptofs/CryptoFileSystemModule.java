@@ -58,7 +58,7 @@ class CryptoFileSystemModule {
 	@CryptoFileSystemScoped
 	public InUseManager provideInUseManager(CryptoFileSystemProperties fsProps) {
 		var owner = (String) fsProps.get("owner"); //TODO
-		if(owner != null) {
+		if(owner != null && !fsProps.readonly()) {
 			return new RealInUseManager(owner);
 		} else {
 			return new StubInUseManager();
