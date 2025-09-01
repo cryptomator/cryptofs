@@ -28,22 +28,23 @@ public class RealInUseManager implements InUseManager {
 
 	private static final Logger LOG = LoggerFactory.getLogger(RealInUseManager.class);
 
-	private final ConcurrentMap<Path, RealUseToken> useTokens = new ConcurrentHashMap<>();
+	private final ConcurrentMap<Path, RealUseToken> useTokens;
 	private final String owner;
 
 	public RealInUseManager(@NonNull String owner) {
 		this.owner = owner;
+		this.useTokens = new ConcurrentHashMap<>();
 	}
 
 
 	@Override
 	public boolean isInUseByOthers(Path ciphertextPath) {
-		if(useTokens.containsKey(ciphertextPath)) {
+		var inUseFilePath = computeInUseFilePath(ciphertextPath);
+		if(useTokens.containsKey(inUseFilePath)) {
 			return false;
 		}
 
 		try {
-			var inUseFilePath = computeInUseFilePath(ciphertextPath);
 			return isInUseInternal(inUseFilePath);
 		} catch (IllegalArgumentException | IOException e) {
 			return false;
@@ -114,7 +115,7 @@ public class RealInUseManager implements InUseManager {
 			return RealUseToken.createWithNewFile(inUseFilePath, owner, useTokens);
 		} catch (FileTooBigException | IllegalArgumentException e) {
 			LOG.info("Found invalid in-use-file {}. Owning it.", inUseFilePath, e);
-			return RealUseToken.createWithExistingInvalidFile(inUseFilePath, owner, useTokens);
+			return RealUseToken.createWithInvalidFile(inUseFilePath, owner, useTokens);
 		} catch (IOException e) { //TODO: check if we need to pt the token into the map
 			LOG.warn("Failed to read in-use file {}. Ignoring it.", inUseFilePath, e);
 			return RealUseToken.createInvalid(inUseFilePath, useTokens);
@@ -129,5 +130,12 @@ public class RealInUseManager implements InUseManager {
 		var tmp = p.getFileName().toString();
 		var fileName = tmp.substring(0, tmp.length() - Constants.CRYPTOMATOR_FILE_SUFFIX.length());
 		return p.resolveSibling(fileName + Constants.INUSE_FILE_SUFFIX);
+	}
+
+
+	//for testing
+	RealInUseManager(String owner, ConcurrentMap<Path, RealUseToken> useTokens) {
+		this.owner = owner;
+		this.useTokens = useTokens;
 	}
 }

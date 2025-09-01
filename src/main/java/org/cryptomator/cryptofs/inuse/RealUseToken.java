@@ -45,7 +45,7 @@ public final class RealUseToken implements UseToken {
 		return new RealUseToken(p, owner, useTokens, ActivationType.UPDATE);
 	}
 
-	public static RealUseToken createWithExistingInvalidFile(Path p, String owner, ConcurrentMap<Path, RealUseToken> useTokens) {
+	public static RealUseToken createWithInvalidFile(Path p, String owner, ConcurrentMap<Path, RealUseToken> useTokens) {
 		return new RealUseToken(p, owner, useTokens, ActivationType.STEAL);
 	}
 

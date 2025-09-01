@@ -64,7 +64,7 @@ public class RealUseTokenTest {
 		var watchKey = tmpDir.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY);
 		var fileTime = Files.getLastModifiedTime(filePath);
 
-		try (var token = RealUseToken.createWithExistingInvalidFile(filePath, "test3000", useTokens)) {
+		try (var token = RealUseToken.createWithInvalidFile(filePath, "test3000", useTokens)) {
 			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> fileTime.compareTo(Files.getLastModifiedTime(filePath)) < 0);
 			var events = watchKey.pollEvents();
 			var createEvent = events.stream().filter(e -> e.kind().equals(StandardWatchEventKinds.ENTRY_MODIFY)).findAny();
@@ -99,7 +99,7 @@ public class RealUseTokenTest {
 		var filePath = tmpDir.resolve("inUse.file"); //file does not exist
 		var watchKey = tmpDir.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_DELETE);
 
-		try (var token = RealUseToken.createWithExistingInvalidFile(filePath, "test3000", useTokens)) {
+		try (var token = RealUseToken.createWithInvalidFile(filePath, "test3000", useTokens)) {
 			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(token::isClosed);
 			Assertions.assertTrue(Files.notExists(filePath));
 			Assertions.assertTrue(token.isClosed());
