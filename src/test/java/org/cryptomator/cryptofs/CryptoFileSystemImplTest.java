@@ -457,7 +457,7 @@ public class CryptoFileSystemImplTest {
 			when(ciphertextPath.getFilePath()).thenReturn(ciphertextFilePath);
 			when(openCryptoFiles.getOrCreate(ciphertextFilePath)).thenReturn(openCryptoFile);
 			when(ciphertextFilePath.getName(3)).thenReturn(mock(CryptoPath.class, "path.c9r"));
-			when(openCryptoFile.newFileChannel(any(), anyBoolean(), any(FileAttribute[].class))).thenReturn(fileChannel);
+			when(openCryptoFile.newFileChannel(any(), any(FileAttribute[].class))).thenReturn(fileChannel);
 		}
 
 		@Nested
@@ -511,7 +511,7 @@ public class CryptoFileSystemImplTest {
 				FileChannel ch = inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), attrs);
 
 				Assertions.assertSame(fileChannel, ch);
-				verify(openCryptoFile).newFileChannel(Mockito.any(), eq(false), Mockito.eq(attrs));
+				verify(openCryptoFile).newFileChannel(Mockito.any(), Mockito.eq(attrs));
 			}
 
 		}
@@ -557,7 +557,7 @@ public class CryptoFileSystemImplTest {
 		@Test
 		@DisplayName("newFileChannel fails if used by another file")
 		public void testNewFileChannelInUseFailure() throws IOException {
-			when(openCryptoFile.newFileChannel(any(), eq(false))).thenThrow(FileAlreadyInUseException.class);
+			when(openCryptoFile.newFileChannel(any())).thenThrow(FileAlreadyInUseException.class);
 
 			Assertions.assertThrows(FileAlreadyInUseException.class, () -> inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.WRITE)));
 			var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent

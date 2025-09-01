@@ -63,7 +63,7 @@ public class OpenCryptoFile implements Closeable {
 	 * @return A new file channel. Ideally used in a try-with-resource statement. If the channel is not properly closed, this OpenCryptoFile will stay open indefinite.
 	 * @throws IOException
 	 */
-	public synchronized FileChannel newFileChannel(EffectiveOpenOptions options, boolean skipUsageCheck, FileAttribute<?>... attrs) throws IOException {
+	public synchronized FileChannel newFileChannel(EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
 		Path path = currentFilePath.get();
 		if (path == null) {
 			throw new IllegalStateException("Cannot create file channel to deleted file");
@@ -125,7 +125,7 @@ public class OpenCryptoFile implements Closeable {
 	}
 
 	/**
-	 * Called by {@link #newFileChannel(EffectiveOpenOptions, boolean, FileAttribute[])} to determine the fileSize.
+	 * Called by {@link #newFileChannel(EffectiveOpenOptions, FileAttribute[])} to determine the fileSize.
 	 * <p>
 	 * Before the size is initialized (i.e. before a channel has been created), {@link #size()} must not be called.
 	 * <p>
@@ -149,7 +149,7 @@ public class OpenCryptoFile implements Closeable {
 	}
 
 	/**
-	 * @return The size of the opened file. Note that the filesize is unknown until a {@link #newFileChannel(EffectiveOpenOptions, boolean, FileAttribute[])} is opened. In this case this method returns an empty optional.
+	 * @return The size of the opened file. Note that the filesize is unknown until a {@link #newFileChannel(EffectiveOpenOptions, FileAttribute[])} is opened. In this case this method returns an empty optional.
 	 */
 	public Optional<Long> size() {
 		long val = fileSize.get();

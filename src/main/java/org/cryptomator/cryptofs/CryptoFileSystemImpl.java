@@ -413,7 +413,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 		FileChannel ch = null;
 		try {
-			ch = openCryptoFiles.getOrCreate(ciphertextFilePath).newFileChannel(options,false, attrs); // might throw FileAlreadyExists
+			ch = openCryptoFiles.getOrCreate(ciphertextFilePath).newFileChannel(options,attrs); // might throw FileAlreadyExists
 			if (options.writable()) {
 				ciphertextPath.persistLongFileName();
 				stats.incrementAccessesWritten();

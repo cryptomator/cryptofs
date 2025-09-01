@@ -33,7 +33,7 @@ public class OpenCryptoFilesTest {
 		Mockito.when(subComponent.openCryptoFile()).thenReturn(file);
 
 		Mockito.when(openCryptoFileComponentFactory.create(Mockito.any(), Mockito.any())).thenReturn(subComponent);
-		Mockito.when(file.newFileChannel(Mockito.any(), anyBoolean())).thenReturn(ciphertextFileChannel);
+		Mockito.when(file.newFileChannel(Mockito.any())).thenReturn(ciphertextFileChannel);
 
 		inTest = new OpenCryptoFiles(openCryptoFileComponentFactory);
 	}

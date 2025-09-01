@@ -92,7 +92,7 @@ public class OpenCryptoFileTest {
 		OpenCryptoFile openCryptoFile = spy(new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, fileSize, lastModified, openCryptoFileComponent, inUseFile));
 
 		UncheckedIOException exception = Assertions.assertThrows(UncheckedIOException.class, () -> {
-			openCryptoFile.newFileChannel(options, false);
+			openCryptoFile.newFileChannel(options);
 		});
 		Assertions.assertSame(expectedException, exception);
 		verify(openCryptoFile).close();
@@ -108,7 +108,7 @@ public class OpenCryptoFileTest {
 		OpenCryptoFile openCryptoFile = spy(new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, fileSize, lastModified, openCryptoFileComponent, inUseFile));
 
 		UncheckedIOException exception = Assertions.assertThrows(UncheckedIOException.class, () -> {
-			openCryptoFile.newFileChannel(options, true);
+			openCryptoFile.newFileChannel(options);
 		});
 		Assertions.assertSame(expectedException, exception);
 		verify(openCryptoFile).close();
@@ -123,7 +123,7 @@ public class OpenCryptoFileTest {
 		OpenCryptoFile openCryptoFile = new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, fileSize, lastModified, openCryptoFileComponent, inUseFile);
 
 		Assertions.assertThrows(FileAlreadyInUseException.class, () -> {
-			openCryptoFile.newFileChannel(options, false);
+			openCryptoFile.newFileChannel(options);
 		});
 	}
 
@@ -146,9 +146,9 @@ public class OpenCryptoFileTest {
 		Mockito.when(failingOptions.createOpenOptionsForEncryptedFile()).thenThrow(expectedException);
 		OpenCryptoFile openCryptoFile = spy(new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, fileSize, lastModified, openCryptoFileComponent, inUseFile));
 
-		try (var channel = openCryptoFile.newFileChannel(options, false)) {
+		try (var channel = openCryptoFile.newFileChannel(options)) {
 			UncheckedIOException exception = Assertions.assertThrows(UncheckedIOException.class, () -> {
-				openCryptoFile.newFileChannel(failingOptions, false);
+				openCryptoFile.newFileChannel(failingOptions);
 			});
 			Assertions.assertSame(expectedException, exception);
 			verify(openCryptoFile, never()).close();
@@ -171,7 +171,7 @@ public class OpenCryptoFileTest {
 		OpenCryptoFile openCryptoFile = new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, CURRENT_FILE_PATH, fileSize, lastModified, openCryptoFileComponent, inUseFile);
 		when(inUseFile.acquire()).thenReturn(true);
 
-		openCryptoFile.newFileChannel(options, false);
+		openCryptoFile.newFileChannel(options);
 		verify(cleartextChannel).truncate(0L);
 	}
 
@@ -319,7 +319,7 @@ public class OpenCryptoFileTest {
 			var attrs = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwxr-x---"));
 			EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), readonlyFlag);
 			when(inUseFile.acquire()).thenReturn(false);
-			FileChannel ch = openCryptoFile.newFileChannel(options, false, attrs);
+			FileChannel ch = openCryptoFile.newFileChannel(options, attrs);
 			Assertions.assertSame(cleartextFileChannel, ch);
 			verify(chunkIO).registerChannel(ciphertextChannel.get(), true);
 			verify(inUseFile).acquire();
@@ -342,7 +342,7 @@ public class OpenCryptoFileTest {
 			Mockito.when(options.createOpenOptionsForEncryptedFile()).thenThrow(expectedException);
 
 			UncheckedIOException exception = Assertions.assertThrows(UncheckedIOException.class, () -> {
-				openCryptoFile.newFileChannel(options, false);
+				openCryptoFile.newFileChannel(options);
 			});
 			Assertions.assertSame(expectedException, exception);
 			verify(closeListener, Mockito.never()).close(CURRENT_FILE_PATH.get(), openCryptoFile);
