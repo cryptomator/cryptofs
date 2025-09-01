@@ -89,8 +89,9 @@ public class RealInUseManager implements InUseManager {
 
 	@Override
 	public UseToken use(Path ciphertextPath) throws FileAlreadyInUseException {
+		var inUseFilePath = computeInUseFilePath(ciphertextPath);
 		try {
-			return useTokens.computeIfAbsent(ciphertextPath, this::createInternal);
+			return useTokens.computeIfAbsent(inUseFilePath, this::createInternal);
 		} catch (UncheckedIOException e) {
 			if (e.getCause() instanceof FileAlreadyInUseException inUseExc) {
 				throw inUseExc;
@@ -100,23 +101,22 @@ public class RealInUseManager implements InUseManager {
 		}
 	}
 
-	RealUseToken createInternal(Path ciphertextPath) throws UncheckedIOException {
-		var inUseFilePath = computeInUseFilePath(ciphertextPath);
+	RealUseToken createInternal(Path inUseFilePath) throws UncheckedIOException {
 		try {
 			if (isInUseInternal(inUseFilePath)) { //TODO: return also filechannel
-				throw new FileAlreadyInUseException(ciphertextPath);
+				throw new FileAlreadyInUseException(inUseFilePath);
 			}
 			return RealUseToken.createWithExistingFile(inUseFilePath, owner, useTokens);
 		} catch (FileAlreadyInUseException e) {
 			throw new UncheckedIOException(e); //wrapped due to Map::compute method
 		} catch (NoSuchFileException e) {
-			LOG.debug("No in-use-file for {} found. Creating it.", ciphertextPath, e);
+			LOG.debug("No in-use-file {} found. Creating it.", inUseFilePath, e);
 			return RealUseToken.createWithNewFile(inUseFilePath, owner, useTokens);
 		} catch (FileTooBigException | IllegalArgumentException e) {
-			LOG.info("Found invalid in-use-file for {}. Owning it.", ciphertextPath, e);
+			LOG.info("Found invalid in-use-file {}. Owning it.", inUseFilePath, e);
 			return RealUseToken.createWithExistingInvalidFile(inUseFilePath, owner, useTokens);
 		} catch (IOException e) { //TODO: check if we need to pt the token into the map
-			LOG.warn("Failed to read in-use file for {}. Ignoring it.", ciphertextPath, e);
+			LOG.warn("Failed to read in-use file {}. Ignoring it.", inUseFilePath, e);
 			return RealUseToken.createInvalid(inUseFilePath, useTokens);
 		}
 	}

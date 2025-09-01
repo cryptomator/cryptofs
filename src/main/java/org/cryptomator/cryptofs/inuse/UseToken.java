@@ -7,7 +7,7 @@ public sealed interface UseToken extends Closeable permits RealUseToken, UseToke
 
 	UseToken INIT_TOKEN = new InitToken();
 
-	default void moveTo(Path newPath) {}
+	default void moveTo(Path newCiphertextPath) {}
 
 	default boolean isClosed() {
 		return false;

@@ -131,7 +131,7 @@ public class RealUseTokenTest {
 		var watchKey = tmpDir.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_DELETE);
 
 		try (var token = RealUseToken.createWithNewFile(filePath, "test3000", useTokens)) {
-			token.moveTo(targetPath);
+			token.moveToInternal(targetPath);
 
 			//no file operation after move
 			MatcherAssert.assertThat(watchKey.pollEvents(), Matchers.empty());
@@ -163,7 +163,7 @@ public class RealUseTokenTest {
 		try (var token = RealUseToken.createWithNewFile(filePath, "test3000", useTokens)) {
 			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> Files.exists(filePath));
 
-			token.moveTo(targetPath);
+			token.moveToInternal(targetPath);
 
 			// target file will be created
 			// orginal filePath does not exist, target exists
@@ -188,7 +188,7 @@ public class RealUseTokenTest {
 			Awaitility.await().pollDelay(FILE_OPERATION_MAX).timeout(FILE_OPERATION_MAX.multipliedBy(2)).until(() -> true);
 
 
-			token.moveTo(targetPath);
+			token.moveToInternal(targetPath);
 
 			MatcherAssert.assertThat(watchKey.pollEvents(), Matchers.empty());
 			Assertions.assertNull(useTokens.get(filePath));

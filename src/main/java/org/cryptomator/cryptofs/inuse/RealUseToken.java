@@ -138,7 +138,13 @@ public final class RealUseToken implements UseToken {
 	}
 
 	@Override
-	public void moveTo(Path newPath) {
+	public void moveTo(Path newCiphertextPath) {
+		var inUseFilePath = RealInUseManager.computeInUseFilePath(newCiphertextPath);
+		moveToInternal(inUseFilePath);
+	}
+
+	//visible for testing
+	void moveToInternal(Path newFilePath) {
 		try {
 			//sync with file creation
 			fileCreationSync.lock();
@@ -146,10 +152,10 @@ public final class RealUseToken implements UseToken {
 			if (closed) {
 				return;
 			}
-			useTokens.compute(newPath, (p, t) -> {
+			useTokens.compute(newFilePath, (p, t) -> {
 				try {
 					if (channel != null) {
-						Files.move(filePath, newPath, StandardCopyOption.REPLACE_EXISTING);
+						Files.move(filePath, newFilePath, StandardCopyOption.REPLACE_EXISTING);
 					}
 					return this;
 				} catch (IOException e) {
@@ -157,9 +163,9 @@ public final class RealUseToken implements UseToken {
 				}
 			});
 			useTokens.remove(filePath);
-			this.filePath = newPath;
+			this.filePath = newFilePath;
 		} catch (UncheckedIOException e) {
-			LOG.warn("Failed to move in-use file {} to {}.", filePath, newPath, e.getCause());
+			LOG.warn("Failed to move in-use file {} to {}.", filePath, newFilePath, e.getCause());
 			close(); //To prevent invalid states
 		} finally {
 			fileCreationSync.unlock();
