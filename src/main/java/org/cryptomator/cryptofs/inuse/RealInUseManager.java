@@ -88,6 +88,13 @@ public class RealInUseManager implements InUseManager {
 		//TODO: more keys
 	}
 
+	/**
+	 * Marks the given ciphertext path as in-use by this filesystem.
+	 *
+	 * @param ciphertextPath the path to the encrypted file intended to mark as "in-use"
+	 * @return {@link UseToken} for marking ownership. It is either a {@link RealUseToken} on success or {@link  UseToken#CLOSED_TOKEN} on failure.
+	 * @throws FileAlreadyInUseException if the file is already used by a different owner
+	 */
 	@Override
 	public UseToken use(Path ciphertextPath) throws FileAlreadyInUseException {
 		var inUseFilePath = computeInUseFilePath(ciphertextPath);
@@ -96,15 +103,17 @@ public class RealInUseManager implements InUseManager {
 		} catch (UncheckedIOException e) {
 			if (e.getCause() instanceof FileAlreadyInUseException inUseExc) {
 				throw inUseExc;
+			} else {
+				//any other IOException. Already logged.
+				return UseToken.CLOSED_TOKEN;
 			}
-
-			throw new IllegalStateException("Expected %s, but got:".formatted(FileAlreadyInUseException.class.getSimpleName()), e);
 		}
 	}
 
 	RealUseToken createInternal(Path inUseFilePath) throws UncheckedIOException {
 		try {
-			if (isInUseInternal(inUseFilePath)) { //TODO: return also filechannel
+			//TODO: performance idea: cache the result in a short lived cache (e.g. 5 seconds)
+			if (isInUseInternal(inUseFilePath)) {
 				throw new FileAlreadyInUseException(inUseFilePath);
 			}
 			return RealUseToken.createWithExistingFile(inUseFilePath, owner, useTokens);
@@ -116,9 +125,9 @@ public class RealInUseManager implements InUseManager {
 		} catch (FileTooBigException | IllegalArgumentException e) {
 			LOG.info("Found invalid in-use-file {}. Owning it.", inUseFilePath, e);
 			return RealUseToken.createWithInvalidFile(inUseFilePath, owner, useTokens);
-		} catch (IOException e) { //TODO: check if we need to pt the token into the map
+		} catch (IOException e) {
 			LOG.warn("Failed to read in-use file {}. Ignoring it.", inUseFilePath, e);
-			return RealUseToken.createInvalid(inUseFilePath, useTokens);
+			throw new UncheckedIOException(e);
 		}
 	}
 

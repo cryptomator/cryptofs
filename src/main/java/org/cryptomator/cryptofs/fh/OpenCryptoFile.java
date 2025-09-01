@@ -53,7 +53,7 @@ public class OpenCryptoFile implements Closeable {
 		this.component = component;
 		this.lastModified = lastModified;
 		this.inUseManager = inUseManager;
-		this.useToken = UseToken.INIT_TOKEN;
+		this.useToken = UseToken.CLOSED_TOKEN;
 	}
 
 	/**
@@ -74,10 +74,9 @@ public class OpenCryptoFile implements Closeable {
 		openChannelsCount.incrementAndGet(); // synchronized context, hence we can proactively increase the number
 		try {
 			//TODO: what about read-only file channels? Then we need to update logic, that first writable channel needs to create this file
-			if (useToken instanceof UseToken.InitToken) {
-				//just an idea
+			if (useToken.isClosed() ) { //the token was closed prematurely, so we try to get a new one
+				useToken = inUseManager.use(path);
 			}
-			useToken = inUseManager.use(path); //TODO: performance, because this causes a hashmap access
 			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);
 			initFileHeader(options, ciphertextFileChannel);
 			initFileSize(ciphertextFileChannel);

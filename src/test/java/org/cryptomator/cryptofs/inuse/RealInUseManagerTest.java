@@ -104,6 +104,19 @@ public class RealInUseManagerTest {
 	}
 
 	@Test
+	@DisplayName("\"use\" method returns CLOSED_TOKEN on IOException")
+	public void testUseClosedToken() throws FileAlreadyInUseException {
+		var inUseManager = new RealInUseManager("cryptobot3000");
+		var inUseSpy = spy(inUseManager);
+		var someIOException = new IOException("it's over 9000!");
+
+		doThrow(new UncheckedIOException(someIOException)).when(inUseSpy).createInternal(inUseFilePath);
+
+		var result = Assertions.assertDoesNotThrow(() -> inUseSpy.use(ciphertextPath));
+		Assertions.assertSame(UseToken.CLOSED_TOKEN, result);
+	}
+
+	@Test
 	@DisplayName("Create internal with existing in-use-file")
 	public void testCreateExistingValid() throws IOException {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
