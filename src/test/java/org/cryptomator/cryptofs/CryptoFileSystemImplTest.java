@@ -16,6 +16,8 @@ import org.cryptomator.cryptofs.fh.InUseFile;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles.TwoPhaseMove;
+import org.cryptomator.cryptofs.inuse.InUseManager;
+import org.cryptomator.cryptofs.inuse.StubInUseManager;
 import org.cryptomator.cryptofs.mocks.FileChannelMock;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.hamcrest.CoreMatchers;
@@ -108,6 +110,7 @@ public class CryptoFileSystemImplTest {
 	private final CryptoFileSystemProperties fileSystemProperties = mock(CryptoFileSystemProperties.class);
 	private final FileNameDecryptor filenameDecryptor = mock(FileNameDecryptor.class);
 	private final Consumer<FilesystemEvent> eventConsumer = mock(Consumer.class);
+	private final InUseManager inUseManager = mock(InUseManager.class);
 
 	private final CryptoPath root = mock(CryptoPath.class);
 	private final CryptoPath empty = mock(CryptoPath.class);
@@ -130,7 +133,7 @@ public class CryptoFileSystemImplTest {
 				pathMatcherFactory, directoryStreamFactory, dirIdProvider, dirIdBackup, //
 				fileAttributeProvider, fileAttributeByNameProvider, fileAttributeViewProvider, //
 				openCryptoFiles, symlinks, finallyUtil, ciphertextDirDeleter, readonlyFlag, //
-				fileSystemProperties, filenameDecryptor, eventConsumer);
+				fileSystemProperties, inUseManager, filenameDecryptor, eventConsumer);
 	}
 
 	@Test
