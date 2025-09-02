@@ -9,6 +9,7 @@
 package org.cryptomator.cryptofs;
 
 import com.google.common.jimfs.Jimfs;
+import org.awaitility.Awaitility;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.util.ByteBuffers;
 import org.cryptomator.cryptolib.api.Masterkey;
@@ -146,6 +147,55 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 
 	@Nested
 	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+	public class InUseFeatureActivated {
+
+		private FileSystem inMemoryFs;
+		private FileSystem fileSystem;
+
+		private Path file;
+		private Path vaultPath;
+
+		@BeforeAll
+		public void beforeAll() throws IOException, MasterkeyLoadingFailedException {
+			inMemoryFs = Jimfs.newFileSystem();
+			vaultPath = inMemoryFs.getPath("vault");
+			Files.createDirectories(vaultPath);
+			MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
+			Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
+			var properties = cryptoFileSystemProperties().withKeyLoader(keyLoader).withOwner("cryptobot").build();
+			CryptoFileSystemProvider.initialize(vaultPath, properties, URI.create("test:key"));
+			fileSystem = CryptoFileSystemProvider.newFileSystem(vaultPath, properties);
+			file = fileSystem.getPath("/test.txt");
+		}
+
+		@AfterAll
+		public void afterAll() throws IOException {
+			fileSystem.close();
+			inMemoryFs.close();
+		}
+
+		@Test
+		@DisplayName("Opening a file channel creates an in-use file and removes it on close")
+		public void testOpeningFCCreatesInUseFile() throws IOException {
+			try (var writer = FileChannel.open(file, CREATE, WRITE)) {
+				Awaitility.await().atLeast(Constants.IN_USE_DELAY_MILLIS - 100, TimeUnit.MILLISECONDS) //
+						.atMost(Constants.IN_USE_DELAY_MILLIS + 3000, TimeUnit.MILLISECONDS) //
+						.until(() -> numberOfInUseFiles() == 1);
+			}
+			var numberAfterClose = numberOfInUseFiles();
+			Assertions.assertEquals(0, numberAfterClose);
+		}
+
+		private long numberOfInUseFiles() throws IOException {
+			try (var encryptedFiles = Files.walk(vaultPath.resolve("d"))) {
+				var inUseFiles = encryptedFiles.filter(p -> p.getFileName().toString().endsWith(Constants.INUSE_FILE_SUFFIX));
+				return inUseFiles.count();
+			}
+		}
+	}
+
+	@Nested
+	@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 	public class PlatformIndependent {
 
 		private FileSystem inMemoryFs;
@@ -178,16 +228,6 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			Files.deleteIfExists(file);
 		}
 
-		@Test
-		@DisplayName("Opening a file channel creates an in-use file and removes it on close")
-		public void testOpeningFCCreatesInUseFile() throws IOException {
-			try (var writer = FileChannel.open(file, CREATE, WRITE)) {
-				var inUseFiles = Files.walk(vaultPath.resolve("d")).filter( p -> p.getFileName().toString().endsWith(Constants.INUSE_FILE_SUFFIX)).toList();
-				Assertions.assertEquals(1, inUseFiles.size());
-			}
-			var inUseFiles = Files.walk(vaultPath.resolve("d")).filter( p -> p.getFileName().toString().endsWith(Constants.INUSE_FILE_SUFFIX)).toList();
-			Assertions.assertEquals(0, inUseFiles.size());
-		}
 
 		//https://github.com/cryptomator/cryptofs/issues/173
 		@Test
