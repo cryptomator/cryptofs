@@ -12,12 +12,10 @@ import org.cryptomator.cryptofs.dir.DirectoryStreamFactory;
 import org.cryptomator.cryptofs.event.FileIsInUseEvent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptofs.fh.FileAlreadyInUseException;
-import org.cryptomator.cryptofs.fh.InUseFile;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles.TwoPhaseMove;
 import org.cryptomator.cryptofs.inuse.InUseManager;
-import org.cryptomator.cryptofs.inuse.StubInUseManager;
 import org.cryptomator.cryptofs.mocks.FileChannelMock;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.hamcrest.CoreMatchers;
@@ -80,8 +78,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.mockito.internal.verification.VerificationModeFactory.atLeast;
 
@@ -443,6 +439,39 @@ public class CryptoFileSystemImplTest {
 		});
 	}
 
+	@Test
+	@DisplayName("checkUsage throws exception when file is in-use")
+	public void testCheckUsageThrowsException() throws FileAlreadyInUseException {
+		CryptoPath cleartextPath = mock(CryptoPath.class, "cleartext");
+		CryptoPath ciphertextFilePath = mock(CryptoPath.class, "d/00/00/path.c9r");
+		CryptoPath ciphertextRawPath = mock(CryptoPath.class, "d/00/00/path_raw.c9r");
+		CiphertextFilePath ciphertextPath = mock(CiphertextFilePath.class);
+		when(ciphertextPath.getFilePath()).thenReturn(ciphertextFilePath);
+		when(ciphertextPath.getRawPath()).thenReturn(ciphertextRawPath);
+
+		when(inUseManager.isInUseByOthers(ciphertextFilePath)).thenReturn(true);
+
+		Assertions.assertThrows(FileAlreadyInUseException.class, () -> inTest.checkUsage(cleartextPath, ciphertextPath));
+		var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent && ((FileIsInUseEvent) ev).cleartext().equals(cleartextPath);
+		verify(inUseManager).isInUseByOthers(ciphertextFilePath);
+		verify(eventConsumer).accept(ArgumentMatchers.argThat(isFileIsInUseEvent));
+	}
+
+	@Test
+	@DisplayName("checkUsage throws exception when file is in-use")
+	public void testCheckUsageForNotInUseFiles() throws FileAlreadyInUseException {
+		CryptoPath cleartextPath = mock(CryptoPath.class, "cleartext");
+		CryptoPath ciphertextFilePath = mock(CryptoPath.class, "d/00/00/path.c9r");
+		CiphertextFilePath ciphertextPath = mock(CiphertextFilePath.class);
+		when(ciphertextPath.getFilePath()).thenReturn(ciphertextFilePath);
+
+		when(inUseManager.isInUseByOthers(ciphertextFilePath)).thenReturn(false);
+
+		Assertions.assertDoesNotThrow(() -> inTest.checkUsage(cleartextPath, ciphertextPath));
+		verify(inUseManager).isInUseByOthers(ciphertextFilePath);
+		verify(eventConsumer, never()).accept(any());
+	}
+
 	@Nested
 	public class NewFileChannel {
 
@@ -563,8 +592,7 @@ public class CryptoFileSystemImplTest {
 			when(openCryptoFile.newFileChannel(any())).thenThrow(FileAlreadyInUseException.class);
 
 			Assertions.assertThrows(FileAlreadyInUseException.class, () -> inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.WRITE)));
-			var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent
-					&& ((FileIsInUseEvent) ev).cleartext().equals(cleartextPath);
+			var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent && ((FileIsInUseEvent) ev).cleartext().equals(cleartextPath);
 			verify(eventConsumer).accept(ArgumentMatchers.argThat(isFileIsInUseEvent));
 		}
 
@@ -608,24 +636,19 @@ public class CryptoFileSystemImplTest {
 
 		@Test
 		public void testDeleteRegularExistingFile() throws IOException {
-			var inUsePath = mock(Path.class, "in use file");
-			when(inUsePath.getFileSystem()).thenReturn(physicalFs);
 			when(cryptoPathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
 			when(physicalFsProv.deleteIfExists(ciphertextRawPath)).thenReturn(true);
-			when(physicalFsProv.deleteIfExists(inUsePath)).thenReturn(true);
 			doNothing().when(openCryptoFiles).delete(Mockito.any());
 			when(ciphertextPath.isShortened()).thenReturn(false);
+			var inTestSpy = spy(inTest);
+			doNothing().when(inTestSpy).checkUsage(cleartextPath, ciphertextPath);
 
-
-			try (var inUseClassMock = mockStatic(InUseFile.class)) {
-				inUseClassMock.when(() -> InUseFile.computeInUseFilePath(ciphertextFilePath)).thenReturn(inUsePath);
-				inTest.delete(cleartextPath);
-			}
+			inTestSpy.delete(cleartextPath);
 
 			verify(readonlyFlag).assertWritable();
 			verify(openCryptoFiles).delete(ciphertextFilePath);
 			verify(physicalFsProv).deleteIfExists(ciphertextRawPath);
-			verify(physicalFsProv).deleteIfExists(inUsePath);
+			verify(inTestSpy).checkUsage(cleartextPath, ciphertextPath);
 		}
 
 		@Test
@@ -636,10 +659,7 @@ public class CryptoFileSystemImplTest {
 			doNothing().when(openCryptoFiles).delete(Mockito.any());
 			when(ciphertextPath.isShortened()).thenReturn(true);
 
-			try (var inUseClassMock = mockStatic(InUseFile.class)) {
-				inUseClassMock.when(() -> InUseFile.computeInUseFilePath(ciphertextFilePath)).thenReturn(inUsePath);
-				inTest.delete(cleartextPath);
-			}
+			inTest.delete(cleartextPath);
 
 			verify(readonlyFlag).assertWritable();
 			verify(openCryptoFiles).delete(ciphertextFilePath);
@@ -654,18 +674,14 @@ public class CryptoFileSystemImplTest {
 			when(physicalFsProv.deleteIfExists(ciphertextRawPath)).thenReturn(true);
 			doNothing().when(openCryptoFiles).delete(Mockito.any());
 			when(ciphertextPath.isShortened()).thenReturn(false);
+			var inTestSpy = spy(inTest);
+			doThrow(FileAlreadyInUseException.class).when(inTestSpy).checkUsage(cleartextPath, ciphertextPath);
 
-			try (var inUseClassMock = mockStatic(InUseFile.class)) {
-				inUseClassMock.when(() -> InUseFile.isInUse(eq(ciphertextFilePath), anyString())).thenReturn(true);
-				Assertions.assertThrows(FileAlreadyInUseException.class, () -> inTest.delete(cleartextPath));
-			}
+			Assertions.assertThrows(FileAlreadyInUseException.class, () -> inTestSpy.delete(cleartextPath));
 
 			verify(openCryptoFiles, never()).delete(ciphertextFilePath);
 			verify(physicalFsProv, never()).deleteIfExists(ciphertextRawPath);
 			verify(physicalFsProv, never()).deleteIfExists(inUsePath);
-			var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent //
-					&& ((FileIsInUseEvent) ev).cleartext().equals(cleartextPath);
-			verify(eventConsumer).accept(ArgumentMatchers.argThat(isFileIsInUseEvent));
 		}
 
 
@@ -840,27 +856,36 @@ public class CryptoFileSystemImplTest {
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);
 
-				try (var inUseClass = mockStatic(InUseFile.class)) {
-					inUseClass.when(() -> InUseFile.isInUse(eq(ciphertextDestinationFile), any())).thenReturn(false);
-					inTest.move(cleartextSource, cleartextDestination, option1, option2);
-				}
+				var inTestSpy = spy(inTest);
+				doNothing().when(inTestSpy).checkUsage(cleartextSource, ciphertextSource);
+				doNothing().when(inTestSpy).checkUsage(cleartextDestination, ciphertextDestination);
+
+				inTestSpy.move(cleartextSource, cleartextDestination, option1, option2);
 
 				verify(readonlyFlag).assertWritable();
 				verify(physicalFsProv).move(ciphertextSourceFile, ciphertextDestinationFile, option1, option2);
 				verify(openFileMove).commit();
+				verify(inTestSpy).checkUsage(cleartextSource, ciphertextSource);
+				verify(inTestSpy).checkUsage(cleartextDestination, ciphertextDestination);
 			}
 
 			@Test
 			public void moveFileWithSourceInUse() throws IOException {
-				moveFileWithXInUse(ciphertextSourceFile, cleartextSource);
+				var inTestSpy = spy(inTest);
+				doThrow(FileAlreadyInUseException.class).when(inTestSpy).checkUsage(cleartextSource, ciphertextSource);
+				doNothing().when(inTestSpy).checkUsage(cleartextDestination, ciphertextDestination);
+				moveFileWithXInUse(inTestSpy);
 			}
 
 			@Test
 			public void moveFileWithTargetInUse() throws IOException {
-				moveFileWithXInUse(ciphertextDestinationFile, cleartextDestination);
+				var inTestSpy = spy(inTest);
+				doNothing().when(inTestSpy).checkUsage(cleartextSource, ciphertextSource);
+				doThrow(FileAlreadyInUseException.class).when(inTestSpy).checkUsage(cleartextDestination, ciphertextDestination);
+				moveFileWithXInUse(inTestSpy);
 			}
 
-			private void moveFileWithXInUse(Path usedCipherPath, CryptoPath usedClearPath) throws IOException {
+			private void moveFileWithXInUse(CryptoFileSystemImpl inTestSpy) throws IOException {
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.FILE);
 				when(cryptoPathMapper.getCiphertextFileType(cleartextDestination)).thenThrow(NoSuchFileException.class);
 				TwoPhaseMove openFileMove = Mockito.mock(TwoPhaseMove.class);
@@ -869,15 +894,11 @@ public class CryptoFileSystemImplTest {
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);
 
-				try (var inUseClass = mockStatic(InUseFile.class)) {
-					inUseClass.when(() -> InUseFile.isInUse(eq(usedCipherPath), any())).thenReturn(true);
-					Assertions.assertThrows(FileAlreadyInUseException.class, () -> inTest.move(cleartextSource, cleartextDestination, option1, option2));
-				}
+
+				Assertions.assertThrows(FileAlreadyInUseException.class, () -> inTestSpy.move(cleartextSource, cleartextDestination, option1, option2));
+
 				verify(readonlyFlag).assertWritable();
 				verify(physicalFsProv, never()).move(ciphertextSourceFile, ciphertextDestinationFile, option1, option2);
-				var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent
-						&& ((FileIsInUseEvent) ev).cleartext().equals(usedClearPath);
-				verify(eventConsumer).accept(ArgumentMatchers.argThat(isFileIsInUseEvent));
 			}
 
 

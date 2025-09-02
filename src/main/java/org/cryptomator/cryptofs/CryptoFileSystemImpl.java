@@ -725,7 +725,8 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		return format("%sCryptoFileSystem(%s)", open ? "" : "closed ", pathToVault);
 	}
 
-	private void checkUsage(CryptoPath cleartextPath, CiphertextFilePath ciphertextPath) throws FileAlreadyInUseException {
+	//visible for testing
+	void checkUsage(CryptoPath cleartextPath, CiphertextFilePath ciphertextPath) throws FileAlreadyInUseException {
 		if (inUseManager.isInUseByOthers(ciphertextPath.getFilePath())) {
 			eventConsumer.accept(new FileIsInUseEvent(cleartextPath, ciphertextPath.getRawPath(), new Properties())); //TODO: properties??
 			throw new FileAlreadyInUseException(ciphertextPath.getRawPath());
