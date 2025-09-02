@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -57,8 +58,8 @@ class CryptoFileSystemModule {
 	@Provides
 	@CryptoFileSystemScoped
 	public InUseManager provideInUseManager(CryptoFileSystemProperties fsProps) {
-		var owner = (String) fsProps.get("owner"); //TODO
-		if(owner != null && !fsProps.readonly()) {
+		var owner = Objects.requireNonNullElse(fsProps.owner(),"");
+		if(!owner.isBlank() && !fsProps.readonly()) {
 			return new RealInUseManager(owner);
 		} else {
 			return new StubInUseManager();

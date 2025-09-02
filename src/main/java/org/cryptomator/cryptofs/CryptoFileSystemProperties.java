@@ -115,6 +115,14 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	static final CryptorProvider.Scheme DEFAULT_CIPHER_COMBO = CryptorProvider.Scheme.SIV_GCM;
 
+	/**
+	 * Key identifying the filesystem owner.
+	 *
+	 * @since 2.10.0
+	 */
+	public static final String PROPERTY_OWNER = "owner";
+	static final String DEFAULT_OWNER = "";
+
 	private final Set<Entry<String, Object>> entries;
 
 	private CryptoFileSystemProperties(Builder builder) {
@@ -126,7 +134,8 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 				Map.entry(PROPERTY_EVENT_CONSUMER, builder.eventConsumer), //
 				Map.entry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, builder.maxCleartextNameLength), //
 				Map.entry(PROPERTY_SHORTENING_THRESHOLD, builder.shorteningThreshold), //
-				Map.entry(PROPERTY_CIPHER_COMBO, builder.cipherCombo) //
+				Map.entry(PROPERTY_CIPHER_COMBO, builder.cipherCombo), //
+				Map.entry(PROPERTY_OWNER, builder.owner) //
 		);
 	}
 
@@ -167,6 +176,10 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	@SuppressWarnings("unchecked")
 	Consumer<FilesystemEvent> filesystemEventConsumer() {
 		return (Consumer<FilesystemEvent>) get(PROPERTY_EVENT_CONSUMER);
+	}
+
+	String owner() {
+		return (String) get(PROPERTY_OWNER);
 	}
 
 	@Override
@@ -225,6 +238,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		private int maxCleartextNameLength = DEFAULT_MAX_CLEARTEXT_NAME_LENGTH;
 		private int shorteningThreshold = DEFAULT_SHORTENING_THRESHOLD;
 		private Consumer<FilesystemEvent> eventConsumer = DEFAULT_EVENT_CONSUMER;
+		private String owner = DEFAULT_OWNER;
 
 		private Builder() {
 		}
@@ -238,6 +252,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 			checkedSet(Integer.class, PROPERTY_SHORTENING_THRESHOLD, properties, this::withShorteningThreshold);
 			checkedSet(CryptorProvider.Scheme.class, PROPERTY_CIPHER_COMBO, properties, this::withCipherCombo);
 			checkedSet(Consumer.class, PROPERTY_EVENT_CONSUMER, properties, this::withFilesystemEventConsumer);
+			checkedSet(String.class, PROPERTY_OWNER, properties, this::withOwner);
 		}
 
 		private <T> void checkedSet(Class<T> type, String key, Map<String, ?> properties, Consumer<T> setter) {
@@ -364,6 +379,18 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 				throw new IllegalArgumentException("Parameter eventConsumer must not be null");
 			}
 			this.eventConsumer = eventConsumer;
+			return this;
+		}
+
+		/**
+		 * Sets the owner of the filesystem
+		 *
+		 * @param owner the owner string used when marking files in-use
+		 * @return this
+		 * @since 2.10.0
+		 */
+		public Builder withOwner(String owner) {
+			this.owner = owner;
 			return this;
 		}
 
