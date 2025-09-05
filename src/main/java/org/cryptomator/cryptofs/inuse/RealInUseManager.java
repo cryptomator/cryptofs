@@ -1,8 +1,7 @@
 package org.cryptomator.cryptofs.inuse;
 
 import org.cryptomator.cryptofs.common.Constants;
-import org.cryptomator.cryptofs.common.FileTooBigException;
-import org.cryptomator.cryptofs.common.FileUtil;
+import org.cryptomator.cryptofs.common.EncryptedChannels;
 import org.cryptomator.cryptofs.fh.FileAlreadyInUseException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.jspecify.annotations.NonNull;
@@ -12,8 +11,11 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -71,11 +73,15 @@ public class RealInUseManager implements InUseManager {
 		return false;
 	}
 
+	//TODO: test test test
 	Properties readInUseFile(Path inUseFilePath) throws IOException, IllegalArgumentException {
-		//TODO: decryption
-		var bytes = FileUtil.readAllBytesSizeRestricted(inUseFilePath, 4_000);
+		var bytes = ByteBuffer.allocate(cryptor.fileContentCryptor().cleartextChunkSize()); //TODO: should the inuse file size coupled to the chunk size?
+		try (var ch = Files.newByteChannel(inUseFilePath, StandardOpenOption.READ);
+			 var channel = EncryptedChannels.wrapDecryptionAround(ch,cryptor)) {
+			channel.read(bytes);
+		}
 		var props = new Properties();
-		try (var stream = new ByteArrayInputStream(bytes)) {
+		try (var stream = new ByteArrayInputStream(bytes.array())) {
 			props.load(stream);
 			validate(props);
 			return props;
@@ -117,15 +123,15 @@ public class RealInUseManager implements InUseManager {
 			if (isInUseInternal(inUseFilePath)) {
 				throw new FileAlreadyInUseException(inUseFilePath);
 			}
-			return RealUseToken.createWithExistingFile(inUseFilePath, owner, useTokens);
+			return RealUseToken.createWithExistingFile(inUseFilePath, owner, cryptor, useTokens);
 		} catch (FileAlreadyInUseException e) {
 			throw new UncheckedIOException(e); //wrapped due to Map::compute method
 		} catch (NoSuchFileException e) {
 			LOG.debug("No in-use-file {} found. Creating it.", inUseFilePath, e);
-			return RealUseToken.createWithNewFile(inUseFilePath, owner, useTokens);
-		} catch (FileTooBigException | IllegalArgumentException e) {
+			return RealUseToken.createWithNewFile(inUseFilePath, owner, cryptor, useTokens);
+		} catch (IllegalArgumentException e) {
 			LOG.info("Found invalid in-use-file {}. Owning it.", inUseFilePath, e);
-			return RealUseToken.createWithInvalidFile(inUseFilePath, owner, useTokens);
+			return RealUseToken.createWithInvalidFile(inUseFilePath, owner, cryptor, useTokens);
 		} catch (IOException e) {
 			LOG.warn("Failed to read in-use file {}. Ignoring it.", inUseFilePath, e);
 			throw new UncheckedIOException(e);
@@ -146,6 +152,7 @@ public class RealInUseManager implements InUseManager {
 	//for testing
 	RealInUseManager(String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens) {
 		this.owner = owner;
+		this.cryptor = cryptor;
 		this.useTokens = useTokens;
 	}
 }

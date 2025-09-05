@@ -1,7 +1,6 @@
 package org.cryptomator.cryptofs;
 
 import org.cryptomator.cryptofs.common.Constants;
-import org.cryptomator.cryptofs.fh.InUseFile;
 
 import java.io.IOException;
 import java.nio.file.Path;

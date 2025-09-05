@@ -128,13 +128,13 @@ public class RealInUseManagerTest {
 		var token = mock(RealUseToken.class);
 
 		try (var staticUseTokenMock = mockStatic(RealUseToken.class)) {
-			staticUseTokenMock.when(() -> RealUseToken.createWithExistingFile(inUseFilePath, "cryptobot3000", preparedMap)).thenReturn(token);
+			staticUseTokenMock.when(() -> RealUseToken.createWithExistingFile(inUseFilePath, "cryptobot3000", cryptor, preparedMap)).thenReturn(token);
 			doReturn(false).when(inUseSpy).isInUseInternal(inUseFilePath);
 
 			var result = inUseSpy.createInternal(inUseFilePath);
 			Assertions.assertSame(token, result);
 			verify(inUseSpy).isInUseInternal(inUseFilePath);
-			staticUseTokenMock.verify(() -> RealUseToken.createWithExistingFile(inUseFilePath, "cryptobot3000", preparedMap));
+			staticUseTokenMock.verify(() -> RealUseToken.createWithExistingFile(inUseFilePath, "cryptobot3000", cryptor, preparedMap));
 		}
 	}
 
@@ -147,13 +147,13 @@ public class RealInUseManagerTest {
 		var token = mock(RealUseToken.class);
 
 		try (var staticUseTokenMock = mockStatic(RealUseToken.class)) {
-			staticUseTokenMock.when(() -> RealUseToken.createWithInvalidFile(inUseFilePath, "cryptobot3000", preparedMap)).thenReturn(token);
+			staticUseTokenMock.when(() -> RealUseToken.createWithInvalidFile(inUseFilePath, "cryptobot3000", cryptor, preparedMap)).thenReturn(token);
 			doThrow(IllegalArgumentException.class).when(inUseSpy).isInUseInternal(inUseFilePath);
 
 			var result = inUseSpy.createInternal(inUseFilePath);
 			Assertions.assertSame(token, result);
 			verify(inUseSpy).isInUseInternal(inUseFilePath);
-			staticUseTokenMock.verify(() -> RealUseToken.createWithInvalidFile(inUseFilePath, "cryptobot3000", preparedMap));
+			staticUseTokenMock.verify(() -> RealUseToken.createWithInvalidFile(inUseFilePath, "cryptobot3000", cryptor, preparedMap));
 		}
 	}
 
@@ -166,13 +166,13 @@ public class RealInUseManagerTest {
 		var token = mock(RealUseToken.class);
 
 		try (var staticUseTokenMock = mockStatic(RealUseToken.class)) {
-			staticUseTokenMock.when(() -> RealUseToken.createWithNewFile(inUseFilePath, "cryptobot3000", preparedMap)).thenReturn(token);
+			staticUseTokenMock.when(() -> RealUseToken.createWithNewFile(inUseFilePath, "cryptobot3000", cryptor, preparedMap)).thenReturn(token);
 			doThrow(NoSuchFileException.class).when(inUseSpy).isInUseInternal(inUseFilePath);
 
 			var result = inUseSpy.createInternal(inUseFilePath);
 			Assertions.assertSame(token, result);
 			verify(inUseSpy).isInUseInternal(inUseFilePath);
-			staticUseTokenMock.verify(() -> RealUseToken.createWithNewFile(inUseFilePath, "cryptobot3000", preparedMap));
+			staticUseTokenMock.verify(() -> RealUseToken.createWithNewFile(inUseFilePath, "cryptobot3000", cryptor, preparedMap));
 		}
 	}
 

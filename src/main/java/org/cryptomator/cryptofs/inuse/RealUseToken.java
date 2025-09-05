@@ -1,6 +1,8 @@
 package org.cryptomator.cryptofs.inuse;
 
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.common.EncryptedChannels;
+import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -8,7 +10,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.ByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
@@ -37,37 +40,45 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public final class RealUseToken implements UseToken {
 
-	public static RealUseToken createWithNewFile(Path p, String owner, ConcurrentMap<Path, RealUseToken> useTokens) {
-		return new RealUseToken(p, owner, useTokens, ActivationType.CREATE);
+	public static RealUseToken createWithNewFile(Path p, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens) {
+		return new RealUseToken(p, owner, cryptor, useTokens, ActivationType.CREATE);
 	}
 
-	public static RealUseToken createWithExistingFile(Path p, String owner, ConcurrentMap<Path, RealUseToken> useTokens) {
-		return new RealUseToken(p, owner, useTokens, ActivationType.UPDATE);
+	public static RealUseToken createWithExistingFile(Path p, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens) {
+		return new RealUseToken(p, owner, cryptor, useTokens, ActivationType.UPDATE);
 	}
 
-	public static RealUseToken createWithInvalidFile(Path p, String owner, ConcurrentMap<Path, RealUseToken> useTokens) {
-		return new RealUseToken(p, owner, useTokens, ActivationType.STEAL);
+	public static RealUseToken createWithInvalidFile(Path p, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens) {
+		return new RealUseToken(p, owner, cryptor, useTokens, ActivationType.STEAL);
 	}
 
 	public static RealUseToken createInvalid(Path p, ConcurrentMap<Path, RealUseToken> useTokens) {
-		return new RealUseToken(p, "unused", useTokens, ActivationType.NONE);
+		return new RealUseToken(p, "unused", null, useTokens, ActivationType.NONE);
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(RealUseToken.class);
 
 	private final String owner;
 	private final CompletableFuture<Void> creationTask;
+	private final Cryptor cryptor;
 	private final ConcurrentMap<Path, RealUseToken> useTokens;
+	private final EncryptionDecorator encWrapper; //this exists to make the class testable
 	private final ReentrantReadWriteLock.WriteLock fileCreationSync = new ReentrantReadWriteLock().writeLock();
 
 	private volatile Path filePath;
-	private volatile SeekableByteChannel channel;
+	private volatile WritableByteChannel channel;
 	private volatile boolean closed;
 
-	private RealUseToken(Path filePath, String owner, ConcurrentMap<Path, RealUseToken> useTokens, ActivationType m) {
+	RealUseToken(Path filePath, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, ActivationType m) {
+		this(filePath, owner, cryptor, useTokens, m, (ch, cr) -> EncryptedChannels.wrapEncryptionAround(ch, cr));
+	}
+
+	RealUseToken(Path filePath, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, ActivationType m, EncryptionDecorator encWrapper) {
 		this.owner = owner;
 		this.filePath = filePath;
+		this.cryptor = cryptor;
 		this.useTokens = useTokens;
+		this.encWrapper = encWrapper;
 		FileOperation method = switch (m) {
 			case STEAL -> this::stealInUseFile;
 			case UPDATE -> this::updateInUseFile;
@@ -125,16 +136,16 @@ public final class RealUseToken implements UseToken {
 		}
 	}
 
+	//TODO: refresh logic?
 	void writeInUseFile(Path inUseFilePath, Set<OpenOption> openOptions) throws IOException {
-		this.channel = Files.newByteChannel(inUseFilePath, openOptions);
+		var ch = Files.newByteChannel(inUseFilePath, openOptions);
+		this.channel = encWrapper.wrapWithEncryption(ch, cryptor);
 		var rawInfo = new ByteArrayOutputStream(4_000);
 		var prop = new Properties();
 		prop.put("owner", owner);
 		prop.put("since", Instant.now().toString());
-		prop.store(rawInfo, "UNENCRYPTED Cryptomator inUse file");
-		//TODO: encryption
+		prop.store(rawInfo, null);
 		channel.write(ByteBuffer.wrap(rawInfo.toByteArray()));
-		channel.position(0);
 	}
 
 	@Override
@@ -216,5 +227,10 @@ public final class RealUseToken implements UseToken {
 	interface FileOperation {
 
 		void execute() throws IOException;
+	}
+
+	interface EncryptionDecorator {
+
+		WritableByteChannel wrapWithEncryption(ByteChannel ch, Cryptor c);
 	}
 }
