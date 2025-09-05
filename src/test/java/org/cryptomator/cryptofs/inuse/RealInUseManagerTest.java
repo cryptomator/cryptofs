@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs.inuse;
 
 import org.cryptomator.cryptofs.fh.FileAlreadyInUseException;
+import org.cryptomator.cryptolib.api.Cryptor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,11 +30,13 @@ public class RealInUseManagerTest {
 	private MockedStatic<RealInUseManager> staticManagerMock;
 	private Path ciphertextPath;
 	private Path inUseFilePath;
+	private Cryptor cryptor;
 
 	@BeforeEach
 	public void beforeEach() {
 		ciphertextPath = mock(Path.class, "ciphertext.c9r");
 		inUseFilePath = mock(Path.class, "inUseFile.c9u");
+		cryptor = mock(Cryptor.class);
 		staticManagerMock = mockStatic(RealInUseManager.class);
 		staticManagerMock.when(() -> RealInUseManager.computeInUseFilePath(ciphertextPath)).thenReturn(inUseFilePath);
 	}
@@ -43,7 +46,7 @@ public class RealInUseManagerTest {
 	public void testUseByOthersWithExistingToken() throws IOException {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
 		preparedMap.put(inUseFilePath, mock(RealUseToken.class));
-		var inUseManager = new RealInUseManager("cryptobot3000", preparedMap);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap);
 		var inUseSpy = spy(inUseManager);
 
 		var result = inUseSpy.isInUseByOthers(ciphertextPath);
@@ -55,7 +58,7 @@ public class RealInUseManagerTest {
 	@Test
 	@DisplayName("Call internal inUse check, when map does not contain path")
 	public void testUseByOthers() throws IOException {
-		var inUseManager = new RealInUseManager("cryptobot3000");
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
 		var inUseSpy = spy(inUseManager);
 		doReturn(true).when(inUseSpy).isInUseInternal(inUseFilePath);
 
@@ -68,7 +71,7 @@ public class RealInUseManagerTest {
 	@DisplayName("If internalUse check fails with declared exception, return false")
 	@ValueSource(classes = {IllegalArgumentException.class, IOException.class})
 	public void testUseByOthersException(Class exceptionClass) throws IOException {
-		var inUseManager = new RealInUseManager("cryptobot3000");
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
 		var inUseSpy = spy(inUseManager);
 		doThrow(exceptionClass).when(inUseSpy).isInUseInternal(inUseFilePath);
 
@@ -80,7 +83,7 @@ public class RealInUseManagerTest {
 	@Test
 	@DisplayName("\"use\" method places puts path into map and returns token")
 	public void testUsePlacesPathInMap() throws FileAlreadyInUseException {
-		var inUseManager = new RealInUseManager("cryptobot3000");
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
 		var inUseSpy = spy(inUseManager);
 		var token = mock(RealUseToken.class);
 
@@ -93,7 +96,7 @@ public class RealInUseManagerTest {
 	@Test
 	@DisplayName("\"use\" method rethrow FileAlreadyInUseException")
 	public void testUseThrows() throws FileAlreadyInUseException {
-		var inUseManager = new RealInUseManager("cryptobot3000");
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
 		var inUseSpy = spy(inUseManager);
 		var inUseException = new FileAlreadyInUseException(inUseFilePath);
 
@@ -106,7 +109,7 @@ public class RealInUseManagerTest {
 	@Test
 	@DisplayName("\"use\" method returns CLOSED_TOKEN on IOException")
 	public void testUseClosedToken() throws FileAlreadyInUseException {
-		var inUseManager = new RealInUseManager("cryptobot3000");
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
 		var inUseSpy = spy(inUseManager);
 		var someIOException = new IOException("it's over 9000!");
 
@@ -120,7 +123,7 @@ public class RealInUseManagerTest {
 	@DisplayName("Create internal with existing in-use-file")
 	public void testCreateExistingValid() throws IOException {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
-		var inUseManager = new RealInUseManager("cryptobot3000", preparedMap);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap);
 		var inUseSpy = spy(inUseManager);
 		var token = mock(RealUseToken.class);
 
@@ -139,7 +142,7 @@ public class RealInUseManagerTest {
 	@DisplayName("Create internal with INVALID in-use-file")
 	public void testCreateExistingInvalid() throws IOException {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
-		var inUseManager = new RealInUseManager("cryptobot3000", preparedMap);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap);
 		var inUseSpy = spy(inUseManager);
 		var token = mock(RealUseToken.class);
 
@@ -158,7 +161,7 @@ public class RealInUseManagerTest {
 	@DisplayName("Create internal with NOT existing in-use-file")
 	public void testCreateNotExisting() throws IOException {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
-		var inUseManager = new RealInUseManager("cryptobot3000", preparedMap);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap);
 		var inUseSpy = spy(inUseManager);
 		var token = mock(RealUseToken.class);
 
@@ -177,7 +180,7 @@ public class RealInUseManagerTest {
 	@DisplayName("Create internal throws UncheckedIO(FileAlreadyInUse) exception")
 	public void testCreateFailedRead() throws IOException {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
-		var inUseManager = new RealInUseManager("cryptobot3000", preparedMap);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap);
 		var inUseSpy = spy(inUseManager);
 
 		doReturn(true).when(inUseSpy).isInUseInternal(inUseFilePath);

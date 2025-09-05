@@ -2,17 +2,20 @@ package org.cryptomator.cryptofs;
 
 import com.google.common.io.BaseEncoding;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.common.EncryptedChannels;
 import org.cryptomator.cryptofs.util.TestCryptoException;
 import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.common.DecryptingReadableByteChannel;
 import org.cryptomator.cryptolib.common.EncryptingWritableByteChannel;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -22,7 +25,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.spy;
 
 public class DirectoryIdBackupTest {
@@ -32,14 +38,21 @@ public class DirectoryIdBackupTest {
 
 	private String dirId = "12345678";
 	private Cryptor cryptor;
+	private MockedStatic<EncryptedChannels> ecMock;
 
 	private DirectoryIdBackup dirIdBackup;
 
 
 	@BeforeEach
-	public void init() {
+	public void beforeEach() {
 		cryptor = Mockito.mock(Cryptor.class);
 		dirIdBackup = new DirectoryIdBackup(cryptor);
+		ecMock = mockStatic(EncryptedChannels.class);
+	}
+
+	@AfterEach
+	public void afterEach() {
+		ecMock.close();
 	}
 
 	@Nested
@@ -52,12 +65,12 @@ public class DirectoryIdBackupTest {
 		public void beforeEachWriteTest() {
 			ciphertextDirectoryObject = new CiphertextDirectory(dirId, testDir);
 			encChannel = Mockito.mock(EncryptingWritableByteChannel.class);
+			ecMock.when(() -> EncryptedChannels.wrapEncryptionAround(any(), eq(cryptor))).thenReturn(encChannel);
 		}
 
 		@Test
 		public void testIdFileCreated() throws IOException {
 			var dirIdBackupSpy = spy(dirIdBackup);
-			Mockito.doReturn(encChannel).when(dirIdBackupSpy).wrapEncryptionAround(Mockito.any(), Mockito.eq(cryptor));
 			Mockito.when(encChannel.write(Mockito.any())).thenReturn(0);
 
 			dirIdBackupSpy.write(ciphertextDirectoryObject);
@@ -68,7 +81,6 @@ public class DirectoryIdBackupTest {
 		@Test
 		public void testContentIsWritten() throws IOException {
 			var dirIdBackupSpy = spy(dirIdBackup);
-			Mockito.doReturn(encChannel).when(dirIdBackupSpy).wrapEncryptionAround(Mockito.any(), Mockito.eq(cryptor));
 			Mockito.when(encChannel.write(Mockito.any())).thenReturn(0);
 			var expectedWrittenContent = ByteBuffer.wrap(dirId.getBytes(StandardCharsets.US_ASCII));
 
@@ -87,14 +99,15 @@ public class DirectoryIdBackupTest {
 
 		@BeforeEach
 		public void beforeEachRead() throws IOException {
-			var dirNames = BaseEncoding.base32().encode(new byte [20]); //a directory id hash is due to SHA1 always 20 bytes long
-			var twoCharDir = testDir.resolve(dirNames.substring(0,2));
+			var dirNames = BaseEncoding.base32().encode(new byte[20]); //a directory id hash is due to SHA1 always 20 bytes long
+			var twoCharDir = testDir.resolve(dirNames.substring(0, 2));
 			cipherContentDir = twoCharDir.resolve(dirNames.substring(2));
 			var backupFile = cipherContentDir.resolve(Constants.DIR_ID_BACKUP_FILE_NAME);
 			Files.createDirectories(cipherContentDir);
 			Files.writeString(backupFile, dirId, StandardCharsets.US_ASCII, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
 
 			decChannel = mock(DecryptingReadableByteChannel.class);
+			ecMock.when(() -> EncryptedChannels.wrapDecryptionAround(any(), eq(cryptor))).thenReturn(decChannel);
 		}
 
 		@Test
@@ -108,7 +121,6 @@ public class DirectoryIdBackupTest {
 		@DisplayName("If the directory id is longer than 36 characters, throw IllegalStateException")
 		public void contentLongerThan36Chars() throws IOException {
 			var dirIdBackupSpy = spy(dirIdBackup);
-			Mockito.when(dirIdBackupSpy.wrapDecryptionAround(Mockito.any(), Mockito.eq(cryptor))).thenReturn(decChannel);
 			Mockito.when(decChannel.read(Mockito.any())).thenReturn(Constants.MAX_DIR_ID_LENGTH + 1);
 			Assertions.assertThrows(IllegalStateException.class, () -> dirIdBackupSpy.read(cipherContentDir));
 		}
@@ -118,7 +130,6 @@ public class DirectoryIdBackupTest {
 		public void invalidEncryptionThrowsCryptoException() throws IOException {
 			var dirIdBackupSpy = spy(dirIdBackup);
 			var expectedException = new TestCryptoException();
-			Mockito.when(dirIdBackupSpy.wrapDecryptionAround(Mockito.any(), Mockito.eq(cryptor))).thenReturn(decChannel);
 			Mockito.when(decChannel.read(Mockito.any())).thenThrow(expectedException);
 			var actual = Assertions.assertThrows(CryptoException.class, () -> dirIdBackupSpy.read(cipherContentDir));
 			Assertions.assertEquals(expectedException, actual);
@@ -129,7 +140,6 @@ public class DirectoryIdBackupTest {
 		public void ioException() throws IOException {
 			var dirIdBackupSpy = spy(dirIdBackup);
 			var expectedException = new IOException("my oh my");
-			Mockito.when(dirIdBackupSpy.wrapDecryptionAround(Mockito.any(), Mockito.eq(cryptor))).thenReturn(decChannel);
 			Mockito.when(decChannel.read(Mockito.any())).thenThrow(expectedException);
 			var actual = Assertions.assertThrows(IOException.class, () -> dirIdBackupSpy.read(cipherContentDir));
 			Assertions.assertEquals(expectedException, actual);
@@ -141,7 +151,6 @@ public class DirectoryIdBackupTest {
 			var dirIdBackupSpy = spy(dirIdBackup);
 			var expectedArray = dirId.getBytes(StandardCharsets.US_ASCII);
 
-			Mockito.when(dirIdBackupSpy.wrapDecryptionAround(Mockito.any(), Mockito.eq(cryptor))).thenReturn(decChannel);
 			Mockito.doAnswer(invocationOnMock -> {
 				var buf = (ByteBuffer) invocationOnMock.getArgument(0);
 				buf.put(expectedArray);

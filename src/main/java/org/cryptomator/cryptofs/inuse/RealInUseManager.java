@@ -4,6 +4,7 @@ import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.FileTooBigException;
 import org.cryptomator.cryptofs.common.FileUtil;
 import org.cryptomator.cryptofs.fh.FileAlreadyInUseException;
+import org.cryptomator.cryptolib.api.Cryptor;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,9 +31,11 @@ public class RealInUseManager implements InUseManager {
 
 	private final ConcurrentMap<Path, RealUseToken> useTokens;
 	private final String owner;
+	private Cryptor cryptor;
 
-	public RealInUseManager(@NonNull String owner) {
+	public RealInUseManager(@NonNull String owner, Cryptor cryptor) {
 		this.owner = owner;
+		this.cryptor = cryptor;
 		this.useTokens = new ConcurrentHashMap<>();
 	}
 
@@ -71,8 +74,6 @@ public class RealInUseManager implements InUseManager {
 	Properties readInUseFile(Path inUseFilePath) throws IOException, IllegalArgumentException {
 		//TODO: decryption
 		var bytes = FileUtil.readAllBytesSizeRestricted(inUseFilePath, 4_000);
-		//TODO: convert to JSON an extract info
-		//	for now we use properties
 		var props = new Properties();
 		try (var stream = new ByteArrayInputStream(bytes)) {
 			props.load(stream);
@@ -143,7 +144,7 @@ public class RealInUseManager implements InUseManager {
 
 
 	//for testing
-	RealInUseManager(String owner, ConcurrentMap<Path, RealUseToken> useTokens) {
+	RealInUseManager(String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens) {
 		this.owner = owner;
 		this.useTokens = useTokens;
 	}
