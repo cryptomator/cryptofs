@@ -35,7 +35,7 @@ public class RealUseTokenTest {
 	Path tmpDir;
 	private WatchService watchService;
 
-	private final static Duration FILE_OPERATION_DELAY = Duration.ofMillis(Constants.IN_USE_DELAY_MILLIS - 100);
+	private final static Duration FILE_OPERATION_DELAY = Duration.ofMillis(Constants.INUSE_DELAY_MILLIS - 100);
 	private final static Duration FILE_OPERATION_MAX = FILE_OPERATION_DELAY.plusMillis(3000);
 
 	@BeforeEach

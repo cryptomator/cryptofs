@@ -29,7 +29,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 /**
  * Class to represent a file is "in use" by this filesystem.
  * <p>
- * The actual persistence of the "in use"-state with a file is delayed by {@value Constants#IN_USE_DELAY_MILLIS} milliseconds.
+ * The actual persistence of the "in use"-state with a file is delayed by {@value Constants#INUSE_DELAY_MILLIS} milliseconds.
  * The content of the in-use-file is a JSON containing
  * <li>
  *     <ul>owner - name of the filesystem owner</ul>
@@ -70,7 +70,7 @@ public final class RealUseToken implements UseToken {
 	private volatile boolean closed;
 
 	RealUseToken(Path filePath, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, ActivationType m) {
-		this(filePath, owner, cryptor, useTokens, m, (ch, cr) -> EncryptedChannels.wrapEncryptionAround(ch, cr));
+		this(filePath, owner, cryptor, useTokens, m, EncryptedChannels::wrapEncryptionAround);
 	}
 
 	RealUseToken(Path filePath, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, ActivationType m, EncryptionDecorator encWrapper) {
@@ -104,7 +104,7 @@ public final class RealUseToken implements UseToken {
 				} finally {
 					fileCreationSync.unlock();
 				}
-			}, CompletableFuture.delayedExecutor(Constants.IN_USE_DELAY_MILLIS, TimeUnit.MILLISECONDS, Executors.newVirtualThreadPerTaskExecutor()));
+			}, CompletableFuture.delayedExecutor(Constants.INUSE_DELAY_MILLIS, TimeUnit.MILLISECONDS, Executors.newVirtualThreadPerTaskExecutor()));
 		}
 
 	}

@@ -86,8 +86,8 @@ public class RealInUseManagerTest {
 	}
 
 	@Test
-	@DisplayName("\"use\" method places puts path into map and returns token")
-	public void testUsePlacesPathInMap() throws FileAlreadyInUseException {
+	@DisplayName("\"use\" method 	puts path into map and returns token")
+	public void testUsePutsPathInMap() throws FileAlreadyInUseException {
 		var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
 		var inUseSpy = spy(inUseManager);
 		var token = mock(RealUseToken.class);

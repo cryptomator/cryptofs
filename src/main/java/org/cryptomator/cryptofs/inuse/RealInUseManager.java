@@ -45,7 +45,7 @@ public class RealInUseManager implements InUseManager {
 	@Override
 	public boolean isInUseByOthers(Path ciphertextPath) {
 		var inUseFilePath = computeInUseFilePath(ciphertextPath);
-		if(useTokens.containsKey(inUseFilePath)) {
+		if (useTokens.containsKey(inUseFilePath)) {
 			return false;
 		}
 

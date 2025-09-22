@@ -36,5 +36,5 @@ public final class Constants {
 
 	public static final String SEPARATOR = "/";
 	public static final String RECOVERY_DIR_NAME = "LOST+FOUND";
-	public static final int IN_USE_DELAY_MILLIS = 5000;
+	public static final int INUSE_DELAY_MILLIS = 5000;
 }
