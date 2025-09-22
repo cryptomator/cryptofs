@@ -73,22 +73,27 @@ public class RealInUseManager implements InUseManager {
 		return false;
 	}
 
-	//TODO: test test test
 	Properties readInUseFile(Path inUseFilePath) throws IOException, IllegalArgumentException {
 		var bytes = ByteBuffer.allocate(cryptor.fileContentCryptor().cleartextChunkSize()); //TODO: should the inuse file size coupled to the chunk size?
-		try (var ch = Files.newByteChannel(inUseFilePath, StandardOpenOption.READ);
-			 var channel = EncryptedChannels.wrapDecryptionAround(ch,cryptor)) {
-			channel.read(bytes);
+		final int readBytes;
+		try (var ch = Files.newByteChannel(inUseFilePath, StandardOpenOption.READ); //
+			 var channel = EncryptedChannels.wrapDecryptionAround(ch, cryptor)) {
+			readBytes = channel.read(bytes);
 		}
+
+		if (readBytes < 0) {
+			throw new IllegalArgumentException("Empty cleartext inUse file");
+		}
+
 		var props = new Properties();
-		try (var stream = new ByteArrayInputStream(bytes.array())) {
+		try (var stream = new ByteArrayInputStream(bytes.array(), 0, readBytes)) {
 			props.load(stream);
 			validate(props);
 			return props;
 		}
 	}
 
-	private void validate(Properties content) throws IllegalArgumentException {
+	void validate(Properties content) throws IllegalArgumentException {
 		if (!content.containsKey("owner")) {
 			throw new IllegalArgumentException("Invalid in-use-file. Missing key \"owner\"");
 		}

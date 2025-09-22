@@ -1,29 +1,34 @@
 package org.cryptomator.cryptofs.inuse;
 
+import org.cryptomator.cryptofs.common.EncryptedChannels;
 import org.cryptomator.cryptofs.fh.FileAlreadyInUseException;
 import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.FileContentCryptor;
+import org.cryptomator.cryptolib.common.DecryptingReadableByteChannel;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentMatcher;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 public class RealInUseManagerTest {
 
@@ -191,9 +196,84 @@ public class RealInUseManagerTest {
 		verify(inUseSpy).isInUseInternal(inUseFilePath);
 	}
 
-	//TODO: test createInvalid
+	@Nested
+	class ReadInUseFile {
+
+		MockedStatic<EncryptedChannels> staticEncryptionMock;
+
+		@BeforeEach
+		void beforeEach(@TempDir Path tempDir) {
+			inUseFilePath = tempDir.resolve("inUse.file");
+			staticEncryptionMock = mockStatic(EncryptedChannels.class);
+
+			var fileContentCryptor = mock(FileContentCryptor.class);
+			when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
+			when(fileContentCryptor.cleartextChunkSize()).thenReturn(42);
+		}
+
+		@Test
+		@DisplayName("Reading existing inUse-file reads from file, convert to Properties and validates them")
+		void SuccessTest() throws IOException {
+			Files.createFile(inUseFilePath);
+			var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
+			var inUseSpy = spy(inUseManager);
+
+			MockedConstruction.MockInitializer<Properties> propsMockInit = (props, context) -> {
+				doNothing().when(props).load((InputStream) any());
+			};
+			try (MockedConstruction<Properties> constructorProps = mockConstruction(Properties.class, propsMockInit)) {
+				var decryptingChannel = mock(DecryptingReadableByteChannel.class);
+				doReturn(42).when(decryptingChannel).read(any());
+				staticEncryptionMock.when(() -> EncryptedChannels.wrapDecryptionAround(any(), eq(cryptor))).thenReturn(decryptingChannel);
+				doNothing().when(inUseSpy).validate(any());
+
+				inUseSpy.readInUseFile(inUseFilePath);
+
+				Properties props = constructorProps.constructed().getFirst();
+				verify(decryptingChannel).read(any());
+
+				ArgumentMatcher<InputStream> hasCorrectStreamSize = s -> {
+					try {
+						return s.available() == 42;
+					} catch (IOException e) {
+						throw new RuntimeException(e);
+					}
+				};
+				verify(props).load(argThat(hasCorrectStreamSize));
+				verify(inUseSpy).validate(any());
+			}
+		}
+
+		@Test
+		@DisplayName("Not existing inUse-file throws NoSuchFileException")
+		void notExistingFile() {
+			var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
+			var inUseSpy = spy(inUseManager);
+			Assertions.assertThrows(NoSuchFileException.class, () -> inUseSpy.readInUseFile(inUseFilePath));
+		}
+
+		@Test
+		@DisplayName("Empty inUse-file throws IllegalArgumentException")
+		void emptyFile() throws IOException {
+			var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
+			var inUseSpy = spy(inUseManager);
+
+			Files.createFile(inUseFilePath);
+
+			var decryptingChannel = mock(DecryptingReadableByteChannel.class);
+			doReturn(-1).when(decryptingChannel).read(any());
+			staticEncryptionMock.when(() -> EncryptedChannels.wrapDecryptionAround(any(), eq(cryptor))).thenReturn(decryptingChannel);
+
+			Assertions.assertThrows(IllegalArgumentException.class, () -> inUseSpy.readInUseFile(inUseFilePath));
+		}
+
+		@AfterEach
+		public void afterEach() {
+			staticEncryptionMock.close();
+		}
+	}
+
 	//TODO: test validate
-	//TODO: test readInUseFile
 
 	@AfterEach
 	public void afterEach() {
