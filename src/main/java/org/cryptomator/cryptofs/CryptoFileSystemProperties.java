@@ -383,13 +383,18 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		}
 
 		/**
-		 * Sets the owner of the filesystem
+		 * Sets the owner of the filesystem.
+		 * <p>
+		 * The owners length must be less than or equal to 100.
 		 *
 		 * @param owner the owner string used when marking files in-use
 		 * @return this
 		 * @since 2.10.0
 		 */
 		public Builder withOwner(String owner) {
+			if (owner.length() > 100) {
+				throw new IllegalArgumentException("owner must have length less than or equal to 100");
+			}
 			this.owner = owner;
 			return this;
 		}

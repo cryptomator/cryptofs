@@ -140,7 +140,7 @@ public final class RealUseToken implements UseToken {
 	void writeInUseFile(Path inUseFilePath, Set<OpenOption> openOptions) throws IOException {
 		var ch = Files.newByteChannel(inUseFilePath, openOptions);
 		this.channel = encWrapper.wrapWithEncryption(ch, cryptor);
-		var rawInfo = new ByteArrayOutputStream(4_000);
+		var rawInfo = new ByteArrayOutputStream(cryptor.fileContentCryptor().cleartextChunkSize());
 		var prop = new Properties();
 		prop.put("owner", owner);
 		prop.put("since", Instant.now().toString());

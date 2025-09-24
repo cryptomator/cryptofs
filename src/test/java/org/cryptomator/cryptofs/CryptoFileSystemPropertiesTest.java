@@ -58,6 +58,22 @@ public class CryptoFileSystemPropertiesTest {
 	}
 
 	@Test
+	public void testOwnerSizeRestriction() {
+		String owner1 = "\u2741".repeat(100);
+		String owner2 = "\u2741".repeat(101);
+
+		Assertions.assertDoesNotThrow(() -> cryptoFileSystemProperties() //
+				.withKeyLoader(keyLoader) //
+				.withOwner(owner1) //
+				.build());
+		Assertions.assertThrows(IllegalArgumentException.class, () -> cryptoFileSystemProperties() //
+				.withKeyLoader(keyLoader) //
+				.withOwner(owner2) //
+				.build());
+
+	}
+
+	@Test
 	public void testFromMap() {
 		Map<String, Object> map = new HashMap<>();
 		String masterkeyFilename = "aMasterkeyFilename";
