@@ -74,7 +74,7 @@ public class RealInUseManager implements InUseManager {
 	}
 
 	Properties readInUseFile(Path inUseFilePath) throws IOException, IllegalArgumentException {
-		var bytes = ByteBuffer.allocate(cryptor.fileContentCryptor().cleartextChunkSize()); //TODO: should the inuse file size coupled to the chunk size?
+		var bytes = ByteBuffer.allocate(Constants.INUSE_CLEARTEXT_SIZE);
 		final int readBytes;
 		try (var ch = Files.newByteChannel(inUseFilePath, StandardOpenOption.READ); //
 			 var channel = EncryptedChannels.wrapDecryptionAround(ch, cryptor)) {
