@@ -229,7 +229,6 @@ public class RealInUseManagerTest {
 				var decryptingChannel = mock(DecryptingReadableByteChannel.class);
 				doReturn(42).when(decryptingChannel).read(any());
 				staticEncryptionMock.when(() -> EncryptedChannels.wrapDecryptionAround(any(), eq(cryptor))).thenReturn(decryptingChannel);
-				doNothing().when(inUseSpy).validate(any());
 
 				inUseSpy.readInUseFile(inUseFilePath);
 
@@ -244,7 +243,6 @@ public class RealInUseManagerTest {
 					}
 				};
 				verify(props).load(argThat(hasCorrectStreamSize));
-				verify(inUseSpy).validate(any());
 			}
 		}
 

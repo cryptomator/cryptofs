@@ -74,6 +74,7 @@ public class RealInUseManager implements InUseManager {
 	 */
 	boolean isInUse(Path inUseFilePath) throws IOException, IllegalArgumentException {
 		Properties content = readInUseFile(inUseFilePath);
+		validate(content);
 		return isInUse(content);
 	}
 
@@ -92,7 +93,6 @@ public class RealInUseManager implements InUseManager {
 		var props = new Properties();
 		try (var stream = new ByteArrayInputStream(bytes.array(), 0, readBytes)) {
 			props.load(stream);
-			validate(props);
 			return props;
 		}
 	}
