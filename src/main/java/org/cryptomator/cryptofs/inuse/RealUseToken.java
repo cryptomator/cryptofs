@@ -45,10 +45,6 @@ public final class RealUseToken implements UseToken {
 	}
 
 	public static RealUseToken createWithExistingFile(Path p, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens) {
-		return new RealUseToken(p, owner, cryptor, useTokens, ActivationType.UPDATE);
-	}
-
-	public static RealUseToken createWithInvalidFile(Path p, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens) {
 		return new RealUseToken(p, owner, cryptor, useTokens, ActivationType.STEAL);
 	}
 
@@ -81,7 +77,6 @@ public final class RealUseToken implements UseToken {
 		this.encWrapper = encWrapper;
 		FileOperation method = switch (m) {
 			case STEAL -> this::stealInUseFile;
-			case UPDATE -> this::updateInUseFile;
 			case CREATE -> this::createInUseFile;
 			case NONE -> () -> {};
 		};
@@ -142,8 +137,8 @@ public final class RealUseToken implements UseToken {
 		this.channel = encWrapper.wrapWithEncryption(ch, cryptor);
 		var rawInfo = new ByteArrayOutputStream(Constants.INUSE_CLEARTEXT_SIZE);
 		var prop = new Properties();
-		prop.put("owner", owner);
-		prop.put("since", Instant.now().toString());
+		prop.put(UseToken.OWNER_KEY, owner);
+		prop.put(UseToken.LASTUPDATED_KEY, Instant.now().toString());
 		prop.store(rawInfo, null);
 		channel.write(ByteBuffer.wrap(rawInfo.toByteArray()));
 	}
@@ -217,7 +212,6 @@ public final class RealUseToken implements UseToken {
 	}
 
 	enum ActivationType {
-		UPDATE,
 		CREATE,
 		STEAL,
 		NONE;

@@ -77,7 +77,7 @@ public class RealUseTokenTest {
 		var watchKey = tmpDir.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY);
 		var fileTime = Files.getLastModifiedTime(filePath);
 
-		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, RealUseToken.ActivationType.UPDATE, encWrapper)) {
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, RealUseToken.ActivationType.STEAL, encWrapper)) {
 			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> fileTime.compareTo(Files.getLastModifiedTime(filePath)) < 0);
 			var events = watchKey.pollEvents();
 			var createEvent = events.stream().filter(e -> e.kind().equals(StandardWatchEventKinds.ENTRY_MODIFY)).findAny();

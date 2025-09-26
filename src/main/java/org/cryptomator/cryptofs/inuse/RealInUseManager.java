@@ -16,6 +16,9 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -30,10 +33,11 @@ import java.util.concurrent.ConcurrentMap;
 public class RealInUseManager implements InUseManager {
 
 	private static final Logger LOG = LoggerFactory.getLogger(RealInUseManager.class);
+	private static final int REFRESH_DELAY_MINUTES = 5;
 
 	private final ConcurrentMap<Path, RealUseToken> useTokens;
 	private final String owner;
-	private Cryptor cryptor;
+	private final Cryptor cryptor;
 
 	public RealInUseManager(@NonNull String owner, Cryptor cryptor) {
 		this.owner = owner;
@@ -50,27 +54,27 @@ public class RealInUseManager implements InUseManager {
 		}
 
 		try {
-			return isInUseInternal(inUseFilePath);
+			return isInUse(inUseFilePath);
 		} catch (IllegalArgumentException | IOException e) {
 			return false;
 		}
 	}
 
 	/**
-	 * Reads the in-use-file at the given path, validates it and checks if this in-use-file belongs to the running crypto filesystem.
+	 * Reads the in-use-file at the given path, validates it and checks if
+	 * <ul>
+	 *     <li> this in-use-file belongs to the running crypto filesystem and</li>
+	 *     <li> the last update time is at most 2*{@value #REFRESH_DELAY_MINUTES}</li> minutes ago
+	 * </ul>.
 	 *
 	 * @param inUseFilePath
 	 * @return {@code true} if the in-use-file exists, but owned by different user
 	 * @throws IOException if the in-use-file does not exist or cannot be read
 	 * @throws IllegalArgumentException if the in-use-file is invalid
 	 */
-	boolean isInUseInternal(Path inUseFilePath) throws IOException, IllegalArgumentException {
+	boolean isInUse(Path inUseFilePath) throws IOException, IllegalArgumentException {
 		Properties content = readInUseFile(inUseFilePath);
-		if (!content.get("owner").equals(owner)) {
-			//TODO: check also timestamps
-			return true;
-		}
-		return false;
+		return isInUse(content);
 	}
 
 	Properties readInUseFile(Path inUseFilePath) throws IOException, IllegalArgumentException {
@@ -94,10 +98,23 @@ public class RealInUseManager implements InUseManager {
 	}
 
 	void validate(Properties content) throws IllegalArgumentException {
-		if (!content.containsKey("owner")) {
-			throw new IllegalArgumentException("Invalid in-use-file. Missing key \"owner\"");
+		if (!content.containsKey(UseToken.OWNER_KEY)) {
+			throw new IllegalArgumentException("Invalid in-use-file. Missing key %s".formatted(UseToken.OWNER_KEY));
 		}
-		//TODO: more keys
+		if (!content.containsKey(UseToken.LASTUPDATED_KEY)) {
+			throw new IllegalArgumentException("Invalid in-use-file. Missing key %s".formatted(UseToken.LASTUPDATED_KEY));
+		}
+	}
+
+	boolean isInUse(Properties content) {
+		if (owner.equals(content.get(UseToken.OWNER_KEY))) {
+			return false;
+		}
+
+		var lastUpdated = Instant.parse((String) content.get(UseToken.LASTUPDATED_KEY));
+		var timeSinceLastUpdate = Duration.between(lastUpdated, Instant.now());
+		var threshold = Duration.of(2 * REFRESH_DELAY_MINUTES, ChronoUnit.MINUTES);
+		return timeSinceLastUpdate.compareTo(threshold) < 0;
 	}
 
 	/**
@@ -125,7 +142,7 @@ public class RealInUseManager implements InUseManager {
 	RealUseToken createInternal(Path inUseFilePath) throws UncheckedIOException {
 		try {
 			//TODO: performance idea: cache the result in a short lived cache (e.g. 5 seconds)
-			if (isInUseInternal(inUseFilePath)) {
+			if (isInUse(inUseFilePath)) {
 				throw new FileAlreadyInUseException(inUseFilePath);
 			}
 			return RealUseToken.createWithExistingFile(inUseFilePath, owner, cryptor, useTokens);
@@ -136,7 +153,7 @@ public class RealInUseManager implements InUseManager {
 			return RealUseToken.createWithNewFile(inUseFilePath, owner, cryptor, useTokens);
 		} catch (IllegalArgumentException e) {
 			LOG.info("Found invalid in-use-file {}. Owning it.", inUseFilePath, e);
-			return RealUseToken.createWithInvalidFile(inUseFilePath, owner, cryptor, useTokens);
+			return RealUseToken.createWithExistingFile(inUseFilePath, owner, cryptor, useTokens);
 		} catch (IOException e) {
 			LOG.warn("Failed to read in-use file {}. Ignoring it.", inUseFilePath, e);
 			throw new UncheckedIOException(e);

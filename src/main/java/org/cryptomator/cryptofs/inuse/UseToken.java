@@ -26,4 +26,8 @@ public sealed interface UseToken extends Closeable permits RealUseToken, UseToke
 		}
 
 	}
+
+	//fields
+	String LASTUPDATED_KEY = "lastUpdated";
+	String OWNER_KEY = "owner";
 }

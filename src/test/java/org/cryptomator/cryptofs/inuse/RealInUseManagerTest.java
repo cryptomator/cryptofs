@@ -24,6 +24,8 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -57,7 +59,7 @@ public class RealInUseManagerTest {
 		var result = inUseSpy.isInUseByOthers(ciphertextPath);
 
 		Assertions.assertFalse(result);
-		verify(inUseSpy, never()).isInUseInternal(inUseFilePath);
+		verify(inUseSpy, never()).isInUse(inUseFilePath);
 	}
 
 	@Test
@@ -65,11 +67,11 @@ public class RealInUseManagerTest {
 	public void testUseByOthers() throws IOException {
 		var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
 		var inUseSpy = spy(inUseManager);
-		doReturn(true).when(inUseSpy).isInUseInternal(inUseFilePath);
+		doReturn(true).when(inUseSpy).isInUse(inUseFilePath);
 
 		inUseSpy.isInUseByOthers(ciphertextPath);
 
-		verify(inUseSpy).isInUseInternal(inUseFilePath);
+		verify(inUseSpy).isInUse(inUseFilePath);
 	}
 
 	@ParameterizedTest
@@ -78,11 +80,11 @@ public class RealInUseManagerTest {
 	public void testUseByOthersException(Class exceptionClass) throws IOException {
 		var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
 		var inUseSpy = spy(inUseManager);
-		doThrow(exceptionClass).when(inUseSpy).isInUseInternal(inUseFilePath);
+		doThrow(exceptionClass).when(inUseSpy).isInUse(inUseFilePath);
 
 		var result = Assertions.assertDoesNotThrow(() -> inUseSpy.isInUseByOthers(ciphertextPath));
 		Assertions.assertFalse(result);
-		verify(inUseSpy).isInUseInternal(inUseFilePath);
+		verify(inUseSpy).isInUse(inUseFilePath);
 	}
 
 	@Test
@@ -134,11 +136,11 @@ public class RealInUseManagerTest {
 
 		try (var staticUseTokenMock = mockStatic(RealUseToken.class)) {
 			staticUseTokenMock.when(() -> RealUseToken.createWithExistingFile(inUseFilePath, "cryptobot3000", cryptor, preparedMap)).thenReturn(token);
-			doReturn(false).when(inUseSpy).isInUseInternal(inUseFilePath);
+			doReturn(false).when(inUseSpy).isInUse(inUseFilePath);
 
 			var result = inUseSpy.createInternal(inUseFilePath);
 			Assertions.assertSame(token, result);
-			verify(inUseSpy).isInUseInternal(inUseFilePath);
+			verify(inUseSpy).isInUse(inUseFilePath);
 			staticUseTokenMock.verify(() -> RealUseToken.createWithExistingFile(inUseFilePath, "cryptobot3000", cryptor, preparedMap));
 		}
 	}
@@ -152,13 +154,13 @@ public class RealInUseManagerTest {
 		var token = mock(RealUseToken.class);
 
 		try (var staticUseTokenMock = mockStatic(RealUseToken.class)) {
-			staticUseTokenMock.when(() -> RealUseToken.createWithInvalidFile(inUseFilePath, "cryptobot3000", cryptor, preparedMap)).thenReturn(token);
-			doThrow(IllegalArgumentException.class).when(inUseSpy).isInUseInternal(inUseFilePath);
+			staticUseTokenMock.when(() -> RealUseToken.createWithExistingFile(inUseFilePath, "cryptobot3000", cryptor, preparedMap)).thenReturn(token);
+			doThrow(IllegalArgumentException.class).when(inUseSpy).isInUse(inUseFilePath);
 
 			var result = inUseSpy.createInternal(inUseFilePath);
 			Assertions.assertSame(token, result);
-			verify(inUseSpy).isInUseInternal(inUseFilePath);
-			staticUseTokenMock.verify(() -> RealUseToken.createWithInvalidFile(inUseFilePath, "cryptobot3000", cryptor, preparedMap));
+			verify(inUseSpy).isInUse(inUseFilePath);
+			staticUseTokenMock.verify(() -> RealUseToken.createWithExistingFile(inUseFilePath, "cryptobot3000", cryptor, preparedMap));
 		}
 	}
 
@@ -172,11 +174,11 @@ public class RealInUseManagerTest {
 
 		try (var staticUseTokenMock = mockStatic(RealUseToken.class)) {
 			staticUseTokenMock.when(() -> RealUseToken.createWithNewFile(inUseFilePath, "cryptobot3000", cryptor, preparedMap)).thenReturn(token);
-			doThrow(NoSuchFileException.class).when(inUseSpy).isInUseInternal(inUseFilePath);
+			doThrow(NoSuchFileException.class).when(inUseSpy).isInUse(inUseFilePath);
 
 			var result = inUseSpy.createInternal(inUseFilePath);
 			Assertions.assertSame(token, result);
-			verify(inUseSpy).isInUseInternal(inUseFilePath);
+			verify(inUseSpy).isInUse(inUseFilePath);
 			staticUseTokenMock.verify(() -> RealUseToken.createWithNewFile(inUseFilePath, "cryptobot3000", cryptor, preparedMap));
 		}
 	}
@@ -188,16 +190,18 @@ public class RealInUseManagerTest {
 		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap);
 		var inUseSpy = spy(inUseManager);
 
-		doReturn(true).when(inUseSpy).isInUseInternal(inUseFilePath);
+		doReturn(true).when(inUseSpy).isInUse(inUseFilePath);
 
 		var actualException = Assertions.assertThrows(UncheckedIOException.class, () -> inUseSpy.createInternal(inUseFilePath));
 
 		Assertions.assertInstanceOf(FileAlreadyInUseException.class, actualException.getCause());
-		verify(inUseSpy).isInUseInternal(inUseFilePath);
+		verify(inUseSpy).isInUse(inUseFilePath);
 	}
 
 	@Nested
 	class ReadInUseFile {
+
+		//TODO: update tests for timestamp check
 
 		MockedStatic<EncryptedChannels> staticEncryptionMock;
 
@@ -271,6 +275,49 @@ public class RealInUseManagerTest {
 		public void afterEach() {
 			staticEncryptionMock.close();
 		}
+	}
+
+	@Nested
+	class IsInUseProperties {
+
+		@Test
+		@DisplayName("If the inUse properties have the same owner as the fs, return false")
+		void hasSameOwner() {
+			var props = new Properties();
+			props.put(UseToken.OWNER_KEY, "cryptobot3000");
+			var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
+
+			var result = inUseManager.isInUse(props);
+
+			Assertions.assertFalse(result, "isInUse returns true, but the owner is the same!");
+		}
+
+		@Test
+		@DisplayName("If the inUse properties have the lastUpdated timestamp below threshold, return true")
+		void hasDifferentOwnerLastUpdatedBelowTreshold() {
+			var props = new Properties();
+			props.put(UseToken.OWNER_KEY, "bob");
+			props.put(UseToken.LASTUPDATED_KEY, Instant.now().minus(3, ChronoUnit.MINUTES).toString());
+			var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
+
+			var result = inUseManager.isInUse(props);
+
+			Assertions.assertTrue(result, "isInUse returns false, but lastUpdated is below threshold!");
+		}
+
+		@Test
+		@DisplayName("If the inUse properties have the lastUpdated timestamp above threshold, return true")
+		void hasDifferentOwnerLastUpdatedAboveThreshold() {
+			var props = new Properties();
+			props.put(UseToken.OWNER_KEY, "bob");
+			props.put(UseToken.LASTUPDATED_KEY, Instant.now().minus(20, ChronoUnit.MINUTES).toString());
+			var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
+
+			var result = inUseManager.isInUse(props);
+
+			Assertions.assertFalse(result, "isInUse returns true, but lastUpdated is above threshold!");
+		}
+
 	}
 
 	//TODO: test validate
