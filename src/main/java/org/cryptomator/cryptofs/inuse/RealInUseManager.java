@@ -1,5 +1,7 @@
 package org.cryptomator.cryptofs.inuse;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.EncryptedChannels;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -21,6 +23,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Management object for the in-use-state of encrypted files.
@@ -35,6 +38,7 @@ public class RealInUseManager implements InUseManager {
 	private static final int REFRESH_DELAY_MINUTES = 5;
 
 	private final ConcurrentMap<Path, RealUseToken> useTokens;
+	private final Cache<Path, Object> ignoredInUseFiles;
 	private final String owner;
 	private final Cryptor cryptor;
 
@@ -42,6 +46,10 @@ public class RealInUseManager implements InUseManager {
 		this.owner = owner;
 		this.cryptor = cryptor;
 		this.useTokens = new ConcurrentHashMap<>();
+		this.ignoredInUseFiles = Caffeine.newBuilder() //
+				.expireAfterWrite(2, TimeUnit.MINUTES) //Do not keep the mark too long
+				.maximumSize(100) //
+				.build();
 	}
 
 
@@ -64,6 +72,7 @@ public class RealInUseManager implements InUseManager {
 	 * <ul>
 	 *     <li> this in-use-file belongs to the running crypto filesystem and</li>
 	 *     <li> the last update time is at most 2*{@value #REFRESH_DELAY_MINUTES}</li> minutes ago
+	 *     <li> the in-use-file is currently not ignored</li>
 	 * </ul>.
 	 *
 	 * @param inUseFilePath
@@ -72,6 +81,10 @@ public class RealInUseManager implements InUseManager {
 	 * @throws IllegalArgumentException if the in-use-file is invalid
 	 */
 	boolean isInUse(Path inUseFilePath) throws IOException, IllegalArgumentException {
+		if (ignoredInUseFiles.getIfPresent(inUseFilePath) != null) {
+			return false;
+		}
+
 		Properties content = readInUseFile(inUseFilePath);
 		validate(content);
 		return isInUse(content);
@@ -144,6 +157,7 @@ public class RealInUseManager implements InUseManager {
 			if (isInUse(inUseFilePath)) {
 				throw new FileAlreadyInUseException(inUseFilePath);
 			}
+			ignoredInUseFiles.invalidate(inUseFilePath);
 			return RealUseToken.createWithExistingFile(inUseFilePath, owner, cryptor, useTokens);
 		} catch (FileAlreadyInUseException e) {
 			throw new UncheckedIOException(e); //wrapped due to Map::compute method
@@ -155,8 +169,14 @@ public class RealInUseManager implements InUseManager {
 			return RealUseToken.createWithExistingFile(inUseFilePath, owner, cryptor, useTokens);
 		} catch (IOException e) {
 			LOG.warn("Failed to read in-use file {}. Ignoring it.", inUseFilePath, e);
-			throw new UncheckedIOException(e);
+			throw new UncheckedIOException(e); //wrapped due to Map::compute method
 		}
+	}
+
+	@Override
+	public void ignoreOwnership(Path ciphertextPath) {
+		var inUseFilePath = computeInUseFilePath(ciphertextPath);
+		ignoredInUseFiles.put(inUseFilePath, Boolean.TRUE);
 	}
 
 	/**
@@ -171,9 +191,10 @@ public class RealInUseManager implements InUseManager {
 
 
 	//for testing
-	RealInUseManager(String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens) {
+	RealInUseManager(String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, Cache<Path, Object> ignoredInUseFiles) {
 		this.owner = owner;
 		this.cryptor = cryptor;
 		this.useTokens = useTokens;
+		this.ignoredInUseFiles = ignoredInUseFiles;
 	}
 }

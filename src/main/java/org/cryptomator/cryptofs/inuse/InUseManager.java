@@ -1,16 +1,19 @@
 package org.cryptomator.cryptofs.inuse;
 
-
-import java.io.IOException;
 import java.nio.file.Path;
 
-/**
- * Factory for
- */
 public interface InUseManager {
 
-	boolean isInUseByOthers(Path ciphertextPath);
+	default boolean isInUseByOthers(Path ciphertextPath) {
+		return false;
+	}
 
-	UseToken use(Path ciphertextPath) throws FileAlreadyInUseException;
+	default UseToken use(Path ciphertextPath) throws FileAlreadyInUseException {
+		return UseToken.INIT_TOKEN;
+	}
+
+	default void ignoreOwnership(Path ciphertextPath) {
+
+	}
 
 }

@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.inuse;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import org.cryptomator.cryptofs.common.EncryptedChannels;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
@@ -52,7 +53,8 @@ public class RealInUseManagerTest {
 	public void testUseByOthersWithExistingToken() throws IOException {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
 		preparedMap.put(inUseFilePath, mock(RealUseToken.class));
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap);
+		var filesMarkedForStealing = mock(Cache.class);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, filesMarkedForStealing);
 		var inUseSpy = spy(inUseManager);
 
 		var result = inUseSpy.isInUseByOthers(ciphertextPath);
@@ -87,7 +89,7 @@ public class RealInUseManagerTest {
 	}
 
 	@Test
-	@DisplayName("\"use\" method 	puts path into map and returns token")
+	@DisplayName("\"use\" method puts path into map and returns token")
 	public void testUsePutsPathInMap() throws FileAlreadyInUseException {
 		var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
 		var inUseSpy = spy(inUseManager);
@@ -129,7 +131,9 @@ public class RealInUseManagerTest {
 	@DisplayName("Create internal with existing in-use-file")
 	public void testCreateExistingValid() throws IOException {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap);
+		var ignoredInUseFiles = mock(Cache.class);
+		doNothing().when(ignoredInUseFiles).invalidate(inUseFilePath);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredInUseFiles);
 		var inUseSpy = spy(inUseManager);
 		var token = mock(RealUseToken.class);
 
@@ -140,6 +144,7 @@ public class RealInUseManagerTest {
 			var result = inUseSpy.createInternal(inUseFilePath);
 			Assertions.assertSame(token, result);
 			verify(inUseSpy).isInUse(inUseFilePath);
+			verify(ignoredInUseFiles).invalidate(inUseFilePath);
 			staticUseTokenMock.verify(() -> RealUseToken.createWithExistingFile(inUseFilePath, "cryptobot3000", cryptor, preparedMap));
 		}
 	}
@@ -148,7 +153,8 @@ public class RealInUseManagerTest {
 	@DisplayName("Create internal with INVALID in-use-file")
 	public void testCreateExistingInvalid() throws IOException {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap);
+		var ignoredFiles = mock(Cache.class);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredFiles);
 		var inUseSpy = spy(inUseManager);
 		var token = mock(RealUseToken.class);
 
@@ -167,7 +173,8 @@ public class RealInUseManagerTest {
 	@DisplayName("Create internal with NOT existing in-use-file")
 	public void testCreateNotExisting() throws IOException {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap);
+		var ignoredFiles = mock(Cache.class);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredFiles);
 		var inUseSpy = spy(inUseManager);
 		var token = mock(RealUseToken.class);
 
@@ -186,7 +193,8 @@ public class RealInUseManagerTest {
 	@DisplayName("Create internal throws UncheckedIO(FileAlreadyInUse) exception")
 	public void testCreateFailedRead() throws IOException {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap);
+		var ignoredFiles = mock(Cache.class);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredFiles);
 		var inUseSpy = spy(inUseManager);
 
 		doReturn(true).when(inUseSpy).isInUse(inUseFilePath);
@@ -315,6 +323,20 @@ public class RealInUseManagerTest {
 			Assertions.assertFalse(result, "isInUse returns true, but lastUpdated is above threshold!");
 		}
 
+	}
+
+	@Test
+	@DisplayName("isInUse checks ignoredCache")
+	void isInUseChecksIgnoredCache() throws IOException {
+		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
+		var ignoredInUseFiles = mock(Cache.class);
+		doReturn(Boolean.TRUE).when(ignoredInUseFiles).getIfPresent(inUseFilePath);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredInUseFiles);
+
+		var result = inUseManager.isInUse(inUseFilePath);
+
+		Assertions.assertFalse(result);
+		verify(ignoredInUseFiles).getIfPresent(inUseFilePath);
 	}
 
 	//TODO: test validate
