@@ -1,7 +1,6 @@
 package org.cryptomator.cryptofs.inuse;
 
 import org.cryptomator.cryptofs.common.EncryptedChannels;
-import org.cryptomator.cryptofs.fh.FileAlreadyInUseException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.common.DecryptingReadableByteChannel;

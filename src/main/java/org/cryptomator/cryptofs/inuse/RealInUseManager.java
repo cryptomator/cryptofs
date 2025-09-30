@@ -2,7 +2,6 @@ package org.cryptomator.cryptofs.inuse;
 
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.EncryptedChannels;
-import org.cryptomator.cryptofs.fh.FileAlreadyInUseException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;

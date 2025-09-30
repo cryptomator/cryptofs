@@ -1,6 +1,5 @@
 package org.cryptomator.cryptofs.inuse;
 
-import org.cryptomator.cryptofs.fh.FileAlreadyInUseException;
 
 import java.io.IOException;
 import java.nio.file.Path;

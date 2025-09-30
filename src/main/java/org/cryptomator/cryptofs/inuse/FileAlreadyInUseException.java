@@ -1,4 +1,4 @@
-package org.cryptomator.cryptofs.fh;
+package org.cryptomator.cryptofs.inuse;
 
 import java.nio.file.FileSystemException;
 import java.nio.file.Path;

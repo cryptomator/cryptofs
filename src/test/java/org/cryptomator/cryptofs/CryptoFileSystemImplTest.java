@@ -11,7 +11,7 @@ import org.cryptomator.cryptofs.dir.CiphertextDirectoryDeleter;
 import org.cryptomator.cryptofs.dir.DirectoryStreamFactory;
 import org.cryptomator.cryptofs.event.FileIsInUseEvent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
-import org.cryptomator.cryptofs.fh.FileAlreadyInUseException;
+import org.cryptomator.cryptofs.inuse.FileAlreadyInUseException;
 import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles.TwoPhaseMove;

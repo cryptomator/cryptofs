@@ -6,6 +6,7 @@ import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ReadonlyFlag;
 import org.cryptomator.cryptofs.ch.ChannelComponent;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
+import org.cryptomator.cryptofs.inuse.FileAlreadyInUseException;
 import org.cryptomator.cryptofs.inuse.InUseManager;
 import org.cryptomator.cryptofs.inuse.UseToken;
 import org.cryptomator.cryptolib.api.Cryptor;
