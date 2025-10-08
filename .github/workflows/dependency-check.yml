@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - 'release/**'
+      - 'hotfix/**'
   workflow_dispatch:
 
 
