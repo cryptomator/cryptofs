@@ -2,6 +2,7 @@ package org.cryptomator.cryptofs.inuse;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import org.cryptomator.cryptofs.common.CacheUtils;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.EncryptedChannels;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -19,7 +20,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -38,6 +41,7 @@ public class RealInUseManager implements InUseManager {
 	private static final int REFRESH_DELAY_MINUTES = 5;
 
 	private final ConcurrentMap<Path, RealUseToken> useTokens;
+	private final Cache<Path, UseInfo> useInfoCache;
 	private final Cache<Path, Object> ignoredInUseFiles;
 	private final String owner;
 	private final Cryptor cryptor;
@@ -50,6 +54,8 @@ public class RealInUseManager implements InUseManager {
 				.expireAfterWrite(2, TimeUnit.MINUTES) //Do not keep the mark too long
 				.maximumSize(100) //
 				.build();
+		this.useInfoCache = Caffeine.newBuilder() //
+				.expireAfterWrite(5, TimeUnit.SECONDS).maximumSize(1000).build();
 	}
 
 
@@ -85,9 +91,12 @@ public class RealInUseManager implements InUseManager {
 			return false;
 		}
 
-		Properties content = readInUseFile(inUseFilePath);
-		validate(content);
-		return isInUse(content);
+		var info = CacheUtils.getWithIOWrapped(inUseFilePath, useInfoCache, p -> {
+			var content = readInUseFile(inUseFilePath);
+			return validate(content);
+		});
+
+		return isInUse(info);
 	}
 
 	Properties readInUseFile(Path inUseFilePath) throws IOException, IllegalArgumentException {
@@ -109,24 +118,37 @@ public class RealInUseManager implements InUseManager {
 		}
 	}
 
-	void validate(Properties content) throws IllegalArgumentException {
+	//TODO: test
+	UseInfo validate(Properties content) throws IllegalArgumentException {
 		if (!content.containsKey(UseToken.OWNER_KEY)) {
 			throw new IllegalArgumentException("Invalid in-use-file. Missing key %s".formatted(UseToken.OWNER_KEY));
 		}
 		if (!content.containsKey(UseToken.LASTUPDATED_KEY)) {
 			throw new IllegalArgumentException("Invalid in-use-file. Missing key %s".formatted(UseToken.LASTUPDATED_KEY));
 		}
+		var stringTime = (String) content.get(UseToken.LASTUPDATED_KEY);
+		try {
+			var lastUpdated = Instant.parse(stringTime);
+			return new UseInfo(owner, lastUpdated);
+		} catch (DateTimeParseException e) {
+			throw new IllegalArgumentException("Invalid in-use-file. Unable to parse content %s of key %s as UTC timestamp.".formatted(stringTime, UseToken.LASTUPDATED_KEY), e);
+		}
 	}
 
-	boolean isInUse(Properties content) {
-		if (owner.equals(content.get(UseToken.OWNER_KEY))) {
+	boolean isInUse(UseInfo useInfo) {
+		if (owner.equals(useInfo.owner())) {
 			return false;
 		}
 
-		var lastUpdated = Instant.parse((String) content.get(UseToken.LASTUPDATED_KEY));
-		var timeSinceLastUpdate = Duration.between(lastUpdated, Instant.now());
+		var timeSinceLastUpdate = Duration.between(useInfo.lastUpdated(), Instant.now());
 		var threshold = Duration.of(2 * REFRESH_DELAY_MINUTES, ChronoUnit.MINUTES);
 		return timeSinceLastUpdate.compareTo(threshold) < 0;
+	}
+
+	@Override
+	public Optional<UseInfo> getUseInfo(Path ciphertextPath) {
+		var inUseFilePath = computeInUseFilePath(ciphertextPath);
+		return Optional.ofNullable(useInfoCache.getIfPresent(inUseFilePath));
 	}
 
 	/**
@@ -153,7 +175,6 @@ public class RealInUseManager implements InUseManager {
 
 	RealUseToken createInternal(Path inUseFilePath) throws UncheckedIOException {
 		try {
-			//TODO: performance idea: cache the result in a short lived cache (e.g. 5 seconds)
 			if (isInUse(inUseFilePath)) {
 				throw new FileAlreadyInUseException(inUseFilePath);
 			}
@@ -174,7 +195,7 @@ public class RealInUseManager implements InUseManager {
 	}
 
 	@Override
-	public void ignoreOwnership(Path ciphertextPath) {
+	public void ignoreInUse(Path ciphertextPath) {
 		var inUseFilePath = computeInUseFilePath(ciphertextPath);
 		ignoredInUseFiles.put(inUseFilePath, Boolean.TRUE);
 	}
@@ -191,10 +212,11 @@ public class RealInUseManager implements InUseManager {
 
 
 	//for testing
-	RealInUseManager(String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, Cache<Path, Object> ignoredInUseFiles) {
+	RealInUseManager(String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, Cache<Path, Object> ignoredInUseFiles, Cache<Path, UseInfo> useInfoCache) {
 		this.owner = owner;
 		this.cryptor = cryptor;
 		this.useTokens = useTokens;
 		this.ignoredInUseFiles = ignoredInUseFiles;
+		this.useInfoCache = useInfoCache;
 	}
 }

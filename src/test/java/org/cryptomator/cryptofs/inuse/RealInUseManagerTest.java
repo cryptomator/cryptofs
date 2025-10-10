@@ -54,7 +54,8 @@ public class RealInUseManagerTest {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
 		preparedMap.put(inUseFilePath, mock(RealUseToken.class));
 		var filesMarkedForStealing = mock(Cache.class);
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, filesMarkedForStealing);
+		var useInfoCache = mock(Cache.class);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, filesMarkedForStealing, useInfoCache);
 		var inUseSpy = spy(inUseManager);
 
 		var result = inUseSpy.isInUseByOthers(ciphertextPath);
@@ -133,7 +134,8 @@ public class RealInUseManagerTest {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
 		var ignoredInUseFiles = mock(Cache.class);
 		doNothing().when(ignoredInUseFiles).invalidate(inUseFilePath);
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredInUseFiles);
+		var useInfoCache = mock(Cache.class);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredInUseFiles, useInfoCache);
 		var inUseSpy = spy(inUseManager);
 		var token = mock(RealUseToken.class);
 
@@ -154,7 +156,8 @@ public class RealInUseManagerTest {
 	public void testCreateExistingInvalid() throws IOException {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
 		var ignoredFiles = mock(Cache.class);
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredFiles);
+		var useInfoCache = mock(Cache.class);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredFiles, useInfoCache);
 		var inUseSpy = spy(inUseManager);
 		var token = mock(RealUseToken.class);
 
@@ -174,7 +177,8 @@ public class RealInUseManagerTest {
 	public void testCreateNotExisting() throws IOException {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
 		var ignoredFiles = mock(Cache.class);
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredFiles);
+		var useInfoCache = mock(Cache.class);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredFiles, useInfoCache);
 		var inUseSpy = spy(inUseManager);
 		var token = mock(RealUseToken.class);
 
@@ -194,7 +198,8 @@ public class RealInUseManagerTest {
 	public void testCreateFailedRead() throws IOException {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
 		var ignoredFiles = mock(Cache.class);
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredFiles);
+		var useInfoCache = mock(Cache.class);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredFiles, useInfoCache);
 		var inUseSpy = spy(inUseManager);
 
 		doReturn(true).when(inUseSpy).isInUse(inUseFilePath);
@@ -207,8 +212,6 @@ public class RealInUseManagerTest {
 
 	@Nested
 	class ReadInUseFile {
-
-		//TODO: update tests for timestamp check
 
 		MockedStatic<EncryptedChannels> staticEncryptionMock;
 
@@ -283,16 +286,15 @@ public class RealInUseManagerTest {
 	}
 
 	@Nested
-	class IsInUseProperties {
+	class IsInUseUseInfo {
 
 		@Test
 		@DisplayName("If the inUse properties have the same owner as the fs, return false")
 		void hasSameOwner() {
-			var props = new Properties();
-			props.put(UseToken.OWNER_KEY, "cryptobot3000");
+			var useInfo = new InUseManager.UseInfo("cryptobot3000", Instant.now());
 			var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
 
-			var result = inUseManager.isInUse(props);
+			var result = inUseManager.isInUse(useInfo);
 
 			Assertions.assertFalse(result, "isInUse returns true, but the owner is the same!");
 		}
@@ -300,12 +302,10 @@ public class RealInUseManagerTest {
 		@Test
 		@DisplayName("If the inUse properties have the lastUpdated timestamp below threshold, return true")
 		void hasDifferentOwnerLastUpdatedBelowTreshold() {
-			var props = new Properties();
-			props.put(UseToken.OWNER_KEY, "bob");
-			props.put(UseToken.LASTUPDATED_KEY, Instant.now().minus(3, ChronoUnit.MINUTES).toString());
+			var useInfo = new InUseManager.UseInfo("bob",Instant.now().minus(3, ChronoUnit.MINUTES));
 			var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
 
-			var result = inUseManager.isInUse(props);
+			var result = inUseManager.isInUse(useInfo);
 
 			Assertions.assertTrue(result, "isInUse returns false, but lastUpdated is below threshold!");
 		}
@@ -313,12 +313,10 @@ public class RealInUseManagerTest {
 		@Test
 		@DisplayName("If the inUse properties have the lastUpdated timestamp above threshold, return true")
 		void hasDifferentOwnerLastUpdatedAboveThreshold() {
-			var props = new Properties();
-			props.put(UseToken.OWNER_KEY, "bob");
-			props.put(UseToken.LASTUPDATED_KEY, Instant.now().minus(20, ChronoUnit.MINUTES).toString());
+			var useInfo = new InUseManager.UseInfo("bob",Instant.now().minus(20, ChronoUnit.MINUTES));
 			var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
 
-			var result = inUseManager.isInUse(props);
+			var result = inUseManager.isInUse(useInfo);
 
 			Assertions.assertFalse(result, "isInUse returns true, but lastUpdated is above threshold!");
 		}
@@ -330,13 +328,31 @@ public class RealInUseManagerTest {
 	void isInUseChecksIgnoredCache() throws IOException {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
 		var ignoredInUseFiles = mock(Cache.class);
+		var useInfoCache = mock(Cache.class);
 		doReturn(Boolean.TRUE).when(ignoredInUseFiles).getIfPresent(inUseFilePath);
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredInUseFiles);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredInUseFiles, useInfoCache);
 
 		var result = inUseManager.isInUse(inUseFilePath);
 
 		Assertions.assertFalse(result);
 		verify(ignoredInUseFiles).getIfPresent(inUseFilePath);
+	}
+
+	@Test
+	@DisplayName("isInUse checks useInfo cache")
+	void isInUseChecksUseInfoCache() throws IOException {
+		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
+		var ignoredInUseFiles = mock(Cache.class);
+		doReturn(null).when(ignoredInUseFiles).getIfPresent(inUseFilePath);
+		var useInfoCache = mock(Cache.class);
+		var useInfo = new InUseManager.UseInfo("bob", Instant.now());
+		doReturn(useInfo).when(useInfoCache).get(eq(inUseFilePath), any());
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredInUseFiles, useInfoCache);
+
+		var result = inUseManager.isInUse(inUseFilePath);
+
+		Assertions.assertTrue(result);
+		verify(useInfoCache).get(eq(inUseFilePath), any());
 	}
 
 	//TODO: test validate
