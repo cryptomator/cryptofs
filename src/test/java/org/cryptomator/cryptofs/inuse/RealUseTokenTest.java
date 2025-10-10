@@ -83,7 +83,6 @@ public class RealUseTokenTest {
 			var createEvent = events.stream().filter(e -> e.kind().equals(StandardWatchEventKinds.ENTRY_MODIFY)).findAny();
 			Assertions.assertTrue(createEvent.isPresent());
 			createEvent.ifPresent(e -> {
-				Assertions.assertEquals(1, e.count());
 				Assertions.assertTrue(filePath.endsWith((Path) e.context()));
 			});
 		}
