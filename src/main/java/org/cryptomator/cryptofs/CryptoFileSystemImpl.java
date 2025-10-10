@@ -22,9 +22,10 @@ import org.cryptomator.cryptofs.dir.DirectoryStreamFactory;
 import org.cryptomator.cryptofs.dir.DirectoryStreamFilters;
 import org.cryptomator.cryptofs.event.FileIsInUseEvent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
-import org.cryptomator.cryptofs.inuse.FileAlreadyInUseException;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
+import org.cryptomator.cryptofs.inuse.FileAlreadyInUseException;
 import org.cryptomator.cryptofs.inuse.InUseManager;
+import org.cryptomator.cryptofs.inuse.UseInfo;
 import org.cryptomator.cryptolib.api.Cryptor;
 
 import java.io.IOException;
@@ -60,12 +61,12 @@ import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipalLookupService;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -413,7 +414,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 		FileChannel ch = null;
 		try {
-			ch = openCryptoFiles.getOrCreate(ciphertextFilePath).newFileChannel(options,attrs); // might throw FileAlreadyExists
+			ch = openCryptoFiles.getOrCreate(ciphertextFilePath).newFileChannel(options, attrs); // might throw FileAlreadyExists
 			if (options.writable()) {
 				ciphertextPath.persistLongFileName();
 				stats.incrementAccessesWritten();
@@ -425,9 +426,10 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			return ch;
 		} catch (Exception e) {
 			if (e instanceof FileAlreadyInUseException) {
-				eventConsumer.accept(new FileIsInUseEvent(cleartextFilePath, ciphertextFilePath, new Properties())); //TODO: properties?
+				var useInfo = inUseManager.getUseInfo(ciphertextFilePath).orElse(new UseInfo("UNKNOWN", Instant.now()));
+				eventConsumer.accept(new FileIsInUseEvent(cleartextFilePath, ciphertextFilePath, useInfo.owner(), useInfo.lastUpdated()));
 			}
-			if(ch != null) {
+			if (ch != null) {
 				ch.close();
 			}
 			throw e;
@@ -727,8 +729,10 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 	//visible for testing
 	void checkUsage(CryptoPath cleartextPath, CiphertextFilePath ciphertextPath) throws FileAlreadyInUseException {
-		if (inUseManager.isInUseByOthers(ciphertextPath.getFilePath())) {
-			eventConsumer.accept(new FileIsInUseEvent(cleartextPath, ciphertextPath.getRawPath(), new Properties())); //TODO: properties??
+		var path = ciphertextPath.getFilePath();
+		if (inUseManager.isInUseByOthers(path)) {
+			var useInfo = inUseManager.getUseInfo(path).orElse(new UseInfo("UNKNOWN", Instant.now()));
+			eventConsumer.accept(new FileIsInUseEvent(cleartextPath, ciphertextPath.getRawPath(), useInfo.owner(), useInfo.lastUpdated()));
 			throw new FileAlreadyInUseException(ciphertextPath.getRawPath());
 		}
 	}
