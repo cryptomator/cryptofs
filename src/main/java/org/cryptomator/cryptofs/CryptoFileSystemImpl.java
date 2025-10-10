@@ -427,7 +427,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		} catch (Exception e) {
 			if (e instanceof FileAlreadyInUseException) {
 				var useInfo = inUseManager.getUseInfo(ciphertextFilePath).orElse(new UseInfo("UNKNOWN", Instant.now()));
-				eventConsumer.accept(new FileIsInUseEvent(cleartextFilePath, ciphertextFilePath, useInfo.owner(), useInfo.lastUpdated()));
+				eventConsumer.accept(new FileIsInUseEvent(cleartextFilePath, ciphertextFilePath, useInfo.owner(), useInfo.lastUpdated(), () -> inUseManager.ignoreInUse(ciphertextFilePath)));
 			}
 			if (ch != null) {
 				ch.close();
@@ -732,7 +732,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		var path = ciphertextPath.getFilePath();
 		if (inUseManager.isInUseByOthers(path)) {
 			var useInfo = inUseManager.getUseInfo(path).orElse(new UseInfo("UNKNOWN", Instant.now()));
-			eventConsumer.accept(new FileIsInUseEvent(cleartextPath, ciphertextPath.getRawPath(), useInfo.owner(), useInfo.lastUpdated()));
+			eventConsumer.accept(new FileIsInUseEvent(cleartextPath, ciphertextPath.getRawPath(), useInfo.owner(), useInfo.lastUpdated(), () -> inUseManager.ignoreInUse(path)));
 			throw new FileAlreadyInUseException(ciphertextPath.getRawPath());
 		}
 	}
