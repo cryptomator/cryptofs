@@ -291,7 +291,7 @@ public class RealInUseManagerTest {
 		@Test
 		@DisplayName("If the inUse properties have the same owner as the fs, return false")
 		void hasSameOwner() {
-			var useInfo = new InUseManager.UseInfo("cryptobot3000", Instant.now());
+			var useInfo = new UseInfo("cryptobot3000", Instant.now());
 			var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
 
 			var result = inUseManager.isInUse(useInfo);
@@ -302,7 +302,7 @@ public class RealInUseManagerTest {
 		@Test
 		@DisplayName("If the inUse properties have the lastUpdated timestamp below threshold, return true")
 		void hasDifferentOwnerLastUpdatedBelowTreshold() {
-			var useInfo = new InUseManager.UseInfo("bob",Instant.now().minus(3, ChronoUnit.MINUTES));
+			var useInfo = new UseInfo("bob",Instant.now().minus(3, ChronoUnit.MINUTES));
 			var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
 
 			var result = inUseManager.isInUse(useInfo);
@@ -313,7 +313,7 @@ public class RealInUseManagerTest {
 		@Test
 		@DisplayName("If the inUse properties have the lastUpdated timestamp above threshold, return true")
 		void hasDifferentOwnerLastUpdatedAboveThreshold() {
-			var useInfo = new InUseManager.UseInfo("bob",Instant.now().minus(20, ChronoUnit.MINUTES));
+			var useInfo = new UseInfo("bob",Instant.now().minus(20, ChronoUnit.MINUTES));
 			var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
 
 			var result = inUseManager.isInUse(useInfo);
@@ -345,7 +345,7 @@ public class RealInUseManagerTest {
 		var ignoredInUseFiles = mock(Cache.class);
 		doReturn(null).when(ignoredInUseFiles).getIfPresent(inUseFilePath);
 		var useInfoCache = mock(Cache.class);
-		var useInfo = new InUseManager.UseInfo("bob", Instant.now());
+		var useInfo = new UseInfo("bob", Instant.now());
 		doReturn(useInfo).when(useInfoCache).get(eq(inUseFilePath), any());
 		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredInUseFiles, useInfoCache);
 

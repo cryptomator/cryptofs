@@ -1,7 +1,6 @@
 package org.cryptomator.cryptofs.inuse;
 
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.Optional;
 
 /**
@@ -47,10 +46,6 @@ public interface InUseManager {
 	}
 
 	default void ignoreInUse(Path ciphertextPath) {
-
-	}
-
-	record UseInfo(String owner, Instant lastUpdated) {
 
 	}
 
