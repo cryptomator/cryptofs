@@ -122,16 +122,20 @@ public final class RealUseToken implements UseToken {
 		}
 	}
 
-	private void updateInUseFile() throws IOException {
+	void refresh() {
 		try {
-			writeInUseFile(filePath, Set.of(StandardOpenOption.WRITE));
+			fileCreationSync.lock();
+			if (!(channel == null || closed)) {
+				writeInUseFile(filePath, Set.of(StandardOpenOption.WRITE));
+			}
 		} catch (IOException e) {
 			LOG.warn("Failed to update in-use file {}.", filePath, e);
-			throw e;
+		} finally {
+			fileCreationSync.unlock();
 		}
 	}
 
-	//TODO: refresh logic?
+	//TODO: testtestest
 	void writeInUseFile(Path inUseFilePath, Set<OpenOption> openOptions) throws IOException {
 		var ch = Files.newByteChannel(inUseFilePath, openOptions);
 		this.channel = encWrapper.wrapWithEncryption(ch, cryptor);

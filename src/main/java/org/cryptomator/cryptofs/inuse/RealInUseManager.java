@@ -25,7 +25,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -40,9 +41,10 @@ public class RealInUseManager implements InUseManager {
 	private static final Logger LOG = LoggerFactory.getLogger(RealInUseManager.class);
 	private static final int REFRESH_DELAY_MINUTES = 5;
 
-	private final ConcurrentMap<Path, RealUseToken> useTokens;
+	private final ConcurrentHashMap<Path, RealUseToken> useTokens;
 	private final Cache<Path, UseInfo> useInfoCache;
 	private final Cache<Path, Object> ignoredInUseFiles;
+	private final ScheduledExecutorService tokenRefresher;
 	private final String owner;
 	private final Cryptor cryptor;
 
@@ -55,7 +57,14 @@ public class RealInUseManager implements InUseManager {
 				.maximumSize(100) //
 				.build();
 		this.useInfoCache = Caffeine.newBuilder() //
-				.expireAfterWrite(5, TimeUnit.SECONDS).maximumSize(1000).build();
+				.expireAfterWrite(5, TimeUnit.SECONDS) //
+				.maximumSize(1000) //
+				.build();
+		this.tokenRefresher = Executors.newSingleThreadScheduledExecutor();
+		tokenRefresher.scheduleWithFixedDelay(() -> useTokens.forEachValue(10L, RealUseToken::refresh), //
+				REFRESH_DELAY_MINUTES, //
+				REFRESH_DELAY_MINUTES, //
+				TimeUnit.MINUTES);
 	}
 
 
@@ -210,13 +219,13 @@ public class RealInUseManager implements InUseManager {
 		return p.resolveSibling(fileName + Constants.INUSE_FILE_SUFFIX);
 	}
 
-
 	//for testing
-	RealInUseManager(String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, Cache<Path, Object> ignoredInUseFiles, Cache<Path, UseInfo> useInfoCache) {
+	RealInUseManager(String owner, Cryptor cryptor, ConcurrentHashMap<Path, RealUseToken> useTokens, Cache<Path, Object> ignoredInUseFiles, Cache<Path, UseInfo> useInfoCache, ScheduledExecutorService tokenRefresher) {
 		this.owner = owner;
 		this.cryptor = cryptor;
 		this.useTokens = useTokens;
 		this.ignoredInUseFiles = ignoredInUseFiles;
 		this.useInfoCache = useInfoCache;
+		this.tokenRefresher = tokenRefresher;
 	}
 }
