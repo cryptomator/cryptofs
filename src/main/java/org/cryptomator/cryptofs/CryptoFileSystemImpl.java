@@ -430,7 +430,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 				eventConsumer.accept(new FileIsInUseEvent(cleartextFilePath, ciphertextFilePath, useInfo.owner(), useInfo.lastUpdated(), () -> inUseManager.ignoreInUse(ciphertextFilePath)));
 			}
 			if (ch != null) {
-				ch.close();
+				try {
+					ch.close();
+				} catch (IOException closeEx) {
+					e.addSuppressed(closeEx);
+				}
 			}
 			throw e;
 		}
