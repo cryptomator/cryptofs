@@ -206,6 +206,7 @@ public final class RealUseToken implements UseToken {
 					} catch (IOException e) {
 						//ignore
 						//TODO: LOG
+						LOG.info("Failed to delete inUse File {}. Must be deleted manually.", path);
 					}
 				}
 				return null;
