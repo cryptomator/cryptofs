@@ -21,7 +21,6 @@ module org.cryptomator.cryptofs {
 	requires static javax.inject;
 	requires jakarta.inject;
 	requires java.compiler;
-	requires org.jspecify;
 
 	exports org.cryptomator.cryptofs;
 	exports org.cryptomator.cryptofs.event;

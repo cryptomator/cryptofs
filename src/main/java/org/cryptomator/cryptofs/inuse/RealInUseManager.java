@@ -6,7 +6,6 @@ import org.cryptomator.cryptofs.common.CacheUtils;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.EncryptedChannels;
 import org.cryptomator.cryptolib.api.Cryptor;
-import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +47,7 @@ public class RealInUseManager implements InUseManager {
 	private final String owner;
 	private final Cryptor cryptor;
 
-	public RealInUseManager(@NonNull String owner, Cryptor cryptor) {
+	public RealInUseManager(String owner, Cryptor cryptor) {
 		this.owner = owner;
 		this.cryptor = cryptor;
 		this.useTokens = new ConcurrentHashMap<>();
