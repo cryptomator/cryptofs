@@ -217,6 +217,7 @@
 					</consoleOutputReporter>
 					<statelessTestsetInfoReporter
 							implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5StatelessTestsetInfoTreeReporter">
+						<hideResultsOnSuccess>true</hideResultsOnSuccess>
 					</statelessTestsetInfoReporter>
 					<argLine>@{surefire.jacoco.args} -javaagent:${org.mockito:mockito-core:jar}</argLine>
 				</configuration>
