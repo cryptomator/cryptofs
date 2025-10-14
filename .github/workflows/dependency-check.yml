@@ -15,7 +15,7 @@ jobs:
     with:
       runner-os: 'ubuntu-latest'
       java-distribution: 'temurin'
-      java-version: 21
+      java-version: 25
     secrets:
       nvd-api-key: ${{ secrets.NVD_API_KEY }}
       ossindex-username: ${{ secrets.OSSINDEX_USERNAME }}
