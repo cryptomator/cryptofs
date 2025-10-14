@@ -21,7 +21,6 @@
 		<cryptolib.version>2.2.1</cryptolib.version>
 		<jwt.version>4.5.0</jwt.version>
 		<dagger.version>2.55</dagger.version>
-		<guava.version>33.4.8-jre</guava.version>
 		<caffeine.version>3.2.0</caffeine.version>
 		<slf4j.version>2.0.17</slf4j.version>
 
@@ -95,11 +94,6 @@
 			<groupId>jakarta.inject</groupId>
 			<artifactId>jakarta.inject-api</artifactId>
 			<version>2.0.1.MR</version>
-		</dependency>
-		<dependency>
-			<groupId>com.google.guava</groupId>
-			<artifactId>guava</artifactId>
-			<version>${guava.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.github.ben-manes.caffeine</groupId>
