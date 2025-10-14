@@ -1,6 +1,6 @@
 ![cryptomator](cryptomator.png)
 
-[![Build](https://github.com/cryptomator/cryptofs/workflows/Build/badge.svg)](https://github.com/cryptomator/cryptofs/actions?query=workflow%3ABuild)
+[![Build](https://github.com/cryptomator/cryptofs/workflows/Build/badge.svg)](https://github.com/cryptomator/cryptofs/actions?query=workflow%3ABuild+branch%3Adevelop)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=cryptomator_cryptofs&metric=alert_status)](https://sonarcloud.io/dashboard?id=cryptomator_cryptofs)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=cryptomator_cryptofs&metric=coverage)](https://sonarcloud.io/dashboard?id=cryptomator_cryptofs)
 [![Known Vulnerabilities](https://snyk.io/test/github/cryptomator/cryptofs/badge.svg)](https://snyk.io/test/github/cryptomator/cryptofs)
@@ -99,7 +99,7 @@ For more details on how to use the constructed `FileSystem`, you may consult the
 
 ### Dependencies
 
-* Java 21
+* Java 25
 * Maven 3
 
 ### Run Maven

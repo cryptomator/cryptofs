@@ -19,32 +19,41 @@ import java.util.Optional;
 
 final class CryptoDosFileAttributes extends CryptoBasicFileAttributes implements DosFileAttributes {
 
-	private final boolean readonlyFileSystem;
-	private final DosFileAttributes delegate;
+	private final boolean isReadOnly;
+	private final boolean isArchive;
+	private final boolean isHidden;
+	private final boolean isSystem;
 
-	public CryptoDosFileAttributes(DosFileAttributes delegate, CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, CryptoFileSystemProperties fileSystemProperties) {
+	public CryptoDosFileAttributes(DosFileAttributes delegate, //
+								   CiphertextFileType ciphertextFileType, //
+								   Path ciphertextPath, //
+								   Cryptor cryptor, //
+								   Optional<OpenCryptoFile> openCryptoFile, //
+								   CryptoFileSystemProperties fileSystemProperties) {
 		super(delegate, ciphertextFileType, ciphertextPath, cryptor, openCryptoFile);
-		this.readonlyFileSystem = fileSystemProperties.readonly();
-		this.delegate = delegate;
+		this.isReadOnly = fileSystemProperties.readonly() || delegate.isReadOnly();
+		this.isHidden = delegate.isHidden();
+		this.isArchive = delegate.isArchive();
+		this.isSystem = delegate.isSystem();
 	}
 
 	@Override
 	public boolean isReadOnly() {
-		return readonlyFileSystem || delegate.isReadOnly();
+		return isReadOnly;
 	}
 
 	@Override
 	public boolean isHidden() {
-		return delegate.isHidden();
+		return isHidden;
 	}
 
 	@Override
 	public boolean isArchive() {
-		return delegate.isArchive();
+		return isArchive;
 	}
 
 	@Override
 	public boolean isSystem() {
-		return delegate.isSystem();
+		return isSystem;
 	}
 }
