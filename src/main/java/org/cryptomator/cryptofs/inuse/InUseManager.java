@@ -35,7 +35,7 @@ public interface InUseManager {
 
 
 	/**
-	 * Marks the given ciphertextpath as <it>used</it>.
+	 * Marks the given ciphertextpath as <em>used</em>.
 	 *
 	 * @param ciphertextPath Path to the ciphertext file which should be marked as used.
 	 * @return A {@link UseToken} representing a use-ship for this file
