@@ -30,12 +30,11 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * Class to represent a file is "in use" by this filesystem.
  * <p>
  * The actual persistence of the "in use"-state with a file is delayed by {@value Constants#INUSE_DELAY_MILLIS} milliseconds.
- * The content of the in-use-file is a JSON containing
- * <li>
- *     <ul>owner - name of the filesystem owner</ul>
- *     <ul>since - UTC-timestamp encoded as epoch seconds from the standard Java epoch of 1970-01-01T00:00:00Z</ul>
- * </li>
- * The JSON data is encrypted with the vault masterkey.
+ * The in-use file contains Java Properties, encrypted with the vault masterkey:
+ * <ul>
+ *   <li><code>owner</code> — name of the filesystem owner</li>
+ *   <li><code>lastUpdated</code> — UTC timestamp in ISO-8601</li>
+ * </ul>
  * If the token is closed before the persistence started, the persistence is not performed.
  */
 public final class RealUseToken implements UseToken {
