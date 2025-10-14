@@ -99,7 +99,7 @@ For more details on how to use the constructed `FileSystem`, you may consult the
 
 ### Dependencies
 
-* Java 21
+* Java 25
 * Maven 3
 
 ### Run Maven
