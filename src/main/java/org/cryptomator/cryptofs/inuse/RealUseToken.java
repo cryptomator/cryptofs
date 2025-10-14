@@ -74,10 +74,10 @@ public final class RealUseToken implements UseToken {
 		this.cryptor = cryptor;
 		this.useTokens = useTokens;
 		this.encWrapper = encWrapper;
-		FileOperation method = switch (m) {
-			case STEAL -> this::stealInUseFile;
-			case CREATE -> this::createInUseFile;
-			case NONE -> () -> {};
+		Set<OpenOption> openOptions = switch (m) {
+			case STEAL -> Set.of(StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+			case CREATE -> Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
+			case NONE -> Set.of();
 		};
 
 		if (m == ActivationType.NONE) {
@@ -85,47 +85,34 @@ public final class RealUseToken implements UseToken {
 			this.creationTask = CompletableFuture.completedFuture(null);
 		} else {
 			this.closed = false;
-			this.creationTask = CompletableFuture.runAsync(() -> {
-				try {
-					fileCreationSync.lock();
-					if (closed) {
-						return;
-					}
-					//Do critical stuff
-					method.execute();
-				} catch (IOException e) {
-					close();
-				} finally {
-					fileCreationSync.unlock();
-				}
-			}, CompletableFuture.delayedExecutor(Constants.INUSE_DELAY_MILLIS, TimeUnit.MILLISECONDS, Executors.newVirtualThreadPerTaskExecutor()));
+			this.creationTask = CompletableFuture.runAsync(() -> createInUseFile(openOptions), CompletableFuture.delayedExecutor(Constants.INUSE_DELAY_MILLIS, TimeUnit.MILLISECONDS, Executors.newVirtualThreadPerTaskExecutor()));
 		}
 
 	}
 
-	private void stealInUseFile() throws IOException {
+	private void createInUseFile(Set<OpenOption> openOptions) {
 		try {
-			writeInUseFile(filePath, Set.of(StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
+			fileCreationSync.lock();
+			if (closed) {
+				return;
+			}
+			var ch = Files.newByteChannel(filePath, openOptions);
+			this.channel = encWrapper.wrapWithEncryption(ch, cryptor);
+			writeInUseFile();
 		} catch (IOException e) {
-			LOG.warn("Failed to steal in-use file {}.", filePath, e);
-			throw e;
+			LOG.warn("Failed to write in-use file {} with open options {}.", filePath, openOptions, e);
+			close();
+		} finally {
+			fileCreationSync.unlock();
 		}
-	}
 
-	private void createInUseFile() throws IOException {
-		try {
-			writeInUseFile(filePath, Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW));
-		} catch (IOException e) {
-			LOG.warn("Failed to create in-use file {}.", filePath, e);
-			throw e;
-		}
 	}
 
 	void refresh() {
 		try {
 			fileCreationSync.lock();
 			if (!(channel == null || closed)) {
-				writeInUseFile(filePath, Set.of(StandardOpenOption.WRITE));
+				writeInUseFile();
 			}
 		} catch (IOException e) {
 			LOG.warn("Failed to update in-use file {}.", filePath, e);
@@ -134,16 +121,13 @@ public final class RealUseToken implements UseToken {
 		}
 	}
 
-	//TODO: testtestest
-	void writeInUseFile(Path inUseFilePath, Set<OpenOption> openOptions) throws IOException {
-		var ch = Files.newByteChannel(inUseFilePath, openOptions);
-		this.channel = encWrapper.wrapWithEncryption(ch, cryptor);
+	int writeInUseFile() throws IOException {
 		var rawInfo = new ByteArrayOutputStream(Constants.INUSE_CLEARTEXT_SIZE);
 		var prop = new Properties();
 		prop.put(UseToken.OWNER_KEY, owner);
 		prop.put(UseToken.LASTUPDATED_KEY, Instant.now().toString());
 		prop.store(rawInfo, null);
-		channel.write(ByteBuffer.wrap(rawInfo.toByteArray()));
+		return channel.write(ByteBuffer.wrap(rawInfo.toByteArray()));
 	}
 
 	@Override
@@ -219,12 +203,6 @@ public final class RealUseToken implements UseToken {
 		CREATE,
 		STEAL,
 		NONE;
-	}
-
-	@FunctionalInterface
-	interface FileOperation {
-
-		void execute() throws IOException;
 	}
 
 	interface EncryptionDecorator {
