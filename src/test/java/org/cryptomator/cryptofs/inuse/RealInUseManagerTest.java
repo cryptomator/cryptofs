@@ -104,7 +104,7 @@ public class RealInUseManagerTest {
 
 	@Test
 	@DisplayName("\"use\" method rethrow FileAlreadyInUseException")
-	public void testUseThrows() throws FileAlreadyInUseException {
+	public void testUseThrows() {
 		var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
 		var inUseSpy = spy(inUseManager);
 		var inUseException = new FileAlreadyInUseException(inUseFilePath);
@@ -117,7 +117,7 @@ public class RealInUseManagerTest {
 
 	@Test
 	@DisplayName("\"use\" method returns CLOSED_TOKEN on IOException")
-	public void testUseClosedToken() throws FileAlreadyInUseException {
+	public void testUseClosedToken() {
 		var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
 		var inUseSpy = spy(inUseManager);
 		var someIOException = new IOException("it's over 9000!");

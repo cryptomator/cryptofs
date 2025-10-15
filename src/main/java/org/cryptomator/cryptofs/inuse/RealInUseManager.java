@@ -76,7 +76,7 @@ public class RealInUseManager implements InUseManager {
 
 		try {
 			return isInUse(inUseFilePath);
-		} catch (IllegalArgumentException | IOException e) {
+		} catch (IllegalArgumentException | IOException _) {
 			return false;
 		}
 	}
@@ -128,8 +128,8 @@ public class RealInUseManager implements InUseManager {
 
 	//TODO: test
 	UseInfo validate(Properties content) throws IllegalArgumentException {
-		var owner = (String) content.get(UseToken.OWNER_KEY);
-		if (owner == null || owner.isBlank()) {
+		var ownerFromFile = (String) content.get(UseToken.OWNER_KEY);
+		if (ownerFromFile == null || ownerFromFile.isBlank()) {
 			throw new IllegalArgumentException("Invalid in-use-file. Missing key %s".formatted(UseToken.OWNER_KEY));
 		}
 
@@ -139,7 +139,7 @@ public class RealInUseManager implements InUseManager {
 		}
 		try {
 			var lastUpdated = Instant.parse(stringTime);
-			return new UseInfo(owner, lastUpdated);
+			return new UseInfo(ownerFromFile, lastUpdated);
 		} catch (DateTimeParseException e) {
 			throw new IllegalArgumentException("Invalid in-use-file. Unable to parse content %s of key %s as UTC timestamp.".formatted(stringTime, UseToken.LASTUPDATED_KEY), e);
 		}
@@ -177,7 +177,7 @@ public class RealInUseManager implements InUseManager {
 			if (e.getCause() instanceof FileAlreadyInUseException inUseExc) {
 				throw inUseExc;
 			} else {
-				//any other IOException. Already logged.
+				LOG.warn("Failed to read in-use file {}. Ignoring it.", inUseFilePath, e);
 				return UseToken.CLOSED_TOKEN;
 			}
 		}
@@ -190,17 +190,14 @@ public class RealInUseManager implements InUseManager {
 			}
 			ignoredInUseFiles.invalidate(inUseFilePath);
 			return RealUseToken.createWithExistingFile(inUseFilePath, owner, cryptor, useTokens);
-		} catch (FileAlreadyInUseException e) {
-			throw new UncheckedIOException(e); //wrapped due to Map::compute method
 		} catch (NoSuchFileException e) {
 			LOG.debug("No in-use-file {} found. Creating it.", inUseFilePath, e);
 			return RealUseToken.createWithNewFile(inUseFilePath, owner, cryptor, useTokens);
+		} catch (IOException e) {
+			throw new UncheckedIOException(e); //wrapped due to Map::compute method
 		} catch (IllegalArgumentException e) {
 			LOG.info("Found invalid in-use-file {}. Owning it.", inUseFilePath, e);
 			return RealUseToken.createWithExistingFile(inUseFilePath, owner, cryptor, useTokens);
-		} catch (IOException e) {
-			LOG.warn("Failed to read in-use file {}. Ignoring it.", inUseFilePath, e);
-			throw new UncheckedIOException(e); //wrapped due to Map::compute method
 		}
 	}
 

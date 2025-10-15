@@ -140,7 +140,7 @@ public final class RealUseToken implements UseToken {
 			if (closed) {
 				return;
 			}
-			useTokens.compute(newFilePath, (p, t) -> {
+			useTokens.compute(newFilePath, (_, _) -> {
 				try {
 					if (channel != null) {
 						Files.move(filePath, newFilePath, StandardCopyOption.REPLACE_EXISTING);
@@ -176,14 +176,13 @@ public final class RealUseToken implements UseToken {
 			}
 			closed = true;
 			creationTask.cancel(false);
-			useTokens.compute(filePath, (path, token) -> {
+			useTokens.compute(filePath, (path, _) -> {
 				if (channel != null) {
 					try {
 						channel.close();
 						Files.deleteIfExists(filePath);
 					} catch (IOException e) {
 						//ignore
-						//TODO: LOG
 						LOG.info("Failed to delete inUse File {}. Must be deleted manually.", path);
 					}
 				}

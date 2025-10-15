@@ -35,14 +35,14 @@ public class RealUseTokenTest {
 	Path tmpDir;
 	private WatchService watchService;
 
-	private final static Duration FILE_OPERATION_DELAY = Duration.ofMillis(Constants.INUSE_DELAY_MILLIS - 100);
-	private final static Duration FILE_OPERATION_MAX = FILE_OPERATION_DELAY.plusMillis(3000);
+	private static final Duration FILE_OPERATION_DELAY = Duration.ofMillis(Constants.INUSE_DELAY_MILLIS - 100);
+	private static final Duration FILE_OPERATION_MAX = FILE_OPERATION_DELAY.plusMillis(3000);
 
 	@BeforeEach
 	public void beforeEach() throws IOException {
 		cryptor = mock(Cryptor.class);
 		encWrapper = mock(RealUseToken.EncryptionDecorator.class);
-		useTokens = new ConcurrentHashMap<>();//Mockito.mock(ConcurrentMap.class);
+		useTokens = new ConcurrentHashMap<>();
 		watchService = tmpDir.getFileSystem().newWatchService();
 
 		doAnswer(invocation -> invocation.getArgument(0)) //just return the real file channel
@@ -53,14 +53,14 @@ public class RealUseTokenTest {
 	public void afterEach() {
 		try {
 			watchService.close();
-		} catch (IOException e) {
+		} catch (IOException _) {
 			//no-op
 		}
 	}
 
 	@Test
 	@DisplayName("After 5 seconds of token creation, a new file is created")
-	public void testFileCreation() throws IOException {
+	public void testFileCreation() {
 		var filePath = tmpDir.resolve("inUse.file");
 		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, RealUseToken.ActivationType.CREATE, encWrapper)) {
 			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> Files.exists(filePath));
@@ -168,7 +168,7 @@ public class RealUseTokenTest {
 
 	@Test
 	@DisplayName("Moving a token after file creation")
-	public void testMoveToAfter() throws IOException {
+	public void testMoveToAfter() {
 		var filePath = tmpDir.resolve("inUse.file");
 		var targetPath = tmpDir.resolve("inUse2.file");
 
