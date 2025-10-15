@@ -151,7 +151,7 @@ public class RealInUseManager implements InUseManager {
 		}
 
 		var timeSinceLastUpdate = Duration.between(useInfo.lastUpdated(), Instant.now());
-		var threshold = Duration.of(2 * REFRESH_DELAY_MINUTES, ChronoUnit.MINUTES);
+		var threshold = Duration.of(2L * REFRESH_DELAY_MINUTES, ChronoUnit.MINUTES);
 		return timeSinceLastUpdate.compareTo(threshold) < 0;
 	}
 
