@@ -29,11 +29,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Management object for the in-use-state of encrypted files.
+ * Real implementation of {@link InUseManager}.
  * <p>
- * You can just check, if a file is in use with {@link #isInUseByOthers(Path)} or try to mark a file as in-use by this crypto filesystem with {@link #use(Path)}
- * <p>
- * The persistence file of a token has the {@value Constants#INUSE_FILE_SUFFIX} file extension.
+ * All {@value REFRESH_DELAY_MINUTES} minutes all open UseTokens (aka in-use-files) are rewritten with "lastUpdated" set to the current time.
+ * To reduce reads from disk, this class implements a short-lived (5s) cache of the in-use-files.
+ * If a file is ignored via {@link #ignoreInUse(Path)}, the ignore status is kept for only 2 minutes.
  */
 public class RealInUseManager implements InUseManager {
 

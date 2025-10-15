@@ -4,12 +4,12 @@ import java.nio.file.Path;
 import java.util.Optional;
 
 /**
- * A file is considered <it>in use</it>, if:
+ * The InUseManager offers methods to
  * <ul>
- *     <li> an in-use-file for the given file exists</li>
- *     <li> that in-use-file belongs to the running crypto filesystem</li>
- *     <li> the last update time is at most X minutes ago</li>
- * </ul>.
+ * 	<li>determine if a file is in-use by a different filesystem</li>
+ * 	<li>create an in-use-file and claim ownership of it</li>
+ * 	<li>ignore the in-use-file for a ciphertext path</li>
+ * </ul>
  */
 public interface InUseManager {
 
