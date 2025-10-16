@@ -151,7 +151,7 @@ public final class RealUseToken implements UseToken {
 			useTokens.remove(filePath);
 			this.filePath = newFilePath;
 		} catch (UncheckedIOException e) {
-			LOG.warn("Failed to move in-use file {} to {}.", filePath, newFilePath, e.getCause());
+			LOG.debug("Failed to move in-use file {} to {}.", filePath, newFilePath, e.getCause());
 			close(); //To prevent invalid states
 		} finally {
 			fileCreationSync.unlock();
@@ -181,7 +181,7 @@ public final class RealUseToken implements UseToken {
 						Files.deleteIfExists(filePath);
 					} catch (IOException e) {
 						//ignore
-						LOG.info("Failed to delete inUse File {}. Must be deleted manually.", path);
+						LOG.warn("Failed to delete inUse File {}. Must be deleted manually.", path);
 					}
 				}
 				return null;
