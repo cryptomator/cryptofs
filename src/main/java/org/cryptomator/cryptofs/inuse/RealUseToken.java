@@ -35,15 +35,11 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public final class RealUseToken implements UseToken {
 
 	public static RealUseToken createWithNewFile(Path p, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens) {
-		return new RealUseToken(p, owner, cryptor, useTokens, ActivationType.CREATE);
+		return new RealUseToken(p, owner, cryptor, useTokens, StandardOpenOption.CREATE_NEW);
 	}
 
 	public static RealUseToken createWithExistingFile(Path p, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens) {
-		return new RealUseToken(p, owner, cryptor, useTokens, ActivationType.STEAL);
-	}
-
-	public static RealUseToken createInvalid(Path p, ConcurrentMap<Path, RealUseToken> useTokens) {
-		return new RealUseToken(p, "unused", null, useTokens, ActivationType.NONE);
+		return new RealUseToken(p, owner, cryptor, useTokens, StandardOpenOption.TRUNCATE_EXISTING);
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(RealUseToken.class);
@@ -59,29 +55,19 @@ public final class RealUseToken implements UseToken {
 	private volatile WritableByteChannel channel;
 	private volatile boolean closed;
 
-	RealUseToken(Path filePath, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, ActivationType m) {
-		this(filePath, owner, cryptor, useTokens, m, EncryptedChannels::wrapEncryptionAround);
+	RealUseToken(Path filePath, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, OpenOption openMode) {
+		this(filePath, owner, cryptor, useTokens, openMode, EncryptedChannels::wrapEncryptionAround);
 	}
 
-	RealUseToken(Path filePath, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, ActivationType m, EncryptionDecorator encWrapper) {
+	RealUseToken(Path filePath, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, OpenOption openMode, EncryptionDecorator encWrapper) {
 		this.owner = owner;
 		this.filePath = filePath;
 		this.cryptor = cryptor;
 		this.useTokens = useTokens;
 		this.encWrapper = encWrapper;
-		Set<OpenOption> openOptions = switch (m) {
-			case STEAL -> Set.of(StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
-			case CREATE -> Set.of(StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
-			case NONE -> Set.of();
-		};
-
-		if (m == ActivationType.NONE) {
-			this.closed = true;
-			this.creationTask = CompletableFuture.completedFuture(null);
-		} else {
-			this.closed = false;
-			this.creationTask = CompletableFuture.runAsync(() -> createInUseFile(openOptions), CompletableFuture.delayedExecutor(Constants.INUSE_DELAY_MILLIS, TimeUnit.MILLISECONDS, Executors.newVirtualThreadPerTaskExecutor()));
-		}
+		this.closed = false;
+		var openOptions = Set.of(StandardOpenOption.WRITE, openMode);
+		this.creationTask = CompletableFuture.runAsync(() -> createInUseFile(openOptions), CompletableFuture.delayedExecutor(Constants.INUSE_DELAY_MILLIS, TimeUnit.MILLISECONDS, Executors.newVirtualThreadPerTaskExecutor()));
 
 	}
 
@@ -189,12 +175,6 @@ public final class RealUseToken implements UseToken {
 		} finally {
 			fileCreationSync.unlock();
 		}
-	}
-
-	enum ActivationType {
-		CREATE,
-		STEAL,
-		NONE;
 	}
 
 	interface EncryptionDecorator {
