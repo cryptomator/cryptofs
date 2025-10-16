@@ -23,6 +23,7 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -191,12 +192,12 @@ public class RealInUseManager implements InUseManager {
 			ignoredInUseFiles.invalidate(inUseFilePath);
 			return RealUseToken.createWithExistingFile(inUseFilePath, owner, cryptor, useTokens);
 		} catch (NoSuchFileException e) {
-			LOG.debug("No in-use-file {} found. Creating it.", inUseFilePath, e);
+			LOG.trace("No in-use-file {} found. Creating it.", inUseFilePath, e);
 			return RealUseToken.createWithNewFile(inUseFilePath, owner, cryptor, useTokens);
 		} catch (IOException e) {
 			throw new UncheckedIOException(e); //wrapped due to Map::compute method
 		} catch (IllegalArgumentException e) {
-			LOG.info("Found invalid in-use-file {}. Owning it.", inUseFilePath, e);
+			LOG.debug("Found invalid in-use-file {}. Owning it.", inUseFilePath, e);
 			return RealUseToken.createWithExistingFile(inUseFilePath, owner, cryptor, useTokens);
 		}
 	}
