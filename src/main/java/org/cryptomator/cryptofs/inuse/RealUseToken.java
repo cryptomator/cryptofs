@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.OpenOption;
@@ -52,7 +53,7 @@ public final class RealUseToken implements UseToken {
 	private final ReentrantReadWriteLock.WriteLock fileCreationSync = new ReentrantReadWriteLock().writeLock();
 
 	private volatile Path filePath;
-	private volatile WritableByteChannel channel;
+	private volatile SeekableByteChannel channel;
 	private volatile boolean closed;
 
 	RealUseToken(Path filePath, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, OpenOption openMode) {
@@ -77,8 +78,7 @@ public final class RealUseToken implements UseToken {
 			if (closed) {
 				return;
 			}
-			var ch = Files.newByteChannel(filePath, openOptions);
-			this.channel = encWrapper.wrapWithEncryption(ch, cryptor);
+			this.channel = Files.newByteChannel(filePath, openOptions);
 			writeInUseFile();
 		} catch (IOException e) {
 			LOG.debug("Failed to write in-use file {} with open options {}.", filePath, openOptions, e);
@@ -90,23 +90,30 @@ public final class RealUseToken implements UseToken {
 	}
 
 	void refresh() {
-		var oldChannel = channel;
-		createInUseFile(Set.of(StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
-
 		try {
-			oldChannel.close();
+			fileCreationSync.lock();
+			if (closed || channel == null) {
+				return;
+			}
+			writeInUseFile();
+			channel.position(0);
 		} catch (IOException e) {
-			LOG.warn("Failed to close stale channel to in-use-file {}", filePath, e);
+			LOG.debug("Failed to refresh in-use file {}.", filePath, e);
+		} finally {
+			fileCreationSync.unlock();
 		}
 	}
 
 	int writeInUseFile() throws IOException {
-		var rawInfo = new ByteArrayOutputStream(Constants.INUSE_CLEARTEXT_SIZE);
-		var prop = new Properties();
-		prop.put(UseToken.OWNER_KEY, owner);
-		prop.put(UseToken.LASTUPDATED_KEY, Instant.now().toString());
-		prop.store(rawInfo, null);
-		return channel.write(ByteBuffer.wrap(rawInfo.toByteArray()));
+		try (var nonClosingWrapper = new NonClosingByteChannel(channel); //
+			 var encChannel = encWrapper.wrapWithEncryption(nonClosingWrapper, cryptor)) {
+			var rawInfo = new ByteArrayOutputStream(Constants.INUSE_CLEARTEXT_SIZE);
+			var prop = new Properties();
+			prop.put(UseToken.OWNER_KEY, owner);
+			prop.put(UseToken.LASTUPDATED_KEY, Instant.now().toString());
+			prop.store(rawInfo, "Cryptomator Use Info");
+			return encChannel.write(ByteBuffer.wrap(rawInfo.toByteArray()));
+		}
 	}
 
 	@Override
@@ -180,5 +187,28 @@ public final class RealUseToken implements UseToken {
 	interface EncryptionDecorator {
 
 		WritableByteChannel wrapWithEncryption(ByteChannel ch, Cryptor c);
+	}
+
+	record NonClosingByteChannel(ByteChannel delegate) implements ByteChannel {
+
+		@Override
+		public int write(ByteBuffer src) throws IOException {
+			return delegate.write(src);
+		}
+
+		@Override
+		public boolean isOpen() {
+			return delegate.isOpen();
+		}
+
+		@Override
+		public void close() throws IOException {
+			//no-op
+		}
+
+		@Override
+		public int read(ByteBuffer dst) throws IOException {
+			return delegate.read(dst);
+		}
 	}
 }
