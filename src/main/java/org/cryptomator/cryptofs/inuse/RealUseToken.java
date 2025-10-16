@@ -95,7 +95,7 @@ public final class RealUseToken implements UseToken {
 			this.channel = encWrapper.wrapWithEncryption(ch, cryptor);
 			writeInUseFile();
 		} catch (IOException e) {
-			LOG.warn("Failed to write in-use file {} with open options {}.", filePath, openOptions, e);
+			LOG.debug("Failed to write in-use file {} with open options {}.", filePath, openOptions, e);
 			close();
 		} finally {
 			fileCreationSync.unlock();
@@ -104,15 +104,13 @@ public final class RealUseToken implements UseToken {
 	}
 
 	void refresh() {
+		var oldChannel = channel;
+		createInUseFile(Set.of(StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
+
 		try {
-			fileCreationSync.lock();
-			if (!(channel == null || closed)) {
-				writeInUseFile();
-			}
+			oldChannel.close();
 		} catch (IOException e) {
-			LOG.warn("Failed to update in-use file {}.", filePath, e);
-		} finally {
-			fileCreationSync.unlock();
+			LOG.warn("Failed to close stale channel to in-use-file {}", filePath, e);
 		}
 	}
 
