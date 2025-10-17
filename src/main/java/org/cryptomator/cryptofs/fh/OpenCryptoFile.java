@@ -82,8 +82,7 @@ public class OpenCryptoFile implements Closeable {
 
 		openChannelsCount.incrementAndGet(); // synchronized context, hence we can proactively increase the number
 		try {
-			//TODO: what about read-only file channels? Then we need to update logic, that first writable channel needs to create this file
-			if (useToken.isClosed()) { //the token was closed prematurely, so we try to get a new one
+			if (options.writable() && useToken.isClosed()) { //the token was closed prematurely, so we try to get a new one
 				useToken = inUseManager.use(path);
 			}
 			ciphertextFileChannel = path.getFileSystem().provider().newFileChannel(path, options.createOpenOptionsForEncryptedFile(), attrs);

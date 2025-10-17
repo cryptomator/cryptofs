@@ -36,6 +36,7 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Instant;
 import java.util.EnumSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -141,6 +142,28 @@ public class OpenCryptoFileTest {
 	}
 
 	@Test
+	@DisplayName("if the file is openend only for reading, don't check usage")
+	public void testIgnoreUsageForReadonly() throws IOException {
+		var openCryptoFile = spy(getTestInstance("testNewFileChannelIgnoreUsage"));
+		var expectedCiphertextPath = CURRENT_FILE_PATH.get();
+		Files.createFile(expectedCiphertextPath);
+
+		EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.READ), readonlyFlag);
+		var cleartextChannel = mock(CleartextFileChannel.class);
+		Mockito.when(headerHolder.get()).thenReturn(Mockito.mock(FileHeader.class));
+		Mockito.when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
+		Mockito.when(fileHeaderCryptor.headerSize()).thenReturn(42);
+		Mockito.when(openCryptoFileComponent.newChannelComponent()).thenReturn(channelComponentFactory);
+		Mockito.when(channelComponentFactory.create(any(), any(), any())).thenReturn(channelComponent);
+		Mockito.when(channelComponent.channel()).thenReturn(cleartextChannel);
+		when(useToken.isClosed()).thenReturn(true);
+
+		openCryptoFile.newFileChannel(options);
+
+		verify(inUseManager, never()).use(expectedCiphertextPath);
+	}
+
+	@Test
 	@DisplayName("if useToken is closed, get a new one")
 	public void testNewFileChannelClosedToken() throws IOException {
 		var openCryptoFile = spy(getTestInstance("testNewFileChannelClosedUseToken"));
@@ -163,12 +186,12 @@ public class OpenCryptoFileTest {
 	}
 
 	@Test
-	@DisplayName("if the file is in use, throw exception")
-	public void testInUseFileThrowsException() throws FileAlreadyInUseException {
+	@DisplayName("if the file is in use and file is opened for writing, throw exception")
+	public void testInUseFileThrowsException() throws IOException {
 		var openCryptoFile = spy(getTestInstance("testInUseFileThrowsException"));
 		var expectedCiphertextPath = CURRENT_FILE_PATH.get();
 
-		EffectiveOpenOptions options = Mockito.mock(EffectiveOpenOptions.class);
+		EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE), readonlyFlag);
 		when(useToken.isClosed()).thenReturn(true);
 		when(inUseManager.use(expectedCiphertextPath)).thenThrow(FileAlreadyInUseException.class);
 
