@@ -452,7 +452,7 @@ public class CryptoFileSystemImplTest {
 		when(inUseManager.isInUseByOthers(ciphertextFilePath)).thenReturn(true);
 
 		Assertions.assertThrows(FileAlreadyInUseException.class, () -> inTest.checkUsage(cleartextPath, ciphertextPath));
-		var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent && ((FileIsInUseEvent) ev).cleartext().equals(cleartextPath);
+		var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent && ((FileIsInUseEvent) ev).cleartextPath().equals(cleartextPath.toString());
 		verify(inUseManager).isInUseByOthers(ciphertextFilePath);
 		verify(eventConsumer).accept(ArgumentMatchers.argThat(isFileIsInUseEvent));
 	}
@@ -592,7 +592,7 @@ public class CryptoFileSystemImplTest {
 			when(openCryptoFile.newFileChannel(any())).thenThrow(FileAlreadyInUseException.class);
 
 			Assertions.assertThrows(FileAlreadyInUseException.class, () -> inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.WRITE)));
-			var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent && ((FileIsInUseEvent) ev).cleartext().equals(cleartextPath);
+			var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent && ((FileIsInUseEvent) ev).cleartextPath().equals(cleartextPath.toString());
 			verify(eventConsumer).accept(ArgumentMatchers.argThat(isFileIsInUseEvent));
 		}
 
