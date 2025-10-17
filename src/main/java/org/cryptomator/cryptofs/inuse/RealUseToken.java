@@ -112,7 +112,7 @@ public final class RealUseToken implements UseToken {
 			var prop = new Properties();
 			prop.put(UseToken.OWNER_KEY, owner);
 			prop.put(UseToken.LASTUPDATED_KEY, Instant.now().toString());
-			prop.store(rawInfo, "Cryptomator Use Info");
+			prop.store(rawInfo, null);
 			return encChannel.write(ByteBuffer.wrap(rawInfo.toByteArray()));
 		}
 	}
