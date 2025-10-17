@@ -45,6 +45,11 @@ public interface InUseManager {
 		return UseToken.INIT_TOKEN;
 	}
 
+	/**
+	 * Ignore any existing in-use-files for the give ciphertext path for a limited amount of time.
+	 *
+	 * @param ciphertextPath Path to the ciphertext file
+	 */
 	default void ignoreInUse(Path ciphertextPath) {
 
 	}
