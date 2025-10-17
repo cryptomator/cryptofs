@@ -74,8 +74,8 @@ public final class RealUseToken implements UseToken {
 	}
 
 	private void createInUseFile(Set<OpenOption> openOptions) {
+		fileCreationSync.lock();
 		try {
-			fileCreationSync.lock();
 			if (closed) {
 				return;
 			}
@@ -91,8 +91,8 @@ public final class RealUseToken implements UseToken {
 	}
 
 	void refresh() {
+		fileCreationSync.lock();
 		try {
-			fileCreationSync.lock();
 			if (closed || channel == null) {
 				return;
 			}
@@ -125,10 +125,8 @@ public final class RealUseToken implements UseToken {
 
 	//visible for testing
 	void moveToInternal(Path newFilePath) {
+		fileCreationSync.lock();
 		try {
-			//sync with file creation
-			fileCreationSync.lock();
-
 			if (closed) {
 				return;
 			}
@@ -159,10 +157,8 @@ public final class RealUseToken implements UseToken {
 
 	@Override
 	public void close() {
+		fileCreationSync.lock();
 		try {
-			//sync with file creation
-			fileCreationSync.lock();
-
 			if (closed) {
 				return;
 			}
