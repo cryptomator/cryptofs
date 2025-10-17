@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,6 +19,8 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchService;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -29,6 +32,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 public class RealUseTokenTest {
 
@@ -73,6 +78,21 @@ public class RealUseTokenTest {
 			Assertions.assertTrue(Files.exists(filePath));
 		}
 		Assertions.assertTrue(Files.notExists(filePath));
+	}
+
+	@Test
+	@DisplayName("The properties file contains required keys with valid content")
+	public void testFileContent() throws IOException {
+		var filePath = tmpDir.resolve("inUse.file");
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, StandardOpenOption.CREATE_NEW, encWrapper)) {
+			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> Files.exists(filePath));
+
+			var props = new Properties();
+			var rawProps = Files.readAllBytes(filePath);
+			props.load(new ByteArrayInputStream(rawProps));
+			Assertions.assertEquals("test3000", props.getProperty(UseToken.OWNER_KEY));
+			Assertions.assertDoesNotThrow(() -> Instant.parse(props.getProperty(UseToken.LASTUPDATED_KEY)));
+		}
 	}
 
 	@Test
@@ -196,6 +216,42 @@ public class RealUseTokenTest {
 			MatcherAssert.assertThat(watchKey.pollEvents(), Matchers.empty());
 			Assertions.assertNull(useTokens.get(filePath));
 			Assertions.assertNull(useTokens.get(targetPath));
+		}
+	}
+
+	@Test
+	@DisplayName("After token persisting, refreshing a token modifies content")
+	public void testFileRefresh() throws IOException {
+		var filePath = tmpDir.resolve("inUse.file");
+
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, StandardOpenOption.CREATE_NEW, encWrapper)) {
+			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> Files.exists(filePath));
+
+			var props = new Properties();
+			var rawProps = Files.readAllBytes(filePath);
+			props.load(new ByteArrayInputStream(rawProps));
+			var oldLastUpdated = Instant.parse(props.getProperty(UseToken.LASTUPDATED_KEY));
+
+			token.refresh();
+
+			var props2 = new Properties();
+			rawProps = Files.readAllBytes(filePath);
+			props2.load(new ByteArrayInputStream(rawProps));
+
+			Assertions.assertEquals("test3000", props2.getProperty(UseToken.OWNER_KEY));
+			var newLastUpdated = Instant.parse(props2.getProperty(UseToken.LASTUPDATED_KEY));
+			Assertions.assertTrue(newLastUpdated.isAfter(oldLastUpdated));
+		}
+	}
+
+	@Test
+	@DisplayName("Before token persisting, refreshing a token does nothing")
+	public void testFileRefreshSkip() throws IOException {
+		var filePath = tmpDir.resolve("inUse.file");
+
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, StandardOpenOption.CREATE_NEW, encWrapper)) {
+			token.refresh();
+			verify(encWrapper, never()).wrapWithEncryption(any(), eq(cryptor));
 		}
 	}
 }
