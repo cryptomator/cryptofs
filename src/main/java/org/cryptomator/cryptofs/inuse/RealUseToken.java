@@ -23,7 +23,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -35,12 +35,12 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public final class RealUseToken implements UseToken {
 
-	public static RealUseToken createWithNewFile(Path p, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens) {
-		return new RealUseToken(p, owner, cryptor, useTokens, StandardOpenOption.CREATE_NEW);
+	public static RealUseToken createWithNewFile(Path p, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, Executor tokenPersistor) {
+		return new RealUseToken(p, owner, cryptor, useTokens, tokenPersistor, StandardOpenOption.CREATE_NEW);
 	}
 
-	public static RealUseToken createWithExistingFile(Path p, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens) {
-		return new RealUseToken(p, owner, cryptor, useTokens, StandardOpenOption.TRUNCATE_EXISTING);
+	public static RealUseToken createWithExistingFile(Path p, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, Executor tokenPersistor) {
+		return new RealUseToken(p, owner, cryptor, useTokens, tokenPersistor, StandardOpenOption.TRUNCATE_EXISTING);
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(RealUseToken.class);
@@ -56,11 +56,12 @@ public final class RealUseToken implements UseToken {
 	private volatile SeekableByteChannel channel;
 	private volatile boolean closed;
 
-	RealUseToken(Path filePath, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, OpenOption openMode) {
-		this(filePath, owner, cryptor, useTokens, openMode, EncryptedChannels::wrapEncryptionAround);
+	RealUseToken(Path filePath, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, Executor tokenPersistor, OpenOption openMode) {
+		var delayedExecutor = CompletableFuture.delayedExecutor(Constants.INUSE_DELAY_MILLIS, TimeUnit.MILLISECONDS, tokenPersistor);
+		this(filePath, owner, cryptor, useTokens, delayedExecutor, openMode, EncryptedChannels::wrapEncryptionAround);
 	}
 
-	RealUseToken(Path filePath, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, OpenOption openMode, EncryptionDecorator encWrapper) {
+	RealUseToken(Path filePath, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, Executor tokenPersistor, OpenOption openMode, EncryptionDecorator encWrapper) {
 		this.owner = owner;
 		this.filePath = filePath;
 		this.cryptor = cryptor;
@@ -68,7 +69,7 @@ public final class RealUseToken implements UseToken {
 		this.encWrapper = encWrapper;
 		this.closed = false;
 		var openOptions = Set.of(StandardOpenOption.WRITE, openMode);
-		this.creationTask = CompletableFuture.runAsync(() -> createInUseFile(openOptions), CompletableFuture.delayedExecutor(Constants.INUSE_DELAY_MILLIS, TimeUnit.MILLISECONDS, Executors.newVirtualThreadPerTaskExecutor()));
+		this.creationTask = CompletableFuture.runAsync(() -> createInUseFile(openOptions), tokenPersistor);
 
 	}
 

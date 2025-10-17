@@ -23,8 +23,8 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -44,6 +44,7 @@ public class RealInUseManager implements InUseManager {
 	private final ConcurrentHashMap<Path, RealUseToken> useTokens;
 	private final Cache<Path, UseInfo> useInfoCache;
 	private final Cache<Path, Object> ignoredInUseFiles;
+	private final ExecutorService tokenPersistor;
 	private final ScheduledExecutorService tokenRefresher;
 	private final String owner;
 	private final Cryptor cryptor;
@@ -60,7 +61,8 @@ public class RealInUseManager implements InUseManager {
 				.expireAfterWrite(5, TimeUnit.SECONDS) //
 				.maximumSize(1000) //
 				.build();
-		this.tokenRefresher = Executors.newSingleThreadScheduledExecutor();
+		this.tokenPersistor = Executors.newVirtualThreadPerTaskExecutor();
+		this.tokenRefresher = Executors.newSingleThreadScheduledExecutor(); //TODO: never closed -> resource leak
 		tokenRefresher.scheduleWithFixedDelay(() -> useTokens.forEachValue(10L, RealUseToken::refresh), //
 				REFRESH_DELAY_MINUTES, //
 				REFRESH_DELAY_MINUTES, //
@@ -190,15 +192,15 @@ public class RealInUseManager implements InUseManager {
 				throw new FileAlreadyInUseException(inUseFilePath);
 			}
 			ignoredInUseFiles.invalidate(inUseFilePath);
-			return RealUseToken.createWithExistingFile(inUseFilePath, owner, cryptor, useTokens);
+			return RealUseToken.createWithExistingFile(inUseFilePath, owner, cryptor, useTokens, tokenPersistor);
 		} catch (NoSuchFileException e) {
 			LOG.trace("No in-use-file {} found. Creating it.", inUseFilePath, e);
-			return RealUseToken.createWithNewFile(inUseFilePath, owner, cryptor, useTokens);
+			return RealUseToken.createWithNewFile(inUseFilePath, owner, cryptor, useTokens, tokenPersistor);
 		} catch (IOException e) {
 			throw new UncheckedIOException(e); //wrapped due to Map::compute method
 		} catch (IllegalArgumentException e) {
 			LOG.debug("Found invalid in-use-file {}. Owning it.", inUseFilePath, e);
-			return RealUseToken.createWithExistingFile(inUseFilePath, owner, cryptor, useTokens);
+			return RealUseToken.createWithExistingFile(inUseFilePath, owner, cryptor, useTokens, tokenPersistor);
 		}
 	}
 
@@ -219,12 +221,13 @@ public class RealInUseManager implements InUseManager {
 	}
 
 	//for testing
-	RealInUseManager(String owner, Cryptor cryptor, ConcurrentHashMap<Path, RealUseToken> useTokens, Cache<Path, Object> ignoredInUseFiles, Cache<Path, UseInfo> useInfoCache, ScheduledExecutorService tokenRefresher) {
+	RealInUseManager(String owner, Cryptor cryptor, ConcurrentHashMap<Path, RealUseToken> useTokens, Cache<Path, Object> ignoredInUseFiles, Cache<Path, UseInfo> useInfoCache, ExecutorService tokenPersistor, ScheduledExecutorService tokenRefresher) {
 		this.owner = owner;
 		this.cryptor = cryptor;
 		this.useTokens = useTokens;
 		this.ignoredInUseFiles = ignoredInUseFiles;
 		this.useInfoCache = useInfoCache;
+		this.tokenPersistor = tokenPersistor;
 		this.tokenRefresher = tokenRefresher;
 	}
 }
