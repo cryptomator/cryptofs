@@ -131,12 +131,12 @@ public class RealInUseManager implements InUseManager {
 
 	//TODO: test
 	UseInfo validate(Properties content) throws IllegalArgumentException {
-		var ownerFromFile = (String) content.get(UseToken.OWNER_KEY);
+		var ownerFromFile = content.getProperty(UseToken.OWNER_KEY);
 		if (ownerFromFile == null || ownerFromFile.isBlank()) {
 			throw new IllegalArgumentException("Invalid in-use-file. Missing key %s".formatted(UseToken.OWNER_KEY));
 		}
 
-		var stringTime = (String) content.get(UseToken.LASTUPDATED_KEY);
+		var stringTime = content.getProperty(UseToken.LASTUPDATED_KEY);
 		if (stringTime == null) {
 			throw new IllegalArgumentException("Invalid in-use-file. Missing key %s".formatted(UseToken.LASTUPDATED_KEY));
 		}
