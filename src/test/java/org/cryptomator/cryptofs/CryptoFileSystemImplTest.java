@@ -288,7 +288,11 @@ public class CryptoFileSystemImplTest {
 					((RunnableThrowingException<?>) runnable).run();
 				}
 				return null;
-			}).when(finallyUtil).guaranteeInvocationOf(any(RunnableThrowingException.class), any(RunnableThrowingException.class), any(RunnableThrowingException.class), any(RunnableThrowingException.class));
+			}).when(finallyUtil).guaranteeInvocationOf(any(RunnableThrowingException.class),
+					any(RunnableThrowingException.class),
+					any(RunnableThrowingException.class),
+					any(RunnableThrowingException.class),
+					any(RunnableThrowingException.class));
 		}
 
 		@Test
@@ -296,6 +300,13 @@ public class CryptoFileSystemImplTest {
 			inTest.close();
 
 			verify(cryptoFileSystems).remove(inTest);
+		}
+
+		@Test
+		public void testClosesInUseManager() throws IOException {
+			inTest.close();
+
+			verify(inUseManager).close();
 		}
 
 		@Test
@@ -353,7 +364,11 @@ public class CryptoFileSystemImplTest {
 					((RunnableThrowingException<?>) runnable).run();
 				}
 				return null;
-			}).when(finallyUtil).guaranteeInvocationOf(any(RunnableThrowingException.class), any(RunnableThrowingException.class), any(RunnableThrowingException.class), any(RunnableThrowingException.class));
+			}).when(finallyUtil).guaranteeInvocationOf(any(RunnableThrowingException.class), //
+					any(RunnableThrowingException.class), //
+					any(RunnableThrowingException.class), //
+					any(RunnableThrowingException.class), //
+					any(RunnableThrowingException.class));
 		}
 
 		@Test

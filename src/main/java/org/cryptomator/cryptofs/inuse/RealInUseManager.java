@@ -213,6 +213,25 @@ public class RealInUseManager implements InUseManager {
 		ignoredInUseFiles.put(inUseFilePath, Boolean.TRUE);
 	}
 
+	@Override
+	public void close() throws IOException {
+		tokenRefresher.shutdown();
+		tokenPersistor.shutdown();
+		try {
+			if (!tokenRefresher.awaitTermination(5, TimeUnit.SECONDS)) {
+				tokenRefresher.shutdownNow();
+			}
+			if (!tokenPersistor.awaitTermination(5, TimeUnit.SECONDS)) {
+				tokenPersistor.shutdownNow();
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			tokenRefresher.shutdownNow();
+			tokenPersistor.shutdownNow();
+		}
+
+	}
+
 	/**
 	 * @param p a path with a filename ending with {@value Constants#CRYPTOMATOR_FILE_SUFFIX}
 	 * @return a sibling path with the file extension {@value Constants#INUSE_FILE_SUFFIX}

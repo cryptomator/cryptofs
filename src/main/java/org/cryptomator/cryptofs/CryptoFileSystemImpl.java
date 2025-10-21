@@ -213,9 +213,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			open = false;
 			finallyUtil.guaranteeInvocationOf( //
 					() -> cryptoFileSystems.remove(this), //
-					() -> openCryptoFiles.close(), //
-					() -> directoryStreamFactory.close(), //
-					() -> cryptor.destroy());
+					openCryptoFiles::close, //
+					directoryStreamFactory::close, //
+					inUseManager::close, //
+					cryptor::destroy //
+			);
 		}
 	}
 

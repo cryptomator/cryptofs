@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.inuse;
 
+import java.io.Closeable;
 import java.nio.file.Path;
 import java.util.Optional;
 
@@ -11,7 +12,7 @@ import java.util.Optional;
  * 	<li>ignore the in-use-file for a ciphertext path</li>
  * </ul>
  */
-public interface InUseManager {
+public interface InUseManager extends Closeable {
 
 	/**
 	 * Checks if the given ciphertext path is used by others.
