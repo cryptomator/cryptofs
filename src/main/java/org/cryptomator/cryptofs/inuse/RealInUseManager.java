@@ -2,6 +2,7 @@ package org.cryptomator.cryptofs.inuse;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.Scheduler;
 import org.cryptomator.cryptofs.common.CacheUtils;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.EncryptedChannels;
@@ -55,6 +56,7 @@ public class RealInUseManager implements InUseManager {
 		this.useTokens = new ConcurrentHashMap<>();
 		this.ignoredInUseFiles = Caffeine.newBuilder() //
 				.expireAfterWrite(2, TimeUnit.MINUTES) //Do not keep the mark too long
+				.scheduler(Scheduler.systemScheduler()) //
 				.maximumSize(100) //
 				.build();
 		this.useInfoCache = Caffeine.newBuilder() //
@@ -175,7 +177,9 @@ public class RealInUseManager implements InUseManager {
 	public UseToken use(Path ciphertextPath) throws FileAlreadyInUseException {
 		var inUseFilePath = computeInUseFilePath(ciphertextPath);
 		try {
-			return useTokens.computeIfAbsent(inUseFilePath, this::createInternal);
+			var token = useTokens.computeIfAbsent(inUseFilePath, this::createInternal);
+			ignoredInUseFiles.invalidate(inUseFilePath);
+			return token;
 		} catch (UncheckedIOException e) {
 			if (e.getCause() instanceof FileAlreadyInUseException inUseExc) {
 				throw inUseExc;
@@ -191,7 +195,6 @@ public class RealInUseManager implements InUseManager {
 			if (isInUse(inUseFilePath)) {
 				throw new FileAlreadyInUseException(inUseFilePath);
 			}
-			ignoredInUseFiles.invalidate(inUseFilePath);
 			return RealUseToken.createWithExistingFile(inUseFilePath, owner, cryptor, useTokens, tokenPersistor);
 		} catch (NoSuchFileException e) {
 			LOG.trace("No in-use-file {} found. Creating it.", inUseFilePath, e);

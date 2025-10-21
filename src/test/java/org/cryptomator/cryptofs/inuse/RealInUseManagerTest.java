@@ -95,7 +95,10 @@ public class RealInUseManagerTest {
 	@Test
 	@DisplayName("\"use\" method puts path into map and returns token")
 	public void testUsePutsPathInMap() throws FileAlreadyInUseException {
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
+		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
+		var ignoredFiles = mock(Cache.class);
+		var useInfoCache = mock(Cache.class);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredFiles, useInfoCache, tokenPersistor, null);
 		var inUseSpy = spy(inUseManager);
 		var token = mock(RealUseToken.class);
 
@@ -103,6 +106,9 @@ public class RealInUseManagerTest {
 
 		var result = inUseSpy.use(ciphertextPath);
 		Assertions.assertSame(token, result);
+		Assertions.assertSame(token, preparedMap.get(inUseFilePath));
+		verify(ignoredFiles).invalidate(inUseFilePath);
+		verify(inUseSpy).createInternal(inUseFilePath);
 	}
 
 	@Test
@@ -136,7 +142,6 @@ public class RealInUseManagerTest {
 	public void testCreateExistingValid() throws IOException {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
 		var ignoredInUseFiles = mock(Cache.class);
-		doNothing().when(ignoredInUseFiles).invalidate(inUseFilePath);
 		var useInfoCache = mock(Cache.class);
 		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredInUseFiles, useInfoCache, tokenPersistor, null);
 		var inUseSpy = spy(inUseManager);
@@ -149,7 +154,6 @@ public class RealInUseManagerTest {
 			var result = inUseSpy.createInternal(inUseFilePath);
 			Assertions.assertSame(token, result);
 			verify(inUseSpy).isInUse(inUseFilePath);
-			verify(ignoredInUseFiles).invalidate(inUseFilePath);
 			staticUseTokenMock.verify(() -> RealUseToken.createWithExistingFile(inUseFilePath, "cryptobot3000", cryptor, preparedMap, tokenPersistor));
 		}
 	}
