@@ -64,7 +64,7 @@ public class RealInUseManager implements InUseManager {
 				.maximumSize(1000) //
 				.build();
 		this.tokenPersistor = Executors.newVirtualThreadPerTaskExecutor();
-		this.tokenRefresher = Executors.newSingleThreadScheduledExecutor(); //TODO: never closed -> resource leak
+		this.tokenRefresher = Executors.newSingleThreadScheduledExecutor();
 		tokenRefresher.scheduleWithFixedDelay(() -> useTokens.forEachValue(10L, RealUseToken::refresh), //
 				REFRESH_DELAY_MINUTES, //
 				REFRESH_DELAY_MINUTES, //
