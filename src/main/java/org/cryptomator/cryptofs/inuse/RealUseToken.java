@@ -105,7 +105,7 @@ public final class RealUseToken implements UseToken {
 	}
 
 	int writeInUseFile() throws IOException {
-		channel.position(0);
+		channel.truncate(0);
 		final int bytesWritten;
 		try (var nonClosingWrapper = new NonClosingByteChannel(channel); //
 			 var encChannel = encWrapper.wrapWithEncryption(nonClosingWrapper, cryptor)) {
