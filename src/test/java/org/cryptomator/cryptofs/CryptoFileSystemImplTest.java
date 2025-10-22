@@ -473,7 +473,7 @@ public class CryptoFileSystemImplTest {
 	}
 
 	@Test
-	@DisplayName("checkUsage throws exception when file is in-use")
+	@DisplayName("checkUsage does nothing if file is not in-use")
 	public void testCheckUsageForNotInUseFiles() throws FileAlreadyInUseException {
 		CryptoPath cleartextPath = mock(CryptoPath.class, "cleartext");
 		CryptoPath ciphertextFilePath = mock(CryptoPath.class, "d/00/00/path.c9r");
