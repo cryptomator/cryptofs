@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ByteChannel;
-import java.nio.channels.SeekableByteChannel;
+import java.nio.channels.FileChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.OpenOption;
@@ -53,7 +53,7 @@ public final class RealUseToken implements UseToken {
 	private final ReentrantReadWriteLock.WriteLock fileCreationSync = new ReentrantReadWriteLock().writeLock();
 
 	private volatile Path filePath;
-	private volatile SeekableByteChannel channel;
+	private volatile FileChannel channel;
 	private volatile boolean closed;
 
 	RealUseToken(Path filePath, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, Executor tokenPersistor, OpenOption openMode) {
@@ -79,7 +79,7 @@ public final class RealUseToken implements UseToken {
 			if (closed) {
 				return;
 			}
-			this.channel = Files.newByteChannel(filePath, openOptions);
+			this.channel = FileChannel.open(filePath, openOptions);
 			writeInUseFile();
 		} catch (IOException e) {
 			LOG.debug("Failed to write in-use file {} with open options {}.", filePath, openOptions, e);
@@ -97,7 +97,6 @@ public final class RealUseToken implements UseToken {
 				return;
 			}
 			writeInUseFile();
-			channel.position(0);
 		} catch (IOException e) {
 			LOG.debug("Failed to refresh in-use file {}.", filePath, e);
 		} finally {
@@ -106,6 +105,8 @@ public final class RealUseToken implements UseToken {
 	}
 
 	int writeInUseFile() throws IOException {
+		channel.position(0);
+		final int bytesWritten;
 		try (var nonClosingWrapper = new NonClosingByteChannel(channel); //
 			 var encChannel = encWrapper.wrapWithEncryption(nonClosingWrapper, cryptor)) {
 			var rawInfo = new ByteArrayOutputStream(Constants.INUSE_CLEARTEXT_SIZE);
@@ -113,8 +114,10 @@ public final class RealUseToken implements UseToken {
 			prop.put(UseToken.OWNER_KEY, owner);
 			prop.put(UseToken.LASTUPDATED_KEY, Instant.now().toString());
 			prop.store(rawInfo, null);
-			return encChannel.write(ByteBuffer.wrap(rawInfo.toByteArray()));
+			bytesWritten = encChannel.write(ByteBuffer.wrap(rawInfo.toByteArray()));
 		}
+		channel.force(false);
+		return bytesWritten;
 	}
 
 	@Override
