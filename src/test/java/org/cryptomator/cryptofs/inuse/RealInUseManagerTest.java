@@ -58,7 +58,7 @@ public class RealInUseManagerTest {
 		preparedMap.put(inUseFilePath, mock(RealUseToken.class));
 		var filesMarkedForStealing = mock(Cache.class);
 		var useInfoCache = mock(Cache.class);
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, filesMarkedForStealing, useInfoCache, tokenPersistor, null);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, filesMarkedForStealing, useInfoCache, tokenPersistor);
 		var inUseSpy = spy(inUseManager);
 
 		var result = inUseSpy.isInUseByOthers(ciphertextPath);
@@ -98,7 +98,7 @@ public class RealInUseManagerTest {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
 		var ignoredFiles = mock(Cache.class);
 		var useInfoCache = mock(Cache.class);
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredFiles, useInfoCache, tokenPersistor, null);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredFiles, useInfoCache, tokenPersistor);
 		var inUseSpy = spy(inUseManager);
 		var token = mock(RealUseToken.class);
 
@@ -143,7 +143,7 @@ public class RealInUseManagerTest {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
 		var ignoredInUseFiles = mock(Cache.class);
 		var useInfoCache = mock(Cache.class);
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredInUseFiles, useInfoCache, tokenPersistor, null);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredInUseFiles, useInfoCache, tokenPersistor);
 		var inUseSpy = spy(inUseManager);
 		var token = mock(RealUseToken.class);
 
@@ -164,7 +164,7 @@ public class RealInUseManagerTest {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
 		var ignoredFiles = mock(Cache.class);
 		var useInfoCache = mock(Cache.class);
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredFiles, useInfoCache, tokenPersistor, null);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredFiles, useInfoCache, tokenPersistor);
 		var inUseSpy = spy(inUseManager);
 		var token = mock(RealUseToken.class);
 
@@ -185,7 +185,7 @@ public class RealInUseManagerTest {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
 		var ignoredFiles = mock(Cache.class);
 		var useInfoCache = mock(Cache.class);
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredFiles, useInfoCache, tokenPersistor, null);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredFiles, useInfoCache, tokenPersistor);
 		var inUseSpy = spy(inUseManager);
 		var token = mock(RealUseToken.class);
 
@@ -206,7 +206,7 @@ public class RealInUseManagerTest {
 		var preparedMap = new ConcurrentHashMap<Path, RealUseToken>();
 		var ignoredFiles = mock(Cache.class);
 		var useInfoCache = mock(Cache.class);
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredFiles, useInfoCache, tokenPersistor, null);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredFiles, useInfoCache, tokenPersistor);
 		var inUseSpy = spy(inUseManager);
 
 		doReturn(true).when(inUseSpy).isInUse(inUseFilePath);
@@ -337,7 +337,7 @@ public class RealInUseManagerTest {
 		var ignoredInUseFiles = mock(Cache.class);
 		var useInfoCache = mock(Cache.class);
 		doReturn(Boolean.TRUE).when(ignoredInUseFiles).getIfPresent(inUseFilePath);
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredInUseFiles, useInfoCache, tokenPersistor, null);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredInUseFiles, useInfoCache, tokenPersistor);
 
 		var result = inUseManager.isInUse(inUseFilePath);
 
@@ -354,7 +354,7 @@ public class RealInUseManagerTest {
 		var useInfoCache = mock(Cache.class);
 		var useInfo = new UseInfo("bob", Instant.now());
 		doReturn(useInfo).when(useInfoCache).get(eq(inUseFilePath), any());
-		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredInUseFiles, useInfoCache, tokenPersistor, null);
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor, preparedMap, ignoredInUseFiles, useInfoCache, tokenPersistor);
 
 		var result = inUseManager.isInUse(inUseFilePath);
 

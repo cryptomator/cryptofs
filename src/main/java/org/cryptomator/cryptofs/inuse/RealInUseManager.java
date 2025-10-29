@@ -27,26 +27,22 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Real implementation of {@link InUseManager}.
  * <p>
- * All {@value REFRESH_DELAY_MINUTES} minutes all open UseTokens (aka in-use-files) are rewritten with "lastUpdated" set to the current time.
  * To reduce reads from disk, this class implements a short-lived (5s) cache of the in-use-files.
  * If a file is ignored via {@link #ignoreInUse(Path)}, the ignore status is kept for only 2 minutes.
  */
 public class RealInUseManager implements InUseManager {
 
 	private static final Logger LOG = LoggerFactory.getLogger(RealInUseManager.class);
-	private static final int REFRESH_DELAY_MINUTES = 5;
 
 	private final ConcurrentHashMap<Path, RealUseToken> useTokens;
 	private final Cache<Path, UseInfo> useInfoCache;
 	private final Cache<Path, Object> ignoredInUseFiles;
 	private final ExecutorService tokenPersistor;
-	private final ScheduledExecutorService tokenRefresher;
 	private final String owner;
 	private final Cryptor cryptor;
 
@@ -64,11 +60,6 @@ public class RealInUseManager implements InUseManager {
 				.maximumSize(1000) //
 				.build();
 		this.tokenPersistor = Executors.newVirtualThreadPerTaskExecutor();
-		this.tokenRefresher = Executors.newSingleThreadScheduledExecutor();
-		tokenRefresher.scheduleWithFixedDelay(() -> useTokens.forEachValue(10L, RealUseToken::refresh), //
-				REFRESH_DELAY_MINUTES, //
-				REFRESH_DELAY_MINUTES, //
-				TimeUnit.MINUTES);
 	}
 
 
@@ -90,7 +81,7 @@ public class RealInUseManager implements InUseManager {
 	 * Reads the in-use-file at the given path, validates it and checks if
 	 * <ul>
 	 *     <li> this in-use-file belongs to the running crypto filesystem and</li>
-	 *     <li> the last update time is at most 2*{@value #REFRESH_DELAY_MINUTES}</li> minutes ago
+	 *     <li> the last update time is at most {@value UseToken#STALE_THRESHOLD_MINUTES} minutes ago
 	 *     <li> the in-use-file is currently not ignored</li>
 	 * </ul>.
 	 *
@@ -156,7 +147,7 @@ public class RealInUseManager implements InUseManager {
 		}
 
 		var timeSinceLastUpdate = Duration.between(useInfo.lastUpdated(), Instant.now());
-		var threshold = Duration.of(2L * REFRESH_DELAY_MINUTES, ChronoUnit.MINUTES);
+		var threshold = Duration.of(UseToken.STALE_THRESHOLD_MINUTES, ChronoUnit.MINUTES);
 		return timeSinceLastUpdate.compareTo(threshold) < 0;
 	}
 
@@ -215,18 +206,13 @@ public class RealInUseManager implements InUseManager {
 
 	@Override
 	public void close() throws IOException {
-		tokenRefresher.shutdown();
 		tokenPersistor.shutdown();
 		try {
-			if (!tokenRefresher.awaitTermination(5, TimeUnit.SECONDS)) {
-				tokenRefresher.shutdownNow();
-			}
 			if (!tokenPersistor.awaitTermination(5, TimeUnit.SECONDS)) {
 				tokenPersistor.shutdownNow();
 			}
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
-			tokenRefresher.shutdownNow();
 			tokenPersistor.shutdownNow();
 		}
 
@@ -243,13 +229,12 @@ public class RealInUseManager implements InUseManager {
 	}
 
 	//for testing
-	RealInUseManager(String owner, Cryptor cryptor, ConcurrentHashMap<Path, RealUseToken> useTokens, Cache<Path, Object> ignoredInUseFiles, Cache<Path, UseInfo> useInfoCache, ExecutorService tokenPersistor, ScheduledExecutorService tokenRefresher) {
+	RealInUseManager(String owner, Cryptor cryptor, ConcurrentHashMap<Path, RealUseToken> useTokens, Cache<Path, Object> ignoredInUseFiles, Cache<Path, UseInfo> useInfoCache, ExecutorService tokenPersistor) {
 		this.owner = owner;
 		this.cryptor = cryptor;
 		this.useTokens = useTokens;
 		this.ignoredInUseFiles = ignoredInUseFiles;
 		this.useInfoCache = useInfoCache;
 		this.tokenPersistor = tokenPersistor;
-		this.tokenRefresher = tokenRefresher;
 	}
 }

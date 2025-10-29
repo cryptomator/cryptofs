@@ -38,7 +38,6 @@ public final class Constants {
 
 	public static final String SEPARATOR = "/";
 	public static final String RECOVERY_DIR_NAME = "LOST+FOUND";
-	public static final int INUSE_DELAY_MILLIS = 5000;
 	public static final int INUSE_CLEARTEXT_SIZE = 1000; //calculation: Create inUse properties with owner consisting of \u2741.repeat(100) and encode it. Plus an additional buffer for future entries.
 
 	public static final Pattern BASE64_PATTERN = Pattern.compile("[a-zA-Z0-9-_]{20}(?:[a-zA-Z0-9-_]{4})*(?:[a-zA-Z0-9-_]{4}|[a-zA-Z0-9-_]{3}=|[a-zA-Z0-9-_]{2}==)");

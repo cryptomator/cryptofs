@@ -24,13 +24,16 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Class to represent a file is "in use" by this filesystem.
  * <p>
- * The actual persistence of the "in use"-state with a file is delayed by {@value Constants#INUSE_DELAY_MILLIS} milliseconds.
+ * The actual persistence of the "in use"-state with a file is delayed by {@value CREATION_DELAY_MILLIS} milliseconds.
+ * The file is rewritten with lastUpdated set to the current time regularly based on an exponential backoff strategy capped at half the stale token time of {@value UseToken#STALE_THRESHOLD_MINUTES} minutes.
  * If the token is closed before it is persisted with a file, writing it to disk is skipped.
  */
 public final class RealUseToken implements UseToken {
@@ -44,9 +47,13 @@ public final class RealUseToken implements UseToken {
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(RealUseToken.class);
+	private static final Semaphore CONCURRENT_WRITES_SEMAPHORE = new Semaphore(20);
+	private static final int CREATION_DELAY_MILLIS = 5000;
+	private static final int MAX_REFRESH_DELAY_SECONDS = 300;
 
 	private final String owner;
-	private final CompletableFuture<Void> creationTask;
+	private final AtomicReference<CompletableFuture<Void>> tokenPersistenceTask = new AtomicReference<>();
+	private final Executor tokenPersistor;
 	private final Cryptor cryptor;
 	private final ConcurrentMap<Path, RealUseToken> useTokens;
 	private final EncryptionDecorator encWrapper; //this exists to make the class testable
@@ -58,20 +65,53 @@ public final class RealUseToken implements UseToken {
 	private volatile long lastModified;
 
 	RealUseToken(Path filePath, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, Executor tokenPersistor, OpenOption openMode) {
-		var delayedExecutor = CompletableFuture.delayedExecutor(Constants.INUSE_DELAY_MILLIS, TimeUnit.MILLISECONDS, tokenPersistor);
-		this(filePath, owner, cryptor, useTokens, delayedExecutor, openMode, EncryptedChannels::wrapEncryptionAround);
+		this(filePath, owner, cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, openMode, EncryptedChannels::wrapEncryptionAround);
 	}
 
-	RealUseToken(Path filePath, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, Executor tokenPersistor, OpenOption openMode, EncryptionDecorator encWrapper) {
+	RealUseToken(Path filePath, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, Executor tokenPersistor, int creationDelayMillis, OpenOption openMode, EncryptionDecorator encWrapper) {
 		this.owner = owner;
 		this.filePath = filePath;
 		this.cryptor = cryptor;
 		this.useTokens = useTokens;
 		this.encWrapper = encWrapper;
 		this.closed = false;
-		var openOptions = Set.of(StandardOpenOption.WRITE, openMode);
-		this.creationTask = CompletableFuture.runAsync(() -> createInUseFile(openOptions), tokenPersistor);
+		this.tokenPersistor = tokenPersistor;
 
+		var openOptions = Set.of(StandardOpenOption.WRITE, openMode);
+		var delayedExecutor = CompletableFuture.delayedExecutor(creationDelayMillis, TimeUnit.MILLISECONDS, tokenPersistor);
+		var creationTask = CompletableFuture.runAsync(() -> createInUseFile(openOptions), delayedExecutor);
+		this.tokenPersistenceTask.set(creationTask);
+		scheduleRefresh(0);
+	}
+
+	//TODO test?
+	private void scheduleRefresh(int count) {
+		var currentTask = tokenPersistenceTask.get();
+		if (closed || currentTask.isCancelled()) {
+			return;
+		}
+
+		var delayedExecutor = delayExponentiallyWithCap(tokenPersistor, count);
+		var nextPersistenceTask = currentTask.thenRunAsync(() -> {
+			try {
+				CONCURRENT_WRITES_SEMAPHORE.acquire();
+				refresh();
+				CONCURRENT_WRITES_SEMAPHORE.release();
+				scheduleRefresh(count + 1);
+			} catch (InterruptedException e) {
+				LOG.debug("Interrupt during refresh of {}. Closing token.", filePath);
+				close();
+				Thread.currentThread().interrupt();
+				throw new RuntimeException(e);
+			}
+		}, delayedExecutor);
+		tokenPersistenceTask.set(nextPersistenceTask);
+	}
+
+	private Executor delayExponentiallyWithCap(Executor executor, int count) {
+		//0:15s, 1:30s, 2:60s=1min, 3:120s=2min, 4:240s=4min, else:300s=5min
+		var delay = count > 4 ? MAX_REFRESH_DELAY_SECONDS : 15 * Math.powExact(2, count);
+		return CompletableFuture.delayedExecutor(delay, TimeUnit.SECONDS, executor);
 	}
 
 	private void createInUseFile(Set<OpenOption> openOptions) {
@@ -182,7 +222,7 @@ public final class RealUseToken implements UseToken {
 				return;
 			}
 			closed = true;
-			creationTask.cancel(false);
+			tokenPersistenceTask.get().cancel(false);
 			useTokens.compute(filePath, (path, _) -> {
 				if (channel != null) {
 					try {

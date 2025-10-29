@@ -11,12 +11,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -26,12 +23,10 @@ import java.nio.file.attribute.FileTime;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -49,8 +44,8 @@ public class RealUseTokenTest {
 	@TempDir
 	Path tmpDir;
 	private WatchService watchService;
-	private static final long FILE_OPERATION_DELAY_MILLIS = 1000L;
-	private static final Duration FILE_OPERATION_DELAY = Duration.ofMillis(FILE_OPERATION_DELAY_MILLIS-100L); //allow some leeway
+	private static final int CREATION_DELAY_MILLIS = 1000;
+	private static final Duration FILE_OPERATION_DELAY = Duration.ofMillis(CREATION_DELAY_MILLIS -100L); //allow some leeway
 	private static final Duration FILE_OPERATION_MAX = FILE_OPERATION_DELAY.plusMillis(2000L);
 
 	@BeforeEach
@@ -59,8 +54,7 @@ public class RealUseTokenTest {
 		encWrapper = mock(RealUseToken.EncryptionDecorator.class);
 		useTokens = new ConcurrentHashMap<>();
 		watchService = tmpDir.getFileSystem().newWatchService();
-		tokenPersistor = CompletableFuture.delayedExecutor(FILE_OPERATION_DELAY_MILLIS, TimeUnit.MILLISECONDS);
-
+		tokenPersistor = Executors.newVirtualThreadPerTaskExecutor();
 		doAnswer(invocation -> invocation.getArgument(0)) //just return the real file channel
 				.when(encWrapper).wrapWithEncryption(any(), eq(cryptor));
 	}
@@ -78,20 +72,20 @@ public class RealUseTokenTest {
 	@DisplayName("After X seconds of token creation, a new file is created")
 	public void testFileCreation() {
 		var filePath = tmpDir.resolve("inUse.file");
-		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, StandardOpenOption.CREATE_NEW, encWrapper)) {
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
 			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> Files.exists(filePath));
 			Assertions.assertTrue(Files.exists(filePath));
 		}
 		Assertions.assertTrue(Files.notExists(filePath));
 	}
 
-	//TODO: test is flaky. Why?
-	@Test
+	@RepeatedTest(20)
 	@DisplayName("The properties file contains required keys with valid content")
 	public void testFileContent() throws IOException {
 		var filePath = tmpDir.resolve("inUse.file");
-		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, StandardOpenOption.CREATE_NEW, encWrapper)) {
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
 			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> Files.exists(filePath));
+			Awaitility.await().pollDelay(Duration.ofMillis(10)).until(() -> true);
 
 			var props = new Properties();
 			var rawProps = Files.readAllBytes(filePath);
@@ -109,7 +103,7 @@ public class RealUseTokenTest {
 		var watchKey = tmpDir.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY);
 		var fileTime = Files.getLastModifiedTime(filePath);
 
-		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, StandardOpenOption.TRUNCATE_EXISTING, encWrapper)) {
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.TRUNCATE_EXISTING, encWrapper)) {
 			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> fileTime.compareTo(Files.getLastModifiedTime(filePath)) < 0);
 			var events = watchKey.pollEvents();
 			var createEvent = events.stream().filter(e -> e.kind().equals(StandardWatchEventKinds.ENTRY_MODIFY)).findAny();
@@ -128,7 +122,7 @@ public class RealUseTokenTest {
 		var filePath = tmpDir.resolve("inUse.file"); //file does not exist
 		var watchKey = tmpDir.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_DELETE);
 
-		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, StandardOpenOption.TRUNCATE_EXISTING, encWrapper)) {
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.TRUNCATE_EXISTING, encWrapper)) {
 			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(token::isClosed);
 			Assertions.assertTrue(Files.notExists(filePath));
 			Assertions.assertTrue(token.isClosed());
@@ -143,7 +137,7 @@ public class RealUseTokenTest {
 		var filePath = tmpDir.resolve("inUse.file");
 		var watchKey = tmpDir.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_DELETE);
 
-		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, StandardOpenOption.CREATE_NEW, encWrapper)) {
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
 			Assertions.assertTrue(Files.notExists(filePath));
 		}
 		Awaitility.await().pollDelay(FILE_OPERATION_MAX).timeout(FILE_OPERATION_MAX.multipliedBy(2)).until(() -> true);
@@ -159,7 +153,7 @@ public class RealUseTokenTest {
 		var targetPath = tmpDir.resolve("inUse2.file");
 		var watchKey = tmpDir.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_DELETE);
 
-		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, StandardOpenOption.CREATE_NEW, encWrapper)) {
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
 			token.moveToInternal(targetPath);
 
 			//no file operation after move
@@ -189,7 +183,7 @@ public class RealUseTokenTest {
 		var filePath = tmpDir.resolve("inUseMove.file");
 		var targetPath = tmpDir.resolve("inUseMove2.file");
 
-		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, StandardOpenOption.CREATE_NEW, encWrapper)) {
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
 			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> Files.exists(filePath));
 
 			token.moveToInternal(targetPath);
@@ -212,7 +206,7 @@ public class RealUseTokenTest {
 		var targetPath = tmpDir.resolve("inUse2.file");
 		var watchKey = tmpDir.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_DELETE);
 
-		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, StandardOpenOption.CREATE_NEW, encWrapper)) {
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
 			token.close();
 			Awaitility.await().pollDelay(FILE_OPERATION_MAX).timeout(FILE_OPERATION_MAX.multipliedBy(2)).until(() -> true);
 
@@ -230,7 +224,7 @@ public class RealUseTokenTest {
 	public void testFileRefresh() throws IOException {
 		var filePath = tmpDir.resolve("inUse.file");
 
-		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, StandardOpenOption.CREATE_NEW, encWrapper)) {
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
 			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> Files.exists(filePath));
 
 			var props = new Properties();
@@ -250,13 +244,12 @@ public class RealUseTokenTest {
 		}
 	}
 
-	@RepeatedTest(value = 5, failureThreshold = 1)
-	@Execution(ExecutionMode.SAME_THREAD)
+	@Test
 	@DisplayName("Refreshing a token with not-matching last-modified date closes token, but does not delete file ")
 	public void testFileRefreshWrongLastModified() throws IOException {
 		var filePath = tmpDir.resolve("inUse.file");
 
-		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, StandardOpenOption.CREATE_NEW, encWrapper)) {
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
 			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> Files.exists(filePath));
 			Awaitility.await().pollDelay(Duration.ofMillis(10)).until(() -> true);
 
@@ -275,7 +268,7 @@ public class RealUseTokenTest {
 	public void testFileRefreshSkip() throws IOException {
 		var filePath = tmpDir.resolve("inUse.file");
 
-		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, StandardOpenOption.CREATE_NEW, encWrapper)) {
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
 			token.refresh();
 			verify(encWrapper, never()).wrapWithEncryption(any(), eq(cryptor));
 		}
