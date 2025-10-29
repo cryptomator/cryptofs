@@ -20,8 +20,7 @@ public class C9uConflictResolverTest {
 
 	@BeforeEach
 	void beforeEach() {
-		var inUseManager = mock(InUseManager.class);
-		c9uConflictResolver = new C9uConflictResolver(inUseManager);
+		c9uConflictResolver = new C9uConflictResolver();
 	}
 
 	@Test

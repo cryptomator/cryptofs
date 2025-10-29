@@ -6,7 +6,7 @@ import org.cryptomator.cryptofs.common.Constants;
 import java.util.stream.Stream;
 
 /**
- * Processes in-use files (file extension {@value Constants#INUSE_FILE_SUFFIX}.
+ * Processes in-use files (file extension {@value Constants#INUSE_FILE_SUFFIX}).
  */
 @DirectoryStreamScoped
 public class C9uProcessor {

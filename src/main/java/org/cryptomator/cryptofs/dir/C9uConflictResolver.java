@@ -23,17 +23,14 @@ public class C9uConflictResolver {
 	private static final Logger LOG = LoggerFactory.getLogger(C9uConflictResolver.class);
 
 
-	private final InUseManager inUseManager;
-
 	@Inject
-	public C9uConflictResolver(InUseManager inUseManager) {
-		this.inUseManager = inUseManager;
+	public C9uConflictResolver() {
 	}
 
 	/**
 	 * Processes files with {@value Constants#INUSE_FILE_SUFFIX} file extension. (in-use files)
 	 * <p>
-	 * If the in-use file is not valid bas64 encoding, delete the file.
+	 * If the in-use file is not valid base64 encoding, delete the file.
 	 *
 	 * @param node
 	 * @return an empty stream.
