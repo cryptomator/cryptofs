@@ -8,16 +8,21 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchService;
+import java.nio.file.attribute.FileTime;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Properties;
@@ -80,6 +85,7 @@ public class RealUseTokenTest {
 		Assertions.assertTrue(Files.notExists(filePath));
 	}
 
+	//TODO: test is flaky. Why?
 	@Test
 	@DisplayName("The properties file contains required keys with valid content")
 	public void testFileContent() throws IOException {
@@ -242,6 +248,26 @@ public class RealUseTokenTest {
 			var newLastUpdated = Instant.parse(props2.getProperty(UseToken.LASTUPDATED_KEY));
 			Assertions.assertTrue(newLastUpdated.isAfter(oldLastUpdated));
 		}
+	}
+
+	@RepeatedTest(value = 5, failureThreshold = 1)
+	@Execution(ExecutionMode.SAME_THREAD)
+	@DisplayName("Refreshing a token with not-matching last-modified date closes token, but does not delete file ")
+	public void testFileRefreshWrongLastModified() throws IOException {
+		var filePath = tmpDir.resolve("inUse.file");
+
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, StandardOpenOption.CREATE_NEW, encWrapper)) {
+			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> Files.exists(filePath));
+			Awaitility.await().pollDelay(Duration.ofMillis(10)).until(() -> true);
+
+			Files.setLastModifiedTime(filePath, FileTime.from(Instant.ofEpochMilli(0)));
+
+			token.refresh();
+
+			Assertions.assertTrue(token.isClosed());
+			Assertions.assertTrue(Files.exists(filePath));
+		}
+		Assertions.assertTrue(Files.exists(filePath));
 	}
 
 	@Test

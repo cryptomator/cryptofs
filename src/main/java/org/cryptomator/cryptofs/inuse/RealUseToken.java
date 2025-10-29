@@ -55,6 +55,7 @@ public final class RealUseToken implements UseToken {
 	private volatile Path filePath;
 	private volatile FileChannel channel;
 	private volatile boolean closed;
+	private volatile long lastModified;
 
 	RealUseToken(Path filePath, String owner, Cryptor cryptor, ConcurrentMap<Path, RealUseToken> useTokens, Executor tokenPersistor, OpenOption openMode) {
 		var delayedExecutor = CompletableFuture.delayedExecutor(Constants.INUSE_DELAY_MILLIS, TimeUnit.MILLISECONDS, tokenPersistor);
@@ -96,9 +97,18 @@ public final class RealUseToken implements UseToken {
 			if (closed || channel == null) {
 				return;
 			}
+			var currentLastModfied = Files.getLastModifiedTime(filePath).toMillis();
+			if (currentLastModfied != lastModified) {
+				throw new ModifiedFileException(); //someone edited _our_ file.
+			}
 			writeInUseFile();
+		} catch (ModifiedFileException e) {
+			//TODO: event? we have no access to the cleartext!
+			LOG.debug("Failed to refresh in-use file {}.", filePath, e);
+			close(false);
 		} catch (IOException e) {
 			LOG.debug("Failed to refresh in-use file {}.", filePath, e);
+			close();
 		} finally {
 			fileCreationSync.unlock();
 		}
@@ -116,7 +126,8 @@ public final class RealUseToken implements UseToken {
 			prop.store(rawInfo, null);
 			bytesWritten = encChannel.write(ByteBuffer.wrap(rawInfo.toByteArray()));
 		}
-		channel.force(false);
+		channel.force(true);
+		lastModified = Files.getLastModifiedTime(filePath).toMillis();
 		return bytesWritten;
 	}
 
@@ -136,6 +147,7 @@ public final class RealUseToken implements UseToken {
 			useTokens.compute(newFilePath, (_, _) -> {
 				try {
 					if (channel != null) {
+						//TODO: does this affect the lastModified file?
 						Files.move(filePath, newFilePath, StandardCopyOption.REPLACE_EXISTING);
 					}
 					return this;
@@ -160,6 +172,10 @@ public final class RealUseToken implements UseToken {
 
 	@Override
 	public void close() {
+		close(true);
+	}
+
+	void close(boolean deleteFile) {
 		fileCreationSync.lock();
 		try {
 			if (closed) {
@@ -171,7 +187,9 @@ public final class RealUseToken implements UseToken {
 				if (channel != null) {
 					try {
 						channel.close();
-						Files.deleteIfExists(filePath);
+						if(deleteFile) {
+							Files.deleteIfExists(filePath);
+						}
 					} catch (IOException e) {
 						//ignore
 						LOG.warn("Failed to delete inUse File {}. Must be deleted manually.", path);
@@ -183,6 +201,8 @@ public final class RealUseToken implements UseToken {
 			fileCreationSync.unlock();
 		}
 	}
+
+	//--- glue code ---
 
 	interface EncryptionDecorator {
 
@@ -210,5 +230,9 @@ public final class RealUseToken implements UseToken {
 		public int read(ByteBuffer dst) throws IOException {
 			return delegate.read(dst);
 		}
+	}
+
+	static class ModifiedFileException extends RuntimeException {
+
 	}
 }
