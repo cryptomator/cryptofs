@@ -178,8 +178,8 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 		@DisplayName("Opening a file channel creates an in-use file and removes it on close")
 		public void testOpeningFCCreatesInUseFile() throws IOException {
 			try (var writer = FileChannel.open(file, CREATE, WRITE)) {
-				Awaitility.await().atLeast(Constants.INUSE_DELAY_MILLIS - 100, TimeUnit.MILLISECONDS) //
-						.atMost(Constants.INUSE_DELAY_MILLIS + 3000, TimeUnit.MILLISECONDS) //
+				Awaitility.await().atLeast( 4900, TimeUnit.MILLISECONDS) //
+						.atMost(8000, TimeUnit.MILLISECONDS) //
 						.until(() -> numberOfInUseFiles() == 1);
 			}
 			var numberAfterClose = numberOfInUseFiles();
