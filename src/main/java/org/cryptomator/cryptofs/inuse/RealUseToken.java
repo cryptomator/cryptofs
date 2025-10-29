@@ -159,7 +159,7 @@ public final class RealUseToken implements UseToken {
 		final int bytesWritten;
 		try (var nonClosingWrapper = new NonClosingByteChannel(channel); //
 			 var encChannel = encWrapper.wrapWithEncryption(nonClosingWrapper, cryptor)) {
-			var rawInfo = new ByteArrayOutputStream(Constants.INUSE_CLEARTEXT_SIZE);
+			var rawInfo = new ByteArrayOutputStream(UseToken.MAX_CLEARTEXT_SIZE_BYTES);
 			var prop = new Properties();
 			prop.put(UseToken.OWNER_KEY, owner);
 			prop.put(UseToken.LASTUPDATED_KEY, Instant.now().toString());
@@ -227,7 +227,7 @@ public final class RealUseToken implements UseToken {
 				if (channel != null) {
 					try {
 						channel.close();
-						if(deleteFile) {
+						if (deleteFile) {
 							Files.deleteIfExists(filePath);
 						}
 					} catch (IOException e) {

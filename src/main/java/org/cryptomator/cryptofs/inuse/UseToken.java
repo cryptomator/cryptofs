@@ -31,4 +31,5 @@ public sealed interface UseToken extends Closeable permits RealUseToken, UseToke
 	String LASTUPDATED_KEY = "lastUpdated";
 	String OWNER_KEY = "owner";
 	int STALE_THRESHOLD_MINUTES = 10;
+	int MAX_CLEARTEXT_SIZE_BYTES = 1000; //calculation: Create inUse properties with owner consisting of \u2741.repeat(100) symbols and encode it. Plus an additional buffer for future entries.
 }

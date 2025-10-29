@@ -104,7 +104,7 @@ public class RealInUseManager implements InUseManager {
 	}
 
 	Properties readInUseFile(Path inUseFilePath) throws IOException, IllegalArgumentException {
-		var bytes = ByteBuffer.allocate(Constants.INUSE_CLEARTEXT_SIZE);
+		var bytes = ByteBuffer.allocate(UseToken.MAX_CLEARTEXT_SIZE_BYTES);
 		final int readBytes;
 		try (var ch = Files.newByteChannel(inUseFilePath, StandardOpenOption.READ); //
 			 var channel = EncryptedChannels.wrapDecryptionAround(ch, cryptor)) {
@@ -112,7 +112,7 @@ public class RealInUseManager implements InUseManager {
 		}
 
 		if (readBytes < 0) {
-			throw new IllegalArgumentException("Empty cleartext inUse file");
+			throw new IllegalArgumentException("inUse file has no cleartext content");
 		}
 
 		var props = new Properties();
@@ -201,6 +201,7 @@ public class RealInUseManager implements InUseManager {
 	@Override
 	public void ignoreInUse(Path ciphertextPath) {
 		var inUseFilePath = computeInUseFilePath(ciphertextPath);
+		LOG.info("Ignoring in-use-file for {}", inUseFilePath);
 		ignoredInUseFiles.put(inUseFilePath, Boolean.TRUE);
 	}
 
