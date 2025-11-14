@@ -191,7 +191,7 @@ public final class RealUseToken implements UseToken {
 			useTokens.compute(newFilePath, (_, _) -> {
 				try {
 					if (channel != null) {
-						//TODO: does this affect the lastModified file?
+						//normally, moving a file retains lastModified. If not, the file will fail the refresh test and will be closed.
 						Files.move(filePath, newFilePath, StandardCopyOption.REPLACE_EXISTING);
 					}
 					return this;

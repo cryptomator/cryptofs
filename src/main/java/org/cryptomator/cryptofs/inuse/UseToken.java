@@ -14,6 +14,7 @@ public sealed interface UseToken extends Closeable permits RealUseToken, UseToke
 		return false;
 	}
 
+	@Override
 	default void close() {}
 
 	record InitToken() implements UseToken {}

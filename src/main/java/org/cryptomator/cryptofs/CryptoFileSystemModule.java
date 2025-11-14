@@ -11,10 +11,10 @@ import org.cryptomator.cryptofs.attr.AttributeComponent;
 import org.cryptomator.cryptofs.attr.AttributeViewComponent;
 import org.cryptomator.cryptofs.dir.DirectoryStreamComponent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
-import org.cryptomator.cryptofs.inuse.StubInUseManager;
-import org.cryptomator.cryptofs.inuse.InUseManager;
 import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
+import org.cryptomator.cryptofs.inuse.InUseManager;
 import org.cryptomator.cryptofs.inuse.RealInUseManager;
+import org.cryptomator.cryptofs.inuse.StubInUseManager;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,8 +59,8 @@ class CryptoFileSystemModule {
 	@Provides
 	@CryptoFileSystemScoped
 	public InUseManager provideInUseManager(CryptoFileSystemProperties fsProps, Cryptor cryptor) {
-		var owner = Objects.requireNonNullElse(fsProps.owner(),"");
-		if(!owner.isBlank() && !fsProps.readonly()) {
+		var owner = Objects.requireNonNullElse(fsProps.owner(), "");
+		if (!owner.isBlank() && !fsProps.readonly()) {
 			return new RealInUseManager(owner, cryptor);
 		} else {
 			return new StubInUseManager();
