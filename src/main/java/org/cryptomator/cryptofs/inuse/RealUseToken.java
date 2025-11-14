@@ -1,6 +1,5 @@
 package org.cryptomator.cryptofs.inuse;
 
-import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.common.EncryptedChannels;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
@@ -92,20 +91,25 @@ public final class RealUseToken implements UseToken {
 		}
 
 		var delayedExecutor = delayExponentiallyWithCap(tokenPersistor, count);
-		var nextPersistenceTask = currentTask.thenRunAsync(() -> {
-			try {
-				CONCURRENT_WRITES_SEMAPHORE.acquire();
-				refresh();
-				CONCURRENT_WRITES_SEMAPHORE.release();
-				scheduleRefresh(count + 1);
-			} catch (InterruptedException e) {
-				LOG.debug("Interrupt during refresh of {}. Closing token.", filePath);
-				close();
-				Thread.currentThread().interrupt();
-				throw new RuntimeException(e);
-			}
-		}, delayedExecutor);
+		var nextPersistenceTask = currentTask.thenRunAsync(() -> runRefresh(count), delayedExecutor);
 		tokenPersistenceTask.set(nextPersistenceTask);
+	}
+
+	private void runRefresh(int count) {
+		try {
+			CONCURRENT_WRITES_SEMAPHORE.acquire();
+			try {
+				refresh();
+				scheduleRefresh(count + 1);
+			} finally {
+				CONCURRENT_WRITES_SEMAPHORE.release();
+			}
+		} catch (InterruptedException e) {
+			LOG.debug("Interrupt during refresh of {}. Closing token.", filePath);
+			close();
+			Thread.currentThread().interrupt();
+			throw new RuntimeException(e); //mark the completion stage as failed
+		}
 	}
 
 	private Executor delayExponentiallyWithCap(Executor executor, int count) {
