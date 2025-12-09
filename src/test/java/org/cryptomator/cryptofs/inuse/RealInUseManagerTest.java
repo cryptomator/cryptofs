@@ -362,7 +362,34 @@ public class RealInUseManagerTest {
 		verify(useInfoCache).get(eq(inUseFilePath), any());
 	}
 
-	//TODO: test validate
+	@Test
+	@DisplayName("validation checks for required properties")
+	void validateChecksForRequiredProperties() {
+		var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
+
+		//owner missing
+		var props = new Properties();
+		Assertions.assertThrows(IllegalArgumentException.class, () -> inUseManager.validate(props));
+
+		//owner is empty
+		props.setProperty(UseToken.OWNER_KEY, "  ");
+		Assertions.assertThrows(IllegalArgumentException.class, () -> inUseManager.validate(props));
+
+		//lastUpdated missing
+		props.setProperty(UseToken.OWNER_KEY, "foobar");
+		Assertions.assertThrows(IllegalArgumentException.class, () -> inUseManager.validate(props));
+
+		//lastUpdated invalid
+		props.setProperty(UseToken.LASTUPDATED_KEY, "3301");
+		Assertions.assertThrows(IllegalArgumentException.class, () -> inUseManager.validate(props));
+
+		//everything good
+		var lastUpdated = Instant.now();
+		props.setProperty(UseToken.LASTUPDATED_KEY, lastUpdated.toString());
+		var useInfo = Assertions.assertDoesNotThrow(() -> inUseManager.validate(props));
+		Assertions.assertEquals("foobar",useInfo.owner());
+		Assertions.assertEquals(lastUpdated, useInfo.lastUpdated());
+	}
 
 	@AfterEach
 	public void afterEach() {

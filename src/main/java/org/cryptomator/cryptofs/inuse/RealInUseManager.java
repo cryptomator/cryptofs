@@ -124,7 +124,6 @@ public class RealInUseManager implements InUseManager {
 		}
 	}
 
-	//TODO: test
 	UseInfo validate(Properties content) throws IllegalArgumentException {
 		var ownerFromFile = content.getProperty(UseToken.OWNER_KEY);
 		if (ownerFromFile == null || ownerFromFile.isBlank()) {
