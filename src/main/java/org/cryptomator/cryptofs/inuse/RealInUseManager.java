@@ -32,12 +32,14 @@ import java.util.concurrent.TimeUnit;
 /**
  * Real implementation of {@link InUseManager}.
  * <p>
- * To reduce reads from disk, this class implements a short-lived (5s) cache of the in-use-files.
- * If a file is ignored via {@link #ignoreInUse(Path)}, the ignore status is kept for only 2 minutes.
+ * To reduce reads from disk, this class implements a short-lived ({@value USEINFO_EXPIRE_THRESHOLD_SECONDS}) cache of the in-use-files.
+ * If a file is ignored via {@link #ignoreInUse(Path)}, the ignore status is kept for only {@value IGNORE_EXPIRE_THRESHOLD_MINUTES} minutes.
  */
 public class RealInUseManager implements InUseManager {
 
 	private static final Logger LOG = LoggerFactory.getLogger(RealInUseManager.class);
+	private static final int USEINFO_EXPIRE_THRESHOLD_SECONDS = 5;
+	private static final int IGNORE_EXPIRE_THRESHOLD_MINUTES = 2;
 
 	private final ConcurrentHashMap<Path, RealUseToken> useTokens;
 	private final Cache<Path, UseInfo> useInfoCache;
@@ -51,12 +53,12 @@ public class RealInUseManager implements InUseManager {
 		this.cryptor = cryptor;
 		this.useTokens = new ConcurrentHashMap<>();
 		this.ignoredInUseFiles = Caffeine.newBuilder() //
-				.expireAfterWrite(2, TimeUnit.MINUTES) //Do not keep the mark too long
+				.expireAfterWrite(IGNORE_EXPIRE_THRESHOLD_MINUTES, TimeUnit.MINUTES) //Do not keep the mark too long
 				.scheduler(Scheduler.systemScheduler()) //
 				.maximumSize(100) //
 				.build();
 		this.useInfoCache = Caffeine.newBuilder() //
-				.expireAfterWrite(5, TimeUnit.SECONDS) //
+				.expireAfterWrite(USEINFO_EXPIRE_THRESHOLD_SECONDS, TimeUnit.SECONDS) //
 				.maximumSize(1000) //
 				.build();
 		this.tokenPersistor = Executors.newVirtualThreadPerTaskExecutor();

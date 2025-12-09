@@ -32,7 +32,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * Class to represent a file is "in use" by this filesystem.
  * <p>
  * The actual persistence of the "in use"-state with a file is delayed by {@value CREATION_DELAY_MILLIS} milliseconds.
- * The file is rewritten with lastUpdated set to the current time regularly based on an exponential backoff strategy capped at half the stale token time of {@value UseToken#STALE_THRESHOLD_MINUTES} minutes.
+ * The file is regularly rewritten with lastUpdated updated to the current time. This is done with an exponential backoff strategy, but at latest after {@value UseToken#STALE_THRESHOLD_MINUTES} minutes.
  * If the token is closed before it is persisted with a file, writing it to disk is skipped.
  */
 public final class RealUseToken implements UseToken {

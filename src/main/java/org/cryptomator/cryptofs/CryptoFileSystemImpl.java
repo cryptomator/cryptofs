@@ -635,7 +635,6 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		CiphertextFilePath ciphertextSource = cryptoPathMapper.getCiphertextFilePath(cleartextSource);
 		CiphertextFilePath ciphertextTarget = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
 		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath())) {
-			//TODO: skip this if owner is not set in Properties
 			checkUsage(cleartextSource, ciphertextSource);
 			checkUsage(cleartextTarget, ciphertextTarget);
 			if (ciphertextTarget.isShortened()) {

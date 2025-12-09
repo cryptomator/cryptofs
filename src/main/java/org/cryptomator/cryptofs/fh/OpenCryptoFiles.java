@@ -51,7 +51,7 @@ public class OpenCryptoFiles implements Closeable {
 	}
 
 	/**
-	 * Opens a file to {@link OpenCryptoFile#newFileChannel(EffectiveOpenOptions, boolean, java.nio.file.attribute.FileAttribute[]) retrieve a FileChannel}. If this file is already opened, a shared instance is returned.
+	 * Opens a file to {@link OpenCryptoFile#newFileChannel(EffectiveOpenOptions, java.nio.file.attribute.FileAttribute[]) retrieve a FileChannel}. If this file is already opened, a shared instance is returned.
 	 * Getting the file channel should be the next invocation, since the {@link OpenFileScoped lifecycle} of the OpenFile strictly depends on the lifecycle of the channel.
 	 *
 	 * @param ciphertextPath Path of the file to open
@@ -64,7 +64,7 @@ public class OpenCryptoFiles implements Closeable {
 	}
 
 	public void writeCiphertextFile(Path ciphertextPath, EffectiveOpenOptions openOptions, ByteBuffer contents) throws IOException {
-		try (OpenCryptoFile f = getOrCreate(ciphertextPath); FileChannel ch = f.newFileChannel(openOptions)) { //TODO: test
+		try (OpenCryptoFile f = getOrCreate(ciphertextPath); FileChannel ch = f.newFileChannel(openOptions)) {
 			ch.write(contents);
 		}
 	}
