@@ -307,7 +307,7 @@ public class RealInUseManagerTest {
 		}
 
 		@Test
-		@DisplayName("If the inUse properties have the lastUpdated timestamp below threshold, return true")
+		@DisplayName("If the lastUpdated timestamp is recent enough (below threshold), return true")
 		void hasDifferentOwnerLastUpdatedBelowTreshold() {
 			var useInfo = new UseInfo("bob", Instant.now().minus(3, ChronoUnit.MINUTES));
 			var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
@@ -318,7 +318,7 @@ public class RealInUseManagerTest {
 		}
 
 		@Test
-		@DisplayName("If the inUse properties have the lastUpdated timestamp above threshold, return true")
+		@DisplayName("If the lastUpdated timestamp is too old, return false")
 		void hasDifferentOwnerLastUpdatedAboveThreshold() {
 			var useInfo = new UseInfo("bob", Instant.now().minus(20, ChronoUnit.MINUTES));
 			var inUseManager = new RealInUseManager("cryptobot3000", cryptor);
