@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 The changelog starts with version 2.10.0.
 Changes to prior versions can be found on the [Github release page](https://github.com/cryptomator/cryptofs/releases).
 
-## [Unreleased](https://github.com/cryptomator/cryptofs/compare/2.9.0...HEAD)
+## [2.10.0](https://github.com/cryptomator/cryptofs/compare/2.9.0...HEAD) - tbd
 
 ### Added
 * Files-in-Use: Optional feature to indicate for external parties if an encrypted file is currently opened by this filesystem ([#312](https://github.com/cryptomator/cryptofs/pull/312))
