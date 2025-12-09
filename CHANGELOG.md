@@ -16,7 +16,7 @@ Changes to prior versions can be found on the [Github release page](https://gith
 ### Changed
 * Use JDK 25 for build (bf26d6c9cd15a2489126ee0409a8ec9eca59da0c)
 * Pin external ci actions ([#320](https://github.com/cryptomator/cryptofs/pull/320))
-* Updated com.github.ben-manes.caffeine:caffeine from 3.2.0 to 3.2.2 ([#318](https://github.com/cryptomator/cryptofs/pull/318))
+* Updated com.github.ben-manes.caffeine:caffeine from 3.2.0 to 3.2.3 ([#323](https://github.com/cryptomator/cryptofs/pull/323))
 
 ### Fixed
 * Replacing internal path class `CryptoPath` with strings in `FilesystemEvent`s ([#319](https://github.com/cryptomator/cryptofs/pull/319))
