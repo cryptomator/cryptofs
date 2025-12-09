@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.dir;
 
+import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
@@ -38,7 +39,7 @@ public class C9rDecryptorTest {
 			"aaaaBBBBccccDDDDeeeeFFFFggggHH==",
 	})
 	public void testValidBase64Pattern(String input) {
-		Assertions.assertTrue(C9rDecryptor.BASE64_PATTERN.matcher(input).matches());
+		Assertions.assertTrue(Constants.BASE64_PATTERN.matcher(input).matches());
 	}
 
 	@ParameterizedTest
@@ -53,7 +54,7 @@ public class C9rDecryptorTest {
 			"aaaaBBBBccccDDDDeeeeFFFF conflict", // only a partial match
 	})
 	public void testInvalidBase64Pattern(String input) {
-		Assertions.assertFalse(C9rDecryptor.BASE64_PATTERN.matcher(input).matches());
+		Assertions.assertFalse(Constants.BASE64_PATTERN.matcher(input).matches());
 	}
 	
 	@Test

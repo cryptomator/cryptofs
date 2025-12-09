@@ -12,6 +12,10 @@ import org.cryptomator.cryptofs.attr.AttributeViewComponent;
 import org.cryptomator.cryptofs.dir.DirectoryStreamComponent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
+import org.cryptomator.cryptofs.inuse.InUseManager;
+import org.cryptomator.cryptofs.inuse.RealInUseManager;
+import org.cryptomator.cryptofs.inuse.StubInUseManager;
+import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +23,7 @@ import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -49,5 +54,17 @@ class CryptoFileSystemModule {
 				LOG.warn("Filesystem event consumer failed with exception when processing event {}", event, e);
 			}
 		};
+	}
+
+	@Provides
+	@CryptoFileSystemScoped
+	public InUseManager provideInUseManager(CryptoFileSystemProperties fsProps, Cryptor cryptor) {
+		var owner = Objects.requireNonNullElse(fsProps.owner(), "");
+		if (!owner.isBlank() && !fsProps.readonly()) {
+			return new RealInUseManager(owner, cryptor);
+		} else {
+			return new StubInUseManager();
+		}
+
 	}
 }

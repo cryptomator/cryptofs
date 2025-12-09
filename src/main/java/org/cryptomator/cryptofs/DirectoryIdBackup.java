@@ -2,14 +2,12 @@ package org.cryptomator.cryptofs;
 
 import jakarta.inject.Inject;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.common.EncryptedChannels;
 import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.Cryptor;
-import org.cryptomator.cryptolib.common.DecryptingReadableByteChannel;
-import org.cryptomator.cryptolib.common.EncryptingWritableByteChannel;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,7 +36,7 @@ public class DirectoryIdBackup {
 	 */
 	public void write(CiphertextDirectory ciphertextDirectory) throws IOException {
 		try (var channel = Files.newByteChannel(getBackupFilePath(ciphertextDirectory.path()), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE); //
-			 var encryptingChannel = wrapEncryptionAround(channel, cryptor)) {
+			 var encryptingChannel = EncryptedChannels.wrapEncryptionAround(channel, cryptor)) {
 			encryptingChannel.write(ByteBuffer.wrap(ciphertextDirectory.dirId().getBytes(StandardCharsets.US_ASCII)));
 		}
 	}
@@ -72,7 +70,7 @@ public class DirectoryIdBackup {
 		var dirIdBuffer = ByteBuffer.allocate(Constants.MAX_DIR_ID_LENGTH + 1); //a dir id contains at most 36 ascii chars, we add for security checks one more
 
 		try (var channel = Files.newByteChannel(dirIdBackupFile, StandardOpenOption.READ); //
-			 var decryptingChannel = wrapDecryptionAround(channel, cryptor)) {
+			 var decryptingChannel = EncryptedChannels.wrapDecryptionAround(channel, cryptor)) {
 			int read = decryptingChannel.read(dirIdBuffer);
 			if (read < 0 || read > Constants.MAX_DIR_ID_LENGTH) {
 				throw new IllegalStateException("Read directory id exceeds the maximum length of %d characters".formatted(Constants.MAX_DIR_ID_LENGTH));
@@ -103,11 +101,4 @@ public class DirectoryIdBackup {
 		return ciphertextContentDir.resolve(Constants.DIR_ID_BACKUP_FILE_NAME);
 	}
 
-	DecryptingReadableByteChannel wrapDecryptionAround(ByteChannel channel, Cryptor cryptor) {
-		return new DecryptingReadableByteChannel(channel, cryptor, true);
-	}
-
-	EncryptingWritableByteChannel wrapEncryptionAround(ByteChannel channel, Cryptor cryptor) {
-		return new EncryptingWritableByteChannel(channel, cryptor);
-	}
 }

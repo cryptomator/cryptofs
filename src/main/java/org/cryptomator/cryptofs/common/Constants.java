@@ -8,6 +8,8 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.common;
 
+import java.util.regex.Pattern;
+
 public final class Constants {
 
 	private Constants() {
@@ -21,6 +23,7 @@ public final class Constants {
 
 	public static final String CRYPTOMATOR_FILE_SUFFIX = ".c9r";
 	public static final String DEFLATED_FILE_SUFFIX = ".c9s";
+	public static final String INUSE_FILE_SUFFIX = ".c9u";
 	public static final String DIR_FILE_NAME = "dir.c9r";
 	public static final String SYMLINK_FILE_NAME = "symlink.c9r";
 	public static final String CONTENTS_FILE_NAME = "contents.c9r";
@@ -35,4 +38,7 @@ public final class Constants {
 
 	public static final String SEPARATOR = "/";
 	public static final String RECOVERY_DIR_NAME = "LOST+FOUND";
+	public static final int INUSE_CLEARTEXT_SIZE = 1000;
+
+	public static final Pattern BASE64_PATTERN = Pattern.compile("[a-zA-Z0-9-_]{20}(?:[a-zA-Z0-9-_]{4})*(?:[a-zA-Z0-9-_]{4}|[a-zA-Z0-9-_]{3}=|[a-zA-Z0-9-_]{2}==)");
 }

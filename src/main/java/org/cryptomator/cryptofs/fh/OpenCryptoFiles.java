@@ -8,10 +8,10 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs.fh;
 
+import jakarta.inject.Inject;
 import org.cryptomator.cryptofs.CryptoFileSystemScoped;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 
-import jakarta.inject.Inject;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.BufferUnderflowException;

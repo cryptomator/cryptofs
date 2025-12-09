@@ -8,6 +8,7 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
+import jakarta.inject.Inject;
 import org.cryptomator.cryptofs.attr.AttributeByNameProvider;
 import org.cryptomator.cryptofs.attr.AttributeProvider;
 import org.cryptomator.cryptofs.attr.AttributeViewProvider;
@@ -19,10 +20,14 @@ import org.cryptomator.cryptofs.common.FinallyUtil;
 import org.cryptomator.cryptofs.dir.CiphertextDirectoryDeleter;
 import org.cryptomator.cryptofs.dir.DirectoryStreamFactory;
 import org.cryptomator.cryptofs.dir.DirectoryStreamFilters;
+import org.cryptomator.cryptofs.event.FileIsInUseEvent;
+import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
+import org.cryptomator.cryptofs.inuse.FileAlreadyInUseException;
+import org.cryptomator.cryptofs.inuse.InUseManager;
+import org.cryptomator.cryptofs.inuse.UseInfo;
 import org.cryptomator.cryptolib.api.Cryptor;
 
-import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.AccessDeniedException;
@@ -56,12 +61,14 @@ import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipalLookupService;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -92,10 +99,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	private final CiphertextDirectoryDeleter ciphertextDirDeleter;
 	private final ReadonlyFlag readonlyFlag;
 	private final CryptoFileSystemProperties fileSystemProperties;
-
+	private final InUseManager inUseManager;
 	private final CryptoPath rootPath;
 	private final CryptoPath emptyPath;
 	private final FileNameDecryptor fileNameDecryptor;
+	private final Consumer<FilesystemEvent> eventConsumer;
 
 	private volatile boolean open = true;
 
@@ -105,7 +113,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 								PathMatcherFactory pathMatcherFactory, DirectoryStreamFactory directoryStreamFactory, DirectoryIdProvider dirIdProvider, DirectoryIdBackup dirIdBackup, //
 								AttributeProvider fileAttributeProvider, AttributeByNameProvider fileAttributeByNameProvider, AttributeViewProvider fileAttributeViewProvider, //
 								OpenCryptoFiles openCryptoFiles, Symlinks symlinks, FinallyUtil finallyUtil, CiphertextDirectoryDeleter ciphertextDirDeleter, ReadonlyFlag readonlyFlag, //
-								CryptoFileSystemProperties fileSystemProperties, FileNameDecryptor fileNameDecryptor) {
+								CryptoFileSystemProperties fileSystemProperties, InUseManager inUseManager, FileNameDecryptor fileNameDecryptor, Consumer<FilesystemEvent> eventConsumer) {
 		this.provider = provider;
 		this.cryptoFileSystems = cryptoFileSystems;
 		this.pathToVault = pathToVault;
@@ -130,7 +138,9 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 		this.rootPath = cryptoPathFactory.rootFor(this);
 		this.emptyPath = cryptoPathFactory.emptyFor(this);
+		this.inUseManager = inUseManager;
 		this.fileNameDecryptor = fileNameDecryptor;
+		this.eventConsumer = eventConsumer;
 	}
 
 	@Override
@@ -203,9 +213,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			open = false;
 			finallyUtil.guaranteeInvocationOf( //
 					() -> cryptoFileSystems.remove(this), //
-					() -> openCryptoFiles.close(), //
-					() -> directoryStreamFactory.close(), //
-					() -> cryptor.destroy());
+					openCryptoFiles::close, //
+					directoryStreamFactory::close, //
+					inUseManager::close, //
+					cryptor::destroy //
+			);
 		}
 	}
 
@@ -402,8 +414,9 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			Files.createDirectories(ciphertextPath.getRawPath()); // suppresses FileAlreadyExists
 		}
 
-		FileChannel ch = openCryptoFiles.getOrCreate(ciphertextFilePath).newFileChannel(options, attrs); // might throw FileAlreadyExists
+		FileChannel ch = null;
 		try {
+			ch = openCryptoFiles.getOrCreate(ciphertextFilePath).newFileChannel(options, attrs); // might throw FileAlreadyExists
 			if (options.writable()) {
 				ciphertextPath.persistLongFileName();
 				stats.incrementAccessesWritten();
@@ -414,7 +427,17 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			stats.incrementAccesses();
 			return ch;
 		} catch (Exception e) {
-			ch.close();
+			if (e instanceof FileAlreadyInUseException) {
+				var useInfo = inUseManager.getUseInfo(ciphertextFilePath).orElse(new UseInfo("UNKNOWN", Instant.now()));
+				eventConsumer.accept(new FileIsInUseEvent(cleartextFilePath, ciphertextFilePath, useInfo.owner(), useInfo.lastUpdated(), () -> inUseManager.ignoreInUse(ciphertextFilePath)));
+			}
+			if (ch != null) {
+				try {
+					ch.close();
+				} catch (IOException closeEx) {
+					e.addSuppressed(closeEx);
+				}
+			}
 			throw e;
 		}
 	}
@@ -428,11 +451,18 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		CiphertextFilePath ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextPath);
 		switch (ciphertextFileType) {
 			case DIRECTORY -> deleteDirectory(cleartextPath, ciphertextPath);
-			case FILE, SYMLINK -> deleteFileOrSymlink(ciphertextPath);
+			case FILE -> deleteFile(cleartextPath, ciphertextPath);
+			case SYMLINK -> deleteSymlink(ciphertextPath);
 		}
 	}
 
-	private void deleteFileOrSymlink(CiphertextFilePath ciphertextPath) throws IOException {
+	private void deleteFile(CryptoPath cleartextPath, CiphertextFilePath ciphertextPath) throws IOException {
+		checkUsage(cleartextPath, ciphertextPath);
+		openCryptoFiles.delete(ciphertextPath.getFilePath());
+		Files.walkFileTree(ciphertextPath.getRawPath(), DeletingFileVisitor.INSTANCE);
+	}
+
+	private void deleteSymlink(CiphertextFilePath ciphertextPath) throws IOException {
 		openCryptoFiles.delete(ciphertextPath.getFilePath());
 		Files.walkFileTree(ciphertextPath.getRawPath(), DeletingFileVisitor.INSTANCE);
 	}
@@ -605,6 +635,8 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		CiphertextFilePath ciphertextSource = cryptoPathMapper.getCiphertextFilePath(cleartextSource);
 		CiphertextFilePath ciphertextTarget = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
 		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath())) {
+			checkUsage(cleartextSource, ciphertextSource);
+			checkUsage(cleartextTarget, ciphertextTarget);
 			if (ciphertextTarget.isShortened()) {
 				Files.createDirectories(ciphertextTarget.getRawPath());
 				ciphertextTarget.persistLongFileName();
@@ -698,6 +730,16 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	@Override
 	public String toString() {
 		return format("%sCryptoFileSystem(%s)", open ? "" : "closed ", pathToVault);
+	}
+
+	//visible for testing
+	void checkUsage(CryptoPath cleartextPath, CiphertextFilePath ciphertextPath) throws FileAlreadyInUseException {
+		var path = ciphertextPath.getFilePath();
+		if (inUseManager.isInUseByOthers(path)) {
+			var useInfo = inUseManager.getUseInfo(path).orElse(new UseInfo("UNKNOWN", Instant.now()));
+			eventConsumer.accept(new FileIsInUseEvent(cleartextPath, ciphertextPath.getRawPath(), useInfo.owner(), useInfo.lastUpdated(), () -> inUseManager.ignoreInUse(path)));
+			throw new FileAlreadyInUseException(ciphertextPath.getRawPath());
+		}
 	}
 
 }

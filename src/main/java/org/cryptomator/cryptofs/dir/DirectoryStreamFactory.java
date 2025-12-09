@@ -15,9 +15,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 @CryptoFileSystemScoped
 public class DirectoryStreamFactory {
+
+	private static final Set<String> FILE_EXTENSIONS = Set.of(Constants.CRYPTOMATOR_FILE_SUFFIX, Constants.DEFLATED_FILE_SUFFIX, Constants.INUSE_FILE_SUFFIX);
 
 	private final CryptoPathMapper cryptoPathMapper;
 	private final DirectoryStreamComponent.Factory directoryStreamComponentFactory;
@@ -47,7 +50,7 @@ public class DirectoryStreamFactory {
 	boolean matchesEncryptedContentPattern(Path path) {
 		var tmp = path.getFileName().toString();
 		return tmp.length() >= Constants.MIN_CIPHER_NAME_LENGTH //
-				&& (tmp.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX) || tmp.endsWith(Constants.DEFLATED_FILE_SUFFIX));
+				&& FILE_EXTENSIONS.stream().anyMatch(tmp::endsWith);
 	}
 
 	public synchronized void close() throws IOException {

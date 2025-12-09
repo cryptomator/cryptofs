@@ -52,7 +52,25 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY)), //
-						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER)));
+						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER), //
+						anEntry(PROPERTY_OWNER, DEFAULT_OWNER))
+		);
+	}
+
+	@Test
+	public void testOwnerSizeRestriction() {
+		String owner1 = "\u2741".repeat(100);
+		String owner2 = "\u2741".repeat(101);
+
+		Assertions.assertDoesNotThrow(() -> cryptoFileSystemProperties() //
+				.withKeyLoader(keyLoader) //
+				.withOwner(owner1) //
+				.build());
+		Assertions.assertThrows(IllegalArgumentException.class, () -> cryptoFileSystemProperties() //
+				.withKeyLoader(keyLoader) //
+				.withOwner(owner2) //
+				.build());
+
 	}
 
 	@Test
@@ -79,7 +97,9 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, 221), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY)), //
-						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER)));
+						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER), //
+						anEntry(PROPERTY_OWNER, DEFAULT_OWNER)) //
+		);
 	}
 
 	@Test
@@ -102,7 +122,9 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY)), //
-						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER)));
+						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER), //
+						anEntry(PROPERTY_OWNER, DEFAULT_OWNER)) //
+		);
 	}
 
 	@Test
@@ -125,7 +147,9 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class)), //
-						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER)));
+						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER), //
+						anEntry(PROPERTY_OWNER, DEFAULT_OWNER)) //
+		);
 	}
 
 	@Test
@@ -194,7 +218,9 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_SHORTENING_THRESHOLD, DEFAULT_SHORTENING_THRESHOLD), //
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class)), //
-						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER)));
+						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER), //
+						anEntry(PROPERTY_OWNER, DEFAULT_OWNER)) //
+		);
 	}
 
 	@Test
