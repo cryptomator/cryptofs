@@ -10,7 +10,7 @@ Changes to prior versions can be found on the [Github release page](https://gith
 ## [Unreleased](https://github.com/cryptomator/cryptofs/compare/2.9.0...HEAD)
 
 ### Added
-* Files-in-Use-Feature: Optional feature to indicate for external parties if a file is currently opened ([#312](https://github.com/cryptomator/cryptofs/pull/312))
+* Files-in-Use: Optional feature to indicate for external parties if an encrypted file is currently opened by this filesystem ([#312](https://github.com/cryptomator/cryptofs/pull/312))
 * Changelog file
 
 ### Changed
