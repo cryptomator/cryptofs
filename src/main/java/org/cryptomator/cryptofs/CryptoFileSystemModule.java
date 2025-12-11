@@ -19,6 +19,7 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Named;
 import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
@@ -58,13 +59,23 @@ class CryptoFileSystemModule {
 
 	@Provides
 	@CryptoFileSystemScoped
-	public InUseManager provideInUseManager(CryptoFileSystemProperties fsProps, Cryptor cryptor) {
-		var owner = Objects.requireNonNullElse(fsProps.owner(), "");
-		if (!owner.isBlank() && !fsProps.readonly()) {
-			return new RealInUseManager(owner, cryptor);
-		} else {
-			return new StubInUseManager();
+	@Named("fsOwner")
+	public Optional<String> provideFsOwner(CryptoFileSystemProperties fsProps) {
+		var owner = Objects.requireNonNullElse(fsProps.ownerGetter().get(), "");
+
+		if (owner.isBlank()) {
+			return Optional.empty();
 		}
 
+		return Optional.of(owner.length() <= 100 ? owner : owner.substring(0, 100));
+	}
+
+	@Provides
+	@CryptoFileSystemScoped
+	public InUseManager provideInUseManager(CryptoFileSystemProperties fsProps, @Named("fsOwner") Optional<String> fsOwner, Cryptor cryptor) {
+		if (fsOwner.isEmpty() || fsProps.readonly()) {
+			return new StubInUseManager();
+		}
+		return new RealInUseManager(fsOwner.get(), cryptor);
 	}
 }
