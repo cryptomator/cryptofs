@@ -162,7 +162,7 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			Files.createDirectories(vaultPath);
 			MasterkeyLoader keyLoader = Mockito.mock(MasterkeyLoader.class);
 			Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(new byte[64]));
-			var properties = cryptoFileSystemProperties().withKeyLoader(keyLoader).withOwner("cryptobot").build();
+			var properties = cryptoFileSystemProperties().withKeyLoader(keyLoader).withOwnerGetter(() -> "cryptobot").build();
 			CryptoFileSystemProvider.initialize(vaultPath, properties, URI.create("test:key"));
 			fileSystem = CryptoFileSystemProvider.newFileSystem(vaultPath, properties);
 			file = fileSystem.getPath("/test.txt");

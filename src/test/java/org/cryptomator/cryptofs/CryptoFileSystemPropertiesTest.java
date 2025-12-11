@@ -53,24 +53,8 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY)), //
 						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER), //
-						anEntry(PROPERTY_OWNER, DEFAULT_OWNER))
+						anEntry(PROPERTY_OWNER_GETTER, DEFAULT_OWNER_GETTER))
 		);
-	}
-
-	@Test
-	public void testOwnerSizeRestriction() {
-		String owner1 = "\u2741".repeat(100);
-		String owner2 = "\u2741".repeat(101);
-
-		Assertions.assertDoesNotThrow(() -> cryptoFileSystemProperties() //
-				.withKeyLoader(keyLoader) //
-				.withOwner(owner1) //
-				.build());
-		Assertions.assertThrows(IllegalArgumentException.class, () -> cryptoFileSystemProperties() //
-				.withKeyLoader(keyLoader) //
-				.withOwner(owner2) //
-				.build());
-
 	}
 
 	@Test
@@ -98,7 +82,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY)), //
 						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER), //
-						anEntry(PROPERTY_OWNER, DEFAULT_OWNER)) //
+						anEntry(PROPERTY_OWNER_GETTER, DEFAULT_OWNER_GETTER)) //
 		);
 	}
 
@@ -123,7 +107,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.of(FileSystemFlags.READONLY)), //
 						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER), //
-						anEntry(PROPERTY_OWNER, DEFAULT_OWNER)) //
+						anEntry(PROPERTY_OWNER_GETTER, DEFAULT_OWNER_GETTER)) //
 		);
 	}
 
@@ -148,7 +132,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class)), //
 						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER), //
-						anEntry(PROPERTY_OWNER, DEFAULT_OWNER)) //
+						anEntry(PROPERTY_OWNER_GETTER, DEFAULT_OWNER_GETTER)) //
 		);
 	}
 
@@ -202,6 +186,11 @@ public class CryptoFileSystemPropertiesTest {
 	}
 
 	@Test
+	public void testNullOwnerGetterThrowsIAE() {
+		Assertions.assertThrows(IllegalArgumentException.class, () -> CryptoFileSystemProperties.cryptoFileSystemProperties().withOwnerGetter(null));
+	}
+
+	@Test
 	public void testWrapMapWithoutReadonly() {
 		Map<String, Object> map = new HashMap<>();
 		map.put(PROPERTY_KEYLOADER, keyLoader);
@@ -219,7 +208,7 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_CIPHER_COMBO, DEFAULT_CIPHER_COMBO), //
 						anEntry(PROPERTY_FILESYSTEM_FLAGS, EnumSet.noneOf(FileSystemFlags.class)), //
 						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER), //
-						anEntry(PROPERTY_OWNER, DEFAULT_OWNER)) //
+						anEntry(PROPERTY_OWNER_GETTER, DEFAULT_OWNER_GETTER)) //
 		);
 	}
 
