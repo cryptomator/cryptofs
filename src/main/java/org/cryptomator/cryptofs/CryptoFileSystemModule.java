@@ -39,7 +39,7 @@ class CryptoFileSystemModule {
 		try {
 			return Optional.of(Files.getFileStore(pathToVault));
 		} catch (IOException e) {
-			LOG.warn("Failed to get file store for " + pathToVault, e);
+			LOG.warn("Failed to get file store for {}", pathToVault, e);
 			return Optional.empty();
 		}
 	}
@@ -52,7 +52,7 @@ class CryptoFileSystemModule {
 			try {
 				eventConsumer.accept(event);
 			} catch (RuntimeException e) {
-				LOG.warn("Filesystem event consumer failed with exception when processing event {}", event, e);
+				LOG.warn("Filesystem event consumer failed with exception when processing event {}", event.getClass().getSimpleName(), e);
 			}
 		};
 	}

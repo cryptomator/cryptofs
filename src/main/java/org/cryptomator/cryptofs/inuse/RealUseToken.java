@@ -105,7 +105,7 @@ public final class RealUseToken implements UseToken {
 				CONCURRENT_WRITES_SEMAPHORE.release();
 			}
 		} catch (InterruptedException e) {
-			LOG.debug("Interrupt during refresh of {}. Closing token.", filePath);
+			LOG.warn("Interrupt during refresh of {}. Closing token.", filePath);
 			close();
 			Thread.currentThread().interrupt();
 			throw new RuntimeException(e); //mark the completion stage as failed

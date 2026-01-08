@@ -30,11 +30,11 @@ class BrokenDirectoryFilter {
 			try {
 				dirPath = cryptoPathMapper.resolveDirectory(dirFile).path();
 			} catch (IOException e) {
-				LOG.warn("Broken directory file: " + dirFile, e);
+				LOG.warn("Broken directory: Exception reading dir file {}.", dirFile, e);
 				return Stream.empty();
 			}
 			if (!Files.isDirectory(dirPath)) {
-				LOG.warn("Broken directory file {}. Directory {} does not exist.", dirFile, dirPath);
+				LOG.warn("Broken directory: Dir file {} points to non existing content directory {}.", dirFile, dirPath);
 				return Stream.empty();
 			}
 		}

@@ -97,7 +97,7 @@ class CryptoFileSystems {
 			// TODO: remove this check and tell downstream users to check the vault dir structure before creating a CryptoFileSystemImpl
 			@SuppressWarnings("deprecation") var masterkeyFilename = properties.masterkeyFilename();
 			if (masterkeyFilename != null && Files.exists(pathToVault.resolve(masterkeyFilename))) {
-				LOG.warn("Failed to read {}, but found {}}", vaultConfigFile, masterkeyFilename);
+				LOG.warn("Failed to read {}, but found {}", vaultConfigFile, masterkeyFilename);
 				throw new FileSystemNeedsMigrationException(pathToVault);
 			} else {
 				throw e;
