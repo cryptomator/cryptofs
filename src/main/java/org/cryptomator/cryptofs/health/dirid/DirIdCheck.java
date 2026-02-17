@@ -111,23 +111,23 @@ public class DirIdCheck implements HealthCheck {
 			var parentDirName = dirFile.getParent().getFileName().toString();
 
 			if (!(parentDirName.endsWith(Constants.CRYPTOMATOR_FILE_SUFFIX) || parentDirName.endsWith(Constants.DEFLATED_FILE_SUFFIX))) {
-				LOG.warn("Encountered loose dir.c9r file.");
+				LOG.debug("Encountered loose dir.c9r file.");
 				resultCollector.accept(new LooseDirFile(dirFile));
 				return FileVisitResult.CONTINUE;
 			}
 
 			if (attrs.size() > Constants.MAX_DIR_ID_LENGTH) {
-				LOG.warn("Encountered dir.c9r file of size {}", attrs.size());
+				LOG.debug("Encountered obese dir.c9r file of size {}", attrs.size());
 				resultCollector.accept(new ObeseDirFile(dirFile, attrs.size()));
 			} else if (attrs.size() == 0) {
-				LOG.warn("Empty dir.c9r file at {}.", dirFile);
+				LOG.debug("Encountered empty dir.c9r file at {}.", dirFile);
 				resultCollector.accept(new EmptyDirFile(dirFile));
 			} else {
 				byte[] bytes = Files.readAllBytes(dirFile);
 				String dirId = new String(bytes, StandardCharsets.UTF_8);
 				if (dirIds.containsKey(dirId)) {
 					var otherFile = dirIds.get(dirId);
-					LOG.warn("Same directory ID used by {} and {}", dirFile, otherFile);
+					LOG.debug("Encountered same directory ID twice: Used by {} and {}.", dirFile, otherFile);
 					resultCollector.accept(new DirIdCollision(dirId, dirFile, otherFile));
 				} else {
 					dirIds.put(dirId, dirFile);

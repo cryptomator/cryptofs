@@ -58,7 +58,7 @@ public final class BackupHelper {
 		} catch (AccessDeniedException | FileAlreadyExistsException e) {
 			assertSameContent(backupFilePath, path);
 		} catch (IOException e) {
-			LOG.warn("Failed to backup valid {} file.", fileToBackup);
+			LOG.warn("Failed to backup {}.", fileToBackup);
 		}
 		return backupFilePath;
 	}
@@ -71,7 +71,7 @@ public final class BackupHelper {
 				LOG.warn("Corrupt {} backup for: {}. Please replace it manually or unlock the vault on a writable storage device.", backupFile.getFileName(), backupFile);
 			}
 		} catch (IOException e) {
-			LOG.warn("Failed to compare valid %s with backup file.".formatted(backupFile), e);
+			LOG.warn("Failed to compare backup {} to original {} .", backupFile, originalFile, e);
 		}
 	}
 }
