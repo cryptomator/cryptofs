@@ -18,7 +18,7 @@
 		<maven.compiler.release>25</maven.compiler.release>
 
 		<!-- dependencies -->
-		<cryptolib.version>2.2.1</cryptolib.version>
+		<cryptolib.version>2.2.2</cryptolib.version>
 		<jwt.version>4.5.0</jwt.version>
 		<dagger.version>2.55</dagger.version>
 		<caffeine.version>3.2.3</caffeine.version>
