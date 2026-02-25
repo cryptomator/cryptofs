@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.fh;
 
+import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -126,6 +127,20 @@ public class OpenCryptoFilesTest {
 		Assertions.assertTrue(inTest.get(dst).isPresent());
 		OpenCryptoFile dstFile = inTest.get(dst).get();
 		Assertions.assertSame(srcFile, dstFile);
+	}
+
+	@Test
+	public void testTwoPhaseMoveUpdatesCleartextPathWhenCommitted() throws IOException {
+		Path src = Paths.get("/src").toAbsolutePath();
+		Path dst = Paths.get("/dst").toAbsolutePath();
+		CryptoPath cleartextDst = mock(CryptoPath.class);
+		OpenCryptoFile srcFile = inTest.getOrCreate(src);
+
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, cleartextDst)) {
+			twoPhaseMove.commit();
+		}
+
+		Mockito.verify(srcFile).updateCurrentCleartextPath(cleartextDst);
 	}
 
 	@Test

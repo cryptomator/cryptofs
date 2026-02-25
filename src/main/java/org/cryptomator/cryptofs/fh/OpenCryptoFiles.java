@@ -10,6 +10,7 @@ package org.cryptomator.cryptofs.fh;
 
 import jakarta.inject.Inject;
 import org.cryptomator.cryptofs.CryptoFileSystemScoped;
+import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 
 import java.io.Closeable;
@@ -58,14 +59,38 @@ public class OpenCryptoFiles implements Closeable {
 	 * @return The opened file.
 	 * @see #get(Path)
 	 */
+	public OpenCryptoFile getOrCreate(CryptoPath cleartextPath, Path ciphertextPath) {
+		OpenCryptoFile openFile = getOrCreate(ciphertextPath);
+		openFile.updateCurrentCleartextPath(cleartextPath);
+		return openFile;
+	}
+
 	public OpenCryptoFile getOrCreate(Path ciphertextPath) {
 		Path normalizedPath = ciphertextPath.toAbsolutePath().normalize();
 		return openCryptoFiles.computeIfAbsent(normalizedPath, p -> openCryptoFileComponentFactory.create(p, openCryptoFiles::remove).openCryptoFile()); // computeIfAbsent is atomic, "create" is called at most once
 	}
 
+	public void writeCiphertextFile(CryptoPath cleartextPath, Path ciphertextPath, EffectiveOpenOptions openOptions, ByteBuffer contents) throws IOException {
+		try (OpenCryptoFile f = getOrCreate(cleartextPath, ciphertextPath); FileChannel ch = f.newFileChannel(openOptions)) {
+			ch.write(contents);
+		}
+	}
+
 	public void writeCiphertextFile(Path ciphertextPath, EffectiveOpenOptions openOptions, ByteBuffer contents) throws IOException {
 		try (OpenCryptoFile f = getOrCreate(ciphertextPath); FileChannel ch = f.newFileChannel(openOptions)) {
 			ch.write(contents);
+		}
+	}
+
+	public ByteBuffer readCiphertextFile(CryptoPath cleartextPath, Path ciphertextPath, EffectiveOpenOptions openOptions, int maxBufferSize) throws BufferUnderflowException, IOException {
+		try (OpenCryptoFile f = getOrCreate(cleartextPath, ciphertextPath); FileChannel ch = f.newFileChannel(openOptions)) {
+			if (ch.size() > maxBufferSize) {
+				throw new BufferUnderflowException();
+			}
+			ByteBuffer buf = ByteBuffer.allocate((int) ch.size()); // ch.size() <= maxBufferSize <= Integer.MAX_VALUE
+			ch.read(buf);
+			buf.flip();
+			return buf;
 		}
 	}
 
@@ -105,7 +130,11 @@ public class OpenCryptoFiles implements Closeable {
 	 * @throws FileAlreadyExistsException Thrown if the destination file is an existing file that is currently opened.
 	 */
 	public TwoPhaseMove prepareMove(Path src, Path dst) throws FileAlreadyExistsException {
-		return new TwoPhaseMove(src, dst);
+		return new TwoPhaseMove(src, dst, null);
+	}
+
+	public TwoPhaseMove prepareMove(Path src, Path dst, CryptoPath cleartextDst) throws FileAlreadyExistsException {
+		return new TwoPhaseMove(src, dst, cleartextDst);
 	}
 
 	/**
@@ -125,13 +154,15 @@ public class OpenCryptoFiles implements Closeable {
 
 		private final Path src;
 		private final Path dst;
+		private final CryptoPath cleartextDst;
 		private final OpenCryptoFile openCryptoFile;
 		private boolean committed;
 		private boolean rolledBack;
 
-		private TwoPhaseMove(Path src, Path dst) throws FileAlreadyExistsException {
+		private TwoPhaseMove(Path src, Path dst, CryptoPath cleartextDst) throws FileAlreadyExistsException {
 			this.src = Objects.requireNonNull(src);
 			this.dst = Objects.requireNonNull(dst);
+			this.cleartextDst = cleartextDst;
 			try {
 				// ConcurrentHashMap.compute is atomic:
 				this.openCryptoFile = openCryptoFiles.compute(dst, (k, v) -> {
@@ -152,6 +183,7 @@ public class OpenCryptoFiles implements Closeable {
 			}
 			if (openCryptoFile != null) {
 				openCryptoFile.updateCurrentFilePath(dst);
+				openCryptoFile.updateCurrentCleartextPath(cleartextDst);
 			}
 			openCryptoFiles.remove(src, openCryptoFile);
 			committed = true;

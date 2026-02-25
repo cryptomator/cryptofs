@@ -4,16 +4,23 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import jakarta.inject.Inject;
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
+import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
+import org.cryptomator.cryptofs.event.FileIsInUseEvent;
+import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptofs.fh.BufferPool;
 import org.cryptomator.cryptofs.fh.Chunk;
 import org.cryptomator.cryptofs.fh.ChunkCache;
+import org.cryptomator.cryptofs.fh.CurrentOpenFileCleartextPath;
 import org.cryptomator.cryptofs.fh.CurrentOpenFilePath;
 import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptofs.fh.FileHeaderHolder;
 import org.cryptomator.cryptofs.fh.OpenFileModifiedDate;
 import org.cryptomator.cryptofs.fh.OpenFileSize;
+import org.cryptomator.cryptofs.inuse.FileAlreadyInUseException;
 import org.cryptomator.cryptofs.inuse.InUseManager;
+import org.cryptomator.cryptofs.inuse.StubInUseManager;
+import org.cryptomator.cryptofs.inuse.UseInfo;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,8 +63,10 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private final AtomicReference<Instant> lastModified;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
 	private final Consumer<FileChannel> closeListener;
+	private final Consumer<FilesystemEvent> eventConsumer;
 	private final CryptoFileSystemStats stats;
 	private final InUseManager inUseManager;
+	private final AtomicReference<CryptoPath> currentCleartextPath;
 
 	@Inject
 	public CleartextFileChannel(FileChannel ciphertextFileChannel, //
@@ -70,8 +79,10 @@ public class CleartextFileChannel extends AbstractFileChannel {
 								@OpenFileSize AtomicLong fileSize, //
 								@OpenFileModifiedDate AtomicReference<Instant> lastModified, //
 								@CurrentOpenFilePath AtomicReference<Path> currentPath, //
+								@CurrentOpenFileCleartextPath AtomicReference<CryptoPath> currentCleartextPath, //
 								ExceptionsDuringWrite exceptionsDuringWrite, //
 								Consumer<FileChannel> closeListener, //
+								Consumer<FilesystemEvent> eventConsumer, //
 								CryptoFileSystemStats stats, //
 								InUseManager inUseManager) {
 		super(readWriteLock);
@@ -82,10 +93,12 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		this.bufferPool = bufferPool;
 		this.options = options;
 		this.currentFilePath = currentPath;
+		this.currentCleartextPath = currentCleartextPath;
 		this.fileSize = fileSize;
 		this.lastModified = lastModified;
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
 		this.closeListener = closeListener;
+		this.eventConsumer = eventConsumer;
 		this.stats = stats;
 		this.inUseManager = inUseManager;
 		if (options.append()) {
@@ -94,6 +107,25 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		if (options.createNew() || options.create()) {
 			lastModified.compareAndSet(Instant.EPOCH, Instant.now());
 		}
+	}
+
+	@VisibleForTesting
+	CleartextFileChannel(FileChannel ciphertextFileChannel, //
+						 FileHeaderHolder fileHeaderHolder, //
+						 ReadWriteLock readWriteLock, //
+						 Cryptor cryptor, //
+						 ChunkCache chunkCache, //
+						 BufferPool bufferPool, //
+						 EffectiveOpenOptions options, //
+						 AtomicLong fileSize, //
+						 AtomicReference<Instant> lastModified, //
+						 AtomicReference<Path> currentPath, //
+						 ExceptionsDuringWrite exceptionsDuringWrite, //
+						 Consumer<FileChannel> closeListener, //
+						 CryptoFileSystemStats stats) {
+		this(ciphertextFileChannel, fileHeaderHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentPath, new AtomicReference<>(null), exceptionsDuringWrite,
+				closeListener, ignored -> {
+				}, stats, new StubInUseManager());
 	}
 
 	@Override
@@ -140,6 +172,15 @@ public class CleartextFileChannel extends AbstractFileChannel {
 
 	@Override
 	protected int writeLocked(ByteBuffer src, long position) throws IOException {
+		var path = currentFilePath.get();
+		if (path != null && inUseManager.isInUseByOthers(path)) {
+			var useInfo = inUseManager.getUseInfo(path).orElse(new UseInfo("UNKNOWN", Instant.now()));
+			var cleartextPath = currentCleartextPath.get();
+			if (cleartextPath != null) {
+				eventConsumer.accept(new FileIsInUseEvent(cleartextPath, path, useInfo.owner(), useInfo.lastUpdated(), () -> inUseManager.ignoreInUse(path)));
+			}
+			throw new FileAlreadyInUseException(path);
+		}
 		long oldFileSize = fileSize.get();
 		long written;
 		if (position > oldFileSize) {
