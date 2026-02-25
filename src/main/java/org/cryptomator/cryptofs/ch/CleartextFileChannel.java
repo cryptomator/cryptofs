@@ -123,9 +123,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 						 ExceptionsDuringWrite exceptionsDuringWrite, //
 						 Consumer<FileChannel> closeListener, //
 						 CryptoFileSystemStats stats) {
-		this(ciphertextFileChannel, fileHeaderHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentPath, new AtomicReference<>(null), exceptionsDuringWrite,
-				closeListener, ignored -> {
-				}, stats, new StubInUseManager());
+		this(ciphertextFileChannel, fileHeaderHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentPath, new AtomicReference<>(null), exceptionsDuringWrite, closeListener, ignored -> {}, stats, new StubInUseManager());
 	}
 
 	@Override
@@ -178,6 +176,8 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			var cleartextPath = currentCleartextPath.get();
 			if (cleartextPath != null) {
 				eventConsumer.accept(new FileIsInUseEvent(cleartextPath, path, useInfo.owner(), useInfo.lastUpdated(), () -> inUseManager.ignoreInUse(path)));
+			} else {
+				LOG.warn("Unable to emit FileIsInUseEvent: Cleartext path is null. Ciphertext path is {}.", path);
 			}
 			throw new FileAlreadyInUseException(path);
 		}
