@@ -2,6 +2,7 @@ package org.cryptomator.cryptofs.ch;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import jakarta.inject.Inject;
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.fh.BufferPool;
@@ -12,11 +13,11 @@ import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptofs.fh.FileHeaderHolder;
 import org.cryptomator.cryptofs.fh.OpenFileModifiedDate;
 import org.cryptomator.cryptofs.fh.OpenFileSize;
+import org.cryptomator.cryptofs.inuse.InUseManager;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
@@ -56,9 +57,23 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
 	private final Consumer<FileChannel> closeListener;
 	private final CryptoFileSystemStats stats;
+	private final InUseManager inUseManager;
 
 	@Inject
-	public CleartextFileChannel(FileChannel ciphertextFileChannel, FileHeaderHolder fileHeaderHolder, ReadWriteLock readWriteLock, Cryptor cryptor, ChunkCache chunkCache, BufferPool bufferPool, EffectiveOpenOptions options, @OpenFileSize AtomicLong fileSize, @OpenFileModifiedDate AtomicReference<Instant> lastModified, @CurrentOpenFilePath AtomicReference<Path> currentPath, ExceptionsDuringWrite exceptionsDuringWrite, Consumer<FileChannel> closeListener, CryptoFileSystemStats stats) {
+	public CleartextFileChannel(FileChannel ciphertextFileChannel, //
+								FileHeaderHolder fileHeaderHolder, //
+								ReadWriteLock readWriteLock, //
+								Cryptor cryptor, //
+								ChunkCache chunkCache, //
+								BufferPool bufferPool, //
+								EffectiveOpenOptions options, //
+								@OpenFileSize AtomicLong fileSize, //
+								@OpenFileModifiedDate AtomicReference<Instant> lastModified, //
+								@CurrentOpenFilePath AtomicReference<Path> currentPath, //
+								ExceptionsDuringWrite exceptionsDuringWrite, //
+								Consumer<FileChannel> closeListener, //
+								CryptoFileSystemStats stats, //
+								InUseManager inUseManager) {
 		super(readWriteLock);
 		this.ciphertextFileChannel = ciphertextFileChannel;
 		this.fileHeaderHolder = fileHeaderHolder;
@@ -72,6 +87,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
 		this.closeListener = closeListener;
 		this.stats = stats;
+		this.inUseManager = inUseManager;
 		if (options.append()) {
 			position = fileSize.get();
 		}
@@ -256,8 +272,8 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		FileTime lastAccessTime = FileTime.from(Instant.now());
 		var p = currentFilePath.get();
 		if (p != null) {
-			p.getFileSystem().provider()//
-					.getFileAttributeView(p, BasicFileAttributeView.class)
+			p.getFileSystem().provider() //
+					.getFileAttributeView(p, BasicFileAttributeView.class) //
 					.setTimes(lastModifiedTime, lastAccessTime, null);
 		}
 
@@ -328,7 +344,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	protected void implCloseChannel() throws IOException {
 		var closeActions = List.<CloseAction>of(this::flush, //
 				super::implCloseChannel, //
-				() -> closeListener.accept(ciphertextFileChannel),
+				() -> closeListener.accept(ciphertextFileChannel), //
 				ciphertextFileChannel::close, //
 				this::tryPersistLastModified);
 		tryAll(closeActions.iterator());
