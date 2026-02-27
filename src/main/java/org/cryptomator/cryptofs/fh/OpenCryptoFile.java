@@ -50,15 +50,6 @@ public class OpenCryptoFile implements Closeable {
 		this(listener, cryptor, headerHolder, chunkIO, currentFilePath, fileSize, currentCleartextPath, lastModified, component, inUseManager, UseToken.CLOSED_TOKEN);
 	}
 
-	// for testing compatibility
-	OpenCryptoFile(FileCloseListener listener, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, //
-				   @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, //
-				   @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component, //
-				   InUseManager inUseManager) {
-		this(listener, cryptor, headerHolder, chunkIO, currentFilePath, fileSize, new AtomicReference<>(null), lastModified, component, inUseManager, UseToken.CLOSED_TOKEN);
-	}
-
-
 	//for testing
 	OpenCryptoFile(FileCloseListener listener, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, //
 				   @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, //
@@ -76,14 +67,6 @@ public class OpenCryptoFile implements Closeable {
 		this.lastModified = lastModified;
 		this.inUseManager = inUseManager;
 		this.useToken = token;
-	}
-
-	// for testing compatibility
-	OpenCryptoFile(FileCloseListener listener, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, //
-				   @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, //
-				   @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component, //
-				   InUseManager inUseManager, UseToken token) {
-		this(listener, cryptor, headerHolder, chunkIO, currentFilePath, fileSize, new AtomicReference<>(null), lastModified, component, inUseManager, token);
 	}
 
 	/**
