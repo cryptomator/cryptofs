@@ -55,6 +55,7 @@ public class OpenCryptoFiles implements Closeable {
 	 * Opens a file to {@link OpenCryptoFile#newFileChannel(EffectiveOpenOptions, java.nio.file.attribute.FileAttribute[]) retrieve a FileChannel}. If this file is already opened, a shared instance is returned.
 	 * Getting the file channel should be the next invocation, since the {@link OpenFileScoped lifecycle} of the OpenFile strictly depends on the lifecycle of the channel.
 	 *
+	 * @param cleartextPath Cleartext path of the file to open
 	 * @param ciphertextPath Path of the file to open
 	 * @return The opened file.
 	 * @see #get(Path)
@@ -108,13 +109,10 @@ public class OpenCryptoFiles implements Closeable {
 	 *
 	 * @param src The ciphertext file path before the move
 	 * @param dst The ciphertext file path after the move
+	 * @param cleartextDst cleartext file path after the move
 	 * @return Utility to update OpenCryptoFile references.
 	 * @throws FileAlreadyExistsException Thrown if the destination file is an existing file that is currently opened.
 	 */
-	public TwoPhaseMove prepareMove(Path src, Path dst) throws FileAlreadyExistsException {
-		return new TwoPhaseMove(src, dst, null);
-	}
-
 	public TwoPhaseMove prepareMove(Path src, Path dst, CryptoPath cleartextDst) throws FileAlreadyExistsException {
 		return new TwoPhaseMove(src, dst, cleartextDst);
 	}

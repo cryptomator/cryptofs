@@ -904,7 +904,7 @@ public class CryptoFileSystemImplTest {
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.FILE);
 				when(cryptoPathMapper.getCiphertextFileType(cleartextDestination)).thenThrow(NoSuchFileException.class);
 				TwoPhaseMove openFileMove = Mockito.mock(TwoPhaseMove.class);
-				Mockito.when(openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextDestinationFile)).thenReturn(openFileMove);
+				Mockito.when(openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextDestinationFile, cleartextDestination)).thenReturn(openFileMove);
 
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);

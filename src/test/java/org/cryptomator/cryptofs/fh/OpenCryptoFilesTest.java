@@ -92,7 +92,7 @@ public class OpenCryptoFilesTest {
 		inTest.getOrCreate(dst);
 
 		Assertions.assertThrows(FileAlreadyExistsException.class, () -> {
-			inTest.prepareMove(src, dst);
+			inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class));
 		});
 	}
 
@@ -104,7 +104,7 @@ public class OpenCryptoFilesTest {
 
 		Assertions.assertTrue(inTest.get(src).isPresent());
 		Assertions.assertFalse(inTest.get(dst).isPresent());
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst)) {
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class))) {
 			twoPhaseMove.rollback();
 		}
 		Assertions.assertTrue(inTest.get(src).isPresent());
@@ -120,7 +120,7 @@ public class OpenCryptoFilesTest {
 		Assertions.assertTrue(inTest.get(src).isPresent());
 		Assertions.assertFalse(inTest.get(dst).isPresent());
 		OpenCryptoFile srcFile = inTest.get(src).get();
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst)) {
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class))) {
 			twoPhaseMove.commit();
 		}
 		Assertions.assertFalse(inTest.get(src).isPresent());
