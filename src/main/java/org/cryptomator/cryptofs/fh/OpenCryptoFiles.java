@@ -76,26 +76,8 @@ public class OpenCryptoFiles implements Closeable {
 		}
 	}
 
-	public void writeCiphertextFile(Path ciphertextPath, EffectiveOpenOptions openOptions, ByteBuffer contents) throws IOException {
-		try (OpenCryptoFile f = getOrCreate(ciphertextPath); FileChannel ch = f.newFileChannel(openOptions)) {
-			ch.write(contents);
-		}
-	}
-
 	public ByteBuffer readCiphertextFile(CryptoPath cleartextPath, Path ciphertextPath, EffectiveOpenOptions openOptions, int maxBufferSize) throws BufferUnderflowException, IOException {
 		try (OpenCryptoFile f = getOrCreate(cleartextPath, ciphertextPath); FileChannel ch = f.newFileChannel(openOptions)) {
-			if (ch.size() > maxBufferSize) {
-				throw new BufferUnderflowException();
-			}
-			ByteBuffer buf = ByteBuffer.allocate((int) ch.size()); // ch.size() <= maxBufferSize <= Integer.MAX_VALUE
-			ch.read(buf);
-			buf.flip();
-			return buf;
-		}
-	}
-
-	public ByteBuffer readCiphertextFile(Path ciphertextPath, EffectiveOpenOptions openOptions, int maxBufferSize) throws BufferUnderflowException, IOException {
-		try (OpenCryptoFile f = getOrCreate(ciphertextPath); FileChannel ch = f.newFileChannel(openOptions)) {
 			if (ch.size() > maxBufferSize) {
 				throw new BufferUnderflowException();
 			}

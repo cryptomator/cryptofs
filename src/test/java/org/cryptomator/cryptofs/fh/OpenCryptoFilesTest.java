@@ -63,7 +63,7 @@ public class OpenCryptoFilesTest {
 		EffectiveOpenOptions openOptions = Mockito.mock(EffectiveOpenOptions.class);
 		ByteBuffer contents = StandardCharsets.UTF_8.encode("hello world");
 
-		inTest.writeCiphertextFile(path, openOptions, contents);
+		inTest.writeCiphertextFile(Mockito.mock(CryptoPath.class), path, openOptions, contents);
 
 		Mockito.verify(ciphertextFileChannel).write(contents);
 	}
@@ -80,7 +80,7 @@ public class OpenCryptoFilesTest {
 			return contents.length;
 		});
 
-		ByteBuffer bytesRead = inTest.readCiphertextFile(path, openOptions, 1337);
+		ByteBuffer bytesRead = inTest.readCiphertextFile(Mockito.mock(CryptoPath.class), path, openOptions, 1337);
 
 		Assertions.assertEquals("hello world", StandardCharsets.UTF_8.decode(bytesRead).toString());
 	}
