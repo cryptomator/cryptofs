@@ -203,6 +203,12 @@ public class OpenCryptoFile implements Closeable {
 		}
 	}
 
+	/**
+	 * Updates the cleartext path if the file is not deleted (i.e., currentFilePath is not null).
+	 * Null input is ignored.
+	 *
+	 * @param cleartextPath new cleartext path, or null to skip update
+	 */
 	public void updateCurrentCleartextPath(CryptoPath cleartextPath) {
 		if (cleartextPath == null) {
 			return;
