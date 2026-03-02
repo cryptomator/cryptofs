@@ -1,12 +1,17 @@
 package org.cryptomator.cryptofs.ch;
 
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
+import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
+import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptofs.fh.BufferPool;
 import org.cryptomator.cryptofs.fh.Chunk;
 import org.cryptomator.cryptofs.fh.ChunkCache;
 import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptofs.fh.FileHeaderHolder;
+import org.cryptomator.cryptofs.inuse.FileAlreadyInUseException;
+import org.cryptomator.cryptofs.inuse.InUseManager;
+import org.cryptomator.cryptofs.inuse.UseInfo;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileContentCryptor;
 import org.cryptomator.cryptolib.api.FileHeaderCryptor;
@@ -78,7 +83,11 @@ public class CleartextFileChannelTest {
 	private BasicFileAttributeView attributeView = mock(BasicFileAttributeView.class);
 	private ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
 	private Consumer<FileChannel> closeListener = mock(Consumer.class);
+	private Consumer<FilesystemEvent> eventConsumer = mock(Consumer.class);
 	private CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
+	private InUseManager inUseManager = mock(InUseManager.class);
+	private CryptoPath cleartextPath = mock(CryptoPath.class, "/clear/path");
+	private AtomicReference<CryptoPath> currentCleartextPath = new AtomicReference<>(cleartextPath);
 
 	private CleartextFileChannel inTest;
 
@@ -574,6 +583,19 @@ public class CleartextFileChannelTest {
 			inTest.force(true);
 
 			Mockito.verify(ciphertextFileChannel, Mockito.never()).write(Mockito.any(), Mockito.eq(0l));
+		}
+
+		@Test
+		@DisplayName("write fails and emits event if file is now in-use by others")
+		public void testWriteFailsOnExternalInUse() throws IOException {
+			when(options.writable()).thenReturn(true);
+			when(inUseManager.isInUseByOthers(filePath)).thenReturn(true);
+			when(inUseManager.getUseInfo(filePath)).thenReturn(java.util.Optional.of(new UseInfo("alice", Instant.now())));
+			var channel = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, currentCleartextPath,
+					exceptionsDuringWrite, closeListener, eventConsumer, stats, inUseManager);
+
+			Assertions.assertThrows(FileAlreadyInUseException.class, () -> channel.write(ByteBuffer.allocate(1), 0));
+			verify(eventConsumer).accept(any());
 		}
 
 	}
