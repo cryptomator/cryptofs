@@ -19,7 +19,7 @@
 
 		<!-- dependencies -->
 		<cryptolib.version>2.2.2</cryptolib.version>
-		<jwt.version>4.5.0</jwt.version>
+		<jwt.version>4.5.1</jwt.version>
 		<dagger.version>2.55</dagger.version>
 		<caffeine.version>3.2.3</caffeine.version>
 		<slf4j.version>2.0.17</slf4j.version>
