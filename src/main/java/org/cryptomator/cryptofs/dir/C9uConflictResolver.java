@@ -21,10 +21,12 @@ import static org.cryptomator.cryptofs.common.Constants.BASE64_PATTERN;
 public class C9uConflictResolver {
 
 	private static final Logger LOG = LoggerFactory.getLogger(C9uConflictResolver.class);
+	private final InUseManager inUseManager;
 
 
 	@Inject
-	public C9uConflictResolver() {
+	public C9uConflictResolver(InUseManager inUseManager) {
+		this.inUseManager = inUseManager;
 	}
 
 	/**
@@ -40,8 +42,11 @@ public class C9uConflictResolver {
 		Matcher matcher = BASE64_PATTERN.matcher(basename);
 		matcher.region(0, basename.length());
 		if (!matcher.matches()) { //any rename is considered bad
-			//TODO: close UseToken (if existent)
 			LOG.debug("Found renamed in-use-file {}. Deleting it.", node.ciphertextPath);
+			if (matcher.reset().find()) {
+				var ciphertextFile = node.ciphertextPath.getParent().resolve(matcher.group() + Constants.CRYPTOMATOR_FILE_SUFFIX);
+				inUseManager.checkUseStatus(ciphertextFile);
+			}
 			try {
 				Files.deleteIfExists(node.ciphertextPath);
 			} catch (IOException e) {

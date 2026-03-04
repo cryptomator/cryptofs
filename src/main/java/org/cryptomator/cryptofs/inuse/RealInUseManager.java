@@ -207,6 +207,15 @@ public class RealInUseManager implements InUseManager {
 	}
 
 	@Override
+	public void checkUseStatus(Path ciphertextPath) {
+		var inUseFilePath = computeInUseFilePath(ciphertextPath);
+		var token = useTokens.get(inUseFilePath);
+		if (token != null) {
+			token.refresh();
+		}
+	}
+
+	@Override
 	public void close() throws IOException {
 		tokenPersistor.shutdown();
 		try {
