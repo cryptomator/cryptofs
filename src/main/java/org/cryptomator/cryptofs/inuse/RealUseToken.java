@@ -147,7 +147,6 @@ public final class RealUseToken implements UseToken {
 			}
 			writeInUseFile();
 		} catch (ModifiedFileException e) {
-			//TODO: event? we have no access to the cleartext!
 			LOG.debug("Failed to refresh in-use file {}.", filePath, e);
 			close(false);
 		} catch (IOException e) {
