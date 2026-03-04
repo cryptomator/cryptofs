@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.dir;
 
+import org.awaitility.Awaitility;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.inuse.InUseManager;
 import org.junit.jupiter.api.Assertions;
@@ -12,8 +13,10 @@ import org.mockito.Mockito;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 public class C9uConflictResolverTest {
@@ -51,21 +54,21 @@ public class C9uConflictResolverTest {
 		var result = c9uConflictResolver.process(node);
 
 		Assertions.assertEquals(0, result.count());
-		Assertions.assertTrue(Files.notExists(ciphertextPath));
+		Awaitility.await().atMost(5, TimeUnit.SECONDS).until(() -> Files.notExists(ciphertextPath));
 		verify(inUseManager).checkUseStatus(dataCiphertextPath);
 	}
 
 	@Test
 	@DisplayName("If filename is mumbojumbo, the file is just deleted")
 	void NoBase64Deleted(@TempDir Path tmpDir) throws IOException {
-		var ciphertextPath = tmpDir.resolve("aaaaBBBBccccDDDDeeeeFFFF (conflicted copy)" + Constants.INUSE_FILE_SUFFIX);
+		var ciphertextPath = tmpDir.resolve("äöüaaaaBBBBCCCC (conflicted copy)" + Constants.INUSE_FILE_SUFFIX);
 		Files.createFile(ciphertextPath);
 		var node = new Node(ciphertextPath);
 
 		var result = c9uConflictResolver.process(node);
 
 		Assertions.assertEquals(0, result.count());
-		Assertions.assertTrue(Files.notExists(ciphertextPath));
-		verify(inUseManager).checkUseStatus(any());
+		Awaitility.await().atMost(5, TimeUnit.SECONDS).until(() -> Files.notExists(ciphertextPath));
+		verify(inUseManager, never()).checkUseStatus(any());
 	}
 }
