@@ -17,9 +17,9 @@ jobs:
           server-username: MAVEN_CENTRAL_USERNAME
           server-password: MAVEN_CENTRAL_PASSWORD
       - name: Enforce project version ${{ github.event.release.tag_name }}
-        run: mvn versions:set -B -DnewVersion=${{ github.event.release.tag_name }}
+        run: ./mvnw versions:set -B -DnewVersion=${{ github.event.release.tag_name }}
       - name: Deploy
-        run: mvn deploy -B -DskipTests -Psign,deploy-central --no-transfer-progress
+        run: ./mvnw deploy -B -DskipTests -Psign,deploy-central --no-transfer-progress
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
