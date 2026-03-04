@@ -34,10 +34,10 @@ jobs:
           restore-keys: ${{ runner.os }}-sonar
       - name: Ensure to use tagged version
         if: startsWith(github.ref, 'refs/tags/')
-        run: mvn -B versions:set --file ./pom.xml -DnewVersion=${GITHUB_REF##*/}
+        run: ./mvnw -B versions:set --file ./pom.xml -DnewVersion=${GITHUB_REF##*/}
       - name: Build and Test
         run: >
-          mvn -B verify
+          ./mvnw -B verify
           jacoco:report
           org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
           -Pcoverage
