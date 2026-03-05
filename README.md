@@ -97,15 +97,12 @@ For more details on how to use the constructed `FileSystem`, you may consult the
 
 ## Building
 
-### Dependencies
+Required dependencies
+* JDK 25
 
-* Java 25
-* Maven 3
-
-### Run Maven
-
+To build the project, run
 ```bash
-mvn clean install
+./mvnw clean install
 ```
 
 ## Contributing to CryptoFS

@@ -2,6 +2,7 @@ package org.cryptomator.cryptofs.fh;
 
 import dagger.Module;
 import dagger.Provides;
+import org.cryptomator.cryptofs.CryptoPath;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -31,6 +32,13 @@ public class OpenCryptoFileModule {
 	@CurrentOpenFilePath
 	public AtomicReference<Path> provideCurrentPath(@OriginalOpenFilePath Path originalPath) {
 		return new AtomicReference<>(originalPath);
+	}
+
+	@Provides
+	@OpenFileScoped
+	@CurrentOpenFileCleartextPath
+	public AtomicReference<CryptoPath> provideCurrentCleartextPath() {
+		return new AtomicReference<>(null);
 	}
 
 	@Provides

@@ -55,4 +55,15 @@ public interface InUseManager extends Closeable {
 
 	}
 
+	/**
+	 * Checks if a use file exists and if it is still owned by this filesystem.
+	 * <p>
+	 * If any of the above is not true, the corresponding token is closed.
+	 *
+	 * @param ciphertextPath Path to the ciphertext file
+	 */
+	default void checkUseStatus(Path ciphertextPath) {
+
+	}
+
 }

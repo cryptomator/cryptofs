@@ -64,7 +64,7 @@ public class CryptoPathMapper {
 	}
 
 	/**
-	 * Verifies that no node exists for the given path. Otherwise a {@link FileAlreadyExistsException} will be thrown.
+	 * Verifies that no node exists for the given path. Otherwise, a {@link FileAlreadyExistsException} will be thrown.
 	 *
 	 * @param cleartextPath A path
 	 * @throws FileAlreadyExistsException If the node exists

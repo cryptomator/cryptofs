@@ -416,7 +416,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 
 		FileChannel ch = null;
 		try {
-			ch = openCryptoFiles.getOrCreate(ciphertextFilePath).newFileChannel(options, attrs); // might throw FileAlreadyExists
+			ch = openCryptoFiles.getOrCreate(cleartextFilePath, ciphertextFilePath).newFileChannel(options, attrs); // might throw FileAlreadyExists
 			if (options.writable()) {
 				ciphertextPath.persistLongFileName();
 				stats.incrementAccessesWritten();
@@ -618,7 +618,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		// "the symbolic link itself, not the target of the link, is moved"
 		CiphertextFilePath ciphertextSource = cryptoPathMapper.getCiphertextFilePath(cleartextSource);
 		CiphertextFilePath ciphertextTarget = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath())) {
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath(), cleartextTarget)) {
 			Files.move(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath(), options);
 			if (ciphertextTarget.isShortened()) {
 				ciphertextTarget.persistLongFileName();
@@ -634,7 +634,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		// we need to re-map the OpenCryptoFile entry.
 		CiphertextFilePath ciphertextSource = cryptoPathMapper.getCiphertextFilePath(cleartextSource);
 		CiphertextFilePath ciphertextTarget = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath())) {
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath(), cleartextTarget)) {
 			checkUsage(cleartextSource, ciphertextSource);
 			checkUsage(cleartextTarget, ciphertextTarget);
 			if (ciphertextTarget.isShortened()) {

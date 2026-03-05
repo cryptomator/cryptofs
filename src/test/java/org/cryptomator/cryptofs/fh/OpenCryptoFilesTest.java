@@ -1,5 +1,6 @@
 package org.cryptomator.cryptofs.fh;
 
+import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,7 +63,7 @@ public class OpenCryptoFilesTest {
 		EffectiveOpenOptions openOptions = Mockito.mock(EffectiveOpenOptions.class);
 		ByteBuffer contents = StandardCharsets.UTF_8.encode("hello world");
 
-		inTest.writeCiphertextFile(path, openOptions, contents);
+		inTest.writeCiphertextFile(Mockito.mock(CryptoPath.class), path, openOptions, contents);
 
 		Mockito.verify(ciphertextFileChannel).write(contents);
 	}
@@ -79,7 +80,7 @@ public class OpenCryptoFilesTest {
 			return contents.length;
 		});
 
-		ByteBuffer bytesRead = inTest.readCiphertextFile(path, openOptions, 1337);
+		ByteBuffer bytesRead = inTest.readCiphertextFile(Mockito.mock(CryptoPath.class), path, openOptions, 1337);
 
 		Assertions.assertEquals("hello world", StandardCharsets.UTF_8.decode(bytesRead).toString());
 	}
@@ -91,7 +92,7 @@ public class OpenCryptoFilesTest {
 		inTest.getOrCreate(dst);
 
 		Assertions.assertThrows(FileAlreadyExistsException.class, () -> {
-			inTest.prepareMove(src, dst);
+			inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class));
 		});
 	}
 
@@ -103,7 +104,7 @@ public class OpenCryptoFilesTest {
 
 		Assertions.assertTrue(inTest.get(src).isPresent());
 		Assertions.assertFalse(inTest.get(dst).isPresent());
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst)) {
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class))) {
 			twoPhaseMove.rollback();
 		}
 		Assertions.assertTrue(inTest.get(src).isPresent());
@@ -119,13 +120,27 @@ public class OpenCryptoFilesTest {
 		Assertions.assertTrue(inTest.get(src).isPresent());
 		Assertions.assertFalse(inTest.get(dst).isPresent());
 		OpenCryptoFile srcFile = inTest.get(src).get();
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst)) {
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class))) {
 			twoPhaseMove.commit();
 		}
 		Assertions.assertFalse(inTest.get(src).isPresent());
 		Assertions.assertTrue(inTest.get(dst).isPresent());
 		OpenCryptoFile dstFile = inTest.get(dst).get();
 		Assertions.assertSame(srcFile, dstFile);
+	}
+
+	@Test
+	public void testTwoPhaseMoveUpdatesCleartextPathWhenCommitted() throws IOException {
+		Path src = Paths.get("/src").toAbsolutePath();
+		Path dst = Paths.get("/dst").toAbsolutePath();
+		CryptoPath cleartextDst = mock(CryptoPath.class);
+		OpenCryptoFile srcFile = inTest.getOrCreate(src);
+
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, cleartextDst)) {
+			twoPhaseMove.commit();
+		}
+
+		Mockito.verify(srcFile).updateCurrentCleartextPath(cleartextDst);
 	}
 
 	@Test

@@ -1,6 +1,7 @@
 package org.cryptomator.cryptofs.fh;
 
 import jakarta.inject.Inject;
+import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
 import org.cryptomator.cryptofs.inuse.InUseManager;
@@ -33,6 +34,7 @@ public class OpenCryptoFile implements Closeable {
 	private final FileHeaderHolder headerHolder;
 	private final ChunkIO chunkIO;
 	private final AtomicReference<Path> currentFilePath;
+	private final AtomicReference<CryptoPath> currentCleartextPath;
 	private final AtomicLong fileSize;
 	private final OpenCryptoFileComponent component;
 
@@ -42,15 +44,16 @@ public class OpenCryptoFile implements Closeable {
 	@Inject
 	public OpenCryptoFile(FileCloseListener listener, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, //
 						  @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, //
+						  @CurrentOpenFileCleartextPath AtomicReference<CryptoPath> currentCleartextPath, //
 						  @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component, //
 						  InUseManager inUseManager) {
-		this(listener, cryptor, headerHolder, chunkIO, currentFilePath, fileSize, lastModified, component, inUseManager, UseToken.CLOSED_TOKEN);
+		this(listener, cryptor, headerHolder, chunkIO, currentFilePath, fileSize, currentCleartextPath, lastModified, component, inUseManager, UseToken.CLOSED_TOKEN);
 	}
-
 
 	//for testing
 	OpenCryptoFile(FileCloseListener listener, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, //
 				   @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, //
+				   @CurrentOpenFileCleartextPath AtomicReference<CryptoPath> currentCleartextPath, //
 				   @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component, //
 				   InUseManager inUseManager, UseToken token) {
 		this.listener = listener;
@@ -58,6 +61,7 @@ public class OpenCryptoFile implements Closeable {
 		this.headerHolder = headerHolder;
 		this.chunkIO = chunkIO;
 		this.currentFilePath = currentFilePath;
+		this.currentCleartextPath = currentCleartextPath;
 		this.fileSize = fileSize;
 		this.component = component;
 		this.lastModified = lastModified;
@@ -180,6 +184,10 @@ public class OpenCryptoFile implements Closeable {
 		return currentFilePath.get();
 	}
 
+	public CryptoPath getCurrentCleartextPath() {
+		return currentCleartextPath.get();
+	}
+
 	/**
 	 * Updates the current ciphertext file path, if it is not already set to null (i.e., the openCryptoFile is deleted)
 	 *
@@ -190,8 +198,22 @@ public class OpenCryptoFile implements Closeable {
 		if (newFilePath != null) {
 			useToken.moveTo(newFilePath);
 		} else {
+			currentCleartextPath.set(null);
 			useToken.close(); //encrypted file will be deleted, hence we can stop checking usage
 		}
+	}
+
+	/**
+	 * Updates the cleartext path if the file is not deleted (i.e., currentFilePath is not null).
+	 * Null input is ignored.
+	 *
+	 * @param cleartextPath new cleartext path, or null to skip update
+	 */
+	public void updateCurrentCleartextPath(CryptoPath cleartextPath) {
+		if (cleartextPath == null) {
+			return;
+		}
+		currentCleartextPath.getAndUpdate(p -> currentFilePath.get() == null ? p : cleartextPath);
 	}
 
 	private synchronized void cleartextChannelClosed(FileChannel ciphertextFileChannel) {

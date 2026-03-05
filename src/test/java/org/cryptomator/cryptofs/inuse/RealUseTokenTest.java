@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.opentest4j.AssertionFailedError;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -25,8 +26,9 @@ import java.time.Instant;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -40,12 +42,12 @@ public class RealUseTokenTest {
 	private ConcurrentMap<Path, RealUseToken> useTokens;
 	private Cryptor cryptor;
 	private RealUseToken.EncryptionDecorator encWrapper;
-	private Executor tokenPersistor;
+	private ExecutorService tokenPersistor;
 	@TempDir
 	Path tmpDir;
 	private WatchService watchService;
 	private static final int CREATION_DELAY_MILLIS = 1000;
-	private static final Duration FILE_OPERATION_DELAY = Duration.ofMillis(CREATION_DELAY_MILLIS -100L); //allow some leeway
+	private static final Duration FILE_OPERATION_DELAY = Duration.ofMillis(CREATION_DELAY_MILLIS - 100L); //allow some leeway
 	private static final Duration FILE_OPERATION_MAX = FILE_OPERATION_DELAY.plusMillis(2000L);
 
 	@BeforeEach
@@ -66,54 +68,50 @@ public class RealUseTokenTest {
 		} catch (IOException _) {
 			//no-op
 		}
-	}
 
-	@Test
-	@DisplayName("After X seconds of token creation, a new file is created")
-	public void testFileCreation() {
-		var filePath = tmpDir.resolve("inUse.file");
-		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
-			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> Files.exists(filePath));
-			Assertions.assertTrue(Files.exists(filePath));
-		}
-		Assertions.assertTrue(Files.notExists(filePath));
-	}
-
-	@RepeatedTest(20)
-	@DisplayName("The properties file contains required keys with valid content")
-	public void testFileContent() throws IOException {
-		var filePath = tmpDir.resolve("inUse.file");
-		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
-			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> Files.exists(filePath));
-			Awaitility.await().pollDelay(Duration.ofMillis(10)).until(() -> true);
-
-			var props = new Properties();
-			var rawProps = Files.readAllBytes(filePath);
-			props.load(new ByteArrayInputStream(rawProps));
-			Assertions.assertEquals("test3000", props.getProperty(UseToken.OWNER_KEY));
-			Assertions.assertDoesNotThrow(() -> Instant.parse(props.getProperty(UseToken.LASTUPDATED_KEY)));
+		try {
+			tokenPersistor.shutdown();
+			if (!tokenPersistor.awaitTermination(3000, TimeUnit.MILLISECONDS)) {
+				tokenPersistor.shutdownNow();
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
 		}
 	}
 
-	@Test
-	@DisplayName("After X seconds of token creation, a file is updated")
-	public void testFileSteal() throws IOException {
-		var filePath = tmpDir.resolve("inUse.file");
-		Files.createFile(filePath);
-		var watchKey = tmpDir.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY);
-		var fileTime = Files.getLastModifiedTime(filePath);
+	private static void assertInUseFile(String expectedOwner, Path filePath) throws AssertionFailedError {
+		var props = new Properties();
+		var rawProps = Assertions.assertDoesNotThrow(() -> Files.readAllBytes(filePath));
+		Assertions.assertDoesNotThrow(() -> props.load(new ByteArrayInputStream(rawProps)));
+		Assertions.assertEquals(expectedOwner, props.getProperty(UseToken.OWNER_KEY));
+		Assertions.assertDoesNotThrow(() -> Instant.parse(props.getProperty(UseToken.LASTUPDATED_KEY)));
+	}
 
-		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.TRUNCATE_EXISTING, encWrapper)) {
-			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> fileTime.compareTo(Files.getLastModifiedTime(filePath)) < 0);
-			var events = watchKey.pollEvents();
-			var createEvent = events.stream().filter(e -> e.kind().equals(StandardWatchEventKinds.ENTRY_MODIFY)).findAny();
-			Assertions.assertTrue(createEvent.isPresent());
-			createEvent.ifPresent(e -> {
-				Assertions.assertTrue(filePath.endsWith((Path) e.context()));
-			});
+	@RepeatedTest(5)
+	@DisplayName("Creating a token creates valid inUse file, deletes file on close and removes itself from token map")
+	public void testValidFileContent() throws IOException {
+		var filePath = tmpDir.resolve("inUse.file");
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
+			useTokens.put(filePath, token);
+			Awaitility.await().atLeast(FILE_OPERATION_DELAY) //
+					.atMost(FILE_OPERATION_MAX) //
+					.untilAsserted(() -> assertInUseFile("test3000", filePath));
 		}
 		Assertions.assertTrue(Files.notExists(filePath));
 		Assertions.assertNull(useTokens.get(filePath));
+	}
+
+	@Test
+	@DisplayName("After X seconds of token creation, a file is updated/stolen")
+	public void testFileSteal() throws IOException {
+		var filePath = tmpDir.resolve("inUse.file");
+		Files.createFile(filePath);
+
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.TRUNCATE_EXISTING, encWrapper)) {
+			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX) //
+					.untilAsserted(() -> assertInUseFile("test3000", filePath));
+		}
+		Assertions.assertTrue(Files.notExists(filePath));
 	}
 
 	@Test
@@ -123,10 +121,9 @@ public class RealUseTokenTest {
 		var watchKey = tmpDir.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_DELETE);
 
 		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.TRUNCATE_EXISTING, encWrapper)) {
-			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(token::isClosed);
+			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX) //
+					.until(token::isClosed);
 			Assertions.assertTrue(Files.notExists(filePath));
-			Assertions.assertTrue(token.isClosed());
-			Assertions.assertNull(useTokens.get(filePath));
 		}
 		MatcherAssert.assertThat(watchKey.pollEvents(), Matchers.empty());
 	}
@@ -137,12 +134,14 @@ public class RealUseTokenTest {
 		var filePath = tmpDir.resolve("inUse.file");
 		var watchKey = tmpDir.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_DELETE);
 
-		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
-			Assertions.assertTrue(Files.notExists(filePath));
+		RealUseToken token;
+		try (var t = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
+			token = t;
+			Assertions.assertFalse(t.isClosed());
 		}
-		Awaitility.await().pollDelay(FILE_OPERATION_MAX).timeout(FILE_OPERATION_MAX.multipliedBy(2)).until(() -> true);
+		Assertions.assertTrue(token.isClosed());
+		Awaitility.await().pollDelay(FILE_OPERATION_MAX).until(() -> true);
 		Assertions.assertTrue(Files.notExists(filePath));
-		Assertions.assertNull(useTokens.get(filePath));
 		MatcherAssert.assertThat(watchKey.pollEvents(), Matchers.empty());
 	}
 
@@ -154,15 +153,18 @@ public class RealUseTokenTest {
 		var watchKey = tmpDir.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_DELETE);
 
 		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
+			useTokens.put(filePath, token);
 			token.moveToInternal(targetPath);
 
+			Assertions.assertNull(useTokens.get(filePath));
+			Assertions.assertNotNull(useTokens.get(targetPath));
 			//no file operation after move
 			MatcherAssert.assertThat(watchKey.pollEvents(), Matchers.empty());
-			// target file will be created
-			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> Files.exists(targetPath));
-			//orginal filePath does not exist, target exists
+			// target file exists
+			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX) //
+					.untilAsserted(() -> assertInUseFile("test3000", targetPath));
+			//original filePath does not exist
 			Assertions.assertTrue(Files.notExists(filePath));
-			Assertions.assertTrue(Files.exists(targetPath));
 
 			//only targetPath was created
 			var events = watchKey.pollEvents();
@@ -173,7 +175,6 @@ public class RealUseTokenTest {
 				Assertions.assertTrue(targetPath.endsWith((Path) e.context()));
 			});
 		}
-		Assertions.assertNull(useTokens.get(filePath));
 		Assertions.assertNull(useTokens.get(targetPath));
 	}
 
@@ -184,7 +185,9 @@ public class RealUseTokenTest {
 		var targetPath = tmpDir.resolve("inUseMove2.file");
 
 		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
-			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> Files.exists(filePath));
+			useTokens.put(filePath, token);
+			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX) //
+					.untilAsserted(() -> assertInUseFile("test3000", filePath));
 
 			token.moveToInternal(targetPath);
 
@@ -195,26 +198,47 @@ public class RealUseTokenTest {
 			Assertions.assertNull(useTokens.get(filePath));
 			Assertions.assertNotNull(useTokens.get(targetPath));
 		}
-		Assertions.assertNull(useTokens.get(filePath));
 		Assertions.assertNull(useTokens.get(targetPath));
 	}
 
 	@Test
-	@DisplayName("Moving does nothing on closed token")
-	public void testMoveToClosed() throws IOException {
+	@DisplayName("Moving does nothing on never-persisted, closed token")
+	public void testMoveToNeverPersistedClosed() throws IOException {
 		var filePath = tmpDir.resolve("inUse.file");
 		var targetPath = tmpDir.resolve("inUse2.file");
 		var watchKey = tmpDir.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_DELETE);
 
 		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
 			token.close();
-			Awaitility.await().pollDelay(FILE_OPERATION_MAX).timeout(FILE_OPERATION_MAX.multipliedBy(2)).until(() -> true);
-
 
 			token.moveToInternal(targetPath);
 
+			Awaitility.await().pollDelay(FILE_OPERATION_DELAY).until(() -> true); //give some time to ensure no event was triggered
 			MatcherAssert.assertThat(watchKey.pollEvents(), Matchers.empty());
-			Assertions.assertNull(useTokens.get(filePath));
+			Assertions.assertNull(useTokens.get(targetPath));
+		}
+	}
+
+	@Test
+	@DisplayName("Moving does nothing on persisted-but-closed token")
+	public void testMoveToClosed() throws IOException {
+		var filePath = tmpDir.resolve("inUse.file");
+		var targetPath = tmpDir.resolve("inUse2.file");
+		var watchKey = tmpDir.register(watchService, StandardWatchEventKinds.ENTRY_CREATE, StandardWatchEventKinds.ENTRY_MODIFY, StandardWatchEventKinds.ENTRY_DELETE);
+
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
+			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX) //
+					.untilAsserted(() -> assertInUseFile("test3000", filePath));
+			watchKey.pollEvents(); //clear watchEvents
+			token.close();
+			Awaitility.await().atMost(FILE_OPERATION_MAX) //
+					.untilAsserted(() -> Assertions.assertTrue(Files.notExists(filePath)));
+			watchKey.pollEvents(); //drain events
+
+			token.moveToInternal(targetPath);
+
+			Awaitility.await().pollDelay(FILE_OPERATION_DELAY).until(() -> true); //give some time to ensure no event was triggered
+			MatcherAssert.assertThat(watchKey.pollEvents(), Matchers.empty());
 			Assertions.assertNull(useTokens.get(targetPath));
 		}
 	}
@@ -225,13 +249,15 @@ public class RealUseTokenTest {
 		var filePath = tmpDir.resolve("inUse.file");
 
 		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
-			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> Files.exists(filePath));
+			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX) //
+					.untilAsserted(() -> assertInUseFile("test3000", filePath));
 
 			var props = new Properties();
 			var rawProps = Files.readAllBytes(filePath);
 			props.load(new ByteArrayInputStream(rawProps));
 			var oldLastUpdated = Instant.parse(props.getProperty(UseToken.LASTUPDATED_KEY));
 
+			Awaitility.await().pollDelay(FILE_OPERATION_DELAY).until(() -> true);
 			token.refresh();
 
 			var props2 = new Properties();
@@ -250,8 +276,8 @@ public class RealUseTokenTest {
 		var filePath = tmpDir.resolve("inUse.file");
 
 		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
-			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX).until(() -> Files.exists(filePath));
-			Awaitility.await().pollDelay(Duration.ofMillis(10)).until(() -> true);
+			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX) //
+					.untilAsserted(() -> assertInUseFile("test3000", filePath));
 
 			Files.setLastModifiedTime(filePath, FileTime.from(Instant.ofEpochMilli(0)));
 

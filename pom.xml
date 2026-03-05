@@ -19,7 +19,7 @@
 
 		<!-- dependencies -->
 		<cryptolib.version>2.2.2</cryptolib.version>
-		<jwt.version>4.5.0</jwt.version>
+		<jwt.version>4.5.1</jwt.version>
 		<dagger.version>2.55</dagger.version>
 		<caffeine.version>3.2.3</caffeine.version>
 		<slf4j.version>2.0.17</slf4j.version>
@@ -28,14 +28,14 @@
 		<awaitility.version>4.3.0</awaitility.version>
 		<junit.jupiter.version>6.0.3</junit.jupiter.version>
 		<jmh.version>1.37</jmh.version>
-		<mockito.version>5.21.0</mockito.version>
+		<mockito.version>5.22.0</mockito.version>
 		<hamcrest.version>3.0</hamcrest.version>
 		<jimfs.version>1.3.1</jimfs.version>
 
 		<!-- build plugin dependencies -->
 		<mvn-compiler.version>3.15.0</mvn-compiler.version>
 		<mvn-dependency.version>3.10.0</mvn-dependency.version>
-		<mvn-surefire.version>3.5.4</mvn-surefire.version>
+		<mvn-surefire.version>3.5.3</mvn-surefire.version>
 		<mvn-jar.version>3.5.0</mvn-jar.version>
 		<mvn-source.version>3.4.0</mvn-source.version>
 		<mvn-javadoc.version>3.12.0</mvn-javadoc.version>
