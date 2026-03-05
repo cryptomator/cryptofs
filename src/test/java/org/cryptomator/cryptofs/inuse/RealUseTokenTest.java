@@ -71,7 +71,7 @@ public class RealUseTokenTest {
 
 		try {
 			tokenPersistor.shutdown();
-			if(!tokenPersistor.awaitTermination(3000, TimeUnit.MILLISECONDS)) {
+			if (!tokenPersistor.awaitTermination(3000, TimeUnit.MILLISECONDS)) {
 				tokenPersistor.shutdownNow();
 			}
 		} catch (InterruptedException e) {
@@ -213,6 +213,7 @@ public class RealUseTokenTest {
 
 			token.moveToInternal(targetPath);
 
+			Awaitility.await().pollDelay(FILE_OPERATION_DELAY).until(() -> true); //give some time to ensure no event was triggered
 			MatcherAssert.assertThat(watchKey.pollEvents(), Matchers.empty());
 			Assertions.assertNull(useTokens.get(targetPath));
 		}
@@ -231,10 +232,12 @@ public class RealUseTokenTest {
 			watchKey.pollEvents(); //clear watchEvents
 			token.close();
 			Awaitility.await().atMost(FILE_OPERATION_MAX) //
-					.until(() -> !watchKey.pollEvents().isEmpty());
+					.untilAsserted(() -> Assertions.assertTrue(Files.notExists(filePath)));
+			watchKey.pollEvents(); //drain events
 
 			token.moveToInternal(targetPath);
 
+			Awaitility.await().pollDelay(FILE_OPERATION_DELAY).until(() -> true); //give some time to ensure no event was triggered
 			MatcherAssert.assertThat(watchKey.pollEvents(), Matchers.empty());
 			Assertions.assertNull(useTokens.get(targetPath));
 		}
