@@ -250,6 +250,7 @@ public class RealUseTokenTest {
 			props.load(new ByteArrayInputStream(rawProps));
 			var oldLastUpdated = Instant.parse(props.getProperty(UseToken.LASTUPDATED_KEY));
 
+			Awaitility.await().pollDelay(FILE_OPERATION_DELAY).until(() -> true);
 			token.refresh();
 
 			var props2 = new Properties();
