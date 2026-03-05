@@ -12,15 +12,15 @@ import java.time.Instant;
  * On successful conflict resolution the conflicting file is renamed to the <b>resolved</b> file
  *
  * @param timestamp timestamp of event appearance
- * @param canonicalCleartextPath path of the canonical file within the cryptographic filesystem
+ * @param canonicalCleartextPath path (string) of the canonical file within the cryptographic filesystem
  * @param conflictingCiphertextPath path of the encrypted, conflicting file
- * @param resolvedCleartextPath path of the resolved file within the cryptographic filesystem
+ * @param resolvedCleartextPath path (string) of the resolved file within the cryptographic filesystem
  * @param resolvedCiphertextPath path of the resolved, encrypted file
  */
-public record ConflictResolvedEvent(Instant timestamp, Path canonicalCleartextPath, Path conflictingCiphertextPath, Path resolvedCleartextPath, Path resolvedCiphertextPath) implements FilesystemEvent {
+public record ConflictResolvedEvent(Instant timestamp, String canonicalCleartextPath, Path conflictingCiphertextPath, String resolvedCleartextPath, Path resolvedCiphertextPath) implements FilesystemEvent {
 
 	public ConflictResolvedEvent(Path canonicalCleartextPath, Path conflictingCiphertextPath, Path resolvedCleartextPath, Path resolvedCiphertextPath) {
-		this(Instant.now(), canonicalCleartextPath, conflictingCiphertextPath, resolvedCleartextPath, resolvedCiphertextPath);
+		this(Instant.now(), canonicalCleartextPath.toString(), conflictingCiphertextPath, resolvedCleartextPath.toString(), resolvedCiphertextPath);
 	}
 
 	@Override

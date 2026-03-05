@@ -70,7 +70,7 @@ class C9rConflictResolver {
 				return resolveConflict(node, canonicalPath);
 			} catch (IOException e) {
 				eventConsumer.accept(new ConflictResolutionFailedEvent(cleartextPath.resolve(node.cleartextName), node.ciphertextPath, e));
-				LOG.error("Failed to resolve conflict for {}", node.ciphertextPath, e);
+				LOG.warn("Failed to resolve conflict for {}", node.ciphertextPath, e);
 				return Stream.empty();
 			}
 		}
@@ -133,7 +133,7 @@ class C9rConflictResolver {
 
 		assert alternativeCiphertextName.length() <= maxC9rFileNameLength;
 		if (Files.exists(alternativePath)) {
-			LOG.warn("Failed finding alternative name for {}. Keeping original name.", conflicting.ciphertextPath);
+			LOG.warn("Failed finding alternative name for {}: Alternative name {} already exists. Keeping original name.", conflicting.ciphertextPath, alternativePath);
 			return Stream.empty();
 		}
 

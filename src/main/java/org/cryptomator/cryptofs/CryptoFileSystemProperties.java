@@ -22,6 +22,7 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static java.util.Arrays.asList;
 
@@ -115,6 +116,15 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	static final CryptorProvider.Scheme DEFAULT_CIPHER_COMBO = CryptorProvider.Scheme.SIV_GCM;
 
+	/**
+	 * Key identifying the filesystem owner supply method.
+	 *
+	 * @since 2.10.0
+	 */
+	public static final String PROPERTY_OWNER_GETTER = "ownerGetter";
+
+	static final Supplier<String> DEFAULT_OWNER_GETTER = () -> "";
+
 	private final Set<Entry<String, Object>> entries;
 
 	private CryptoFileSystemProperties(Builder builder) {
@@ -126,7 +136,8 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 				Map.entry(PROPERTY_EVENT_CONSUMER, builder.eventConsumer), //
 				Map.entry(PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, builder.maxCleartextNameLength), //
 				Map.entry(PROPERTY_SHORTENING_THRESHOLD, builder.shorteningThreshold), //
-				Map.entry(PROPERTY_CIPHER_COMBO, builder.cipherCombo) //
+				Map.entry(PROPERTY_CIPHER_COMBO, builder.cipherCombo), //
+				Map.entry(PROPERTY_OWNER_GETTER, builder.ownerGetter) //
 		);
 	}
 
@@ -167,6 +178,10 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	@SuppressWarnings("unchecked")
 	Consumer<FilesystemEvent> filesystemEventConsumer() {
 		return (Consumer<FilesystemEvent>) get(PROPERTY_EVENT_CONSUMER);
+	}
+
+	Supplier<String> ownerGetter() {
+		return (Supplier<String>) get(PROPERTY_OWNER_GETTER);
 	}
 
 	@Override
@@ -225,6 +240,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		private int maxCleartextNameLength = DEFAULT_MAX_CLEARTEXT_NAME_LENGTH;
 		private int shorteningThreshold = DEFAULT_SHORTENING_THRESHOLD;
 		private Consumer<FilesystemEvent> eventConsumer = DEFAULT_EVENT_CONSUMER;
+		private Supplier<String> ownerGetter = DEFAULT_OWNER_GETTER;
 
 		private Builder() {
 		}
@@ -238,6 +254,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 			checkedSet(Integer.class, PROPERTY_SHORTENING_THRESHOLD, properties, this::withShorteningThreshold);
 			checkedSet(CryptorProvider.Scheme.class, PROPERTY_CIPHER_COMBO, properties, this::withCipherCombo);
 			checkedSet(Consumer.class, PROPERTY_EVENT_CONSUMER, properties, this::withFilesystemEventConsumer);
+			checkedSet(Supplier.class, PROPERTY_OWNER_GETTER, properties, this::withOwnerGetter);
 		}
 
 		private <T> void checkedSet(Class<T> type, String key, Map<String, ?> properties, Consumer<T> setter) {
@@ -364,6 +381,24 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 				throw new IllegalArgumentException("Parameter eventConsumer must not be null");
 			}
 			this.eventConsumer = eventConsumer;
+			return this;
+		}
+
+		/**
+		 * Sets the getter method for the filesystem owner.
+		 * <p>
+		 * The string returned by the supply method must be less than or equal to 100.
+		 * If the string is longer, it will be truncated.
+		 *
+		 * @param ownerGetter method to supply the fs owner
+		 * @return this
+		 * @since 2.10.0
+		 */
+		public Builder withOwnerGetter(Supplier<String> ownerGetter) {
+			if (ownerGetter == null) {
+				throw new IllegalArgumentException("Parameter ownerGetter must not be null");
+			}
+			this.ownerGetter = ownerGetter;
 			return this;
 		}
 

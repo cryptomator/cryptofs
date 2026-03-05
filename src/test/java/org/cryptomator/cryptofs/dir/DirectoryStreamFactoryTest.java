@@ -104,7 +104,7 @@ public class DirectoryStreamFactoryTest {
 		});
 	}
 
-	@DisplayName("CiphertextDirStream only contains files with names at least 26 chars long and ending with .c9r or .c9s")
+	@DisplayName("CiphertextDirStream only contains files with names at least 26 chars long and ending with .c9r, .c9s or .c9u")
 	@ParameterizedTest
 	@MethodSource("provideFilterExamples")
 	public void testCiphertextDirStreamFilter(String fileName, boolean expected) {
@@ -119,10 +119,12 @@ public class DirectoryStreamFactoryTest {
 
 	private static Stream<Arguments> provideFilterExamples() {
 		return Stream.of( //
+				Arguments.of("b".repeat(Constants.MIN_CIPHER_NAME_LENGTH - 5)+".c9u", false), //
 				Arguments.of("b".repeat(Constants.MIN_CIPHER_NAME_LENGTH - 5)+".c9r", false), //
 				Arguments.of("b".repeat(Constants.MIN_CIPHER_NAME_LENGTH - 5)+".c9s", false), //
 				Arguments.of("a".repeat(Constants.MIN_CIPHER_NAME_LENGTH - 4)+".c9r", true), //
-				Arguments.of("a".repeat(Constants.MIN_CIPHER_NAME_LENGTH - 4)+".c9s", true));
+				Arguments.of("a".repeat(Constants.MIN_CIPHER_NAME_LENGTH - 4)+".c9s", true), //
+				Arguments.of("a".repeat(Constants.MIN_CIPHER_NAME_LENGTH - 4)+".c9u", true));
 	}
 
 }

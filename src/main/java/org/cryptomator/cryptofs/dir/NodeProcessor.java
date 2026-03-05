@@ -10,12 +10,14 @@ class NodeProcessor {
 
 	private final C9rProcessor c9rProcessor;
 	private final C9sProcessor c9sProcessor;
+	private final C9uProcessor c9uProcessor;
 	private final BrokenDirectoryFilter brokenDirFilter;
 
 	@Inject
-	public NodeProcessor(C9rProcessor c9rProcessor, C9sProcessor c9sProcessor, BrokenDirectoryFilter brokenDirFilter){
+	public NodeProcessor(C9rProcessor c9rProcessor, C9sProcessor c9sProcessor, C9uProcessor c9uProcessor, BrokenDirectoryFilter brokenDirFilter){
 		this.c9rProcessor = c9rProcessor;
 		this.c9sProcessor = c9sProcessor;
+		this.c9uProcessor = c9uProcessor;
 		this.brokenDirFilter = brokenDirFilter;
 	}
 	
@@ -24,6 +26,8 @@ class NodeProcessor {
 			return c9rProcessor.process(node).flatMap(brokenDirFilter::process);
 		} else if (node.fullCiphertextFileName.endsWith(Constants.DEFLATED_FILE_SUFFIX)) {
 			return c9sProcessor.process(node).flatMap(brokenDirFilter::process);
+		} else if (node.fullCiphertextFileName.endsWith(Constants.INUSE_FILE_SUFFIX)) {
+			return c9uProcessor.process(node).flatMap(brokenDirFilter::process);
 		} else {
 			return Stream.empty();
 		}

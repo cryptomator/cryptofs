@@ -16,11 +16,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import static org.cryptomator.cryptofs.common.Constants.BASE64_PATTERN;
+
 @DirectoryStreamScoped
 class C9rDecryptor {
 
 	// visible for testing:
-	static final Pattern BASE64_PATTERN = Pattern.compile("[a-zA-Z0-9-_]{20}(?:[a-zA-Z0-9-_]{4})*(?:[a-zA-Z0-9-_]{4}|[a-zA-Z0-9-_]{3}=|[a-zA-Z0-9-_]{2}==)");
 	private static final CharMatcher DELIM_MATCHER = CharMatcher.anyOf("_-");
 
 	private final Cryptor cryptor;

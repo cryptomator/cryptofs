@@ -64,7 +64,7 @@ public class CryptoPathMapper {
 	}
 
 	/**
-	 * Verifies that no node exists for the given path. Otherwise a {@link FileAlreadyExistsException} will be thrown.
+	 * Verifies that no node exists for the given path. Otherwise, a {@link FileAlreadyExistsException} will be thrown.
 	 *
 	 * @param cleartextPath A path
 	 * @throws FileAlreadyExistsException If the node exists
@@ -105,7 +105,7 @@ public class CryptoPathMapper {
 					return CiphertextFileType.FILE;
 				} else {
 					eventConsumer.accept(new BrokenFileNodeEvent(cleartextPath, ciphertextPath.getRawPath()));
-					LOG.warn("Did not find valid content inside of {}", ciphertextPath.getRawPath());
+					LOG.warn("Ciphertext directory {} has no clear type. Missing id files for dir, symlink or shortened file.", ciphertextPath.getRawPath());
 					throw new InvalidFileNodeException(cleartextPath.toString(), ciphertextPath.getRawPath().toString());
 				}
 			} else {

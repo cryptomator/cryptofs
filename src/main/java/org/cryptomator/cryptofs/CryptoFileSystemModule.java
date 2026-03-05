@@ -12,13 +12,19 @@ import org.cryptomator.cryptofs.attr.AttributeViewComponent;
 import org.cryptomator.cryptofs.dir.DirectoryStreamComponent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptofs.fh.OpenCryptoFileComponent;
+import org.cryptomator.cryptofs.inuse.InUseManager;
+import org.cryptomator.cryptofs.inuse.RealInUseManager;
+import org.cryptomator.cryptofs.inuse.StubInUseManager;
+import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Named;
 import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -33,7 +39,7 @@ class CryptoFileSystemModule {
 		try {
 			return Optional.of(Files.getFileStore(pathToVault));
 		} catch (IOException e) {
-			LOG.warn("Failed to get file store for " + pathToVault, e);
+			LOG.warn("Failed to get file store for {}", pathToVault, e);
 			return Optional.empty();
 		}
 	}
@@ -46,8 +52,30 @@ class CryptoFileSystemModule {
 			try {
 				eventConsumer.accept(event);
 			} catch (RuntimeException e) {
-				LOG.warn("Filesystem event consumer failed with exception when processing event {}", event, e);
+				LOG.warn("Filesystem event consumer failed with exception when processing event {}", event.getClass().getSimpleName(), e);
 			}
 		};
+	}
+
+	@Provides
+	@CryptoFileSystemScoped
+	@Named("fsOwner")
+	public Optional<String> provideFsOwner(CryptoFileSystemProperties fsProps) {
+		var owner = Objects.requireNonNullElse(fsProps.ownerGetter().get(), "");
+
+		if (owner.isBlank()) {
+			return Optional.empty();
+		}
+
+		return Optional.of(owner.length() <= 100 ? owner : owner.substring(0, 100));
+	}
+
+	@Provides
+	@CryptoFileSystemScoped
+	public InUseManager provideInUseManager(CryptoFileSystemProperties fsProps, @Named("fsOwner") Optional<String> fsOwner, Cryptor cryptor) {
+		if (fsOwner.isEmpty() || fsProps.readonly()) {
+			return new StubInUseManager();
+		}
+		return new RealInUseManager(fsOwner.get(), cryptor);
 	}
 }
