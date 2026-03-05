@@ -27,7 +27,9 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -41,7 +43,7 @@ public class RealUseTokenTest {
 	private ConcurrentMap<Path, RealUseToken> useTokens;
 	private Cryptor cryptor;
 	private RealUseToken.EncryptionDecorator encWrapper;
-	private Executor tokenPersistor;
+	private ExecutorService tokenPersistor;
 	@TempDir
 	Path tmpDir;
 	private WatchService watchService;
@@ -64,8 +66,12 @@ public class RealUseTokenTest {
 	public void afterEach() {
 		try {
 			watchService.close();
+			tokenPersistor.shutdown();
+			tokenPersistor.awaitTermination(3000, TimeUnit.MILLISECONDS);
 		} catch (IOException _) {
 			//no-op
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
 		}
 	}
 
