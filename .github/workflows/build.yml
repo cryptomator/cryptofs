@@ -15,6 +15,7 @@ jobs:
       contents: read
       id-token: write # OIDC token for the attestations step
       attestations: write # Required for the attestations step
+      artifact-metadata: write # Required for the attestations step
     outputs:
       sha256: ${{ steps.checksums.outputs.sha256 }}
     steps:
