@@ -35,7 +35,7 @@
 		<!-- build plugin dependencies -->
 		<mvn-compiler.version>3.15.0</mvn-compiler.version>
 		<mvn-dependency.version>3.10.0</mvn-dependency.version>
-		<mvn-surefire.version>3.5.4</mvn-surefire.version>
+		<mvn-surefire.version>3.5.3</mvn-surefire.version>
 		<mvn-jar.version>3.5.0</mvn-jar.version>
 		<mvn-source.version>3.4.0</mvn-source.version>
 		<mvn-javadoc.version>3.12.0</mvn-javadoc.version>
