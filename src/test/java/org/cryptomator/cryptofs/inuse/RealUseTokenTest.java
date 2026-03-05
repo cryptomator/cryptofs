@@ -88,11 +88,13 @@ public class RealUseTokenTest {
 	public void testValidFileContent() throws IOException {
 		var filePath = tmpDir.resolve("inUse.file");
 		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
+			useTokens.put(filePath, token);
 			Awaitility.await().atLeast(FILE_OPERATION_DELAY) //
 					.atMost(FILE_OPERATION_MAX) //
 					.untilAsserted(() -> assertInUseFile("test3000", filePath));
 		}
 		Assertions.assertTrue(Files.notExists(filePath));
+		Assertions.assertNull(useTokens.get(filePath));
 	}
 
 	@Test
