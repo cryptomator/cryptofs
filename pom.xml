@@ -19,7 +19,7 @@
 
 		<!-- dependencies -->
 		<cryptolib.version>2.2.2</cryptolib.version>
-		<jwt.version>4.5.1</jwt.version>
+		<jwt.version>4.5.2</jwt.version>
 		<dagger.version>2.55</dagger.version>
 		<caffeine.version>3.2.3</caffeine.version>
 		<slf4j.version>2.0.17</slf4j.version>
@@ -41,7 +41,7 @@
 		<mvn-javadoc.version>3.12.0</mvn-javadoc.version>
 		<mvn-gpg.version>3.2.8</mvn-gpg.version>
 
-		<dependency-check.version>12.2.0</dependency-check.version>
+		<dependency-check.version>12.2.1</dependency-check.version>
 		<junit-tree-reporter.version>1.5.1</junit-tree-reporter.version>
 		<jacoco.version>0.8.14</jacoco.version>
 		<central-publishing.version>0.10.0</central-publishing.version>
