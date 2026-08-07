@@ -188,7 +188,7 @@ class C9rConflictResolver {
 		}
 
 		//try dir resolution
-		var dirComparison = compareTypeFile(conflictingPath, canonicalPath, DIR_FILE_NAME, Constants.MAX_DIR_ID_LENGTH);
+		var dirComparison = compareTypeFile(conflictingPath, canonicalPath, DIR_FILE_NAME, Constants.MAX_DIR_ID_LENGTH, true);
 		if (dirComparison.bothAreComparable()) {
 			if(dirComparison.sameContent()) {
 				removeConflictingDir(conflictingPath, canonicalPath);
@@ -198,8 +198,8 @@ class C9rConflictResolver {
 			}
 		}
 
-		//try symlink resolution
-		var symlinkComparison = compareTypeFile(conflictingPath, canonicalPath, SYMLINK_FILE_NAME, Constants.MAX_SYMLINK_LENGTH);
+		//try symlink resolution. link targets vary in length, so any non-empty content is comparable
+		var symlinkComparison = compareTypeFile(conflictingPath, canonicalPath, SYMLINK_FILE_NAME, Constants.MAX_SYMLINK_LENGTH, false);
 		if (symlinkComparison.bothAreComparable()) {
 			if(symlinkComparison.sameContent()) {
 				removeConflictingDir(conflictingPath, canonicalPath);
@@ -238,25 +238,28 @@ class C9rConflictResolver {
 	 * @param canonicalPath The path to the canonical .c9r directory.
 	 * @param typeFileName Name of the type file to compare, e.g. {@value Constants#DIR_FILE_NAME}.
 	 * @param numBytesToCompare Number of bytes to read from each type file and compare to each other.
+	 * @param requireFullLength Whether this kind of type file has a fixed length of <code>numBytesToCompare</code>, so
+	 *                          that anything shorter must be a partial write rather than a shorter value.
 	 * @return The result of the comparison.
 	 * @throws IOException If an I/O exception occurs while reading either type file.
 	 */
-	private TypeFileComparison compareTypeFile(Path conflictingPath, Path canonicalPath, String typeFileName, int numBytesToCompare) throws IOException {
+	private TypeFileComparison compareTypeFile(Path conflictingPath, Path canonicalPath, String typeFileName, int numBytesToCompare, boolean requireFullLength) throws IOException {
 		var conflictingContent = readUpTo(conflictingPath.resolve(typeFileName), numBytesToCompare);
 		var canonicalContent = readUpTo(canonicalPath.resolve(typeFileName), numBytesToCompare);
-		var isConflictingComparable = conflictingContent.hasRemaining(); //there is content inside!
-		var isCanonicalTypeComparable = canonicalContent.hasRemaining();
+		var minLength = requireFullLength ? numBytesToCompare : 1;
+		var isConflictingComparable = conflictingContent.remaining() >= minLength; //there is enough content inside!
+		var isCanonicalTypeComparable = canonicalContent.remaining() >= minLength;
 		return new TypeFileComparison(isConflictingComparable, isCanonicalTypeComparable, //
 				isConflictingComparable && isCanonicalTypeComparable && conflictingContent.equals(canonicalContent));
 	}
 
 	/**
 	 * The result of comparing one kind of type file (e.g. {@value Constants#DIR_FILE_NAME}) of two conflicting .c9r
-	 * directories. A type file that is missing or empty does not allow a comparsion: either the directory is
-	 * not of this type at all ({@value Constants#DIR_FILE_NAME} vs {@value Constants#SYMLINK_FILE_NAME}), or it is in a transient state.
+	 * directories. A type file that is missing, empty or shorter than expected does not allow a comparsion: either the
+	 * directory is not of this type at all ({@value Constants#DIR_FILE_NAME} vs {@value Constants#SYMLINK_FILE_NAME}), or it is in a transient state.
 	 *
-	 * @param isConflictingComparable Whether the conflicting directory contains a non-empty type file of this kind.
-	 * @param isCanonicalTypeComparable Whether the canonical directory contains a non-empty type file of this kind.
+	 * @param isConflictingComparable Whether the conflicting directory contains a sufficiently long type file of this kind.
+	 * @param isCanonicalTypeComparable Whether the canonical directory contains a sufficiently long type file of this kind.
 	 * @param sameContent Whether both directories are of this type and their type files have equal content.
 	 */
 	private record TypeFileComparison(boolean isConflictingComparable, boolean isCanonicalTypeComparable, boolean sameContent) {

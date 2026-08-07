@@ -169,8 +169,8 @@ public class C9rConflictResolverTest {
 	public void testResolveConflictingDirTrivially(@TempDir Path dir) throws IOException {
 		Files.createDirectory(dir.resolve("foo (1).c9r"));
 		Files.createDirectory(dir.resolve("foo.c9r"));
-		Files.write(dir.resolve("foo (1).c9r/dir.c9r"), "dirid".getBytes());
-		Files.write(dir.resolve("foo.c9r/dir.c9r"), "dirid".getBytes());
+		Files.writeString(dir.resolve("foo (1).c9r/dir.c9r"), DIR_ID);
+		Files.writeString(dir.resolve("foo.c9r/dir.c9r"), DIR_ID);
 		Node unresolved = new Node(dir.resolve("foo (1).c9r"));
 		unresolved.cleartextName = "bar";
 		unresolved.extractedCiphertext = "foo";
@@ -255,6 +255,23 @@ public class C9rConflictResolverTest {
 
 		Assertions.assertTrue(result.findAny().isEmpty());
 		Assertions.assertTrue(Files.exists(dir.resolve("foo (1).c9r/dir.c9r")));
+		Mockito.verifyNoInteractions(fileNameCryptor);
+	}
+
+	@Test
+	public void testPostponeConflictResolutionForTruncatedDirFile(@TempDir Path dir) throws IOException {
+		Files.createDirectory(dir.resolve("foo (1).c9r"));
+		Files.createDirectory(dir.resolve("foo.c9r"));
+		Files.writeString(dir.resolve("foo (1).c9r/dir.c9r"), DIR_ID.substring(0, 20)); // dir id not written completely (yet)
+		Files.writeString(dir.resolve("foo.c9r/dir.c9r"), DIR_ID);
+		Node unresolved = new Node(dir.resolve("foo (1).c9r"));
+		unresolved.cleartextName = "bar";
+		unresolved.extractedCiphertext = "foo";
+
+		Stream<Node> result = conflictResolver.process(unresolved);
+
+		Assertions.assertTrue(result.findAny().isEmpty());
+		Assertions.assertTrue(Files.exists(dir.resolve("foo (1).c9r")));
 		Mockito.verifyNoInteractions(fileNameCryptor);
 	}
 
