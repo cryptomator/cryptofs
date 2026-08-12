@@ -27,6 +27,9 @@ import static org.mockito.Mockito.verify;
 
 public class C9rConflictResolverTest {
 
+	private static final String DIR_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"; // 36 chars, i.e. MAX_DIR_ID_LENGTH
+	private static final String OTHER_DIR_ID = "11111111-2222-3333-4444-555555555555";
+
 	private Cryptor cryptor;
 	private FileNameCryptor fileNameCryptor;
 	private VaultConfig vaultConfig;
@@ -166,8 +169,8 @@ public class C9rConflictResolverTest {
 	public void testResolveConflictingDirTrivially(@TempDir Path dir) throws IOException {
 		Files.createDirectory(dir.resolve("foo (1).c9r"));
 		Files.createDirectory(dir.resolve("foo.c9r"));
-		Files.write(dir.resolve("foo (1).c9r/dir.c9r"), "dirid".getBytes());
-		Files.write(dir.resolve("foo.c9r/dir.c9r"), "dirid".getBytes());
+		Files.writeString(dir.resolve("foo (1).c9r/dir.c9r"), DIR_ID);
+		Files.writeString(dir.resolve("foo.c9r/dir.c9r"), DIR_ID);
 		Node unresolved = new Node(dir.resolve("foo (1).c9r"));
 		unresolved.cleartextName = "bar";
 		unresolved.extractedCiphertext = "foo";
@@ -179,6 +182,159 @@ public class C9rConflictResolverTest {
 		Assertions.assertEquals("foo.c9r", resolved.fullCiphertextFileName);
 		Assertions.assertTrue(Files.exists(resolved.ciphertextPath));
 		Assertions.assertFalse(Files.exists(unresolved.ciphertextPath));
+	}
+
+	@Test
+	public void testResolveConflictingDirTriviallyDespiteTrailingBytes(@TempDir Path dir) throws IOException {
+		Files.createDirectory(dir.resolve("foo (1).c9r"));
+		Files.createDirectory(dir.resolve("foo.c9r"));
+		Files.writeString(dir.resolve("foo (1).c9r/dir.c9r"), DIR_ID + "\n"); // trailing bytes beyond MAX_DIR_ID_LENGTH
+		Files.writeString(dir.resolve("foo.c9r/dir.c9r"), DIR_ID);
+		Node unresolved = new Node(dir.resolve("foo (1).c9r"));
+		unresolved.cleartextName = "bar";
+		unresolved.extractedCiphertext = "foo";
+
+		Stream<Node> result = conflictResolver.process(unresolved);
+		Node resolved = result.findAny().get();
+
+		Assertions.assertEquals("foo.c9r", resolved.fullCiphertextFileName);
+		Assertions.assertFalse(Files.exists(unresolved.ciphertextPath));
+		Mockito.verifyNoInteractions(fileNameCryptor);
+	}
+
+	@Test
+	public void testResolveConflictingDirWithDifferentDirId(@TempDir Path dir) throws IOException {
+		Files.createDirectory(dir.resolve("foo (1).c9r"));
+		Files.createDirectory(dir.resolve("foo.c9r"));
+		Files.writeString(dir.resolve("foo (1).c9r/dir.c9r"), OTHER_DIR_ID);
+		Files.writeString(dir.resolve("foo.c9r/dir.c9r"), DIR_ID);
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn("baz");
+		Node unresolved = new Node(dir.resolve("foo (1).c9r"));
+		unresolved.cleartextName = "bar";
+		unresolved.extractedCiphertext = "foo";
+
+		Stream<Node> result = conflictResolver.process(unresolved);
+		Node resolved = result.findAny().get();
+
+		Assertions.assertEquals("baz.c9r", resolved.fullCiphertextFileName);
+		Assertions.assertEquals("bar (1)", resolved.cleartextName);
+		Assertions.assertFalse(Files.exists(unresolved.ciphertextPath));
+		// each of the two dirs must keep referencing its own dir id:
+		Assertions.assertEquals(OTHER_DIR_ID, Files.readString(dir.resolve("baz.c9r/dir.c9r")));
+		Assertions.assertEquals(DIR_ID, Files.readString(dir.resolve("foo.c9r/dir.c9r")));
+	}
+
+	@Test
+	public void testPostponeConflictResolutionForIncompleteConflictingDir(@TempDir Path dir) throws IOException {
+		Files.createDirectory(dir.resolve("foo (1).c9r")); // dir.c9r not copied (yet)
+		Files.createDirectory(dir.resolve("foo.c9r"));
+		Files.writeString(dir.resolve("foo.c9r/dir.c9r"), DIR_ID);
+		Node unresolved = new Node(dir.resolve("foo (1).c9r"));
+		unresolved.cleartextName = "bar";
+		unresolved.extractedCiphertext = "foo";
+
+		Stream<Node> result = conflictResolver.process(unresolved);
+
+		Assertions.assertTrue(result.findAny().isEmpty());
+		Assertions.assertTrue(Files.exists(dir.resolve("foo (1).c9r")));
+		Assertions.assertTrue(Files.exists(dir.resolve("foo.c9r")));
+		Mockito.verifyNoInteractions(fileNameCryptor);
+	}
+
+	@Test
+	public void testPostponeConflictResolutionForEmptyDirFile(@TempDir Path dir) throws IOException {
+		Files.createDirectory(dir.resolve("foo (1).c9r"));
+		Files.createDirectory(dir.resolve("foo.c9r"));
+		Files.createFile(dir.resolve("foo (1).c9r/dir.c9r")); // dir id not written (yet)
+		Files.writeString(dir.resolve("foo.c9r/dir.c9r"), DIR_ID);
+		Node unresolved = new Node(dir.resolve("foo (1).c9r"));
+		unresolved.cleartextName = "bar";
+		unresolved.extractedCiphertext = "foo";
+
+		Stream<Node> result = conflictResolver.process(unresolved);
+
+		Assertions.assertTrue(result.findAny().isEmpty());
+		Assertions.assertTrue(Files.exists(dir.resolve("foo (1).c9r/dir.c9r")));
+		Mockito.verifyNoInteractions(fileNameCryptor);
+	}
+
+	@Test
+	public void testPostponeConflictResolutionForTruncatedDirFile(@TempDir Path dir) throws IOException {
+		Files.createDirectory(dir.resolve("foo (1).c9r"));
+		Files.createDirectory(dir.resolve("foo.c9r"));
+		Files.writeString(dir.resolve("foo (1).c9r/dir.c9r"), DIR_ID.substring(0, 20)); // dir id not written completely (yet)
+		Files.writeString(dir.resolve("foo.c9r/dir.c9r"), DIR_ID);
+		Node unresolved = new Node(dir.resolve("foo (1).c9r"));
+		unresolved.cleartextName = "bar";
+		unresolved.extractedCiphertext = "foo";
+
+		Stream<Node> result = conflictResolver.process(unresolved);
+
+		Assertions.assertTrue(result.findAny().isEmpty());
+		Assertions.assertTrue(Files.exists(dir.resolve("foo (1).c9r")));
+		Mockito.verifyNoInteractions(fileNameCryptor);
+	}
+
+	@Test
+	public void testPostponeConflictResolutionForIncompleteCanonicalDir(@TempDir Path dir) throws IOException {
+		Files.createDirectory(dir.resolve("foo (1).c9r"));
+		Files.createDirectory(dir.resolve("foo.c9r")); // dir.c9r not written (yet)
+		Files.writeString(dir.resolve("foo (1).c9r/dir.c9r"), DIR_ID);
+		Node unresolved = new Node(dir.resolve("foo (1).c9r"));
+		unresolved.cleartextName = "bar";
+		unresolved.extractedCiphertext = "foo";
+
+		Stream<Node> result = conflictResolver.process(unresolved);
+
+		Assertions.assertTrue(result.findAny().isEmpty());
+		Assertions.assertEquals(DIR_ID, Files.readString(dir.resolve("foo (1).c9r/dir.c9r")));
+		Mockito.verifyNoInteractions(fileNameCryptor);
+	}
+
+	/**
+	 * Regression test for <a href="https://github.com/cryptomator/cryptofs/issues/355">#355</a>: A third party
+	 * application copied ciphertext directories, appending a suffix to their names. Since such a copy is not atomic,
+	 * the conflict resolver used to rename directories whose <code>dir.c9r</code> had not been copied yet, leaving two
+	 * directory entries referencing the same dir id ("Directory ID reused"). Postponing must therefore not be a dead
+	 * end: once the copy is complete, the duplicate is recognized and removed.
+	 */
+	@Test
+	public void testPostponedConflictIsResolvedOnceDirFileExists(@TempDir Path dir) throws IOException {
+		Files.createDirectory(dir.resolve("foo (1).c9r")); // dir.c9r not copied (yet)
+		Files.createDirectory(dir.resolve("foo.c9r"));
+		Files.writeString(dir.resolve("foo.c9r/dir.c9r"), DIR_ID);
+		Node unresolved = new Node(dir.resolve("foo (1).c9r"));
+		unresolved.cleartextName = "bar";
+		unresolved.extractedCiphertext = "foo";
+
+		Assertions.assertTrue(conflictResolver.process(unresolved).findAny().isEmpty());
+
+		Files.writeString(dir.resolve("foo (1).c9r/dir.c9r"), DIR_ID); // copy completed in the meantime
+		Node resolved = conflictResolver.process(unresolved).findAny().get();
+
+		Assertions.assertEquals("foo.c9r", resolved.fullCiphertextFileName);
+		Assertions.assertFalse(Files.exists(dir.resolve("foo (1).c9r")), "no second entry referencing " + DIR_ID);
+		Assertions.assertEquals(DIR_ID, Files.readString(dir.resolve("foo.c9r/dir.c9r")));
+		Mockito.verifyNoInteractions(fileNameCryptor);
+	}
+
+	@Test
+	public void testResolveConflictingSymlinkAndDirByChoosingNewName(@TempDir Path dir) throws IOException {
+		Files.createDirectory(dir.resolve("foo (1).c9r"));
+		Files.createDirectory(dir.resolve("foo.c9r"));
+		Files.writeString(dir.resolve("foo (1).c9r/symlink.c9r"), "linktarget");
+		Files.writeString(dir.resolve("foo.c9r/dir.c9r"), DIR_ID);
+		Mockito.when(fileNameCryptor.encryptFilename(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn("baz");
+		Node unresolved = new Node(dir.resolve("foo (1).c9r"));
+		unresolved.cleartextName = "bar";
+		unresolved.extractedCiphertext = "foo";
+
+		Stream<Node> result = conflictResolver.process(unresolved);
+		Node resolved = result.findAny().get();
+
+		Assertions.assertEquals("baz.c9r", resolved.fullCiphertextFileName);
+		Assertions.assertTrue(Files.exists(dir.resolve("baz.c9r/symlink.c9r")));
+		Assertions.assertTrue(Files.exists(dir.resolve("foo.c9r/dir.c9r")));
 	}
 
 	@Test

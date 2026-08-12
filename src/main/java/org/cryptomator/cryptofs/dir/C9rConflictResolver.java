@@ -1,9 +1,21 @@
 package org.cryptomator.cryptofs.dir;
 
-import com.google.common.base.Preconditions;
-import com.google.common.io.BaseEncoding;
-import com.google.common.io.MoreFiles;
-import com.google.common.io.RecursiveDeleteOption;
+import static org.cryptomator.cryptofs.common.Constants.DIR_FILE_NAME;
+import static org.cryptomator.cryptofs.common.Constants.SYMLINK_FILE_NAME;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
+
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.common.Constants;
 import org.cryptomator.cryptofs.event.ConflictResolutionFailedEvent;
@@ -13,21 +25,13 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Preconditions;
+import com.google.common.io.BaseEncoding;
+import com.google.common.io.MoreFiles;
+import com.google.common.io.RecursiveDeleteOption;
+
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.util.function.Consumer;
-import java.util.stream.Stream;
-
-import static org.cryptomator.cryptofs.common.Constants.DIR_FILE_NAME;
-import static org.cryptomator.cryptofs.common.Constants.MAX_DIR_ID_LENGTH;
-import static org.cryptomator.cryptofs.common.Constants.MAX_SYMLINK_LENGTH;
-import static org.cryptomator.cryptofs.common.Constants.SYMLINK_FILE_NAME;
 
 @DirectoryStreamScoped
 class C9rConflictResolver {
@@ -79,14 +83,23 @@ class C9rConflictResolver {
 	//visible for testing
 	Stream<Node> resolveConflict(Node conflicting, Path canonicalPath) throws IOException {
 		Path conflictingPath = conflicting.ciphertextPath;
-		if (resolveConflictTrivially(canonicalPath, conflictingPath)) {
-			Node resolved = new Node(canonicalPath);
-			resolved.cleartextName = conflicting.cleartextName;
-			resolved.extractedCiphertext = conflicting.extractedCiphertext;
-			return Stream.of(resolved);
-		} else {
-			return renameConflictingFile(canonicalPath, conflicting);
-		}
+		return switch (resolveConflictTrivially(canonicalPath, conflictingPath)) {
+			case RESOLVED -> {
+				Node resolved = new Node(canonicalPath);
+				resolved.cleartextName = conflicting.cleartextName;
+				resolved.extractedCiphertext = conflicting.extractedCiphertext;
+				yield Stream.of(resolved);
+			}
+			case SKIP -> {
+				// renaming is irreversible: as soon as a directory is renamed, its new name is canonical.#
+				// If we can't tell whether both are copies of the very same, we skip and retry on next listing.
+				LOG.info("Postponing conflict resolution for {}: Not all required files exist (yet).", conflictingPath);
+				yield Stream.<Node>empty();
+			}
+			case UNRESOLVED -> {
+				yield renameConflictingFile(canonicalPath, conflicting);
+			}
+		};
 	}
 
 	/**
@@ -148,45 +161,156 @@ class C9rConflictResolver {
 
 
 	/**
-	 * Tries to resolve a conflicting file without renaming the file. If successful, only the file with the canonical path will exist afterwards.
+	 * Tries to resolve a conflict either by moving the conflicting part to the
+	 * canonical path (if that is still vacant) or by deleting it (i.e. copy of the canonical
+	 * resource). In both cases only the canonical path will exist afterwards.
+	 * <p>
+	 * Resolution is postponed if the type of either .c9r directory cannot be determined, i.e. if it contains neither a
+	 * non-empty {@value Constants#DIR_FILE_NAME} nor a non-empty {@value Constants#SYMLINK_FILE_NAME}.
 	 *
-	 * @param canonicalPath The path to the original (conflict-free) resource (must not exist).
-	 * @param conflictingPath The path to the potentially conflicting file (known to exist).
-	 * @return <code>true</code> if the conflict has been resolved.
-	 * @throws IOException
+	 * @param canonicalPath The path to the original (conflict-free) resource.
+	 * @param conflictingPath The path to the potentially conflicting resource (known to exist).
+	 * @return {@link TrivialResult#RESOLVED} if only the canonical path remains, {@link TrivialResult#UNRESOLVED} if
+	 *         the conflicting resource needs to be renamed, or {@link TrivialResult#SKIP} if the decision must be
+	 *         deferred to a later directory listing.
+	 * @throws IOException If an I/O exception occurs while moving, reading or deleting either resource.
 	 */
-	private boolean resolveConflictTrivially(Path canonicalPath, Path conflictingPath) throws IOException {
-		if (!Files.exists(canonicalPath)) {
-			Files.move(conflictingPath, canonicalPath); // boom. conflict solved.
-			return true;
-		} else if (hasSameFileContent(conflictingPath.resolve(DIR_FILE_NAME), canonicalPath.resolve(DIR_FILE_NAME), MAX_DIR_ID_LENGTH)) {
-			LOG.info("Removing conflicting directory {} (identical to {})", conflictingPath, canonicalPath);
-			MoreFiles.deleteRecursively(conflictingPath, RecursiveDeleteOption.ALLOW_INSECURE);
-			return true;
-		} else if (hasSameFileContent(conflictingPath.resolve(SYMLINK_FILE_NAME), canonicalPath.resolve(SYMLINK_FILE_NAME), MAX_SYMLINK_LENGTH)) {
-			LOG.info("Removing conflicting symlink {} (identical to {})", conflictingPath, canonicalPath);
-			MoreFiles.deleteRecursively(conflictingPath, RecursiveDeleteOption.ALLOW_INSECURE);
-			return true;
+	private TrivialResult resolveConflictTrivially(Path canonicalPath, Path conflictingPath) throws IOException {
+		try {
+			Files.move(conflictingPath, canonicalPath);
+			return TrivialResult.RESOLVED; //boom. conflict solved.
+		} catch(FileAlreadyExistsException e) {
+			//okay, let's try something else
+		}
+
+		if (!Files.isDirectory(conflictingPath) || !Files.isDirectory(canonicalPath)) {
+			return TrivialResult.UNRESOLVED; //if one of the paths is a file, rename is mandatory
+		}
+
+		//try dir resolution
+		var dirComparison = compareTypeFile(conflictingPath, canonicalPath, DIR_FILE_NAME, Constants.MAX_DIR_ID_LENGTH, true);
+		if (dirComparison.bothAreComparable()) {
+			if(dirComparison.sameContent()) {
+				removeConflictingDir(conflictingPath, canonicalPath);
+				return TrivialResult.RESOLVED;
+			} else {
+				return TrivialResult.UNRESOLVED;
+			}
+		}
+
+		//try symlink resolution. link targets vary in length, so any non-empty content is comparable
+		var symlinkComparison = compareTypeFile(conflictingPath, canonicalPath, SYMLINK_FILE_NAME, Constants.MAX_SYMLINK_LENGTH, false);
+		if (symlinkComparison.bothAreComparable()) {
+			if(symlinkComparison.sameContent()) {
+				removeConflictingDir(conflictingPath, canonicalPath);
+				return TrivialResult.RESOLVED;
+			} else {
+				return TrivialResult.UNRESOLVED;
+			}
+		}
+
+		// no type file could be compared: only postpone if the type of one of the dirs is undeterminable.
+		// if both types are known, they simply differ (e.g. dir vs symlink) and must be renamed apart.
+		var conflictingTypeKnown = dirComparison.isConflictingComparable() || symlinkComparison.isConflictingComparable();
+		var canonicalTypeKnown = dirComparison.isCanonicalTypeComparable() || symlinkComparison.isCanonicalTypeComparable();
+		if (conflictingTypeKnown && canonicalTypeKnown) {
+			return TrivialResult.UNRESOLVED;
 		} else {
-			return false;
+			return TrivialResult.SKIP;
+		}
+	}
+
+	private void removeConflictingDir(Path conflictingPath, Path canonicalPath) throws IOException {
+		LOG.info("Removing conflicting directory {} (identical to {})", conflictingPath, canonicalPath);
+		try {
+			MoreFiles.deleteRecursively(conflictingPath, RecursiveDeleteOption.ALLOW_INSECURE);
+		} catch(NoSuchFileException _ ) {
+			//ok
 		}
 	}
 
 	/**
-	 * @param conflictingPath Path to a potentially conflicting file supposedly containing a directory id
-	 * @param canonicalPath Path to the canonical file containing a directory id
-	 * @param numBytesToCompare Number of bytes to read from each file and compare to each other.
-	 * @return <code>true</code> if the first <code>numBytesToCompare</code> bytes are equal in both files.
-	 * @throws IOException If an I/O exception occurs while reading either file.
+	 * Reads and compares the given type file of two conflicting .c9r directories. Presence, emptiness and content of
+	 * each type file are derived from one and the same read, so that no state drift can occur between observing
+	 * <em>whether</em> a directory is of this type and <em>which</em> resource it points to.
+	 *
+	 * @param conflictingPath The path to the potentially conflicting .c9r directory.
+	 * @param canonicalPath The path to the canonical .c9r directory.
+	 * @param typeFileName Name of the type file to compare, e.g. {@value Constants#DIR_FILE_NAME}.
+	 * @param numBytesToCompare Number of bytes to read from each type file and compare to each other.
+	 * @param requireFullLength Whether this kind of type file has a fixed length of <code>numBytesToCompare</code>, so
+	 *                          that anything shorter must be a partial write rather than a shorter value.
+	 * @return The result of the comparison.
+	 * @throws IOException If an I/O exception occurs while reading either type file.
 	 */
-	private boolean hasSameFileContent(Path conflictingPath, Path canonicalPath, int numBytesToCompare) throws IOException {
-		if (!Files.isDirectory(conflictingPath.getParent()) || !Files.isDirectory(canonicalPath.getParent())) {
-			return false;
+	private TypeFileComparison compareTypeFile(Path conflictingPath, Path canonicalPath, String typeFileName, int numBytesToCompare, boolean requireFullLength) throws IOException {
+		var conflictingContent = readUpTo(conflictingPath.resolve(typeFileName), numBytesToCompare);
+		var canonicalContent = readUpTo(canonicalPath.resolve(typeFileName), numBytesToCompare);
+		var minLength = requireFullLength ? numBytesToCompare : 1;
+		var isConflictingComparable = conflictingContent.remaining() >= minLength; //there is enough content inside!
+		var isCanonicalTypeComparable = canonicalContent.remaining() >= minLength;
+		return new TypeFileComparison(isConflictingComparable, isCanonicalTypeComparable, //
+				isConflictingComparable && isCanonicalTypeComparable && conflictingContent.equals(canonicalContent));
+	}
+
+	/**
+	 * The result of comparing one kind of type file (e.g. {@value Constants#DIR_FILE_NAME}) of two conflicting .c9r
+	 * directories. A type file that is missing, empty or shorter than expected does not allow a comparsion: either the
+	 * directory is not of this type at all ({@value Constants#DIR_FILE_NAME} vs {@value Constants#SYMLINK_FILE_NAME}), or it is in a transient state.
+	 *
+	 * @param isConflictingComparable Whether the conflicting directory contains a sufficiently long type file of this kind.
+	 * @param isCanonicalTypeComparable Whether the canonical directory contains a sufficiently long type file of this kind.
+	 * @param sameContent Whether both directories are of this type and their type files have equal content.
+	 */
+	private record TypeFileComparison(boolean isConflictingComparable, boolean isCanonicalTypeComparable, boolean sameContent) {
+
+		/**
+		 * @return <code>true</code> if both directories are of this type, i.e. their type files are comparable.
+		 */
+		boolean bothAreComparable() {
+			return isConflictingComparable && isCanonicalTypeComparable;
 		}
-		try {
-			return -1L == Files.mismatch(conflictingPath, canonicalPath);
+	}
+
+	enum TrivialResult {
+		RESOLVED,
+		UNRESOLVED,
+		SKIP;
+	}
+
+	/**
+	 * Reads up to <code>numBytes</code> bytes from the given file. A file that does not exist is indistinguishable
+	 * from an empty one: both yield an empty buffer, since neither tells us anything about its parent's type.
+	 *
+	 * @param path The file to read from
+	 * @param numBytes Maximum number of bytes to read
+	 * @return A buffer containing the bytes read, ready to be consumed. Empty if the file is empty or absent.
+	 * @throws IOException If an I/O exception occurs while reading.
+	 */
+	private ByteBuffer readUpTo(Path path, int numBytes) throws IOException {
+		try (var channel = Files.newByteChannel(path, StandardOpenOption.READ)) {
+			return readUpTo(channel, numBytes);
 		} catch (NoSuchFileException e) {
-			return false;
+			return ByteBuffer.allocate(0);
 		}
+	}
+
+	/**
+	 * Reads up to <code>numBytes</code> bytes from the given channel.
+	 *
+	 * @param channel The channel to read from
+	 * @param numBytes Maximum number of bytes to read
+	 * @return A buffer containing the bytes read, ready to be consumed.
+	 * @throws IOException If an I/O exception occurs while reading.
+	 */
+	private ByteBuffer readUpTo(ReadableByteChannel channel, int numBytes) throws IOException {
+		var buffer = ByteBuffer.allocate(numBytes);
+		var attempts = 10;
+		int i = 0;
+		while (buffer.hasRemaining() && channel.read(buffer) != -1 && i < attempts) {
+			// read until (buffer is full || EOF is reached || too many attempts)
+			i++;
+		}
+		return buffer.flip();
 	}
 }
