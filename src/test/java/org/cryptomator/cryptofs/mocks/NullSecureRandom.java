@@ -11,6 +11,6 @@ public class NullSecureRandom extends SecureRandom {
 	@Override
 	public void nextBytes(byte[] bytes) {
 		fill(bytes, (byte) 0x00);
-	};
+	}
 
 }

@@ -7,7 +7,6 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -39,7 +38,6 @@ public class TrailingBytesInNameFile implements DiagnosticResult {
 		var startIndexTrailingBytes = longName.indexOf(CRYPTOMATOR_FILE_SUFFIX) + CRYPTOMATOR_FILE_SUFFIX.length();
 		Files.writeString(pathToVault.resolve(nameFile), //
 				longName.substring(0, startIndexTrailingBytes), //
-				StandardCharsets.UTF_8, //
 				StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
 	}
 

@@ -14,7 +14,6 @@ import java.net.URISyntaxException;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import static java.nio.file.Files.createTempDirectory;
 
@@ -26,7 +25,7 @@ public class CryptoFileSystemUriTest {
 
 		Path path = CryptoFileSystemUri.uncCompatibleUriToPath(uri);
 
-		Assertions.assertEquals(Paths.get("\\\\webdavserver.com@SSL\\DavWWWRoot\\User7ff2b01\\asd\\"), path);
+		Assertions.assertEquals(Path.of("\\\\webdavserver.com@SSL\\DavWWWRoot\\User7ff2b01\\asd\\"), path);
 	}
 
 	@Test
@@ -35,7 +34,7 @@ public class CryptoFileSystemUriTest {
 
 		Path path = CryptoFileSystemUri.uncCompatibleUriToPath(uri);
 
-		Assertions.assertEquals(Paths.get("\\\\webdavserver.com@SSL@123\\DavWWWRoot\\User7ff2b01\\asd\\"), path);
+		Assertions.assertEquals(Path.of("\\\\webdavserver.com@SSL@123\\DavWWWRoot\\User7ff2b01\\asd\\"), path);
 	}
 
 	@Test
@@ -44,12 +43,12 @@ public class CryptoFileSystemUriTest {
 
 		Path path = CryptoFileSystemUri.uncCompatibleUriToPath(uri);
 
-		Assertions.assertEquals(Paths.get("/normal/file/path"), path);
+		Assertions.assertEquals(Path.of("/normal/file/path"), path);
 	}
 
 	@Test
 	public void testCreateWithoutPathComponents() {
-		Path absolutePathToVault = Paths.get("a").toAbsolutePath();
+		Path absolutePathToVault = Path.of("a").toAbsolutePath();
 
 		URI uri = CryptoFileSystemUri.create(absolutePathToVault);
 		CryptoFileSystemUri parsed = CryptoFileSystemUri.parse(uri);
@@ -60,7 +59,7 @@ public class CryptoFileSystemUriTest {
 
 	@Test
 	public void testCreateWithPathComponents() throws URISyntaxException {
-		Path absolutePathToVault = Paths.get("c").toAbsolutePath();
+		Path absolutePathToVault = Path.of("c").toAbsolutePath();
 
 		URI uri = CryptoFileSystemUri.create(absolutePathToVault, "a", "b", "c");
 		CryptoFileSystemUri parsed = CryptoFileSystemUri.parse(uri);
@@ -92,7 +91,7 @@ public class CryptoFileSystemUriTest {
 
 	@Test
 	public void testCreateWithNonAbsolutePathUsesAbsolutePath() {
-		Path nonAbsolutePathToVault = Paths.get("c");
+		Path nonAbsolutePathToVault = Path.of("c");
 		Path absolutePathToVault = nonAbsolutePathToVault.toAbsolutePath();
 
 		URI uri = CryptoFileSystemUri.create(nonAbsolutePathToVault);
@@ -104,7 +103,7 @@ public class CryptoFileSystemUriTest {
 
 	@Test
 	public void testParseValidUri() throws URISyntaxException {
-		Path path = Paths.get("a").toAbsolutePath();
+		Path path = Path.of("a").toAbsolutePath();
 		CryptoFileSystemUri parsed = CryptoFileSystemUri.parse(new URI("cryptomator", path.toUri().toString(), "/b", null, null));
 
 		Assertions.assertEquals(path, parsed.pathToVault());
@@ -113,7 +112,7 @@ public class CryptoFileSystemUriTest {
 
 	@Test
 	public void testParseWithInvalidScheme() throws URISyntaxException {
-		Path path = Paths.get("a").toAbsolutePath();
+		Path path = Path.of("a").toAbsolutePath();
 		URI uri = new URI("invalid", path.toUri().toString(), "/b", null, null);
 
 		Assertions.assertThrows(IllegalArgumentException.class, () -> {
@@ -132,7 +131,7 @@ public class CryptoFileSystemUriTest {
 
 	@Test
 	public void testParseWithoutPath() throws URISyntaxException {
-		Path path = Paths.get("a").toAbsolutePath();
+		Path path = Path.of("a").toAbsolutePath();
 		URI uri = new URI("cryptomator", path.toUri().toString(), null, null, null);
 
 		Assertions.assertThrows(IllegalArgumentException.class, () -> {
@@ -142,7 +141,7 @@ public class CryptoFileSystemUriTest {
 
 	@Test
 	public void testParseWithQuery() throws URISyntaxException {
-		Path path = Paths.get("a").toAbsolutePath();
+		Path path = Path.of("a").toAbsolutePath();
 		URI uri = new URI("cryptomator", path.toUri().toString(), "/b", "a=b", null);
 
 		Assertions.assertThrows(IllegalArgumentException.class, () -> {
@@ -152,7 +151,7 @@ public class CryptoFileSystemUriTest {
 
 	@Test
 	public void testParseWithFragment() throws URISyntaxException {
-		Path path = Paths.get("a").toAbsolutePath();
+		Path path = Path.of("a").toAbsolutePath();
 		URI uri = new URI("cryptomator", path.toUri().toString(), "/b", null, "abc");
 
 		Assertions.assertThrows(IllegalArgumentException.class, () -> {
@@ -166,7 +165,7 @@ public class CryptoFileSystemUriTest {
 		// The implementation tells that it doesn't. Assume it works but ensure that this test tells us if
 		// the implementation changes.
 		Assertions.assertDoesNotThrow(() -> {
-			new URI("scheme", Paths.get("test").toUri().toString(), "/b", null, null);
+			new URI("scheme", Path.of("test").toUri().toString(), "/b", null, null);
 		});
 	}
 

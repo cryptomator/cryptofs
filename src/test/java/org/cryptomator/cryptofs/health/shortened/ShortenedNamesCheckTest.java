@@ -15,7 +15,6 @@ import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -74,7 +73,7 @@ public class ShortenedNamesCheckTest {
 			Path dir = dataRoot.resolve("AA/zzzz/shortName.c9s");
 			Path nameFile = dir.resolve("name.c9s");
 			Files.createDirectories(dir);
-			Files.writeString(nameFile, longName, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+			Files.writeString(nameFile, longName, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 
 			var visitorSpy = Mockito.spy(visitor);
 			Mockito.doReturn("shortName.c9s").when(visitorSpy).deflate(longName);
@@ -125,7 +124,7 @@ public class ShortenedNamesCheckTest {
 			Path dir = dataRoot.resolve("AA/zzzz/shortName.c9s");
 			Path nameFile = dir.resolve("name.c9s");
 			Files.createDirectories(dir);
-			Files.writeString(nameFile, longName, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+			Files.writeString(nameFile, longName, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 
 			var visitorSpy = Mockito.spy(visitor);
 			Mockito.doReturn("otherName.c9s").when(visitorSpy).deflate(longName);
@@ -144,7 +143,7 @@ public class ShortenedNamesCheckTest {
 			Path dir = dataRoot.resolve("AA/zzzz/shortName.c9s");
 			Path nameFile = dir.resolve("name.c9s");
 			Files.createDirectories(dir);
-			Files.writeString(nameFile, longName, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+			Files.writeString(nameFile, longName, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 
 			visitor.checkShortenedName(dir);
 			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);
@@ -160,7 +159,7 @@ public class ShortenedNamesCheckTest {
 			Path dir = dataRoot.resolve("AA/zzzz/shortName.c9s");
 			Path nameFile = dir.resolve("name.c9s");
 			Files.createDirectories(dir);
-			Files.writeString(nameFile, longName, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+			Files.writeString(nameFile, longName, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 
 			visitor.checkShortenedName(dir);
 			ArgumentCaptor<DiagnosticResult> resultCaptor = ArgumentCaptor.forClass(DiagnosticResult.class);

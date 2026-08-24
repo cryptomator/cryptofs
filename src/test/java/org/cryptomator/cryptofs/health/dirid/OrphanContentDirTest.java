@@ -91,7 +91,7 @@ public class OrphanContentDirTest {
 			Path actualCipherDir = result.prepareRecoveryDir(pathToVault, fileNameCryptor);
 
 			Assertions.assertEquals(cipherRecovery, actualCipherDir);
-			Assertions.assertEquals(Constants.RECOVERY_DIR_ID, Files.readString(pathToVault.resolve("d/00/0000/1.c9r/dir.c9r"), StandardCharsets.UTF_8));
+			Assertions.assertEquals(Constants.RECOVERY_DIR_ID, Files.readString(pathToVault.resolve("d/00/0000/1.c9r/dir.c9r")));
 			Assertions.assertTrue(Files.exists(cipherRecovery));
 		}
 
@@ -101,13 +101,13 @@ public class OrphanContentDirTest {
 		public void testPrepareStepParentExistingRecoveryDir() throws IOException {
 			Path existingRecoveryDirFile = cipherRoot.resolve("1.c9r/dir.c9r");
 			Files.createDirectories(existingRecoveryDirFile.getParent());
-			Files.writeString(existingRecoveryDirFile, Constants.RECOVERY_DIR_ID, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+			Files.writeString(existingRecoveryDirFile, Constants.RECOVERY_DIR_ID, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
 			Files.createDirectories(cipherRecovery);
 
 			Path actualCipherDir = result.prepareRecoveryDir(pathToVault, fileNameCryptor);
 
 			Assertions.assertEquals(cipherRecovery, actualCipherDir);
-			Assertions.assertEquals(Constants.RECOVERY_DIR_ID, Files.readString(pathToVault.resolve("d/00/0000/1.c9r/dir.c9r"), StandardCharsets.UTF_8));
+			Assertions.assertEquals(Constants.RECOVERY_DIR_ID, Files.readString(pathToVault.resolve("d/00/0000/1.c9r/dir.c9r")));
 			Assertions.assertTrue(Files.isDirectory(cipherRecovery));
 		}
 
@@ -122,7 +122,7 @@ public class OrphanContentDirTest {
 			Path actualCipherDir = result.prepareRecoveryDir(pathToVault, fileNameCryptor);
 
 			Assertions.assertEquals(cipherRecovery, actualCipherDir);
-			Assertions.assertEquals(Constants.RECOVERY_DIR_ID, Files.readString(pathToVault.resolve("d/00/0000/1.c9r/dir.c9r"), StandardCharsets.UTF_8));
+			Assertions.assertEquals(Constants.RECOVERY_DIR_ID, Files.readString(pathToVault.resolve("d/00/0000/1.c9r/dir.c9r")));
 			Assertions.assertTrue(Files.isDirectory(cipherRecovery));
 		}
 
@@ -132,11 +132,11 @@ public class OrphanContentDirTest {
 		public void testPrepareStepParentWithWrongRecoveryDir() throws IOException {
 			Path existingRecoveryDirFile = cipherRoot.resolve("1.c9r/dir.c9r");
 			Files.createDirectories(existingRecoveryDirFile.getParent());
-			Files.writeString(existingRecoveryDirFile, UUID.randomUUID().toString(), StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+			Files.writeString(existingRecoveryDirFile, UUID.randomUUID().toString(), StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
 
 			Assertions.assertThrows(FileAlreadyExistsException.class, () -> result.prepareRecoveryDir(pathToVault, fileNameCryptor));
 
-			Assertions.assertNotEquals(Constants.RECOVERY_DIR_ID, Files.readString(existingRecoveryDirFile, StandardCharsets.UTF_8));
+			Assertions.assertNotEquals(Constants.RECOVERY_DIR_ID, Files.readString(existingRecoveryDirFile));
 		}
 	}
 
@@ -170,7 +170,7 @@ public class OrphanContentDirTest {
 
 				dirIdBackupClass.verify(() -> DirectoryIdBackup.write(Mockito.eq(cryptor), Mockito.any()), Mockito.times(1));
 			}
-			Assertions.assertEquals("aaaaaa", Files.readString(cipherRecovery.resolve("2.c9r/dir.c9r"), StandardCharsets.UTF_8));
+			Assertions.assertEquals("aaaaaa", Files.readString(cipherRecovery.resolve("2.c9r/dir.c9r")));
 			Assertions.assertTrue(Files.isDirectory(pathToVault.resolve("d/22/2222")));
 		}
 
@@ -179,7 +179,7 @@ public class OrphanContentDirTest {
 		public void testPrepareStepParentExistingStepParentDir() throws IOException {
 			Path existingStepparentDirFile = cipherRecovery.resolve("2.c9r/dir.c9r");
 			Files.createDirectories(existingStepparentDirFile.getParent());
-			Files.writeString(existingStepparentDirFile, "aaaaaa", StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+			Files.writeString(existingStepparentDirFile, "aaaaaa", StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
 			Path cipherStepparent = dataDir.resolve("22/2222");
 			Files.createDirectories(cipherStepparent);
 
@@ -194,7 +194,7 @@ public class OrphanContentDirTest {
 
 				dirIdBackupClass.verify(() -> DirectoryIdBackup.write(Mockito.eq(cryptor), Mockito.any()), Mockito.times(1));
 			}
-			Assertions.assertEquals("aaaaaa", Files.readString(cipherRecovery.resolve("2.c9r/dir.c9r"), StandardCharsets.UTF_8));
+			Assertions.assertEquals("aaaaaa", Files.readString(cipherRecovery.resolve("2.c9r/dir.c9r")));
 			Assertions.assertTrue(Files.isDirectory(pathToVault.resolve("d/22/2222")));
 		}
 
@@ -218,7 +218,7 @@ public class OrphanContentDirTest {
 
 				dirIdBackupClass.verify(() -> DirectoryIdBackup.write(Mockito.eq(cryptor), Mockito.any()), Mockito.times(1));
 			}
-			Assertions.assertEquals("aaaaaa", Files.readString(cipherRecovery.resolve("2.c9r/dir.c9r"), StandardCharsets.UTF_8));
+			Assertions.assertEquals("aaaaaa", Files.readString(cipherRecovery.resolve("2.c9r/dir.c9r")));
 			Assertions.assertTrue(Files.isDirectory(pathToVault.resolve("d/22/2222")));
 		}
 	}
@@ -314,7 +314,7 @@ public class OrphanContentDirTest {
 			String expectedMsg = "Please, sir, I want some more.";
 			Path oldCipherPath = cipherOrphan.resolve("orphan.c9r");
 			String newClearName = "OliverTwist";
-			Files.writeString(oldCipherPath, expectedMsg, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+			Files.writeString(oldCipherPath, expectedMsg, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 
 			CiphertextDirectory stepParentDir = new CiphertextDirectory("aaaaaa", pathToVault.resolve("d/22/2222"));
 			Files.createDirectories(stepParentDir.path());

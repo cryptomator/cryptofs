@@ -11,7 +11,6 @@ package org.cryptomator.cryptofs;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -58,9 +57,9 @@ public class CryptoFileSystemUri {
 		Matcher m = UNC_URI_PATTERN.matcher(in);
 		if (m.find() && (m.group(1) != null || m.group(2) != null)) { // this is an UNC path!
 			String out = in.substring("file:".length()).replace('/', '\\');
-			return Paths.get(out);
+			return Path.of(out);
 		} else {
-			return Paths.get(uri);
+			return Path.of(uri);
 		}
 	}
 

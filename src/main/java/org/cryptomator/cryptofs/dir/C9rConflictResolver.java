@@ -275,7 +275,7 @@ class C9rConflictResolver {
 	enum TrivialResult {
 		RESOLVED,
 		UNRESOLVED,
-		SKIP;
+		SKIP
 	}
 
 	/**

@@ -11,7 +11,6 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -49,12 +48,12 @@ public class TrailingNullBytesInNameFileTest {
 		result = new TrailingBytesInNameFile(pathToVault.relativize(nameFile), longName);
 
 		Files.createDirectory(c9sDir);
-		Files.writeString(nameFile, longName, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+		Files.writeString(nameFile, longName, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 
 		//execute
 		result.fix(pathToVault);
 
 		//evaluate
-		Assertions.assertEquals("bar==.c9r", Files.readString(nameFile, StandardCharsets.UTF_8));
+		Assertions.assertEquals("bar==.c9r", Files.readString(nameFile));
 	}
 }

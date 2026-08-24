@@ -39,7 +39,7 @@ class CopyOperation {
 		} else {
 			Optional<BasicFileAttributes> sourceAttrs = attributes(source, linkOptions);
 			Optional<BasicFileAttributes> targetAttrs = attributes(target, LinkOption.NOFOLLOW_LINKS);
-			if (!sourceAttrs.isPresent()) {
+			if (sourceAttrs.isEmpty()) {
 				throw new NoSuchFileException(source.toString());
 			}
 			if (targetAttrs.isPresent()) {

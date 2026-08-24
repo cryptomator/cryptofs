@@ -18,7 +18,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,7 +55,7 @@ public class Version8MigratorTest {
 		Migrator migrator = new Version8Migrator(csprng);
 		migrator.migrate(pathToVault, "vault.cryptomator", "masterkey.cryptomator", "topsecret");
 
-		String migrated = Files.readString(masterkeyFile, StandardCharsets.UTF_8);
+		String migrated = Files.readString(masterkeyFile);
 		MatcherAssert.assertThat(migrated, CoreMatchers.containsString("\"version\": 999"));
 		Assertions.assertTrue(Files.exists(vaultConfigFile));
 		DecodedJWT token = JWT.decode(Files.readString(vaultConfigFile));

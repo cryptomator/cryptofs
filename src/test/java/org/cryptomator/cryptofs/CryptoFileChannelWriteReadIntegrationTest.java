@@ -599,12 +599,12 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 						try {
 							int read = ch.read(buf, pos);
 							if (read != num) {
-								System.out.println("thread " + t + " read " + pos + " - " + (pos + num));
+								IO.println("thread " + t + " read " + pos + " - " + (pos + num));
 								resultsHandle.setOpaque(results, t, -1); // ERROR invalid number of bytes
 							} else if (Arrays.equals(content, pos, pos + num, buf.array(), 0, read)) {
 								resultsHandle.setOpaque(results, t, 0); // SUCCESS
 							} else {
-								System.out.println("thread " + t + " read " + pos + " - " + (pos + num));
+								IO.println("thread " + t + " read " + pos + " - " + (pos + num));
 								resultsHandle.setOpaque(results, t, -2); // ERROR invalid content
 							}
 						} catch (IOException e) {
@@ -631,7 +631,7 @@ public class CryptoFileChannelWriteReadIntegrationTest {
 			ByteBuffer bytesRead = ByteBuffer.allocate(content.limit());
 
 			try (var ch = FileChannel.open(file, READ, WRITE, CREATE_NEW)) {
-				System.out.println("Openend channel " + ch);
+				IO.println("Openend channel " + ch);
 				try (var ch2 = FileChannel.open(file, WRITE)) {
 				}
 				ch.write(content, 0);

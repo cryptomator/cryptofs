@@ -19,7 +19,6 @@ import org.mockito.Mockito;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -50,7 +49,7 @@ public class C9rConflictResolverTest {
 
 	@Test
 	public void testResolveNonConflictingNode() {
-		Node unresolved = new Node(Paths.get("foo.c9r"));
+		Node unresolved = new Node(Path.of("foo.c9r"));
 		unresolved.cleartextName = "bar";
 		unresolved.extractedCiphertext = "foo";
 
@@ -63,7 +62,7 @@ public class C9rConflictResolverTest {
 	@ParameterizedTest
 	@ValueSource(strings = {"._foo.c9r", ".foo.c9r"})
 	public void testResolveHiddenNode(String filename) {
-		Node unresolved = new Node(Paths.get(filename));
+		Node unresolved = new Node(Path.of(filename));
 		unresolved.cleartextName = "bar";
 		unresolved.extractedCiphertext = "foo";
 

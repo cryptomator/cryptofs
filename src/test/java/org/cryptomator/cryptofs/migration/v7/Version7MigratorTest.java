@@ -15,7 +15,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,7 +55,7 @@ public class Version7MigratorTest {
 		Migrator migrator = new Version7Migrator(csprng);
 		migrator.migrate(vaultRoot, null, "masterkey.cryptomator", "test");
 
-		String migrated = Files.readString(masterkeyFile, StandardCharsets.UTF_8);
+		String migrated = Files.readString(masterkeyFile);
 		MatcherAssert.assertThat(migrated, CoreMatchers.containsString("\"version\": 7"));
 	}
 
