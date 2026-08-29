@@ -19,17 +19,17 @@ jobs:
     outputs:
       sha256: ${{ steps.checksums.outputs.sha256 }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0 # deep fetch for better sonarcloud analysis
           show-progress: false
-      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+      - uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5.4.0
         with:
           distribution: 'temurin'
           java-version: ${{ env.JAVA_VERSION }}
           cache: 'maven'
       - name: Cache SonarCloud packages
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
@@ -59,12 +59,12 @@ jobs:
           } >> $GITHUB_OUTPUT
       - name: Attest
         if: startsWith(github.ref, 'refs/tags/')
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         with:
           subject-path: |
             target/*.jar
             target/*.pom
-      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: artifacts
           path: |
@@ -80,8 +80,8 @@ jobs:
     needs: [build]
     if: github.repository_owner == 'cryptomator' && (startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, '[deploy]'))
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5.4.0
         with:
           distribution: 'temurin'
           java-version: ${{ env.JAVA_VERSION }}
@@ -116,8 +116,8 @@ jobs:
     needs: [build]
     if: github.repository_owner == 'cryptomator' && (startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, '[deploy]'))
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-java@1bcf9fb12cf4aa7d266a90ae39939e61372fe520 # v5.4.0
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
@@ -147,7 +147,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Create Release
-        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           prerelease: true
           token: ${{ secrets.CRYPTOBOT_RELEASE_TOKEN }}
