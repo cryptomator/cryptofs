@@ -206,10 +206,10 @@ public class CryptoFileSystemProviderTest {
 		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
 		Path pathToVault = fs.getPath("/vaultDir");
 		Path vaultConfigFile = pathToVault.resolve("vault.cryptomator");
-		var properties = cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+		var properties = cryptoFileSystemProperties().withKeyLoader(keyLoader).withVaultId("my-vault-id").build();
 
 		Files.createDirectory(pathToVault);
-		CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"), "my-vault-id");
+		CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"));
 
 		var config = VaultConfig.decode(Files.readString(vaultConfigFile));
 		Assertions.assertEquals("my-vault-id", config.allegedVaultId());

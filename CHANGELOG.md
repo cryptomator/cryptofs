@@ -10,8 +10,8 @@ Changes to prior versions can be found on the [GitHub release page](https://gith
 ## [Unreleased](https://github.com/cryptomator/cryptofs/compare/2.10.0...HEAD)
 
 ### Added
-* Extend vaultConfig interface with setting/getting vaultId ([#358](https://github.com/cryptomator/cryptofs/pull/358))
-
+* Property `vaultId` in `CryptoFileSystemProperties` to set the vault id during vault initialization ([#358](https://github.com/cryptomator/cryptofs/pull/358))
+* Getter `UnverifiedVaultConfig::allegedVaultId` to get the vault id of an unverified vault config ([#358](https://github.com/cryptomator/cryptofs/pull/358))
 
 ### Changed
 * Updated dependencies ([#357](https://github.com/cryptomator/cryptofs/pull/357)):
