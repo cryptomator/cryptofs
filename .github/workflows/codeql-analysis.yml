@@ -13,6 +13,10 @@ jobs:
   analyse:
     name: Analyse
     runs-on: ubuntu-latest
+    permissions:
+      actions: read # Required for CodeQL to read the workflow run
+      contents: read # Required for checkout
+      security-events: write # Required for uploading the CodeQL results
     # dependeabot has on push events only read-only access, but codeql requires write access
     if: ${{ !(github.actor == 'dependabot[bot]' && contains(fromJSON('["push"]'), github.event_name)) }}
     steps:

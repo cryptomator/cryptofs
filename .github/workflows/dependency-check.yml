@@ -11,6 +11,8 @@ on:
 
 jobs:
   check-dependencies:
+    permissions:
+      contents: read
     uses: skymatic/workflows/.github/workflows/run-dependency-check.yml@8356563bf7b8d1c8d693f75ca487e8f57573cec9 # v3.1.0
     with:
       runner-os: 'ubuntu-latest'
