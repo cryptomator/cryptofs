@@ -171,6 +171,13 @@ public class VaultConfig {
 			return unverifiedConfig.getClaim(JSON_KEY_SHORTENING_THRESHOLD).asInt();
 		}
 
+		/**
+		 * @return The unverified vault id (signature not verified)
+		 */
+		public String allegedVaultId() {
+			return unverifiedConfig.getId();
+		}
+
 		private Algorithm initAlgorithm(byte[] rawKey) throws VaultConfigLoadException {
 			var algo = unverifiedConfig.getAlgorithm();
 			return switch (algo) {

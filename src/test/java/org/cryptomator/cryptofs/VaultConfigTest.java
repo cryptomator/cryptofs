@@ -71,7 +71,8 @@ public class VaultConfigTest {
 	@DisplayName("Using valid tokens...")
 	public class WithValidToken {
 
-		private static final String TOKEN_NONE = "eyJraWQiOiJURVNUX0tFWSIsInR5cCI6IkpXVCIsImFsZyI6Im5vbmUifQ.eyJmb3JtYXQiOjgsInNob3J0ZW5pbmdUaHJlc2hvbGQiOjIyMCwianRpIjoiZjRiMjlmM2EtNDdkNi00NjlmLTk2NGMtZjRjMmRhZWU4ZWI2IiwiY2lwaGVyQ29tYm8iOiJTSVZfQ1RSTUFDIn0.";
+		private static final String VAULT_ID = "f4b29f3a-47d6-469f-964c-f4c2daee8eb6";
+		private static final String TOKEN_NONE ="eyJraWQiOiJURVNUX0tFWSIsInR5cCI6IkpXVCIsImFsZyI6Im5vbmUifQ.eyJmb3JtYXQiOjgsInNob3J0ZW5pbmdUaHJlc2hvbGQiOjIyMCwianRpIjoiZjRiMjlmM2EtNDdkNi00NjlmLTk2NGMtZjRjMmRhZWU4ZWI2IiwiY2lwaGVyQ29tYm8iOiJTSVZfQ1RSTUFDIn0.";
 		private static final String TOKEN_HS256 = "eyJraWQiOiJURVNUX0tFWSIsInR5cCI6IkpXVCIsImFsZyI6IkhTMjU2In0.eyJmb3JtYXQiOjgsInNob3J0ZW5pbmdUaHJlc2hvbGQiOjIyMCwianRpIjoiZjRiMjlmM2EtNDdkNi00NjlmLTk2NGMtZjRjMmRhZWU4ZWI2IiwiY2lwaGVyQ29tYm8iOiJTSVZfQ1RSTUFDIn0.V7pqSXX1tBRgmntL1sXovnhNR4Z1_7z3Jzrq7NMqPO8";
 		private static final String TOKEN_HS384 = "eyJraWQiOiJURVNUX0tFWSIsInR5cCI6IkpXVCIsImFsZyI6IkhTMzg0In0.eyJmb3JtYXQiOjgsInNob3J0ZW5pbmdUaHJlc2hvbGQiOjIyMCwianRpIjoiZjRiMjlmM2EtNDdkNi00NjlmLTk2NGMtZjRjMmRhZWU4ZWI2IiwiY2lwaGVyQ29tYm8iOiJTSVZfQ1RSTUFDIn0.rx03sCVAyrCmT6halPaFU46lu-DOd03iwDgvdw362hfgJj782q6xPXjAxdKeVKxG";
 		private static final String TOKEN_HS512 = "eyJraWQiOiJURVNUX0tFWSIsInR5cCI6IkpXVCIsImFsZyI6IkhTNTEyIn0.eyJmb3JtYXQiOjgsInNob3J0ZW5pbmdUaHJlc2hvbGQiOjIyMCwianRpIjoiZjRiMjlmM2EtNDdkNi00NjlmLTk2NGMtZjRjMmRhZWU4ZWI2IiwiY2lwaGVyQ29tYm8iOiJTSVZfQ1RSTUFDIn0.fzkVI34Ou3z7RaFarS9VPCaA0NX9z7My14gAISTXJGKGNSID7xEcoaY56SBdWbU7Ta17KhxcHhbXffxk3Mzing";
@@ -95,6 +96,15 @@ public class VaultConfigTest {
 			Assertions.assertEquals(8, loaded.getVaultVersion());
 			Assertions.assertEquals(CryptorProvider.Scheme.SIV_CTRMAC, loaded.getCipherCombo());
 			Assertions.assertEquals(220, loaded.getShorteningThreshold());
+			Assertions.assertEquals(VAULT_ID, loaded.getId());
+		}
+
+		@Test
+		@DisplayName("allegedVaultId() reads jti without verification")
+		public void testAllegedVaultId() throws VaultConfigLoadException {
+			var unverified = VaultConfig.decode(TOKEN_HS256);
+
+			Assertions.assertEquals(VAULT_ID, unverified.allegedVaultId());
 		}
 
 		@DisplayName("load using key with...")
