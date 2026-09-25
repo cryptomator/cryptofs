@@ -171,6 +171,13 @@ public class VaultConfig {
 			return unverifiedConfig.getClaim(JSON_KEY_SHORTENING_THRESHOLD).asInt();
 		}
 
+		/**
+		 * @return The unverified vault id (signature not verified)
+		 */
+		public String allegedVaultId() {
+			return unverifiedConfig.getId();
+		}
+
 		private Algorithm initAlgorithm(byte[] rawKey) throws VaultConfigLoadException {
 			var algo = unverifiedConfig.getAlgorithm();
 			return switch (algo) {
@@ -211,10 +218,15 @@ public class VaultConfig {
 
 	public static class VaultConfigBuilder {
 
-		private final String id = UUID.randomUUID().toString();
 		private final int vaultVersion = Constants.VAULT_VERSION;
+		private String id = UUID.randomUUID().toString();
 		private CryptorProvider.Scheme cipherCombo;
 		private int shorteningThreshold;
+
+		public VaultConfigBuilder vaultId(String vaultId) {
+			this.id = vaultId;
+			return this;
+		}
 
 		public VaultConfigBuilder cipherCombo(CryptorProvider.Scheme cipherCombo) {
 			this.cipherCombo = cipherCombo;

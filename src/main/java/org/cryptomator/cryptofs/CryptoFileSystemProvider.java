@@ -142,7 +142,11 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 			throw new NotDirectoryException(pathToVault.toString());
 		}
 		byte[] rawKey = new byte[0];
-		var config = VaultConfig.createNew().cipherCombo(properties.cipherCombo()).shorteningThreshold(properties.shorteningThreshold()).build();
+		var configBuilder = VaultConfig.createNew() //
+				.cipherCombo(properties.cipherCombo()) //
+				.shorteningThreshold(properties.shorteningThreshold());
+		properties.vaultId().ifPresent(configBuilder::vaultId);
+		var config = configBuilder.build();
 		try (Masterkey key = properties.keyLoader().loadKey(keyId); //
 			 Cryptor cryptor = CryptorProvider.forScheme(config.getCipherCombo()).provide(key, strongSecureRandom())) {
 			rawKey = key.getEncoded();
