@@ -9,7 +9,15 @@ Changes to prior versions can be found on the [GitHub release page](https://gith
 
 ## [Unreleased](https://github.com/cryptomator/cryptofs/compare/2.10.0...HEAD)
 
-No changes yet.
+### Changed
+* Updated dependencies ([#357](https://github.com/cryptomator/cryptofs/pull/357)):
+  * `com.auth0:java-jwt` from 4.5.1 to 4.6.1
+  * `com.github.ben-manes.caffeine:caffeine` from 3.2.3 to 3.3.0
+  * `org.slf4j:slf4j-api` from 2.0.17 to 2.0.19
+
+### Fixed
+* Fixed automatic conflict resolution could create duplicate directory link with an already existing directory id ([#355](https://github.com/cryptomator/cryptofs/issues/355))
+* Fixed Module descriptor declared `javax.inject` as `requires static`, although it is required at runtime (ea3a9ca3687e432cde0159cd408e775d181625fd)
 
 
 ## [2.10.0](https://github.com/cryptomator/cryptofs/releases/tag/2.10.0) - 2026-03-05
