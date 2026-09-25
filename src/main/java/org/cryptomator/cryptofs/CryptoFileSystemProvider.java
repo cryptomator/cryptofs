@@ -45,6 +45,7 @@ import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 
 import static java.nio.file.StandardOpenOption.CREATE_NEW;
@@ -138,11 +139,31 @@ public class CryptoFileSystemProvider extends FileSystemProvider {
 	 * @since 2.0.0
 	 */
 	public static void initialize(Path pathToVault, CryptoFileSystemProperties properties, URI keyId) throws NotDirectoryException, IOException, MasterkeyLoadingFailedException {
+		initialize(pathToVault, properties, keyId, UUID.randomUUID().toString());
+	}
+
+	/**
+	 * Creates a new vault at the given directory path.
+	 *
+	 * @param pathToVault Path to an existing directory
+	 * @param properties  Parameters to use when writing the vault configuration
+	 * @param keyId       ID of the master key to use for this vault
+	 * @param vaultId	  ID of the new vault
+	 * @throws NotDirectoryException           If the given path is not an existing directory.
+	 * @throws IOException                     If the vault structure could not be initialized due to I/O errors
+	 * @throws MasterkeyLoadingFailedException If thrown by the supplied keyLoader
+	 * @since 2.11.0
+	 */
+	public static void initialize(Path pathToVault, CryptoFileSystemProperties properties, URI keyId, String vaultId) throws NotDirectoryException, IOException, MasterkeyLoadingFailedException {
 		if (!Files.isDirectory(pathToVault)) {
 			throw new NotDirectoryException(pathToVault.toString());
 		}
 		byte[] rawKey = new byte[0];
-		var config = VaultConfig.createNew().cipherCombo(properties.cipherCombo()).shorteningThreshold(properties.shorteningThreshold()).build();
+		var config = VaultConfig.createNew() //
+			.cipherCombo(properties.cipherCombo()) //
+			.shorteningThreshold(properties.shorteningThreshold()) //
+			.vaultId(vaultId) //
+			.build();
 		try (Masterkey key = properties.keyLoader().loadKey(keyId); //
 			 Cryptor cryptor = CryptorProvider.forScheme(config.getCipherCombo()).provide(key, strongSecureRandom())) {
 			rawKey = key.getEncoded();

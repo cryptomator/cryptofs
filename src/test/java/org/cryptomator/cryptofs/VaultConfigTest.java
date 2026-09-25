@@ -132,6 +132,14 @@ public class VaultConfigTest {
 	}
 
 	@Test
+	@DisplayName("test VaultConfig.createNew().vaultId(...)")
+	public void testCreateNewWithVaultId() {
+		var config = VaultConfig.createNew().cipherCombo(CryptorProvider.Scheme.SIV_CTRMAC).shorteningThreshold(220).vaultId("my-vault-id").build();
+
+		Assertions.assertEquals("my-vault-id", config.getId());
+	}
+
+	@Test
 	@DisplayName("test VaultConfig.load(...)")
 	public void testLoadExisting() throws VaultConfigLoadException, MasterkeyLoadingFailedException {
 		var decodedJwt = Mockito.mock(DecodedJWT.class);

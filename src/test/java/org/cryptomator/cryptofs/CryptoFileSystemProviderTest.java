@@ -202,6 +202,20 @@ public class CryptoFileSystemProviderTest {
 	}
 
 	@Test
+	public void testInitializeWithVaultId() throws IOException, MasterkeyLoadingFailedException {
+		FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
+		Path pathToVault = fs.getPath("/vaultDir");
+		Path vaultConfigFile = pathToVault.resolve("vault.cryptomator");
+		var properties = cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+
+		Files.createDirectory(pathToVault);
+		CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"), "my-vault-id");
+
+		var config = VaultConfig.decode(Files.readString(vaultConfigFile));
+		Assertions.assertEquals("my-vault-id", config.allegedVaultId());
+	}
+
+	@Test
 	public void testNewFileSystem() throws IOException, MasterkeyLoadingFailedException {
 		Path pathToVault = Path.of("/vaultDir");
 		URI uri = CryptoFileSystemUri.create(pathToVault);
