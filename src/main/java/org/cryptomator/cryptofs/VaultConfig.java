@@ -158,6 +158,13 @@ public class VaultConfig {
 		}
 
 		/**
+		 * @return The unverified vault id (signature not verified)
+		 */
+		public String allegedVaultId() {
+			return unverifiedConfig.getId();
+		}
+
+		/**
 		 * @return The unverified vault version (signature not verified)
 		 */
 		public int allegedVaultVersion() {
