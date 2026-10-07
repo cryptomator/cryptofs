@@ -7,7 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 The changelog starts with version 2.10.0.
 Changes to prior versions can be found on the [GitHub release page](https://github.com/cryptomator/cryptofs/releases).
 
-## [Unreleased](https://github.com/cryptomator/cryptofs/compare/2.10.0...HEAD)
+## [Unreleased](https://github.com/cryptomator/cryptofs/compare/2.11.0...HEAD)
+
+No changes yet.
+
+
+## [2.11.0](https://github.com/cryptomator/cryptofs/releases/tag/2.11.0) - tbd
 
 ### Added
 * `VaultConfig.UnverifiedVaultConfig.allegedVaultId()` to read the vault id from an unverified vault config (fc29aabb411668c8cabc59491dabc73183e1e00c)
