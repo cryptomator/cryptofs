@@ -14,11 +14,7 @@ module org.cryptomator.cryptofs {
 	requires dagger;
 	requires com.auth0.jwt;
 
-	// filename-based module required by dagger
-	// we will probably need to live with this for a while:
-	// https://github.com/javax-inject/javax-inject/issues/33
-	// May be provided by another lib during runtime
-	requires static javax.inject;
+	requires javax.inject;
 	requires jakarta.inject;
 	requires java.compiler;
 

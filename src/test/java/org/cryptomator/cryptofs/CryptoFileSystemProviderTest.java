@@ -43,7 +43,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Stream;
 
-import static java.nio.file.Paths.get;
+import static java.nio.file.Path.of;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
 import static org.hamcrest.Matchers.containsString;
@@ -217,7 +217,7 @@ public class CryptoFileSystemProviderTest {
 
 	@Test
 	public void testGetFileSystemInvokesFileSystemsGetWithPathToVaultFromUri() {
-		Path pathToVault = get("a").toAbsolutePath();
+		Path pathToVault = of("a").toAbsolutePath();
 		URI uri = CryptoFileSystemUri.create(pathToVault);
 		when(fileSystems.get(pathToVault)).thenReturn(cryptoFileSystem);
 
@@ -228,7 +228,7 @@ public class CryptoFileSystemProviderTest {
 
 	@Test
 	public void testGetPathDelegatesToFileSystem() {
-		Path pathToVault = get("a").toAbsolutePath();
+		Path pathToVault = of("a").toAbsolutePath();
 		URI uri = CryptoFileSystemUri.create(pathToVault, "c", "d");
 		when(fileSystems.get(pathToVault)).thenReturn(cryptoFileSystem);
 		when(cryptoFileSystem.getPath("/c/d")).thenReturn(cryptoPath);

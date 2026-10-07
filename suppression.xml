@@ -18,4 +18,25 @@
 		<packageUrl regex="true">^pkg:maven/com\.fasterxml\.jackson\.core/jackson\-databind@.*$</packageUrl>
 		<cve>CVE-2023-35116</cve>
 	</suppress>
+	<suppress>
+		<notes><![CDATA[
+			file name: jackson-databind-2.22.2.jar
+		]]></notes>
+		<packageUrl regex="true">^pkg:maven/com\.fasterxml\.jackson\.core/jackson-databind@.*$</packageUrl>
+		<vulnerabilityName>CVE-2026-91777</vulnerabilityName>
+	</suppress>
+	<suppress>
+		<notes><![CDATA[
+			file name: jackson-core-2.22.2.jar
+		]]></notes>
+		<packageUrl regex="true">^pkg:maven/com\.fasterxml\.jackson\.core/jackson-core@.*$</packageUrl>
+		<vulnerabilityName>CVE-2026-89425</vulnerabilityName>
+	</suppress>
+	<suppress>
+		<notes><![CDATA[
+			file name: jackson-core-2.22.2.jar
+		]]></notes>
+		<packageUrl regex="true">^pkg:maven/com\.fasterxml\.jackson\.core/jackson-core@.*$</packageUrl>
+		<vulnerabilityName>CVE-2026-89407</vulnerabilityName>
+	</suppress>
 </suppressions>

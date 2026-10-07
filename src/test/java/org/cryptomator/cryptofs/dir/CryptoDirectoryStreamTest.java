@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -43,8 +42,8 @@ public class CryptoDirectoryStreamTest {
 
 	@Test
 	public void testDirListing() throws IOException {
-		Path ciphertextPath = Paths.get("/f00/b4r");
-		Path cleartextPath = Paths.get("/foo/bar");
+		Path ciphertextPath = Path.of("/f00/b4r");
+		Path cleartextPath = Path.of("/foo/bar");
 		List<String> ciphertextFileNames = new ArrayList<>();
 		ciphertextFileNames.add("ciphertextFile1");
 		ciphertextFileNames.add("ciphertextFile2");
@@ -86,7 +85,7 @@ public class CryptoDirectoryStreamTest {
 
 	@Test
 	public void testDirListingForEmptyDir() throws IOException {
-		Path cleartextPath = Paths.get("/foo/bar");
+		Path cleartextPath = Path.of("/foo/bar");
 
 		Mockito.when(dirStream.spliterator()).thenReturn(Spliterators.emptySpliterator());
 

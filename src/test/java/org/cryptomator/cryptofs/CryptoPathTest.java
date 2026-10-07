@@ -22,7 +22,6 @@ import java.net.URISyntaxException;
 import java.nio.file.FileSystems;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.ProviderMismatchException;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchService;
@@ -346,7 +345,7 @@ public class CryptoPathTest {
 		@Test
 		public void testPathFromOtherProviderIsNotEqual() {
 			Path inTest = new CryptoPath(fileSystem, symlinks, asList("a"), false);
-			Path defaultProviderPath = Paths.get("a");
+			Path defaultProviderPath = Path.of("a");
 
 			Assertions.assertNotEquals(defaultProviderPath, inTest);
 		}
@@ -410,7 +409,7 @@ public class CryptoPathTest {
 		@Test
 		public void testCompareToThrowsClassCastExceptionIfPathIsFromDifferentProvider() {
 			Path inTest = new CryptoPath(fileSystem, symlinks, asList("a"), true);
-			Path defaultProviderPath = Paths.get("a");
+			Path defaultProviderPath = Path.of("a");
 
 			Assertions.assertThrows(ClassCastException.class, () -> {
 				inTest.compareTo(defaultProviderPath);

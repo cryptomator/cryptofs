@@ -37,7 +37,7 @@ public interface DiagnosticResult {
 		 * Restore from backups is advised.
 		 * If not possible and a fix present, applying it is recommended to restore vault structure.
 		 */
-		CRITICAL;
+		CRITICAL
 	}
 
 	Severity getSeverity();

@@ -6,5 +6,5 @@ package org.cryptomator.cryptofs.common;
 public enum CiphertextFileType {
 	FILE,
 	DIRECTORY,
-	SYMLINK;
+	SYMLINK
 }

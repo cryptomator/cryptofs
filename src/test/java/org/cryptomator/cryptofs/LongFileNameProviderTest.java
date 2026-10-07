@@ -14,12 +14,10 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.ReadOnlyFileSystemException;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -73,7 +71,7 @@ public class LongFileNameProviderTest {
 		LongFileNameProvider prov = new LongFileNameProvider(readonlyFlag);
 
 		Assertions.assertThrows(NoSuchFileException.class, () -> {
-			prov.inflate(Paths.get("/does/not/exist"));
+			prov.inflate(Path.of("/does/not/exist"));
 		});
 	}
 
@@ -113,7 +111,7 @@ public class LongFileNameProviderTest {
 		LongFileNameProvider.DeflatedFileName deflated = prov.deflate(canonicalFileName);
 
 		deflated.persist();
-		Assertions.assertEquals(Files.readString(deflated.c9sPath.resolve("name.c9s"), StandardCharsets.UTF_8),deflated.longName);
+		Assertions.assertEquals(Files.readString(deflated.c9sPath.resolve("name.c9s")),deflated.longName);
 	}
 
 }

@@ -94,7 +94,7 @@ public class ShortenedNamesCheck implements HealthCheck {
 				return;
 			}
 
-			var longName = Files.readString(nameFile, UTF_8);
+			var longName = Files.readString(nameFile);
 
 			var syntaxResult = checkSyntax(longName);
 			if (syntaxResult == SyntaxResult.INVALID) {
@@ -142,7 +142,7 @@ public class ShortenedNamesCheck implements HealthCheck {
 		enum SyntaxResult {
 			VALID,
 			INVALID,
-			TRAILING_BYTES; //to indicate issue https://github.com/cryptomator/cryptofs/issues/121
+			TRAILING_BYTES //to indicate issue https://github.com/cryptomator/cryptofs/issues/121
 		}
 
 		//visible for testing

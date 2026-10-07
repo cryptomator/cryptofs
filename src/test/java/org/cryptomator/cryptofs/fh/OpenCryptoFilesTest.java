@@ -13,7 +13,6 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import static org.mockito.Mockito.mock;
 
@@ -48,8 +47,8 @@ public class OpenCryptoFilesTest {
 
 		Mockito.when(openCryptoFileComponentFactory.create(Mockito.any(), Mockito.any())).thenReturn(subComponent1, subComponent2);
 
-		Path p1 = Paths.get("/foo");
-		Path p2 = Paths.get("/bar");
+		Path p1 = Path.of("/foo");
+		Path p2 = Path.of("/bar");
 
 		Assertions.assertSame(file1, inTest.getOrCreate(p1));
 		Assertions.assertSame(file1, inTest.getOrCreate(p1));
@@ -59,7 +58,7 @@ public class OpenCryptoFilesTest {
 
 	@Test
 	public void testWriteCiphertextFile() throws IOException {
-		Path path = Paths.get("/foo");
+		Path path = Path.of("/foo");
 		EffectiveOpenOptions openOptions = Mockito.mock(EffectiveOpenOptions.class);
 		ByteBuffer contents = StandardCharsets.UTF_8.encode("hello world");
 
@@ -71,7 +70,7 @@ public class OpenCryptoFilesTest {
 	@Test
 	public void testReadCiphertextFile() throws IOException {
 		byte[] contents = "hello world".getBytes(StandardCharsets.UTF_8);
-		Path path = Paths.get("/foo");
+		Path path = Path.of("/foo");
 		EffectiveOpenOptions openOptions = Mockito.mock(EffectiveOpenOptions.class);
 		Mockito.when(ciphertextFileChannel.size()).thenReturn((long) contents.length);
 		Mockito.when(ciphertextFileChannel.read(Mockito.any(ByteBuffer.class))).thenAnswer(invocation -> {
@@ -87,8 +86,8 @@ public class OpenCryptoFilesTest {
 
 	@Test
 	public void testTwoPhaseMoveFailsWhenTargetIsOpened() throws IOException {
-		Path src = Paths.get("/src").toAbsolutePath();
-		Path dst = Paths.get("/dst").toAbsolutePath();
+		Path src = Path.of("/src").toAbsolutePath();
+		Path dst = Path.of("/dst").toAbsolutePath();
 		inTest.getOrCreate(dst);
 
 		Assertions.assertThrows(FileAlreadyExistsException.class, () -> {
@@ -98,8 +97,8 @@ public class OpenCryptoFilesTest {
 
 	@Test
 	public void testTwoPhaseMoveDoesntChangeAnythingWhenRolledBack() throws IOException {
-		Path src = Paths.get("/src");
-		Path dst = Paths.get("/dst");
+		Path src = Path.of("/src");
+		Path dst = Path.of("/dst");
 		inTest.getOrCreate(src);
 
 		Assertions.assertTrue(inTest.get(src).isPresent());
@@ -113,8 +112,8 @@ public class OpenCryptoFilesTest {
 
 	@Test
 	public void testTwoPhaseMoveChangesReferencesWhenCommitted() throws IOException {
-		Path src = Paths.get("/src").toAbsolutePath();
-		Path dst = Paths.get("/dst").toAbsolutePath();
+		Path src = Path.of("/src").toAbsolutePath();
+		Path dst = Path.of("/dst").toAbsolutePath();
 		inTest.getOrCreate(src);
 
 		Assertions.assertTrue(inTest.get(src).isPresent());
@@ -131,8 +130,8 @@ public class OpenCryptoFilesTest {
 
 	@Test
 	public void testTwoPhaseMoveUpdatesCleartextPathWhenCommitted() throws IOException {
-		Path src = Paths.get("/src").toAbsolutePath();
-		Path dst = Paths.get("/dst").toAbsolutePath();
+		Path src = Path.of("/src").toAbsolutePath();
+		Path dst = Path.of("/dst").toAbsolutePath();
 		CryptoPath cleartextDst = mock(CryptoPath.class);
 		OpenCryptoFile srcFile = inTest.getOrCreate(src);
 

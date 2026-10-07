@@ -102,7 +102,7 @@ public class LongFileNameProvider {
 
 			Path longNameFile = c9sPath.resolve(INFLATED_FILE_NAME);
 			Files.createDirectories(c9sPath);
-			Files.writeString(longNameFile, longName, UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+			Files.writeString(longNameFile, longName, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
 		}
 	}
 

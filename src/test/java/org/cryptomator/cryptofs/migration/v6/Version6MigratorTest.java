@@ -72,7 +72,7 @@ public class Version6MigratorTest {
 		}
 
 		Assertions.assertTrue(Files.exists(masterkeyBackupFile));
-		String backedUpJson = Files.readString(masterkeyBackupFile, StandardCharsets.UTF_8);
+		String backedUpJson = Files.readString(masterkeyBackupFile);
 		MatcherAssert.assertThat(backedUpJson, CoreMatchers.containsString("\"version\": 5"));
 	}
 

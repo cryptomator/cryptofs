@@ -27,7 +27,6 @@ import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.Optional;
 
@@ -134,7 +133,7 @@ public class FilePathMigrationTest {
 			"ORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG5BAORSXG===,'_123',30xtS3YjsiMJRwu1oAVc_0S2aAU=_123.c9s/contents.c9r",
 	})
 	public void testGetTargetPath(String oldCanonicalName, String attemptSuffix, String expected) throws InvalidOldFilenameException {
-		Path old = Paths.get("/tmp/foo");
+		Path old = Path.of("/tmp/foo");
 		FilePathMigration migration = new FilePathMigration(old, oldCanonicalName);
 
 		Path result = migration.getTargetPath(attemptSuffix);

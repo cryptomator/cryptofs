@@ -19,11 +19,11 @@ public class SimpleMigrationContinuationListenerTest {
 			@Override
 			public void migrationHaltedDueToEvent(ContinuationEvent event) {
 				// receive event on background thread that runs migration:
-				System.out.println("received event on " + Thread.currentThread().getName());
+				IO.println("received event on " + Thread.currentThread().getName());
 				
 				threadPool.submit(() -> {
 					// choose PROCEED on different thread (like from UI events):
-					System.out.println("choosing PROCEED on thread " + Thread.currentThread().getName());
+					IO.println("choosing PROCEED on thread " + Thread.currentThread().getName());
 					this.continueMigrationWithResult(ContinuationResult.PROCEED);
 				});
 			}
@@ -31,7 +31,7 @@ public class SimpleMigrationContinuationListenerTest {
 
 		Assertions.assertTimeoutPreemptively(Duration.ofSeconds(10), () -> { // deadlock protection
 			ContinuationResult result = inTest.continueMigrationOnEvent(ContinuationEvent.REQUIRES_FULL_VAULT_DIR_SCAN);
-			System.out.println("received result " + result + " on " + Thread.currentThread().getName());
+			IO.println("received result " + result + " on " + Thread.currentThread().getName());
 			Assertions.assertEquals(ContinuationResult.PROCEED, result);
 		});
 

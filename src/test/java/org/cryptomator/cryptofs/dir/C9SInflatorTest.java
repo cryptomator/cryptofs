@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.stream.Stream;
 
 public class C9SInflatorTest {
@@ -31,7 +31,7 @@ public class C9SInflatorTest {
 	
 	@Test
 	public void inflateDeflated() throws IOException, AuthenticationFailedException {
-		Node deflated = new Node(Paths.get("foo.c9s"));
+		Node deflated = new Node(Path.of("foo.c9s"));
 		Mockito.when(longFileNameProvider.inflate(deflated.ciphertextPath)).thenReturn("foo.c9r");
 		Mockito.when(fileNameCryptor.decryptFilename(Mockito.any(), Mockito.eq("foo"), Mockito.any())).thenReturn("hello world.txt");
 		
@@ -44,7 +44,7 @@ public class C9SInflatorTest {
 
 	@Test
 	public void inflateUninflatableDueToIOException() throws IOException {
-		Node deflated = new Node(Paths.get("foo.c9s"));
+		Node deflated = new Node(Path.of("foo.c9s"));
 		Mockito.when(longFileNameProvider.inflate(deflated.ciphertextPath)).thenThrow(new IOException("peng!"));
 		
 		Stream<Node> result = inflator.process(deflated);
@@ -53,7 +53,7 @@ public class C9SInflatorTest {
 
 	@Test
 	public void inflateUninflatableDueToInvalidCiphertext() throws IOException, AuthenticationFailedException {
-		Node deflated = new Node(Paths.get("foo.c9s"));
+		Node deflated = new Node(Path.of("foo.c9s"));
 		Mockito.when(longFileNameProvider.inflate(deflated.ciphertextPath)).thenReturn("foo.c9r");
 		Mockito.when(fileNameCryptor.decryptFilename(Mockito.any(), Mockito.eq("foo"), Mockito.any())).thenThrow(new AuthenticationFailedException("peng!"));
 

@@ -12,7 +12,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -61,7 +61,7 @@ public class C9rDecryptorTest {
 	@DisplayName("process canonical filename")
 	public void testProcessFullMatch() throws AuthenticationFailedException {
 		Mockito.when(fileNameCryptor.decryptFilename(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn("helloWorld.txt");
-		Node input = new Node(Paths.get("aaaaBBBBccccDDDDeeeeFFFF.c9r"));
+		Node input = new Node(Path.of("aaaaBBBBccccDDDDeeeeFFFF.c9r"));
 
 		Stream<Node> resultStream = decryptor.process(input);
 		Optional<Node> optionalResult = resultStream.findAny();
@@ -91,7 +91,7 @@ public class C9rDecryptorTest {
 				throw new AuthenticationFailedException("Invalid ciphertext " + ciphertext);
 			}
 		});
-		Node input = new Node(Paths.get(filename));
+		Node input = new Node(Path.of(filename));
 
 		Stream<Node> resultStream = decryptor.process(input);
 		Optional<Node> optionalResult = resultStream.findAny();
@@ -110,7 +110,7 @@ public class C9rDecryptorTest {
 	})
 	public void testProcessNoMatch(String filename) throws AuthenticationFailedException {
 		Mockito.when(fileNameCryptor.decryptFilename(Mockito.any(), Mockito.any(), Mockito.any())).thenThrow(new AuthenticationFailedException("Invalid ciphertext."));
-		Node input = new Node(Paths.get(filename));
+		Node input = new Node(Path.of(filename));
 
 		Stream<Node> resultStream = decryptor.process(input);
 		Optional<Node> optionalResult = resultStream.findAny();

@@ -137,9 +137,9 @@ public class OrphanContentDir implements DiagnosticResult {
 		Path cipherRecoveryDirFile = vaultCipherRootPath.resolve(cipherRecoveryDirName + "/" + Constants.DIR_FILE_NAME);
 		if (Files.notExists(cipherRecoveryDirFile, LinkOption.NOFOLLOW_LINKS)) {
 			Files.createDirectories(cipherRecoveryDirFile.getParent());
-			Files.writeString(cipherRecoveryDirFile, Constants.RECOVERY_DIR_ID, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+			Files.writeString(cipherRecoveryDirFile, Constants.RECOVERY_DIR_ID, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 		} else {
-			String uuid = Files.readString(cipherRecoveryDirFile, StandardCharsets.UTF_8);
+			String uuid = Files.readString(cipherRecoveryDirFile);
 			if (!Constants.RECOVERY_DIR_ID.equals(uuid)) {
 				throw new FileAlreadyExistsException("Directory /" + Constants.RECOVERY_DIR_NAME + " already exists, but with wrong directory id.");
 			}
@@ -158,11 +158,11 @@ public class OrphanContentDir implements DiagnosticResult {
 		Path cipherStepParentDirFile = cipherRecoveryDir.resolve(cipherStepParentDirName + "/" + Constants.DIR_FILE_NAME);
 		final String stepParentUUID;
 		if (Files.exists(cipherStepParentDirFile, LinkOption.NOFOLLOW_LINKS)) {
-			stepParentUUID = Files.readString(cipherStepParentDirFile, StandardCharsets.UTF_8);
+			stepParentUUID = Files.readString(cipherStepParentDirFile);
 		} else {
 			Files.createDirectories(cipherStepParentDirFile.getParent());
 			stepParentUUID = UUID.randomUUID().toString();
-			Files.writeString(cipherStepParentDirFile, stepParentUUID, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+			Files.writeString(cipherStepParentDirFile, stepParentUUID, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
 		}
 		String stepParentDirHash = cryptor.fileNameCryptor().hashDirectoryId(stepParentUUID);
 		Path stepParentDir = dataDir.resolve(stepParentDirHash.substring(0, 2)).resolve(stepParentDirHash.substring(2)).toAbsolutePath();
