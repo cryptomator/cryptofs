@@ -5,6 +5,7 @@ import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.UserDefinedFileAttributeView;
 import java.util.Arrays;
 import java.util.Optional;
 
@@ -12,7 +13,8 @@ public enum AttributeViewType {
 	BASIC(BasicFileAttributeView.class, "basic"),
 	OWNER(FileOwnerAttributeView.class, "owner"),
 	POSIX(PosixFileAttributeView.class, "posix"),
-	DOS(DosFileAttributeView.class, "dos");
+	DOS(DosFileAttributeView.class, "dos"),
+	USER(UserDefinedFileAttributeView.class, "user");
 
 	private final Class<? extends FileAttributeView> type;
 	private final String viewName;
