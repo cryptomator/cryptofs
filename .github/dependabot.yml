@@ -8,6 +8,9 @@ updates:
       # due to https://github.com/fabriciorby/maven-surefire-junit5-tree-reporter/issues/68
       - dependency-name: "org.apache.maven.plugins:maven-surefire-plugin"
         versions: ["3.5.4", "3.5.5"]
+      # Maven 3.10 breaks the central-publishing-maven-plugin bundle, see https://github.com/mavenplugins/central-publishing-maven-plugin/issues/78
+      - dependency-name: "org.apache.maven:apache-maven"
+        versions: [">=3.10.0"]
     groups:
       maven-dependencies:
         patterns:
