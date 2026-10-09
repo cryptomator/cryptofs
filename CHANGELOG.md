@@ -17,6 +17,10 @@ No changes yet.
 ### Added
 * `VaultConfig.UnverifiedVaultConfig.allegedVaultId()` to read the vault id from an unverified vault config (fc29aabb411668c8cabc59491dabc73183e1e00c)
 
+### Added
+* Property `vaultId` in `CryptoFileSystemProperties` to set the vault id during vault initialization ([#358](https://github.com/cryptomator/cryptofs/pull/358))
+* Getter `UnverifiedVaultConfig::allegedVaultId` to get the vault id of an unverified vault config ([#358](https://github.com/cryptomator/cryptofs/pull/358))
+
 ### Changed
 * Updated dependencies ([#357](https://github.com/cryptomator/cryptofs/pull/357), [#359](https://github.com/cryptomator/cryptofs/pull/359)):
   * `com.auth0:java-jwt` from 4.5.1 to 4.6.1
