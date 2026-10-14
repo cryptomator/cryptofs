@@ -12,7 +12,7 @@ Changes to prior versions can be found on the [GitHub release page](https://gith
 No changes yet.
 
 
-## [2.11.0](https://github.com/cryptomator/cryptofs/releases/tag/2.11.0) - tbd
+## [2.11.0](https://github.com/cryptomator/cryptofs/releases/tag/2.11.0) - 2026-10-14
 
 ### Added
 * `VaultConfig.UnverifiedVaultConfig.allegedVaultId()` to read the vault id from an unverified vault config (fc29aabb411668c8cabc59491dabc73183e1e00c)
