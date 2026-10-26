@@ -8,6 +8,11 @@ import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class CiphertextDirCacheTest {
 
@@ -44,6 +49,55 @@ public class CiphertextDirCacheTest {
 		var result2 = cache.get(clearPath, dirLoader2);
 		Assertions.assertEquals(result2, result);
 		Mockito.verify(dirLoader2, Mockito.never()).load();
+	}
+
+	@Test
+	public void testFailingLoaderLeavesNoEntry() throws IOException {
+		var failingLoader = Mockito.mock(CiphertextDirCache.CipherDirLoader.class);
+		var expected = new IOException("broken dir file");
+		Mockito.doThrow(expected).when(failingLoader).load();
+
+		Assertions.assertTimeoutPreemptively(Duration.ofSeconds(5), () -> {
+			var actual = Assertions.assertThrows(IOException.class, () -> cache.get(clearPath, failingLoader));
+			Assertions.assertSame(expected, actual);
+			cache.get(clearPath, dirLoader); //triggers loader instead of waiting for the failed one
+		});
+		Mockito.verify(dirLoader).load();
+	}
+
+	@Test
+	public void testConcurrentCallerReceivesLoaderException() throws Exception {
+		var loaderEntered = new CountDownLatch(1);
+		var loaderMayFail = new CountDownLatch(1);
+		var expected = new IOException("broken dir file");
+		var failingLoader = Mockito.mock(CiphertextDirCache.CipherDirLoader.class);
+		Mockito.doAnswer(_ -> {
+			loaderEntered.countDown();
+			loaderMayFail.await();
+			throw expected;
+		}).when(failingLoader).load();
+		var waiterThread = new AtomicReference<Thread>();
+
+		Assertions.assertTimeoutPreemptively(Duration.ofSeconds(5), () -> {
+			try (var executor = Executors.newFixedThreadPool(2)) {
+				var loading = executor.submit(() -> cache.get(clearPath, failingLoader));
+				loaderEntered.await();
+				var waiting = executor.submit(() -> {
+					waiterThread.set(Thread.currentThread());
+					return cache.get(clearPath, dirLoader);
+				});
+				while (waiterThread.get() == null || waiterThread.get().getState() != Thread.State.WAITING) {
+					Thread.onSpinWait();
+				}
+				loaderMayFail.countDown();
+
+				var loadingException = Assertions.assertThrows(ExecutionException.class, loading::get);
+				var waitingException = Assertions.assertThrows(ExecutionException.class, waiting::get);
+				Assertions.assertSame(expected, loadingException.getCause());
+				Assertions.assertSame(expected, waitingException.getCause());
+			}
+		});
+		Mockito.verify(dirLoader, Mockito.never()).load();
 	}
 
 	@Nested

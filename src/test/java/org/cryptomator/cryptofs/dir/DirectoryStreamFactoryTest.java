@@ -20,6 +20,10 @@ import java.nio.file.DirectoryStream.Filter;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.nio.file.spi.FileSystemProvider;
+import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -101,6 +105,34 @@ public class DirectoryStreamFactoryTest {
 
 		Assertions.assertThrows(ClosedFileSystemException.class, () -> {
 			inTest.newDirectoryStream(path, filter);
+		});
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void testCloseIsNotBlockedByPendingDirectoryResolution() throws Exception {
+		CryptoPath path = mock(CryptoPath.class);
+		Filter<? super Path> filter = mock(Filter.class);
+		var resolutionEntered = new CountDownLatch(1);
+		var resolutionMayFinish = new CountDownLatch(1);
+		Path dirPath = mock(Path.class, "dirAbc");
+		Mockito.doAnswer(_ -> {
+			resolutionEntered.countDown();
+			resolutionMayFinish.await();
+			return new CiphertextDirectory("dirIdAbc", dirPath);
+		}).when(cryptoPathMapper).getCiphertextDir(path);
+
+		Assertions.assertTimeoutPreemptively(Duration.ofSeconds(5), () -> {
+			try (var executor = Executors.newSingleThreadExecutor()) {
+				var streamCreation = executor.submit(() -> inTest.newDirectoryStream(path, filter));
+				resolutionEntered.await();
+
+				inTest.close();
+				resolutionMayFinish.countDown();
+
+				var e = Assertions.assertThrows(ExecutionException.class, streamCreation::get);
+				Assertions.assertInstanceOf(ClosedFileSystemException.class, e.getCause());
+			}
 		});
 	}
 

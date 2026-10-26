@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 /**
  * Caches for the cleartext path of a directory its ciphertext path to the content directory.
@@ -56,15 +57,29 @@ public class CiphertextDirCache {
 	 * @param cleartextPath Cleartext path key
 	 * @param ifAbsent Function to compute the (cleartextPath, cipherDir) mapping on a cache miss.
 	 * @return a {@link CiphertextDirectory}, containing the dirId and the ciphertext content directory path
-	 * @throws IOException if the loading function throws an IOException
+	 * @throws IOException if the loading function throws an IOException (also if it was invoked by a concurrent call for the same path)
 	 */
 	CiphertextDirectory get(CryptoPath cleartextPath, CipherDirLoader ifAbsent) throws IOException {
 		var futureMapping = new CompletableFuture<CiphertextDirectory>();
 		var currentMapping = ciphertextDirectories.asMap().putIfAbsent(cleartextPath, futureMapping);
 		if (currentMapping != null) {
-			return currentMapping.join();
+			try {
+				return currentMapping.join();
+			} catch (CompletionException e) {
+				if (e.getCause() instanceof IOException ioe) {
+					throw ioe;
+				}
+				throw e;
+			}
 		} else {
-			futureMapping.complete(ifAbsent.load());
+			try {
+				futureMapping.complete(ifAbsent.load());
+			} catch (Throwable t) {
+				// the loader runs outside the atomic context, so the pending entry must be discarded manually. Otherwise, it never completes and blocks all subsequent callers
+				ciphertextDirectories.asMap().remove(cleartextPath, futureMapping);
+				futureMapping.completeExceptionally(t);
+				throw t;
+			}
 			return futureMapping.join();
 		}
 	}
