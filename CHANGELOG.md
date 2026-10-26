@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 The changelog starts with version 2.10.0.
 Changes to prior versions can be found on the [GitHub release page](https://github.com/cryptomator/cryptofs/releases).
 
+## [Unreleased](https://github.com/cryptomator/cryptofs/compare/2.11.1...HEAD)
+
+No changes yet.
+
+
 ## [2.11.1](https://github.com/cryptomator/cryptofs/releases/tag/2.11.1) - 2026-10-26
 
 ### Changed
