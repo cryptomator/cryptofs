@@ -34,16 +34,22 @@ public class DirectoryStreamFactory {
 		this.directoryStreamComponentFactory = directoryStreamComponentFactory;
 	}
 
-	//TODO: is synchronized still needed? One reason was, that a dagger builder was used (replaced by thread safe factory)
-	public synchronized CryptoDirectoryStream newDirectoryStream(CryptoPath cleartextDir, Filter<? super Path> filter) throws IOException {
+	public CryptoDirectoryStream newDirectoryStream(CryptoPath cleartextDir, Filter<? super Path> filter) throws IOException {
 		if (closed) {
 			throw new ClosedFileSystemException();
 		}
+		// resolved outside the monitor, so that a slow or stuck resolution does not block other directory streams or close()
 		CiphertextDirectory ciphertextDir = cryptoPathMapper.getCiphertextDir(cleartextDir);
-		DirectoryStream<Path> ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path(), this::matchesEncryptedContentPattern);
-		var cleartextDirStream = directoryStreamComponentFactory.create(cleartextDir, ciphertextDir.dirId(), ciphertextDirStream, filter, streams::remove).directoryStream();
-		streams.put(cleartextDirStream, ciphertextDirStream);
-		return cleartextDirStream;
+		//TODO: is synchronized still needed? One reason was, that a dagger builder was used (replaced by thread safe factory)
+		synchronized (this) {
+			if (closed) {
+				throw new ClosedFileSystemException();
+			}
+			DirectoryStream<Path> ciphertextDirStream = Files.newDirectoryStream(ciphertextDir.path(), this::matchesEncryptedContentPattern);
+			var cleartextDirStream = directoryStreamComponentFactory.create(cleartextDir, ciphertextDir.dirId(), ciphertextDirStream, filter, streams::remove).directoryStream();
+			streams.put(cleartextDirStream, ciphertextDirStream);
+			return cleartextDirStream;
+		}
 	}
 
 	//visible for testing
