@@ -66,6 +66,20 @@ public class CiphertextDirCacheTest {
 	}
 
 	@Test
+	public void testFailingLoaderWithUncheckedExceptionLeavesNoEntry() throws IOException {
+		var failingLoader = Mockito.mock(CiphertextDirCache.CipherDirLoader.class);
+		var expected = new IllegalStateException("broken dir file");
+		Mockito.doThrow(expected).when(failingLoader).load();
+
+		Assertions.assertTimeoutPreemptively(Duration.ofSeconds(5), () -> {
+			var actual = Assertions.assertThrows(IllegalStateException.class, () -> cache.get(clearPath, failingLoader));
+			Assertions.assertSame(expected, actual);
+			cache.get(clearPath, dirLoader); //triggers loader instead of waiting for the failed one
+		});
+		Mockito.verify(dirLoader).load();
+	}
+
+	@Test
 	public void testConcurrentCallerReceivesLoaderException() throws Exception {
 		var loaderEntered = new CountDownLatch(1);
 		var loaderMayFail = new CountDownLatch(1);

@@ -106,6 +106,7 @@ public class DirectoryStreamFactoryTest {
 		Assertions.assertThrows(ClosedFileSystemException.class, () -> {
 			inTest.newDirectoryStream(path, filter);
 		});
+		verify(cryptoPathMapper, Mockito.never()).getCiphertextDir(path);
 	}
 
 	@SuppressWarnings("unchecked")
