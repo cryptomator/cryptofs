@@ -10,7 +10,7 @@ Changes to prior versions can be found on the [GitHub release page](https://gith
 ## [Unreleased](https://github.com/cryptomator/cryptofs/compare/2.11.0...HEAD)
 
 ### Changed
-* Updated dependencies (2dbe117c2847cfecb0e8132fd773950af76978bd):
+* Updated dependencies:
   * `org.cryptomator:cryptolib` from 2.3.0 to 2.4.0
   * `com.auth0:java-jwt` from 4.6.1 to 4.6.2
   * `com.github.ben-manes.caffeine:caffeine` from 3.3.0 to 3.3.1
