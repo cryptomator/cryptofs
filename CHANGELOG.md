@@ -14,6 +14,10 @@ No changes yet.
 
 ## [2.11.1](https://github.com/cryptomator/cryptofs/releases/tag/2.11.1) - 2026-10-26
 
+### Added
+* Property `vaultId` in `CryptoFileSystemProperties` to set the vault id during vault initialization ([#358](https://github.com/cryptomator/cryptofs/pull/358))
+* Getter `UnverifiedVaultConfig::allegedVaultId` to get the vault id of an unverified vault config ([#358](https://github.com/cryptomator/cryptofs/pull/358))
+
 ### Changed
 * Updated dependencies:
   * `org.cryptomator:cryptolib` from 2.3.0 to 2.4.0
