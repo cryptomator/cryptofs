@@ -45,6 +45,7 @@ public class ChunkSaverTest {
 	private final BufferPool bufferPool = mock(BufferPool.class);
 	private final ChunkSaver inTest = new ChunkSaver(cryptor, chunkIO, headerHolder, stats, bufferPool);
 	private final List<ByteBuffer> writtenChunks = new ArrayList<>();
+	private final List<Long> writePositions = new ArrayList<>();
 	private int bytesAccepted;
 
 	@BeforeEach
@@ -155,6 +156,7 @@ public class ChunkSaverTest {
 		// doAnswer (not when(...).thenAnswer) so re-stubbing does not invoke the previous answer with null arguments
 		doAnswer(invocation -> {
 			ByteBuffer buf = invocation.getArgument(0);
+			writePositions.add(invocation.getArgument(1));
 			int accepted = Math.min(10, buf.remaining());
 			buf.position(buf.position() + accepted);
 			bytesAccepted += accepted;
@@ -164,7 +166,27 @@ public class ChunkSaverTest {
 		inTest.save(chunkIndex, chunk);
 
 		Assertions.assertEquals(CIPHERTEXT_CHUNK_SIZE.intValue(), bytesAccepted);
+		long start = HEADER_SIZE + chunkIndex * CIPHERTEXT_CHUNK_SIZE;
+		Assertions.assertEquals(List.of(start, start + 10, start + 20, start + 30), writePositions, "each short write must continue where the previous one stopped");
 		Assertions.assertFalse(chunk.isDirty());
+	}
+
+	@Test
+	public void testZeroByteWriteFailsAndKeepsChunkDirty() throws IOException {
+		long chunkIndex = 43L;
+		var cleartext = repeat(42).times(CLEARTEXT_CHUNK_SIZE).asByteBuffer();
+		var ciphertext = repeat(50).times(CIPHERTEXT_CHUNK_SIZE).asByteBuffer();
+		var chunk = new Chunk(cleartext, true, () -> {});
+		doAnswer(invocation -> {
+			ByteBuffer ciphertextBuf = invocation.getArgument(1);
+			ciphertextBuf.put(ciphertext.duplicate());
+			return null;
+		}).when(fileContentCryptor).encryptChunk(Mockito.any(), Mockito.any(), Mockito.eq(chunkIndex), Mockito.eq(header));
+		// a channel that makes no progress must not be treated as success
+		doAnswer(invocation -> 0).when(chunkIO).write(Mockito.any(), Mockito.anyLong());
+
+		Assertions.assertThrows(IOException.class, () -> inTest.save(chunkIndex, chunk));
+		Assertions.assertTrue(chunk.isDirty(), "a chunk that was not written must stay dirty");
 	}
 
 	@Test
