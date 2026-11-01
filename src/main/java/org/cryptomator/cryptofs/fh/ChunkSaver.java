@@ -25,6 +25,16 @@ class ChunkSaver {
 		this.bufferPool = bufferPool;
 	}
 
+	/**
+	 * Encrypts the given chunk, if it is dirty, and writes it to its position in the ciphertext file.
+	 * <p>
+	 * The write position is derived from the chunk index and the header size; the chunk index is also part of the
+	 * authenticated associated data, so it must be the index the chunk was decrypted with.
+	 *
+	 * @param chunkIndex index of the chunk within the cleartext file
+	 * @param chunkData  the chunk to persist; untouched (and left dirty) if the write does not complete
+	 * @throws IOException if the ciphertext cannot be written completely, e.g. because the channel stops accepting bytes
+	 */
 	public void save(long chunkIndex, Chunk chunkData) throws IOException {
 		if (chunkData.isDirty()) {
 			long ciphertextPos = chunkIndex * cryptor.fileContentCryptor().ciphertextChunkSize() + cryptor.fileHeaderCryptor().headerSize();
