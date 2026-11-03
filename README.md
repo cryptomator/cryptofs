@@ -107,11 +107,11 @@ To build the project, run
 
 ## Contributing to CryptoFS
 
-Please read our [contribution guide](https://github.com/cryptomator/cryptomator/blob/master/CONTRIBUTING.md) if you would like to report a bug, ask a question, or help us with coding.
+Please read our [contribution guide](https://github.com/cryptomator/.github/blob/main/CONTRIBUTING.md) if you would like to report a bug, ask a question, or help us with coding.
 
 ## Code of Conduct
 
-Help us keep Cryptomator open and inclusive. Please read and follow our [Code of Conduct](https://github.com/cryptomator/cryptomator/blob/master/CODE_OF_CONDUCT.md).
+Help us keep Cryptomator open and inclusive. Please read and follow our [Code of Conduct](https://github.com/cryptomator/.github/blob/main/CODE_OF_CONDUCT.md).
 
 ## License
 
