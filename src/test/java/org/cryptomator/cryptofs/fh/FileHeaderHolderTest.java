@@ -1,7 +1,5 @@
 package org.cryptomator.cryptofs.fh;
 
-import org.cryptomator.cryptofs.event.DecryptionFailedEvent;
-import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
@@ -14,8 +12,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.ArgumentMatcher;
-import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -24,7 +20,6 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -43,7 +38,6 @@ public class FileHeaderHolderTest {
 	private final Cryptor cryptor = mock(Cryptor.class);
 	private final Path path = mock(Path.class, "openFile.txt");
 	private final AtomicReference<Path> pathRef = new AtomicReference<>(path);
-	private final Consumer<FilesystemEvent> eventConsumer = mock(Consumer.class);
 
 	private FileHeaderHolder inTest;
 
@@ -51,7 +45,7 @@ public class FileHeaderHolderTest {
 	public void setup() throws IOException {
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
 		when(fileHeaderCryptor.encryptHeader(Mockito.any())).thenReturn(ByteBuffer.wrap(new byte[0]));
-		inTest = new FileHeaderHolder(eventConsumer, cryptor, pathRef);
+		inTest = new FileHeaderHolder(cryptor, pathRef);
 	}
 
 	@Nested
@@ -96,9 +90,9 @@ public class FileHeaderHolderTest {
 		public void testLoadExistingFailure(Class<? extends Exception> clazz) {
 			Mockito.doThrow(clazz).when(fileHeaderCryptor).decryptHeader(Mockito.any());
 
-			Assertions.assertThrows(IOException.class, () -> inTest.loadExisting(channel));
-			var isDecryptionFailedEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof DecryptionFailedEvent;
-			verify(eventConsumer).accept(ArgumentMatchers.argThat(isDecryptionFailedEvent));
+			var e = Assertions.assertThrows(HeaderDecryptionException.class, () -> inTest.loadExisting(channel));
+			Assertions.assertEquals(path, e.getEvent().ciphertextPath());
+			Assertions.assertInstanceOf(clazz, e.getEvent().e());
 		}
 
 	}

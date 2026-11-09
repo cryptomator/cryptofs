@@ -11,7 +11,6 @@ import org.cryptomator.cryptofs.dir.CiphertextDirectoryDeleter;
 import org.cryptomator.cryptofs.dir.DirectoryStreamFactory;
 import org.cryptomator.cryptofs.event.FileIsInUseEvent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
-import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles.TwoPhaseMove;
 import org.cryptomator.cryptofs.inuse.FileAlreadyInUseException;
@@ -70,6 +69,7 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -493,7 +493,6 @@ public class CryptoFileSystemImplTest {
 		private final CryptoPath cleartextPath = mock(CryptoPath.class, "cleartext");
 		private final CryptoPath ciphertextFilePath = mock(CryptoPath.class, "d/00/00/path.c9r");
 		private final CiphertextFilePath ciphertextPath = mock(CiphertextFilePath.class);
-		private final OpenCryptoFile openCryptoFile = mock(OpenCryptoFile.class);
 		private final FileChannel fileChannel = mock(FileChannel.class);
 
 		@BeforeEach
@@ -502,9 +501,9 @@ public class CryptoFileSystemImplTest {
 			when(cryptoPathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.FILE);
 			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextPath);
 			when(ciphertextPath.getFilePath()).thenReturn(ciphertextFilePath);
-			when(openCryptoFiles.getOrCreate(cleartextPath, ciphertextFilePath)).thenReturn(openCryptoFile);
 			when(ciphertextFilePath.getName(3)).thenReturn(mock(CryptoPath.class, "path.c9r"));
-			when(openCryptoFile.newFileChannel(any(), any(FileAttribute[].class))).thenReturn(fileChannel);
+			when(openCryptoFiles.open(Mockito.eq(ciphertextFilePath), any())).thenAnswer(invocation -> invocation.<OpenCryptoFiles.OpenOperation<?>>getArgument(1).run());
+			when(openCryptoFiles.newFileChannel(Mockito.eq(cleartextPath), Mockito.eq(ciphertextFilePath), any(), any(FileAttribute[].class))).thenReturn(fileChannel);
 		}
 
 		@Nested
@@ -558,7 +557,7 @@ public class CryptoFileSystemImplTest {
 				FileChannel ch = inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), attrs);
 
 				Assertions.assertSame(fileChannel, ch);
-				verify(openCryptoFile).newFileChannel(Mockito.any(), Mockito.eq(attrs));
+				verify(openCryptoFiles).newFileChannel(Mockito.eq(cleartextPath), Mockito.eq(ciphertextFilePath), Mockito.any(), Mockito.eq(attrs));
 			}
 
 		}
@@ -604,11 +603,87 @@ public class CryptoFileSystemImplTest {
 		@Test
 		@DisplayName("newFileChannel fails if used by another file")
 		public void testNewFileChannelInUseFailure() throws IOException {
-			when(openCryptoFile.newFileChannel(any())).thenThrow(FileAlreadyInUseException.class);
+			when(openCryptoFiles.newFileChannel(Mockito.eq(cleartextPath), Mockito.eq(ciphertextFilePath), any(), any(FileAttribute[].class))).thenThrow(FileAlreadyInUseException.class);
 
 			Assertions.assertThrows(FileAlreadyInUseException.class, () -> inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.WRITE)));
 			var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent fiiue && fiiue.cleartextPath().equals(cleartextPath.toString());
 			verify(eventConsumer).accept(ArgumentMatchers.argThat(isFileIsInUseEvent));
+		}
+
+		@Test
+		@DisplayName("newFileChannel persists long filename within the open operation")
+		public void testNewFileChannelPersistsLongFileNameWhileOpening() throws IOException {
+			var opening = trackOpening();
+			Mockito.doAnswer(invocation -> {
+				Assertions.assertTrue(opening.get());
+				return null;
+			}).when(ciphertextPath).persistLongFileName();
+
+			inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.WRITE));
+
+			verify(ciphertextPath).persistLongFileName();
+		}
+
+		@Test
+		@DisplayName("newFileChannel reports usage by another file after the open operation")
+		public void testNewFileChannelInUseEventAfterOpening() throws IOException {
+			var opening = trackOpening();
+			when(openCryptoFiles.newFileChannel(Mockito.eq(cleartextPath), Mockito.eq(ciphertextFilePath), any(), any(FileAttribute[].class))).thenThrow(FileAlreadyInUseException.class);
+			Mockito.doAnswer(invocation -> {
+				Assertions.assertFalse(opening.get());
+				return null;
+			}).when(eventConsumer).accept(any());
+
+			Assertions.assertThrows(FileAlreadyInUseException.class, () -> inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.WRITE)));
+			verify(eventConsumer).accept(any(FileIsInUseEvent.class));
+		}
+
+		@Test
+		@DisplayName("newFileChannel creates the shortened directory within the open operation")
+		public void testNewFileChannelCreatesShortenedDirWhileOpening() throws IOException {
+			var opening = trackOpening();
+			Path rawPath = mock(Path.class, "d/00/00/path.c9s");
+			FileSystem physicalFs = mock(FileSystem.class);
+			FileSystemProvider physicalFsProv = mock(FileSystemProvider.class);
+			when(rawPath.getFileSystem()).thenReturn(physicalFs);
+			when(physicalFs.provider()).thenReturn(physicalFsProv);
+			when(ciphertextPath.isShortened()).thenReturn(true);
+			when(ciphertextPath.getRawPath()).thenReturn(rawPath);
+			Mockito.doAnswer(invocation -> {
+				Assertions.assertTrue(opening.get());
+				return null;
+			}).when(physicalFsProv).createDirectory(Mockito.eq(rawPath), any(FileAttribute[].class));
+
+			inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.WRITE));
+
+			verify(physicalFsProv).createDirectory(Mockito.eq(rawPath), any(FileAttribute[].class));
+		}
+
+		@Test
+		@DisplayName("newFileChannel closes a failed channel after the open operation")
+		public void testNewFileChannelClosesFailedChannelAfterOpening() throws IOException {
+			var opening = trackOpening();
+			Mockito.doThrow(new IOException("ERROR")).when(ciphertextPath).persistLongFileName();
+			Mockito.doAnswer(invocation -> {
+				Assertions.assertFalse(opening.get());
+				return null;
+			}).when(fileChannel).close();
+
+			Assertions.assertThrows(IOException.class, () -> inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.WRITE)));
+			verify(fileChannel).close();
+		}
+
+		private AtomicBoolean trackOpening() throws IOException {
+			var opening = new AtomicBoolean();
+			when(openCryptoFiles.open(Mockito.eq(ciphertextFilePath), any())).thenAnswer(invocation -> {
+				opening.set(true);
+				try {
+					return invocation.<OpenCryptoFiles.OpenOperation<?>>getArgument(1).run();
+				} finally {
+					opening.set(false);
+				}
+			});
+			return opening;
 		}
 
 	}
@@ -680,6 +755,19 @@ public class CryptoFileSystemImplTest {
 			verify(openCryptoFiles).delete(ciphertextFilePath);
 			verify(physicalFsProv).deleteIfExists(ciphertextRawPath);
 			verify(physicalFsProv, never()).deleteIfExists(inUsePath);
+		}
+
+		@Test
+		public void testDeleteSymlink() throws IOException {
+			var ciphertextSymlinkFilePath = mock(Path.class, "d/00/00/path.c9r/symlink.c9r");
+			when(cryptoPathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.SYMLINK);
+			when(ciphertextPath.getSymlinkFilePath()).thenReturn(ciphertextSymlinkFilePath);
+			when(physicalFsProv.deleteIfExists(ciphertextRawPath)).thenReturn(true);
+
+			inTest.delete(cleartextPath);
+
+			verify(openCryptoFiles).delete(ciphertextSymlinkFilePath);
+			verify(physicalFsProv).deleteIfExists(ciphertextRawPath);
 		}
 
 		@Test
@@ -849,7 +937,7 @@ public class CryptoFileSystemImplTest {
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.SYMLINK);
 				when(cryptoPathMapper.getCiphertextFileType(cleartextDestination)).thenThrow(NoSuchFileException.class);
 				TwoPhaseMove openFileMove = Mockito.mock(TwoPhaseMove.class);
-				Mockito.when(openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextDestinationFile, cleartextDestination)).thenReturn(openFileMove);
+				Mockito.when(openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextDestinationFile, cleartextDestination, false, ciphertextDestinationFile)).thenReturn(openFileMove);
 
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);
@@ -862,11 +950,39 @@ public class CryptoFileSystemImplTest {
 			}
 
 			@Test
+			public void moveSymlinkReplacingExisting() throws IOException {
+				Path ciphertextSourceSymlinkFile = mock(Path.class, "d/00/00/source.c9r/symlink.c9r");
+				Path ciphertextDestinationSymlinkFile = mock(Path.class, "d/00/00/dest.c9r/symlink.c9r");
+				when(ciphertextSource.getSymlinkFilePath()).thenReturn(ciphertextSourceSymlinkFile);
+				when(ciphertextDestination.getSymlinkFilePath()).thenReturn(ciphertextDestinationSymlinkFile);
+				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.SYMLINK);
+				TwoPhaseMove openFileMove = Mockito.mock(TwoPhaseMove.class);
+				Mockito.when(openCryptoFiles.prepareMove(ciphertextSourceSymlinkFile, ciphertextDestinationSymlinkFile, cleartextDestination, true, ciphertextDestinationFile)).thenReturn(openFileMove);
+
+				inTest.move(cleartextSource, cleartextDestination, StandardCopyOption.REPLACE_EXISTING);
+
+				verify(physicalFsProv).move(ciphertextSourceFile, ciphertextDestinationFile, StandardCopyOption.REPLACE_EXISTING);
+				verify(openFileMove).commit();
+			}
+
+			@Test
+			public void moveSymlinkCommitsBeforeLongNameBookkeeping() throws IOException {
+				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.SYMLINK);
+				when(physicalFsProv.deleteIfExists(ciphertextDestinationLongNameFile)).thenThrow(new AccessDeniedException("name.c9s"));
+				TwoPhaseMove openFileMove = Mockito.mock(TwoPhaseMove.class);
+				Mockito.when(openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextDestinationFile, cleartextDestination, false, ciphertextDestinationFile)).thenReturn(openFileMove);
+
+				Assertions.assertThrows(AccessDeniedException.class, () -> inTest.move(cleartextSource, cleartextDestination));
+
+				verify(openFileMove).commit();
+			}
+
+			@Test
 			public void moveFile() throws IOException {
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.FILE);
 				when(cryptoPathMapper.getCiphertextFileType(cleartextDestination)).thenThrow(NoSuchFileException.class);
 				TwoPhaseMove openFileMove = Mockito.mock(TwoPhaseMove.class);
-				Mockito.when(openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextDestinationFile, cleartextDestination)).thenReturn(openFileMove);
+				Mockito.when(openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextDestinationFile, cleartextDestination, false)).thenReturn(openFileMove);
 
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);
@@ -885,6 +1001,22 @@ public class CryptoFileSystemImplTest {
 			}
 
 			@Test
+			public void moveFileCommitsBeforeShortenedSourceCleanup() throws IOException {
+				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.FILE);
+				when(ciphertextSource.isShortened()).thenReturn(true);
+				when(physicalFsProv.readAttributes(ciphertextSourceFile, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(new AccessDeniedException("source.c9s"));
+				TwoPhaseMove openFileMove = Mockito.mock(TwoPhaseMove.class);
+				Mockito.when(openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextDestinationFile, cleartextDestination, false)).thenReturn(openFileMove);
+				var inTestSpy = spy(inTest);
+				doNothing().when(inTestSpy).checkUsage(any(), any());
+
+				Assertions.assertThrows(AccessDeniedException.class, () -> inTestSpy.move(cleartextSource, cleartextDestination));
+
+				verify(physicalFsProv).move(ciphertextSourceFile, ciphertextDestinationFile);
+				verify(openFileMove).commit();
+			}
+
+			@Test
 			public void moveFileWithSourceInUse() throws IOException {
 				var inTestSpy = spy(inTest);
 				doThrow(FileAlreadyInUseException.class).when(inTestSpy).checkUsage(cleartextSource, ciphertextSource);
@@ -900,11 +1032,22 @@ public class CryptoFileSystemImplTest {
 				moveFileWithXInUse(inTestSpy);
 			}
 
+			@Test
+			public void moveFileChecksUsageBeforeLocking() throws IOException {
+				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.FILE);
+				var inTestSpy = spy(inTest);
+				doThrow(FileAlreadyInUseException.class).when(inTestSpy).checkUsage(cleartextDestination, ciphertextDestination);
+
+				Assertions.assertThrows(FileAlreadyInUseException.class, () -> inTestSpy.move(cleartextSource, cleartextDestination));
+
+				verify(openCryptoFiles, never()).prepareMove(any(), any(), any(), Mockito.anyBoolean(), any(Path[].class));
+			}
+
 			private void moveFileWithXInUse(CryptoFileSystemImpl inTestSpy) throws IOException {
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.FILE);
 				when(cryptoPathMapper.getCiphertextFileType(cleartextDestination)).thenThrow(NoSuchFileException.class);
 				TwoPhaseMove openFileMove = Mockito.mock(TwoPhaseMove.class);
-				Mockito.when(openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextDestinationFile, cleartextDestination)).thenReturn(openFileMove);
+				Mockito.when(openCryptoFiles.prepareMove(ciphertextSourceFile, ciphertextDestinationFile, cleartextDestination, false)).thenReturn(openFileMove);
 
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);
@@ -1086,7 +1229,9 @@ public class CryptoFileSystemImplTest {
 				inTest.copy(cleartextSource, cleartextDestination, option1, option2);
 
 				verify(readonlyFlag).assertWritable();
-				verify(physicalFsProv).copy(ciphertextSourceFile, ciphertextDestinationFile, option1, option2);
+				var inOrder = inOrder(physicalFsProv, openCryptoFiles);
+				inOrder.verify(physicalFsProv).copy(ciphertextSourceFile, ciphertextDestinationFile, option1, option2);
+				inOrder.verify(openCryptoFiles).delete(ciphertextDestinationFile);
 			}
 
 			@Test

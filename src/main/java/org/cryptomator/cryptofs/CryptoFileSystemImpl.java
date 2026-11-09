@@ -68,6 +68,7 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -402,7 +403,28 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		}
 		CiphertextFilePath ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextFilePath);
 		Path ciphertextFilePath = ciphertextPath.getFilePath();
+		AtomicReference<FileChannel> openedChannel = new AtomicReference<>();
+		try {
+			return openCryptoFiles.open(ciphertextFilePath, () -> openFileChannel(cleartextFilePath, ciphertextPath, openedChannel, options, attrs));
+		} catch (Exception e) {
+			if (e instanceof FileAlreadyInUseException) {
+				var useInfo = inUseManager.getUseInfo(ciphertextFilePath).orElse(new UseInfo("UNKNOWN", Instant.now()));
+				eventConsumer.accept(new FileIsInUseEvent(cleartextFilePath, ciphertextFilePath, useInfo.owner(), useInfo.lastUpdated(), () -> inUseManager.ignoreInUse(ciphertextFilePath)));
+			}
+			FileChannel ch = openedChannel.get();
+			if (ch != null) {
+				try {
+					ch.close();
+				} catch (IOException closeEx) {
+					e.addSuppressed(closeEx);
+				}
+			}
+			throw e;
+		}
+	}
 
+	private FileChannel openFileChannel(CryptoPath cleartextFilePath, CiphertextFilePath ciphertextPath, AtomicReference<FileChannel> openedChannel, EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
+		Path ciphertextFilePath = ciphertextPath.getFilePath();
 		if (options.createNew() && openCryptoFiles.get(ciphertextFilePath).isPresent()) {
 			throw new FileAlreadyExistsException(cleartextFilePath.toString());
 		}
@@ -414,32 +436,17 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			Files.createDirectories(ciphertextPath.getRawPath()); // suppresses FileAlreadyExists
 		}
 
-		FileChannel ch = null;
-		try {
-			ch = openCryptoFiles.getOrCreate(cleartextFilePath, ciphertextFilePath).newFileChannel(options, attrs); // might throw FileAlreadyExists
-			if (options.writable()) {
-				ciphertextPath.persistLongFileName();
-				stats.incrementAccessesWritten();
-			}
-			if (options.readable()) {
-				stats.incrementAccessesRead();
-			}
-			stats.incrementAccesses();
-			return ch;
-		} catch (Exception e) {
-			if (e instanceof FileAlreadyInUseException) {
-				var useInfo = inUseManager.getUseInfo(ciphertextFilePath).orElse(new UseInfo("UNKNOWN", Instant.now()));
-				eventConsumer.accept(new FileIsInUseEvent(cleartextFilePath, ciphertextFilePath, useInfo.owner(), useInfo.lastUpdated(), () -> inUseManager.ignoreInUse(ciphertextFilePath)));
-			}
-			if (ch != null) {
-				try {
-					ch.close();
-				} catch (IOException closeEx) {
-					e.addSuppressed(closeEx);
-				}
-			}
-			throw e;
+		FileChannel ch = openCryptoFiles.newFileChannel(cleartextFilePath, ciphertextFilePath, options, attrs); // might throw FileAlreadyExists
+		openedChannel.set(ch); // if a later step fails, the caller closes this channel after releasing the path lock, because flushing may wait for readers that wait for this lock
+		if (options.writable()) {
+			ciphertextPath.persistLongFileName();
+			stats.incrementAccessesWritten();
 		}
+		if (options.readable()) {
+			stats.incrementAccessesRead();
+		}
+		stats.incrementAccesses();
+		return ch;
 	}
 
 	void delete(CryptoPath cleartextPath) throws IOException {
@@ -463,7 +470,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	}
 
 	private void deleteSymlink(CiphertextFilePath ciphertextPath) throws IOException {
-		openCryptoFiles.delete(ciphertextPath.getFilePath());
+		openCryptoFiles.delete(ciphertextPath.getSymlinkFilePath());
 		Files.walkFileTree(ciphertextPath.getRawPath(), DeletingFileVisitor.INSTANCE);
 	}
 
@@ -529,6 +536,7 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			Files.createDirectories(ciphertextTarget.getRawPath());
 		}
 		Files.copy(ciphertextSource.getFilePath(), ciphertextTarget.getFilePath(), options);
+		openCryptoFiles.delete(ciphertextTarget.getFilePath()); // detach a replaced file
 		ciphertextTarget.persistLongFileName();
 	}
 
@@ -618,14 +626,15 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		// "the symbolic link itself, not the target of the link, is moved"
 		CiphertextFilePath ciphertextSource = cryptoPathMapper.getCiphertextFilePath(cleartextSource);
 		CiphertextFilePath ciphertextTarget = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath(), cleartextTarget)) {
+		boolean replaceExisting = ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING);
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getSymlinkFilePath(), ciphertextTarget.getSymlinkFilePath(), cleartextTarget, replaceExisting, ciphertextTarget.getFilePath())) {
 			Files.move(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath(), options);
+			twoPhaseMove.commit();
 			if (ciphertextTarget.isShortened()) {
 				ciphertextTarget.persistLongFileName();
 			} else {
 				Files.deleteIfExists(ciphertextTarget.getInflatedNamePath()); // no longer needed if not shortened
 			}
-			twoPhaseMove.commit();
 		}
 	}
 
@@ -634,18 +643,19 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		// we need to re-map the OpenCryptoFile entry.
 		CiphertextFilePath ciphertextSource = cryptoPathMapper.getCiphertextFilePath(cleartextSource);
 		CiphertextFilePath ciphertextTarget = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getRawPath(), ciphertextTarget.getRawPath(), cleartextTarget)) {
-			checkUsage(cleartextSource, ciphertextSource);
-			checkUsage(cleartextTarget, ciphertextTarget);
+		boolean replaceExisting = ArrayUtils.contains(options, StandardCopyOption.REPLACE_EXISTING);
+		checkUsage(cleartextSource, ciphertextSource);
+		checkUsage(cleartextTarget, ciphertextTarget);
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = openCryptoFiles.prepareMove(ciphertextSource.getFilePath(), ciphertextTarget.getFilePath(), cleartextTarget, replaceExisting)) {
 			if (ciphertextTarget.isShortened()) {
 				Files.createDirectories(ciphertextTarget.getRawPath());
 				ciphertextTarget.persistLongFileName();
 			}
 			Files.move(ciphertextSource.getFilePath(), ciphertextTarget.getFilePath(), options);
+			twoPhaseMove.commit();
 			if (ciphertextSource.isShortened()) {
 				Files.walkFileTree(ciphertextSource.getRawPath(), DeletingFileVisitor.INSTANCE);
 			}
-			twoPhaseMove.commit();
 		}
 	}
 
