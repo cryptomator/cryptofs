@@ -12,6 +12,8 @@ import jakarta.inject.Inject;
 import org.cryptomator.cryptofs.CryptoFileSystemScoped;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
+import org.cryptomator.cryptofs.common.RunnableThrowingException;
+import org.cryptomator.cryptofs.common.SupplierThrowingException;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
 
 import java.io.Closeable;
@@ -22,6 +24,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Function;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -40,7 +44,7 @@ public class OpenCryptoFiles implements Closeable {
 	private final OpenCryptoFileComponent.Factory openCryptoFileComponentFactory;
 	private final Consumer<FilesystemEvent> eventConsumer;
 	private final ConcurrentMap<Path, OpenCryptoFile> openCryptoFiles = new ConcurrentHashMap<>();
-	private final ReentrantReadWriteLock[] pathLocks = Stream.generate(ReentrantReadWriteLock::new).limit(64).toArray(ReentrantReadWriteLock[]::new);
+	private final ConcurrentMap<Path, PathLock> pathLocks = new ConcurrentHashMap<>();
 
 	@Inject
 	OpenCryptoFiles(OpenCryptoFileComponent.Factory openCryptoFileComponentFactory, Consumer<FilesystemEvent> eventConsumer) {
@@ -75,7 +79,7 @@ public class OpenCryptoFiles implements Closeable {
 	}
 
 	/**
-	 * Runs an operation that opens the given file, waiting while a {@link #prepareMove(Path, Path, CryptoPath, boolean, Path...) move} of this file or onto this file is in progress.
+	 * Runs an operation that opens the given file, waiting while this file is the source or target of a {@link #prepareMove(Path, Path, CryptoPath, boolean, Path...) move} or the target of a {@link #replace(Path, RunnableThrowingException) replacement}.
 	 * A {@link org.cryptomator.cryptofs.event.DecryptionFailedEvent} of a file header that cannot be decrypted is delivered after the lock was released, so that event consumers may access the file system.
 	 * The operation must let exceptions of {@link #newFileChannel(CryptoPath, Path, EffectiveOpenOptions, FileAttribute[])} propagate unwrapped.
 	 * Any other event must be emitted by the caller after this method returned.
@@ -86,14 +90,13 @@ public class OpenCryptoFiles implements Closeable {
 	 * @return The result of the operation
 	 * @throws IOException If the operation failed
 	 */
-	public <T> T open(Path ciphertextPath, OpenOperation<T> operation) throws IOException {
+	public <T> T open(Path ciphertextPath, SupplierThrowingException<T, IOException> operation) throws IOException {
 		try {
-			Lock lock = pathLocks[pathLockIndex(ciphertextPath)].readLock();
-			lock.lock();
+			Runnable unlock = lockPaths(List.of(ciphertextPath), lock -> lock.readLock());
 			try {
-				return operation.run();
+				return operation.get();
 			} finally {
-				lock.unlock();
+				unlock.run();
 			}
 		} catch (HeaderDecryptionException e) {
 			eventConsumer.accept(e.getEvent());
@@ -103,7 +106,9 @@ public class OpenCryptoFiles implements Closeable {
 
 	/**
 	 * Opens a new FileChannel using the shared OpenCryptoFile of the given file.
-	 * MUST be invoked within an {@link #open(Path, OpenOperation) open operation} of the same path.
+	 * MUST be invoked within an {@link #open(Path, SupplierThrowingException) open operation} of the same path.
+	 * The channel is not truncated, even if the options contain {@link java.nio.file.StandardOpenOption#TRUNCATE_EXISTING}.
+	 * The caller must truncate it after the open operation returned, because truncation waits for readers of the file, which may in turn wait for the lock held during the open operation.
 	 *
 	 * @param cleartextPath Cleartext path of the file to open
 	 * @param ciphertextPath Path of the file to open
@@ -113,7 +118,8 @@ public class OpenCryptoFiles implements Closeable {
 	 * @throws IOException If the file channel could not be opened
 	 */
 	public FileChannel newFileChannel(CryptoPath cleartextPath, Path ciphertextPath, EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
-		if (pathLocks[pathLockIndex(ciphertextPath)].getReadHoldCount() == 0) {
+		PathLock pathLock = pathLocks.get(ciphertextPath.toAbsolutePath().normalize());
+		if (pathLock == null || pathLock.lock.getReadHoldCount() == 0) {
 			throw new IllegalStateException("Not invoked within an open operation of " + ciphertextPath);
 		}
 		OpenCryptoFile openFile = getOrCreate(ciphertextPath);
@@ -123,6 +129,9 @@ public class OpenCryptoFiles implements Closeable {
 
 	public void writeCiphertextFile(CryptoPath cleartextPath, Path ciphertextPath, EffectiveOpenOptions openOptions, ByteBuffer contents) throws IOException {
 		try (FileChannel ch = open(ciphertextPath, () -> newFileChannel(cleartextPath, ciphertextPath, openOptions))) {
+			if (openOptions.truncateExisting()) {
+				ch.truncate(0);
+			}
 			ch.write(contents);
 		}
 	}
@@ -154,9 +163,28 @@ public class OpenCryptoFiles implements Closeable {
 	}
 
 	/**
+	 * Runs an operation that replaces the given file, e.g. by copying another file onto it.
+	 * While the operation runs, {@link #open(Path, SupplierThrowingException) opening} this file waits.
+	 * Once the operation succeeded, any OpenCryptoFile of this file gets detached like a {@link #delete(Path) deleted} file: Its channels keep working, but nothing gets persisted to this file anymore.
+	 *
+	 * @param ciphertextPath Path of the file to replace
+	 * @param operation The operation that replaces the file
+	 * @throws IOException If the operation failed
+	 */
+	public void replace(Path ciphertextPath, RunnableThrowingException<IOException> operation) throws IOException {
+		Runnable unlock = lockPaths(List.of(ciphertextPath), lock -> lock.writeLock());
+		try {
+			operation.run();
+			delete(ciphertextPath);
+		} finally {
+			unlock.run();
+		}
+	}
+
+	/**
 	 * Prepares to update any open file references during a move operation.
 	 * MUST be invoked using a try-with-resource statement and committed after the physical file move succeeded.
-	 * Until the returned TwoPhaseMove is closed, {@link #open(Path, OpenOperation) opening} any of the given paths waits, so that no channel gets opened while the physical file move is in progress.
+	 * Until the returned TwoPhaseMove is closed, {@link #open(Path, SupplierThrowingException) opening} any of the given paths waits, so that no channel gets opened while the physical file move is in progress.
 	 * <p>
 	 * On commit, any OpenCryptoFile of <code>dst</code> or <code>replacedPaths</code> gets detached like a {@link #delete(Path) deleted} file: Its channels keep working, but nothing gets persisted to the destination anymore.
 	 *
@@ -186,19 +214,39 @@ public class OpenCryptoFiles implements Closeable {
 	}
 
 	/**
-	 * An operation run by {@link #open(Path, OpenOperation)}.
+	 * Locks the given paths in a fixed order, which avoids deadlocks between concurrent callers.
 	 *
-	 * @param <T> Result type of the operation
+	 * @param paths The paths to lock
+	 * @param lockType Selects the read or write lock
+	 * @return An action that unlocks the paths
 	 */
-	@FunctionalInterface
-	public interface OpenOperation<T> {
-
-		T run() throws IOException;
-
+	private Runnable lockPaths(Collection<Path> paths, Function<ReentrantReadWriteLock, Lock> lockType) {
+		List<Path> sortedPaths = paths.stream().map(p -> p.toAbsolutePath().normalize()).distinct().sorted().toList();
+		List<Lock> locks = sortedPaths.stream().map(p -> lockType.apply(retainPathLock(p).lock)).toList(); // retain all before waiting for any, so no lock gets discarded while it is awaited
+		locks.forEach(Lock::lock);
+		return () -> {
+			locks.reversed().forEach(Lock::unlock);
+			sortedPaths.forEach(this::releasePathLock);
+		};
 	}
 
-	private int pathLockIndex(Path ciphertextPath) {
-		return Math.floorMod(ciphertextPath.toAbsolutePath().normalize().hashCode(), pathLocks.length);
+	private PathLock retainPathLock(Path normalizedPath) {
+		return pathLocks.compute(normalizedPath, (p, pathLock) -> {
+			PathLock result = pathLock == null ? new PathLock() : pathLock;
+			result.users++;
+			return result;
+		});
+	}
+
+	private void releasePathLock(Path normalizedPath) {
+		pathLocks.computeIfPresent(normalizedPath, (p, pathLock) -> --pathLock.users == 0 ? null : pathLock);
+	}
+
+	private static class PathLock {
+
+		private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+		private int users; // only modified within ConcurrentMap#compute of pathLocks
+
 	}
 
 	public class TwoPhaseMove implements AutoCloseable {
@@ -207,7 +255,7 @@ public class OpenCryptoFiles implements Closeable {
 		private final Path dst;
 		private final CryptoPath cleartextDst;
 		private final List<Path> replacedPaths;
-		private final List<Lock> locks;
+		private final Runnable unlock;
 		private boolean committed;
 		private boolean rolledBack;
 
@@ -216,10 +264,9 @@ public class OpenCryptoFiles implements Closeable {
 			this.dst = Objects.requireNonNull(dst);
 			this.cleartextDst = cleartextDst;
 			this.replacedPaths = replacedPaths;
-			this.locks = Stream.concat(Stream.of(src, dst), replacedPaths.stream()).mapToInt(OpenCryptoFiles.this::pathLockIndex).sorted().distinct().mapToObj(i -> (Lock) pathLocks[i].writeLock()).toList(); // fixed order to avoid deadlocks between concurrent moves
-			locks.forEach(Lock::lock);
+			this.unlock = lockPaths(Stream.concat(Stream.of(src, dst), replacedPaths.stream()).toList(), lock -> lock.writeLock());
 			if (!replaceExisting && openCryptoFiles.containsKey(dst)) {
-				unlock();
+				unlock.run();
 				throw new FileAlreadyExistsException(dst.toString(), null, "Destination file currently accessed by another thread.");
 			}
 		}
@@ -257,11 +304,7 @@ public class OpenCryptoFiles implements Closeable {
 			if (!committed) {
 				rollback();
 			}
-			unlock();
-		}
-
-		private void unlock() {
-			locks.reversed().forEach(Lock::unlock);
+			unlock.run();
 		}
 	}
 

@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 /**
- * Thrown when a file header cannot be decrypted. Carries the {@link DecryptionFailedEvent}, which is delivered once the {@link OpenCryptoFiles#open(java.nio.file.Path, OpenCryptoFiles.OpenOperation) open operation} released its lock.
+ * Thrown when a file header cannot be decrypted. Carries the {@link DecryptionFailedEvent}, which is delivered once the {@link OpenCryptoFiles#open(java.nio.file.Path, org.cryptomator.cryptofs.common.SupplierThrowingException) open operation} released its lock.
  */
 class HeaderDecryptionException extends IOException {
 

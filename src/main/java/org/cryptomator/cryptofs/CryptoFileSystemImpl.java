@@ -405,7 +405,11 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		Path ciphertextFilePath = ciphertextPath.getFilePath();
 		AtomicReference<FileChannel> openedChannel = new AtomicReference<>();
 		try {
-			return openCryptoFiles.open(ciphertextFilePath, () -> openFileChannel(cleartextFilePath, ciphertextPath, openedChannel, options, attrs));
+			FileChannel channel = openCryptoFiles.open(ciphertextFilePath, () -> openFileChannel(cleartextFilePath, ciphertextPath, openedChannel, options, attrs));
+			if (options.truncateExisting()) {
+				channel.truncate(0); // after the open operation, because truncation waits for readers that may wait for its lock
+			}
+			return channel;
 		} catch (Exception e) {
 			if (e instanceof FileAlreadyInUseException) {
 				var useInfo = inUseManager.getUseInfo(ciphertextFilePath).orElse(new UseInfo("UNKNOWN", Instant.now()));
@@ -518,8 +522,10 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			CiphertextFilePath ciphertextSourceFile = cryptoPathMapper.getCiphertextFilePath(cleartextSource);
 			CiphertextFilePath ciphertextTargetFile = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
 			CopyOption[] resolvedOptions = ArrayUtils.without(options, LinkOption.NOFOLLOW_LINKS).toArray(CopyOption[]::new);
-			Files.createDirectories(ciphertextTargetFile.getRawPath());
-			Files.copy(ciphertextSourceFile.getSymlinkFilePath(), ciphertextTargetFile.getSymlinkFilePath(), resolvedOptions);
+			openCryptoFiles.replace(ciphertextTargetFile.getSymlinkFilePath(), () -> {
+				Files.createDirectories(ciphertextTargetFile.getRawPath());
+				Files.copy(ciphertextSourceFile.getSymlinkFilePath(), ciphertextTargetFile.getSymlinkFilePath(), resolvedOptions);
+			});
 			ciphertextTargetFile.persistLongFileName();
 		} else {
 			CryptoPath resolvedSource = symlinks.resolveRecursively(cleartextSource);
@@ -532,11 +538,12 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 	private void copyFile(CryptoPath cleartextSource, CryptoPath cleartextTarget, CopyOption[] options) throws IOException {
 		CiphertextFilePath ciphertextSource = cryptoPathMapper.getCiphertextFilePath(cleartextSource);
 		CiphertextFilePath ciphertextTarget = cryptoPathMapper.getCiphertextFilePath(cleartextTarget);
-		if (ciphertextTarget.isShortened()) {
-			Files.createDirectories(ciphertextTarget.getRawPath());
-		}
-		Files.copy(ciphertextSource.getFilePath(), ciphertextTarget.getFilePath(), options);
-		openCryptoFiles.delete(ciphertextTarget.getFilePath()); // detach a replaced file
+		openCryptoFiles.replace(ciphertextTarget.getFilePath(), () -> {
+			if (ciphertextTarget.isShortened()) {
+				Files.createDirectories(ciphertextTarget.getRawPath());
+			}
+			Files.copy(ciphertextSource.getFilePath(), ciphertextTarget.getFilePath(), options);
+		});
 		ciphertextTarget.persistLongFileName();
 	}
 

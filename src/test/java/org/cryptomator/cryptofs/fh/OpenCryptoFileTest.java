@@ -230,9 +230,9 @@ public class OpenCryptoFileTest {
 	}
 
 	@Test
-	@DisplayName("Opening a file channel with TRUNCATE_EXISTING calls truncate(0) on the cleartextChannel")
-	public void testCleartextChannelTruncateCalledOnTruncateExisting() throws IOException {
-		var openCryptoFile = spy(getTestInstance("testCleartextChannelTruncateCalled"));
+	@DisplayName("Opening a file channel with TRUNCATE_EXISTING leaves truncation to the caller")
+	public void testCleartextChannelNotTruncatedOnTruncateExisting() throws IOException {
+		var openCryptoFile = spy(getTestInstance("testCleartextChannelNotTruncated"));
 
 		EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING), readonlyFlag);
 		var cleartextChannel = mock(CleartextFileChannel.class);
@@ -244,7 +244,7 @@ public class OpenCryptoFileTest {
 		Mockito.when(channelComponent.channel()).thenReturn(cleartextChannel);
 
 		openCryptoFile.newFileChannel(options);
-		verify(cleartextChannel).truncate(0L);
+		verify(cleartextChannel, Mockito.never()).truncate(Mockito.anyLong());
 	}
 
 	@Test

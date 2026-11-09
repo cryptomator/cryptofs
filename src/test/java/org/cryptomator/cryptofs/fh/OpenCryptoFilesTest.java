@@ -15,7 +15,6 @@ import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
-import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
@@ -23,9 +22,11 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -226,6 +227,31 @@ public class OpenCryptoFilesTest {
 	}
 
 	@Test
+	public void testReplaceDetachesOpenedFileAfterOperation() throws IOException {
+		Path path = Path.of("/foo").toAbsolutePath();
+		OpenCryptoFile openFile = mockOpenCryptoFile(path);
+
+		inTest.replace(path, () -> Mockito.verify(openFile, Mockito.never()).updateCurrentFilePath(Mockito.any()));
+
+		Assertions.assertFalse(inTest.get(path).isPresent());
+		Mockito.verify(openFile).updateCurrentFilePath(null);
+	}
+
+	@Test
+	public void testReplaceKeepsOpenedFileAndReleasesLockWhenOperationFails() throws Exception {
+		Path path = Path.of("/foo").toAbsolutePath();
+		OpenCryptoFile openFile = mockOpenCryptoFile(path);
+
+		Assertions.assertThrows(IOException.class, () -> inTest.replace(path, () -> {
+			throw new IOException("ERROR");
+		}));
+
+		Assertions.assertSame(openFile, inTest.get(path).get());
+		Mockito.verify(openFile, Mockito.never()).updateCurrentFilePath(Mockito.any());
+		Assertions.assertTimeoutPreemptively(Duration.ofSeconds(5), () -> inTest.open(path, () -> null));
+	}
+
+	@Test
 	public void testNewFileChannelFailsOutsideOpenOperation() {
 		Path path = Path.of("/foo").toAbsolutePath();
 
@@ -244,7 +270,7 @@ public class OpenCryptoFilesTest {
 		}).when(eventConsumer).accept(event);
 
 		Assertions.assertTimeoutPreemptively(Duration.ofSeconds(5), () -> {
-			Assertions.assertThrows(HeaderDecryptionException.class, () -> inTest.open(path, () -> inTest.newFileChannel(Mockito.mock(CryptoPath.class), path, Mockito.mock(EffectiveOpenOptions.class))));
+			Assertions.assertThrows(HeaderDecryptionException.class, () -> openChannel(path));
 		});
 		Mockito.verify(eventConsumer).accept(event);
 	}
@@ -276,7 +302,7 @@ public class OpenCryptoFilesTest {
 	public void testOpenWaitsForTwoPhaseMove(String openedPath) throws Exception {
 		Path path = Path.of(openedPath).toAbsolutePath();
 
-		assertOpenWaitsForTwoPhaseMove(() -> inTest.open(path, () -> inTest.newFileChannel(Mockito.mock(CryptoPath.class), path, Mockito.mock(EffectiveOpenOptions.class))));
+		assertOpenWaitsForTwoPhaseMove(() -> openChannel(path));
 	}
 
 	private void assertOpenWaitsForTwoPhaseMove(Callable<?> opening) throws Exception {
@@ -287,13 +313,52 @@ public class OpenCryptoFilesTest {
 		Thread opener = new Thread(opened);
 
 		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class), true, replaced)) {
-			opener.start();
-			Awaitility.await().atMost(5, TimeUnit.SECONDS).until(() -> opener.getState() == Thread.State.WAITING);
-			Assertions.assertFalse(opened.isDone());
+			startAndAwaitWaiting(opener, opened);
 			twoPhaseMove.commit();
 		}
 
 		opened.get(5, TimeUnit.SECONDS);
+	}
+
+	@Test
+	public void testOpenWaitsForReplace() throws Exception {
+		Path path = Path.of("/foo").toAbsolutePath();
+		FutureTask<?> opened = new FutureTask<>(() -> openChannel(path));
+		Thread opener = new Thread(opened);
+
+		inTest.replace(path, () -> startAndAwaitWaiting(opener, opened));
+
+		opened.get(5, TimeUnit.SECONDS);
+		Assertions.assertSame(file, inTest.get(path).get());
+		Mockito.verify(file, Mockito.never()).updateCurrentFilePath(Mockito.any());
+	}
+
+	@Test
+	public void testOpenOfOtherPathDoesntWaitForReplace() throws IOException {
+		Path path = Path.of("/foo").toAbsolutePath();
+		Path otherPath = Path.of("/bar").toAbsolutePath();
+
+		inTest.replace(path, () -> Assertions.assertTimeoutPreemptively(Duration.ofSeconds(5), () -> openChannel(otherPath)));
+	}
+
+	@Test
+	public void testPathLocksAreDiscardedWhenUnused() throws Exception {
+		Path src = Path.of("/src").toAbsolutePath();
+		Path dst = Path.of("/dst").toAbsolutePath();
+
+		openChannel(src);
+		inTest.replace(dst, () -> {});
+		inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class), true).close();
+
+		var pathLocksField = OpenCryptoFiles.class.getDeclaredField("pathLocks");
+		pathLocksField.setAccessible(true);
+		Assertions.assertTrue(((Map<?, ?>) pathLocksField.get(inTest)).isEmpty());
+	}
+
+	private void startAndAwaitWaiting(Thread thread, Future<?> result) {
+		thread.start();
+		Awaitility.await().atMost(5, TimeUnit.SECONDS).until(() -> thread.getState() == Thread.State.WAITING);
+		Assertions.assertFalse(result.isDone());
 	}
 
 	@Test
@@ -341,14 +406,7 @@ public class OpenCryptoFilesTest {
 		}
 
 		for (Path path : List.of(src, dst)) {
-			var opened = CompletableFuture.supplyAsync(() -> {
-				try {
-					return inTest.open(path, () -> inTest.newFileChannel(Mockito.mock(CryptoPath.class), path, Mockito.mock(EffectiveOpenOptions.class)));
-				} catch (IOException e) {
-					throw new UncheckedIOException(e);
-				}
-			});
-			Assertions.assertSame(ciphertextFileChannel, opened.get(5, TimeUnit.SECONDS));
+			Assertions.assertSame(ciphertextFileChannel, Assertions.assertTimeoutPreemptively(Duration.ofSeconds(5), () -> openChannel(path)));
 		}
 	}
 
@@ -382,6 +440,10 @@ public class OpenCryptoFilesTest {
 		Mockito.when(openCryptoFileComponentFactory.create(Mockito.eq(path), Mockito.any())).thenReturn(subComponent);
 		Mockito.when(subComponent.openCryptoFile()).thenReturn(openCryptoFile);
 		return inTest.getOrCreate(path);
+	}
+
+	private FileChannel openChannel(Path path) throws IOException {
+		return inTest.open(path, () -> inTest.newFileChannel(Mockito.mock(CryptoPath.class), path, Mockito.mock(EffectiveOpenOptions.class)));
 	}
 
 	@Test

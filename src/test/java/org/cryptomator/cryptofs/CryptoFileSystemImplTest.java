@@ -7,6 +7,7 @@ import org.cryptomator.cryptofs.attr.AttributeViewType;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.common.FinallyUtil;
 import org.cryptomator.cryptofs.common.RunnableThrowingException;
+import org.cryptomator.cryptofs.common.SupplierThrowingException;
 import org.cryptomator.cryptofs.dir.CiphertextDirectoryDeleter;
 import org.cryptomator.cryptofs.dir.DirectoryStreamFactory;
 import org.cryptomator.cryptofs.event.FileIsInUseEvent;
@@ -502,7 +503,7 @@ public class CryptoFileSystemImplTest {
 			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextPath);
 			when(ciphertextPath.getFilePath()).thenReturn(ciphertextFilePath);
 			when(ciphertextFilePath.getName(3)).thenReturn(mock(CryptoPath.class, "path.c9r"));
-			when(openCryptoFiles.open(Mockito.eq(ciphertextFilePath), any())).thenAnswer(invocation -> invocation.<OpenCryptoFiles.OpenOperation<?>>getArgument(1).run());
+			when(openCryptoFiles.open(Mockito.eq(ciphertextFilePath), any())).thenAnswer(invocation -> invocation.<SupplierThrowingException<?, ?>>getArgument(1).get());
 			when(openCryptoFiles.newFileChannel(Mockito.eq(cleartextPath), Mockito.eq(ciphertextFilePath), any(), any(FileAttribute[].class))).thenReturn(fileChannel);
 		}
 
@@ -673,12 +674,35 @@ public class CryptoFileSystemImplTest {
 			verify(fileChannel).close();
 		}
 
+		@Test
+		@DisplayName("newFileChannel truncates after the open operation")
+		public void testNewFileChannelTruncatesAfterOpening() throws IOException {
+			var opening = trackOpening();
+			when(fileChannel.truncate(0)).thenAnswer(invocation -> {
+				Assertions.assertFalse(opening.get());
+				return fileChannel;
+			});
+
+			inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING));
+
+			verify(fileChannel).truncate(0);
+		}
+
+		@Test
+		@DisplayName("newFileChannel closes the channel if truncation fails")
+		public void testNewFileChannelClosesChannelWhenTruncationFails() throws IOException {
+			when(fileChannel.truncate(0)).thenThrow(new IOException("ERROR"));
+
+			Assertions.assertThrows(IOException.class, () -> inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)));
+			verify(fileChannel).close();
+		}
+
 		private AtomicBoolean trackOpening() throws IOException {
 			var opening = new AtomicBoolean();
 			when(openCryptoFiles.open(Mockito.eq(ciphertextFilePath), any())).thenAnswer(invocation -> {
 				opening.set(true);
 				try {
-					return invocation.<OpenCryptoFiles.OpenOperation<?>>getArgument(1).run();
+					return invocation.<SupplierThrowingException<?, ?>>getArgument(1).get();
 				} finally {
 					opening.set(false);
 				}
@@ -1142,9 +1166,19 @@ public class CryptoFileSystemImplTest {
 			private final Path ciphertextTargetParent = mock(Path.class, "ciphertextTargetParent");
 			private final Path ciphertextTargetDirParent = mock(Path.class, "ciphertextTargetDirParent");
 			private final FileChannel ciphertextTargetDirDirFileFileChannel = mock(FileChannel.class);
+			private final AtomicBoolean replacing = new AtomicBoolean();
 
 			@BeforeEach
 			public void setup() throws IOException, ReflectiveOperationException {
+				Mockito.doAnswer(invocation -> {
+					replacing.set(true);
+					try {
+						invocation.<RunnableThrowingException<?>>getArgument(1).run();
+					} finally {
+						replacing.set(false);
+					}
+					return null;
+				}).when(openCryptoFiles).replace(Mockito.any(), Mockito.any());
 				when(cleartextDestination.getParent()).thenReturn(cleartextTargetParent);
 				when(ciphertextDestinationDir.getParent()).thenReturn(ciphertextTargetDirParent);
 				when(ciphertextTargetParent.getFileSystem()).thenReturn(physicalFs);
@@ -1197,9 +1231,12 @@ public class CryptoFileSystemImplTest {
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);
 
+				expectCopyWhileReplacing(option1, option2);
+
 				inTest.copy(cleartextSource, cleartextDestination, LinkOption.NOFOLLOW_LINKS, option1, option2);
 
 				verify(readonlyFlag).assertWritable();
+				verify(openCryptoFiles).replace(Mockito.eq(ciphertextDestinationFile), Mockito.any());
 				verify(physicalFsProv).copy(ciphertextSourceFile, ciphertextDestinationFile, option1, option2);
 			}
 
@@ -1226,12 +1263,20 @@ public class CryptoFileSystemImplTest {
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);
 
+				expectCopyWhileReplacing(option1, option2);
+
 				inTest.copy(cleartextSource, cleartextDestination, option1, option2);
 
 				verify(readonlyFlag).assertWritable();
-				var inOrder = inOrder(physicalFsProv, openCryptoFiles);
-				inOrder.verify(physicalFsProv).copy(ciphertextSourceFile, ciphertextDestinationFile, option1, option2);
-				inOrder.verify(openCryptoFiles).delete(ciphertextDestinationFile);
+				verify(openCryptoFiles).replace(Mockito.eq(ciphertextDestinationFile), Mockito.any());
+				verify(physicalFsProv).copy(ciphertextSourceFile, ciphertextDestinationFile, option1, option2);
+			}
+
+			private void expectCopyWhileReplacing(CopyOption... options) throws IOException {
+				Mockito.doAnswer(invocation -> {
+					Assertions.assertTrue(replacing.get());
+					return null;
+				}).when(physicalFsProv).copy(ciphertextSourceFile, ciphertextDestinationFile, options);
 			}
 
 			@Test
