@@ -213,7 +213,7 @@ public class OpenCryptoFile implements Closeable {
 		currentCleartextPath.getAndUpdate(p -> currentFilePath.get() == null ? p : cleartextPath);
 	}
 
-	// a move holds this monitor while it remaps the file, so the last channel closing unregisters it either before or after the move
+	// a move remaps the file while holding this monitor, so the last channel unregisters it either before or after the remap
 	private synchronized void cleartextChannelClosed(FileChannel ciphertextFileChannel) {
 		if (ciphertextFileChannel != null) {
 			chunkIO.unregisterChannel(ciphertextFileChannel);

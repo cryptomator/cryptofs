@@ -719,6 +719,7 @@ public class CryptoFileSystemImplTest {
 		private final Path ciphertextRawPath = mock(Path.class, "d/00/00/path.c9r");
 		private final Path ciphertextDirFilePath = mock(Path.class, "d/00/00/path.c9r/dir.c9r");
 		private final Path ciphertextFilePath = mock(Path.class, "d/00/00/path.c9r");
+		private final Path ciphertextSymlinkFilePath = mock(Path.class, "d/00/00/path.c9r/symlink.c9r");
 		private final Path ciphertextDirPath = mock(Path.class, "d/FF/FF/");
 		private final CiphertextFilePath ciphertextPath = mock(CiphertextFilePath.class, "ciphertext");
 		private final FileSystem physicalFs = mock(FileSystem.class);
@@ -736,6 +737,7 @@ public class CryptoFileSystemImplTest {
 			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextPath);
 			when(ciphertextPath.getRawPath()).thenReturn(ciphertextRawPath);
 			when(ciphertextPath.getFilePath()).thenReturn(ciphertextFilePath);
+			when(ciphertextPath.getSymlinkFilePath()).thenReturn(ciphertextSymlinkFilePath);
 			when(ciphertextPath.getDirFilePath()).thenReturn(ciphertextDirFilePath);
 			when(cryptoPathMapper.getCiphertextDir(cleartextPath)).thenReturn(new CiphertextDirectory("foo", ciphertextDirPath));
 			when(physicalFsProv.readAttributes(ciphertextRawPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenReturn(ciphertextPathAttr);
@@ -761,6 +763,7 @@ public class CryptoFileSystemImplTest {
 
 			verify(readonlyFlag).assertWritable();
 			verify(openCryptoFiles).delete(ciphertextFilePath);
+			verify(openCryptoFiles).delete(ciphertextSymlinkFilePath);
 			verify(physicalFsProv).deleteIfExists(ciphertextRawPath);
 			verify(inTestSpy).checkUsage(cleartextPath, ciphertextPath);
 		}
@@ -783,14 +786,13 @@ public class CryptoFileSystemImplTest {
 
 		@Test
 		public void testDeleteSymlink() throws IOException {
-			var ciphertextSymlinkFilePath = mock(Path.class, "d/00/00/path.c9r/symlink.c9r");
 			when(cryptoPathMapper.getCiphertextFileType(cleartextPath)).thenReturn(CiphertextFileType.SYMLINK);
-			when(ciphertextPath.getSymlinkFilePath()).thenReturn(ciphertextSymlinkFilePath);
 			when(physicalFsProv.deleteIfExists(ciphertextRawPath)).thenReturn(true);
 
 			inTest.delete(cleartextPath);
 
 			verify(openCryptoFiles).delete(ciphertextSymlinkFilePath);
+			verify(openCryptoFiles).delete(ciphertextFilePath);
 			verify(physicalFsProv).deleteIfExists(ciphertextRawPath);
 		}
 
@@ -1225,19 +1227,22 @@ public class CryptoFileSystemImplTest {
 
 			@Test
 			public void copySymlink() throws IOException {
+				Path ciphertextDestinationSymlinkFile = mock(Path.class, "d/00/00/dest.c9r/symlink.c9r");
+				when(ciphertextDestinationSymlinkFile.getFileSystem()).thenReturn(physicalFs);
+				when(ciphertextDestination.getSymlinkFilePath()).thenReturn(ciphertextDestinationSymlinkFile);
 				when(cryptoPathMapper.getCiphertextFileType(cleartextSource)).thenReturn(CiphertextFileType.SYMLINK);
 				when(cryptoPathMapper.getCiphertextFileType(cleartextDestination)).thenThrow(NoSuchFileException.class);
 
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);
 
-				expectCopyWhileReplacing(option1, option2);
+				expectCopyWhileReplacing(ciphertextDestinationSymlinkFile, option1, option2);
 
 				inTest.copy(cleartextSource, cleartextDestination, LinkOption.NOFOLLOW_LINKS, option1, option2);
 
 				verify(readonlyFlag).assertWritable();
-				verify(openCryptoFiles).replace(Mockito.eq(ciphertextDestinationFile), Mockito.any());
-				verify(physicalFsProv).copy(ciphertextSourceFile, ciphertextDestinationFile, option1, option2);
+				verify(openCryptoFiles).replace(Mockito.eq(ciphertextDestinationSymlinkFile), Mockito.any());
+				verify(physicalFsProv).copy(ciphertextSourceFile, ciphertextDestinationSymlinkFile, option1, option2);
 			}
 
 			@Test
@@ -1263,7 +1268,7 @@ public class CryptoFileSystemImplTest {
 				CopyOption option1 = mock(CopyOption.class);
 				CopyOption option2 = mock(CopyOption.class);
 
-				expectCopyWhileReplacing(option1, option2);
+				expectCopyWhileReplacing(ciphertextDestinationFile, option1, option2);
 
 				inTest.copy(cleartextSource, cleartextDestination, option1, option2);
 
@@ -1272,11 +1277,11 @@ public class CryptoFileSystemImplTest {
 				verify(physicalFsProv).copy(ciphertextSourceFile, ciphertextDestinationFile, option1, option2);
 			}
 
-			private void expectCopyWhileReplacing(CopyOption... options) throws IOException {
+			private void expectCopyWhileReplacing(Path target, CopyOption... options) throws IOException {
 				Mockito.doAnswer(invocation -> {
 					Assertions.assertTrue(replacing.get());
 					return null;
-				}).when(physicalFsProv).copy(ciphertextSourceFile, ciphertextDestinationFile, options);
+				}).when(physicalFsProv).copy(ciphertextSourceFile, target, options);
 			}
 
 			@Test

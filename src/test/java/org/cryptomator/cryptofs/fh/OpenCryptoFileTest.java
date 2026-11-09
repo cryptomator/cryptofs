@@ -37,6 +37,7 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Instant;
 import java.util.EnumSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -230,11 +231,37 @@ public class OpenCryptoFileTest {
 	}
 
 	@Test
+	@DisplayName("closing the last channel unregisters the file while holding its monitor")
+	public void testLastChannelUnregistersUnderMonitor() throws IOException {
+		var openCryptoFile = getTestInstance("testLastChannelUnregistersUnderMonitor");
+		var expectedCiphertextPath = CURRENT_FILE_PATH.get();
+		EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), readonlyFlag);
+		Mockito.when(openCryptoFileComponent.newChannelComponent()).thenReturn(channelComponentFactory);
+		var channelCloseListener = new AtomicReference<Consumer<FileChannel>>();
+		Mockito.when(channelComponentFactory.create(any(), any(), any())).thenAnswer(invocation -> {
+			channelCloseListener.set(invocation.getArgument(2));
+			return channelComponent;
+		});
+		Mockito.when(channelComponent.channel()).thenReturn(mock(CleartextFileChannel.class));
+		var heldMonitor = new AtomicBoolean();
+		Mockito.doAnswer(invocation -> {
+			heldMonitor.set(Thread.holdsLock(openCryptoFile));
+			return null;
+		}).when(closeListener).close(expectedCiphertextPath, openCryptoFile);
+
+		openCryptoFile.newFileChannel(options);
+		channelCloseListener.get().accept(null);
+
+		Assertions.assertTrue(heldMonitor.get());
+	}
+
+	@Test
 	@DisplayName("Opening a file channel with TRUNCATE_EXISTING leaves truncation to the caller")
 	public void testCleartextChannelNotTruncatedOnTruncateExisting() throws IOException {
 		var openCryptoFile = spy(getTestInstance("testCleartextChannelNotTruncated"));
+		Files.write(CURRENT_FILE_PATH.get(), new byte[100]);
 
-		EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING), readonlyFlag);
+		EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING), readonlyFlag);
 		var cleartextChannel = mock(CleartextFileChannel.class);
 		Mockito.when(headerHolder.get()).thenReturn(Mockito.mock(FileHeader.class));
 		Mockito.when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
@@ -245,6 +272,7 @@ public class OpenCryptoFileTest {
 
 		openCryptoFile.newFileChannel(options);
 		verify(cleartextChannel, Mockito.never()).truncate(Mockito.anyLong());
+		Assertions.assertEquals(100, Files.size(CURRENT_FILE_PATH.get()));
 	}
 
 	@Test
