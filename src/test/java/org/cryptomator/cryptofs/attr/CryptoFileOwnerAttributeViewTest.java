@@ -39,7 +39,6 @@ public class CryptoFileOwnerAttributeViewTest {
 	private CryptoPath cleartextPath = mock(CryptoPath.class);
 	private CryptoPathMapper pathMapper = mock(CryptoPathMapper.class);
 	private Symlinks symlinks = mock(Symlinks.class);
-	private OpenCryptoFiles openCryptoFiles = mock(OpenCryptoFiles.class);
 	private ReadonlyFlag readonlyFlag = mock(ReadonlyFlag.class);
 
 	private CryptoFileOwnerAttributeView inTest;
@@ -61,7 +60,7 @@ public class CryptoFileOwnerAttributeViewTest {
 		when(linkCiphertextPath.getSymlinkFilePath()).thenReturn(linkCiphertextRawPath);
 		when(ciphertextPath.getFilePath()).thenReturn(ciphertextRawPath);
 
-		inTest = new CryptoFileOwnerAttributeView(cleartextPath, pathMapper, new LinkOption[]{}, symlinks, openCryptoFiles, readonlyFlag);
+		inTest = new CryptoFileOwnerAttributeView(cleartextPath, pathMapper, new LinkOption[]{}, symlinks, readonlyFlag);
 	}
 
 	@Test
@@ -91,7 +90,7 @@ public class CryptoFileOwnerAttributeViewTest {
 	public void testSetOwnerOfSymlinkNoFollow() throws IOException {
 		UserPrincipal principal = mock(UserPrincipal.class);
 
-		CryptoFileOwnerAttributeView view = new CryptoFileOwnerAttributeView(link, pathMapper, new LinkOption[]{LinkOption.NOFOLLOW_LINKS}, symlinks, openCryptoFiles, readonlyFlag);
+		CryptoFileOwnerAttributeView view = new CryptoFileOwnerAttributeView(link, pathMapper, new LinkOption[]{LinkOption.NOFOLLOW_LINKS}, symlinks, readonlyFlag);
 		view.setOwner(principal);
 
 		verify(linkDelegate).setOwner(principal);
@@ -101,7 +100,7 @@ public class CryptoFileOwnerAttributeViewTest {
 	public void testSetOwnerOfSymlinkFollow() throws IOException {
 		UserPrincipal principal = mock(UserPrincipal.class);
 
-		CryptoFileOwnerAttributeView view = new CryptoFileOwnerAttributeView(link, pathMapper, new LinkOption[]{}, symlinks, openCryptoFiles, readonlyFlag);
+		CryptoFileOwnerAttributeView view = new CryptoFileOwnerAttributeView(link, pathMapper, new LinkOption[]{}, symlinks, readonlyFlag);
 		view.setOwner(principal);
 
 		verify(delegate).setOwner(principal);

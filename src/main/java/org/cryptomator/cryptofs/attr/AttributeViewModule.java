@@ -12,6 +12,7 @@ import java.nio.file.attribute.DosFileAttributeView;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.UserDefinedFileAttributeView;
 import java.util.Map;
 import java.util.Optional;
 
@@ -41,6 +42,12 @@ abstract class AttributeViewModule {
 	@ClassKey(FileOwnerAttributeView.class)
 	@AttributeViewScoped
 	public abstract FileAttributeView provideFileOwnerAttributeView(CryptoFileOwnerAttributeView view);
+
+	@Binds
+	@IntoMap
+	@ClassKey(UserDefinedFileAttributeView.class)
+	@AttributeViewScoped
+	public abstract FileAttributeView provideUserDefinedAttributeView(CryptoUserDefinedFileAttributeView view);
 
 	@Provides
 	@AttributeViewScoped
