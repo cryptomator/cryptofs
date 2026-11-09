@@ -10,12 +10,12 @@ Changes to prior versions can be found on the [GitHub release page](https://gith
 ## [Unreleased](https://github.com/cryptomator/cryptofs/compare/2.11.1...HEAD)
 
 ### Changed
-* Moving a file with `REPLACE_EXISTING` onto a file that is currently open now replaces it like a POSIX rename, instead of failing with `FileAlreadyExistsException`: channels of the replaced file keep reading its old content, while the path shows the moved file
-* `DecryptionFailedEvent` for an undecryptable file header is now delivered once internal locks are released, so event consumers may access the filesystem
+* Moving a file with `REPLACE_EXISTING` onto a file that is currently open now replaces it like a POSIX rename, instead of failing with `FileAlreadyExistsException`: channels of the replaced file keep reading its old content, while the path shows the moved file ([#374](https://github.com/cryptomator/cryptofs/pull/374))
+* `DecryptionFailedEvent` for an undecryptable file header is now delivered once internal locks are released, so event consumers may access the filesystem ([#374](https://github.com/cryptomator/cryptofs/pull/374))
 
 ### Fixed
-* Fixed files with long (shortened) names becoming undecryptable when moved while open, or when replacing an open file
-* Fixed an open file keeping its old content at its path after `Files.copy` with `REPLACE_EXISTING` or a symlink replaced it
+* Fixed files with long (shortened) names becoming undecryptable when moved while open, or when replacing an open file ([#374](https://github.com/cryptomator/cryptofs/pull/374))
+* Fixed an open file keeping its old content at its path after `Files.copy` with `REPLACE_EXISTING` or a symlink replaced it ([#374](https://github.com/cryptomator/cryptofs/pull/374))
 
 
 ## [2.11.1](https://github.com/cryptomator/cryptofs/releases/tag/2.11.1) - 2026-10-26
