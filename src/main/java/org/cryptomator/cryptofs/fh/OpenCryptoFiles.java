@@ -28,7 +28,6 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -61,7 +60,7 @@ public class OpenCryptoFiles implements Closeable {
 	 * @return The OpenCryptoFile if opened or an empty Optional otherwise.
 	 */
 	public Optional<OpenCryptoFile> get(Path ciphertextPath) {
-		Path normalizedPath = ciphertextPath.toAbsolutePath().normalize();
+		Path normalizedPath = normalize(ciphertextPath);
 		return Optional.ofNullable(openCryptoFiles.get(normalizedPath));
 	}
 
@@ -74,7 +73,7 @@ public class OpenCryptoFiles implements Closeable {
 	 * @see #newFileChannel(CryptoPath, Path, EffectiveOpenOptions, FileAttribute[])
 	 */
 	OpenCryptoFile getOrCreate(Path ciphertextPath) {
-		Path normalizedPath = ciphertextPath.toAbsolutePath().normalize();
+		Path normalizedPath = normalize(ciphertextPath);
 		return openCryptoFiles.computeIfAbsent(normalizedPath, p -> openCryptoFileComponentFactory.create(p, openCryptoFiles::remove).openCryptoFile()); // computeIfAbsent is atomic, "create" is called at most once
 	}
 
@@ -118,7 +117,7 @@ public class OpenCryptoFiles implements Closeable {
 	 * @throws IOException If the file channel could not be opened
 	 */
 	public FileChannel newFileChannel(CryptoPath cleartextPath, Path ciphertextPath, EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
-		PathLock pathLock = pathLocks.get(ciphertextPath.toAbsolutePath().normalize());
+		PathLock pathLock = pathLocks.get(normalize(ciphertextPath));
 		if (pathLock == null || pathLock.lock.getReadHoldCount() == 0) {
 			throw new IllegalStateException("Not invoked within an open operation of " + ciphertextPath);
 		}
@@ -154,7 +153,7 @@ public class OpenCryptoFiles implements Closeable {
 	 * @param ciphertextPath The ciphertext file path to invalidate
 	 */
 	public void delete(Path ciphertextPath) {
-		openCryptoFiles.compute(ciphertextPath, (p, openFile) -> {
+		openCryptoFiles.compute(normalize(ciphertextPath), (p, openFile) -> {
 			if (openFile != null) {
 				openFile.updateCurrentFilePath(null);
 			}
@@ -221,13 +220,17 @@ public class OpenCryptoFiles implements Closeable {
 	 * @return An action that unlocks the paths
 	 */
 	private Runnable lockPaths(Collection<Path> paths, Function<ReentrantReadWriteLock, Lock> lockType) {
-		List<Path> sortedPaths = paths.stream().map(p -> p.toAbsolutePath().normalize()).distinct().sorted().toList();
+		List<Path> sortedPaths = paths.stream().map(OpenCryptoFiles::normalize).distinct().sorted().toList();
 		List<Lock> locks = sortedPaths.stream().map(p -> lockType.apply(retainPathLock(p).lock)).toList(); // retain all before waiting for any, so no lock gets discarded while it is awaited
 		locks.forEach(Lock::lock);
 		return () -> {
 			locks.reversed().forEach(Lock::unlock);
 			sortedPaths.forEach(this::releasePathLock);
 		};
+	}
+
+	private static Path normalize(Path ciphertextPath) {
+		return ciphertextPath.toAbsolutePath().normalize();
 	}
 
 	private PathLock retainPathLock(Path normalizedPath) {
@@ -260,22 +263,37 @@ public class OpenCryptoFiles implements Closeable {
 		private boolean rolledBack;
 
 		private TwoPhaseMove(Path src, Path dst, CryptoPath cleartextDst, boolean replaceExisting, List<Path> replacedPaths) throws FileAlreadyExistsException {
-			this.src = Objects.requireNonNull(src);
-			this.dst = Objects.requireNonNull(dst);
+			this.src = normalize(src);
+			this.dst = normalize(dst);
 			this.cleartextDst = cleartextDst;
 			this.replacedPaths = replacedPaths;
-			this.unlock = lockPaths(Stream.concat(Stream.of(src, dst), replacedPaths.stream()).toList(), lock -> lock.writeLock());
-			if (!replaceExisting && openCryptoFiles.containsKey(dst)) {
+			this.unlock = lockPaths(Stream.concat(Stream.of(this.src, this.dst), replacedPaths.stream()).toList(), lock -> lock.writeLock());
+			if (!replaceExisting && openCryptoFiles.containsKey(this.dst)) {
 				unlock.run();
-				throw new FileAlreadyExistsException(dst.toString(), null, "Destination file currently accessed by another thread.");
+				throw new FileAlreadyExistsException(this.dst.toString(), null, "Destination file currently accessed by another thread.");
 			}
 		}
 
+		/**
+		 * Remaps the OpenCryptoFile of the source to the destination, if it is still open, and detaches any replaced OpenCryptoFile.
+		 * MUST be invoked after the physical file move succeeded.
+		 */
 		public void commit() {
 			if (rolledBack) {
 				throw new IllegalStateException();
 			}
 			OpenCryptoFile openCryptoFile = openCryptoFiles.get(src);
+			if (openCryptoFile == null) {
+				remap(null);
+			} else {
+				synchronized (openCryptoFile) { // the last channel unregisters the file under this monitor, so recheck to not map a closed file at dst
+					remap(openCryptoFiles.get(src) == openCryptoFile ? openCryptoFile : null);
+				}
+			}
+			committed = true;
+		}
+
+		private void remap(OpenCryptoFile openCryptoFile) {
 			replacedPaths.forEach(OpenCryptoFiles.this::delete);
 			openCryptoFiles.compute(dst, (k, replaced) -> {
 				if (replaced != null && replaced != openCryptoFile) {
@@ -289,7 +307,6 @@ public class OpenCryptoFiles implements Closeable {
 				return openCryptoFile;
 			});
 			openCryptoFiles.remove(src, openCryptoFile);
-			committed = true;
 		}
 
 		public void rollback() {

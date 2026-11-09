@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
@@ -179,13 +180,14 @@ public class OpenCryptoFilesTest {
 		inOrder.verify(srcFile).updateCurrentFilePath(dst);
 	}
 
-	@Test
-	public void testTwoPhaseMoveReplacingOpenedTargetWithUnopenedSourceUnregistersTargetWhenCommitted() throws IOException {
+	@ParameterizedTest
+	@ValueSource(strings = {"/dst", "/foo/../dst"})
+	public void testTwoPhaseMoveReplacingOpenedTargetWithUnopenedSourceUnregistersTargetWhenCommitted(String movedTo) throws IOException {
 		Path src = Path.of("/src").toAbsolutePath();
 		Path dst = Path.of("/dst").toAbsolutePath();
 		OpenCryptoFile dstFile = mockOpenCryptoFile(dst);
 
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class), true)) {
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, Path.of(movedTo).toAbsolutePath(), Mockito.mock(CryptoPath.class), true)) {
 			twoPhaseMove.commit();
 		}
 
@@ -224,6 +226,28 @@ public class OpenCryptoFilesTest {
 
 		Assertions.assertFalse(inTest.get(replaced).isPresent());
 		Mockito.verify(replacedFile).updateCurrentFilePath(null);
+	}
+
+	@Test
+	public void testTwoPhaseMoveDoesntMoveFileClosedDuringCommit() throws Exception {
+		Path src = Path.of("/src").toAbsolutePath();
+		Path dst = Path.of("/dst").toAbsolutePath();
+		OpenCryptoFile srcFile = mockOpenCryptoFile(src);
+		var closeListener = ArgumentCaptor.forClass(FileCloseListener.class);
+		Mockito.verify(openCryptoFileComponentFactory).create(Mockito.eq(src), closeListener.capture());
+
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class), true)) {
+			FutureTask<?> committed = new FutureTask<>(twoPhaseMove::commit, null);
+			synchronized (srcFile) { // unregister under the monitor, as the last channel closing does
+				startAndAwait(new Thread(committed), committed, Thread.State.BLOCKED);
+				closeListener.getValue().close(src, srcFile);
+			}
+			committed.get(5, TimeUnit.SECONDS);
+		}
+
+		Assertions.assertFalse(inTest.get(src).isPresent());
+		Assertions.assertFalse(inTest.get(dst).isPresent());
+		Mockito.verify(srcFile, Mockito.never()).updateCurrentFilePath(Mockito.any());
 	}
 
 	@Test
@@ -313,7 +337,7 @@ public class OpenCryptoFilesTest {
 		Thread opener = new Thread(opened);
 
 		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class), true, replaced)) {
-			startAndAwaitWaiting(opener, opened);
+			startAndAwait(opener, opened, Thread.State.WAITING);
 			twoPhaseMove.commit();
 		}
 
@@ -326,7 +350,7 @@ public class OpenCryptoFilesTest {
 		FutureTask<?> opened = new FutureTask<>(() -> openChannel(path));
 		Thread opener = new Thread(opened);
 
-		inTest.replace(path, () -> startAndAwaitWaiting(opener, opened));
+		inTest.replace(path, () -> startAndAwait(opener, opened, Thread.State.WAITING));
 
 		opened.get(5, TimeUnit.SECONDS);
 		Assertions.assertSame(file, inTest.get(path).get());
@@ -355,9 +379,9 @@ public class OpenCryptoFilesTest {
 		Assertions.assertTrue(((Map<?, ?>) pathLocksField.get(inTest)).isEmpty());
 	}
 
-	private void startAndAwaitWaiting(Thread thread, Future<?> result) {
+	private void startAndAwait(Thread thread, Future<?> result, Thread.State state) {
 		thread.start();
-		Awaitility.await().atMost(5, TimeUnit.SECONDS).until(() -> thread.getState() == Thread.State.WAITING);
+		Awaitility.await().atMost(5, TimeUnit.SECONDS).until(() -> thread.getState() == state);
 		Assertions.assertFalse(result.isDone());
 	}
 
@@ -384,9 +408,7 @@ public class OpenCryptoFilesTest {
 
 		new Thread(opened).start();
 		opening.await(5, TimeUnit.SECONDS);
-		mover.start();
-		Awaitility.await().atMost(5, TimeUnit.SECONDS).until(() -> mover.getState() == Thread.State.WAITING);
-		Assertions.assertFalse(moved.isDone());
+		startAndAwait(mover, moved, Thread.State.WAITING);
 		finishOpening.countDown();
 
 		opened.get(5, TimeUnit.SECONDS);

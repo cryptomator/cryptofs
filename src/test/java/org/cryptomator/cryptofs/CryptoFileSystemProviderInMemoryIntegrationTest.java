@@ -173,6 +173,7 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 
 			try (var ch = FileChannel.open(target, READ, WRITE)) {
 				Files.move(link, target, REPLACE_EXISTING);
+				assertEquals(fs.getPath("/nowhere"), Files.readSymbolicLink(target));
 				Files.move(target, fs.getPath("/moved-link"));
 				Files.writeString(target, "new");
 				assertEquals("old-content", read(ch));
