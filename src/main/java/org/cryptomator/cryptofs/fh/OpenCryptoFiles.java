@@ -142,7 +142,7 @@ public class OpenCryptoFiles implements Closeable {
 	 * @throws IOException If the operation failed
 	 */
 	public void replace(Path ciphertextPath, RunnableThrowingException<IOException> operation) throws IOException {
-		Runnable unlock = lockPaths(List.of(ciphertextPath), lock -> lock.writeLock());
+		Runnable unlock = lockPaths(List.of(ciphertextPath), ReentrantReadWriteLock::writeLock);
 		try {
 			operation.run();
 			delete(ciphertextPath);
@@ -232,7 +232,7 @@ public class OpenCryptoFiles implements Closeable {
 
 		private OpenOperation(Path ciphertextPath) {
 			this.ciphertextPath = ciphertextPath;
-			this.unlock = lockPaths(List.of(ciphertextPath), lock -> lock.readLock());
+			this.unlock = lockPaths(List.of(ciphertextPath), ReentrantReadWriteLock::readLock);
 		}
 
 		/**
@@ -289,7 +289,7 @@ public class OpenCryptoFiles implements Closeable {
 			this.dst = normalize(dst);
 			this.cleartextDst = cleartextDst;
 			this.replacedPaths = replacedPaths;
-			this.unlock = lockPaths(Stream.concat(Stream.of(this.src, this.dst), replacedPaths.stream()).toList(), lock -> lock.writeLock());
+			this.unlock = lockPaths(Stream.concat(Stream.of(this.src, this.dst), replacedPaths.stream()).toList(), ReentrantReadWriteLock::writeLock);
 			if (!replaceExisting && openCryptoFiles.containsKey(this.dst)) {
 				unlock.run();
 				throw new FileAlreadyExistsException(this.dst.toString(), null, "Destination file currently accessed by another thread.");
