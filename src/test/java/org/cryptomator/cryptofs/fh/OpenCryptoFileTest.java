@@ -45,6 +45,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -132,7 +133,8 @@ public class OpenCryptoFileTest {
 
 		EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), readonlyFlag);
 		var cleartextChannel = mock(CleartextFileChannel.class);
-		when(headerHolder.get()).thenReturn(mock(FileHeader.class));
+		var header = mock(FileHeader.class);
+		doReturn(header).when(headerHolder).get();
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
 		when(fileHeaderCryptor.headerSize()).thenReturn(42);
 		when(openCryptoFileComponent.newChannelComponent()).thenReturn(channelComponentFactory);
@@ -154,7 +156,8 @@ public class OpenCryptoFileTest {
 
 		EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.READ), readonlyFlag);
 		var cleartextChannel = mock(CleartextFileChannel.class);
-		when(headerHolder.get()).thenReturn(mock(FileHeader.class));
+		var header = mock(FileHeader.class);
+		doReturn(header).when(headerHolder).get();
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
 		when(fileHeaderCryptor.headerSize()).thenReturn(42);
 		when(openCryptoFileComponent.newChannelComponent()).thenReturn(channelComponentFactory);
@@ -175,7 +178,8 @@ public class OpenCryptoFileTest {
 
 		EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), readonlyFlag);
 		var cleartextChannel = mock(CleartextFileChannel.class);
-		when(headerHolder.get()).thenReturn(mock(FileHeader.class));
+		var header = mock(FileHeader.class);
+		doReturn(header).when(headerHolder).get();
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
 		when(fileHeaderCryptor.headerSize()).thenReturn(42);
 		when(openCryptoFileComponent.newChannelComponent()).thenReturn(channelComponentFactory);
@@ -212,7 +216,8 @@ public class OpenCryptoFileTest {
 		UncheckedIOException expectedException = new UncheckedIOException(new IOException("fail!"));
 		EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), readonlyFlag);
 		var cleartextChannel = mock(CleartextFileChannel.class);
-		when(headerHolder.get()).thenReturn(mock(FileHeader.class));
+		var header = mock(FileHeader.class);
+		doReturn(header).when(headerHolder).get();
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
 		when(fileHeaderCryptor.headerSize()).thenReturn(42);
 		when(openCryptoFileComponent.newChannelComponent()).thenReturn(channelComponentFactory);
@@ -243,7 +248,8 @@ public class OpenCryptoFileTest {
 			channelCloseListener.set(invocation.getArgument(2));
 			return channelComponent;
 		});
-		when(channelComponent.channel()).thenReturn(mock(CleartextFileChannel.class));
+		var cleartextChannel = mock(CleartextFileChannel.class);
+		doReturn(cleartextChannel).when(channelComponent).channel();
 		var heldMonitor = new AtomicBoolean();
 		doAnswer(invocation -> {
 			heldMonitor.set(Thread.holdsLock(openCryptoFile));
@@ -264,7 +270,8 @@ public class OpenCryptoFileTest {
 
 		EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING), readonlyFlag);
 		var cleartextChannel = mock(CleartextFileChannel.class);
-		when(headerHolder.get()).thenReturn(mock(FileHeader.class));
+		var header = mock(FileHeader.class);
+		doReturn(header).when(headerHolder).get();
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
 		when(fileHeaderCryptor.headerSize()).thenReturn(42);
 		when(openCryptoFileComponent.newChannelComponent()).thenReturn(channelComponentFactory);

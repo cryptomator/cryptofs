@@ -268,7 +268,7 @@ public class OpenCryptoFilesTest {
 	}
 
 	@Test
-	public void testReplaceKeepsOpenedFileAndReleasesLockWhenOperationFails() throws Exception {
+	public void testReplaceKeepsOpenedFileAndReleasesLockWhenOperationFails() {
 		Path path = Path.of("/foo").toAbsolutePath();
 		OpenCryptoFile openFile = mockOpenCryptoFile(path);
 
