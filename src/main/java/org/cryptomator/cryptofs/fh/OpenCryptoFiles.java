@@ -13,7 +13,7 @@ import org.cryptomator.cryptofs.CryptoFileSystemScoped;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.common.RunnableThrowingException;
-import org.cryptomator.cryptofs.common.SupplierThrowingException;
+import org.cryptomator.cryptofs.event.DecryptionFailedEvent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
 
 import java.io.Closeable;
@@ -66,11 +66,11 @@ public class OpenCryptoFiles implements Closeable {
 
 	/**
 	 * Gets the shared OpenCryptoFile of the given file, creating it if necessary.
-	 * Getting the file channel should be the next invocation, since the {@link OpenFileScoped lifecycle} of the OpenFile strictly depends on the lifecycle of the channel.
+	 * Only {@link OpenOperation#newFileChannel(CryptoPath, EffectiveOpenOptions, FileAttribute[])} invokes this, because it gets the file channel right away under the path lock, and the {@link OpenFileScoped lifecycle} of the OpenFile strictly depends on the lifecycle of the channel.
+	 * Used for testing.
 	 *
 	 * @param ciphertextPath Path of the file to open
 	 * @return The opened file.
-	 * @see #newFileChannel(CryptoPath, Path, EffectiveOpenOptions, FileAttribute[])
 	 */
 	OpenCryptoFile getOrCreate(Path ciphertextPath) {
 		Path normalizedPath = normalize(ciphertextPath);
@@ -78,56 +78,20 @@ public class OpenCryptoFiles implements Closeable {
 	}
 
 	/**
-	 * Runs an operation that opens the given file, waiting while this file is the source or target of a {@link #prepareMove(Path, Path, CryptoPath, boolean, Path...) move} or the target of a {@link #replace(Path, RunnableThrowingException) replacement}.
-	 * A {@link org.cryptomator.cryptofs.event.DecryptionFailedEvent} of a file header that cannot be decrypted is delivered after the lock was released, so that event consumers may access the file system.
-	 * The operation must let exceptions of {@link #newFileChannel(CryptoPath, Path, EffectiveOpenOptions, FileAttribute[])} propagate unwrapped.
-	 * Any other event must be emitted by the caller after this method returned.
+	 * Begins opening the given file, waiting while this file is the source or target of a {@link #prepareMove(Path, Path, CryptoPath, boolean, Path...) move} or the target of a {@link #replace(Path, RunnableThrowingException) replacement}.
+	 * MUST be invoked using a try-with-resource statement. Until the returned OpenOperation is closed, moving or replacing this file waits, so that all steps of the open see the same file.
+	 * A channel opened by it MUST NOT be used before the OpenOperation was closed, not even to truncate it, see {@link OpenOperation#newFileChannel(CryptoPath, EffectiveOpenOptions, FileAttribute[])}.
+	 * Events must be emitted by the caller after the OpenOperation was closed, so that event consumers may access the file system.
 	 *
 	 * @param ciphertextPath Path of the file to open
-	 * @param operation The open operation, which may invoke {@link #newFileChannel(CryptoPath, Path, EffectiveOpenOptions, FileAttribute[])} for this path
-	 * @param <T> Result type of the operation
-	 * @return The result of the operation
-	 * @throws IOException If the operation failed
+	 * @return Utility to open file channels of this file
 	 */
-	public <T> T open(Path ciphertextPath, SupplierThrowingException<T, IOException> operation) throws IOException {
-		try {
-			Runnable unlock = lockPaths(List.of(ciphertextPath), lock -> lock.readLock());
-			try {
-				return operation.get();
-			} finally {
-				unlock.run();
-			}
-		} catch (HeaderDecryptionException e) {
-			eventConsumer.accept(e.getEvent());
-			throw e;
-		}
-	}
-
-	/**
-	 * Opens a new FileChannel using the shared OpenCryptoFile of the given file.
-	 * MUST be invoked within an {@link #open(Path, SupplierThrowingException) open operation} of the same path.
-	 * The channel is not truncated, even if the options contain {@link java.nio.file.StandardOpenOption#TRUNCATE_EXISTING}.
-	 * The caller must truncate it after the open operation returned, because truncation waits for readers of the file, which may in turn wait for the lock held during the open operation.
-	 *
-	 * @param cleartextPath Cleartext path of the file to open
-	 * @param ciphertextPath Path of the file to open
-	 * @param options The options to open the file channel with
-	 * @param attrs The file attributes to set when creating the file
-	 * @return A new file channel
-	 * @throws IOException If the file channel could not be opened
-	 */
-	public FileChannel newFileChannel(CryptoPath cleartextPath, Path ciphertextPath, EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
-		PathLock pathLock = pathLocks.get(normalize(ciphertextPath));
-		if (pathLock == null || pathLock.lock.getReadHoldCount() == 0) {
-			throw new IllegalStateException("Not invoked within an open operation of " + ciphertextPath);
-		}
-		OpenCryptoFile openFile = getOrCreate(ciphertextPath);
-		openFile.updateCurrentCleartextPath(cleartextPath);
-		return openFile.newFileChannel(options, attrs);
+	public OpenOperation beginOpen(Path ciphertextPath) {
+		return new OpenOperation(ciphertextPath);
 	}
 
 	public void writeCiphertextFile(CryptoPath cleartextPath, Path ciphertextPath, EffectiveOpenOptions openOptions, ByteBuffer contents) throws IOException {
-		try (FileChannel ch = open(ciphertextPath, () -> newFileChannel(cleartextPath, ciphertextPath, openOptions))) {
+		try (FileChannel ch = openFileChannel(cleartextPath, ciphertextPath, openOptions)) {
 			if (openOptions.truncateExisting()) {
 				ch.truncate(0);
 			}
@@ -136,7 +100,7 @@ public class OpenCryptoFiles implements Closeable {
 	}
 
 	public ByteBuffer readCiphertextFile(CryptoPath cleartextPath, Path ciphertextPath, EffectiveOpenOptions openOptions, int maxBufferSize) throws BufferUnderflowException, IOException {
-		try (FileChannel ch = open(ciphertextPath, () -> newFileChannel(cleartextPath, ciphertextPath, openOptions))) {
+		try (FileChannel ch = openFileChannel(cleartextPath, ciphertextPath, openOptions)) {
 			if (ch.size() > maxBufferSize) {
 				throw new BufferUnderflowException();
 			}
@@ -144,6 +108,13 @@ public class OpenCryptoFiles implements Closeable {
 			ch.read(buf);
 			buf.flip();
 			return buf;
+		}
+	}
+
+	// returns after closing the open operation, so that the caller accesses the contents without holding its lock
+	private FileChannel openFileChannel(CryptoPath cleartextPath, Path ciphertextPath, EffectiveOpenOptions openOptions) throws IOException {
+		try (OpenOperation openOp = beginOpen(ciphertextPath)) {
+			return openOp.newFileChannel(cleartextPath, openOptions);
 		}
 	}
 
@@ -163,7 +134,7 @@ public class OpenCryptoFiles implements Closeable {
 
 	/**
 	 * Runs an operation that replaces the given file, e.g. by copying another file onto it.
-	 * While the operation runs, {@link #open(Path, SupplierThrowingException) opening} this file waits.
+	 * While the operation runs, {@link #beginOpen(Path) opening} this file waits.
 	 * Once the operation succeeded, any OpenCryptoFile of this file gets detached like a {@link #delete(Path) deleted} file: Its channels keep working, but nothing gets persisted to this file anymore.
 	 *
 	 * @param ciphertextPath Path of the file to replace
@@ -183,7 +154,7 @@ public class OpenCryptoFiles implements Closeable {
 	/**
 	 * Prepares to update any open file references during a move operation.
 	 * MUST be invoked using a try-with-resource statement and committed after the physical file move succeeded.
-	 * Until the returned TwoPhaseMove is closed, {@link #open(Path, SupplierThrowingException) opening} any of the given paths waits, so that no channel gets opened while the physical file move is in progress.
+	 * Until the returned TwoPhaseMove is closed, {@link #beginOpen(Path) opening} any of the given paths waits, so that no channel gets opened while the physical file move is in progress.
 	 * <p>
 	 * On commit, any OpenCryptoFile of <code>dst</code> or <code>replacedPaths</code> gets detached like a {@link #delete(Path) deleted} file: Its channels keep working, but nothing gets persisted to the destination anymore.
 	 *
@@ -250,6 +221,57 @@ public class OpenCryptoFiles implements Closeable {
 		private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 		private int users; // only modified within ConcurrentMap#compute of pathLocks
 
+	}
+
+	public class OpenOperation implements AutoCloseable {
+
+		private final Path ciphertextPath;
+		private final Runnable unlock;
+		private DecryptionFailedEvent decryptionFailedEvent;
+		private boolean closed;
+
+		private OpenOperation(Path ciphertextPath) {
+			this.ciphertextPath = ciphertextPath;
+			this.unlock = lockPaths(List.of(ciphertextPath), lock -> lock.readLock());
+		}
+
+		/**
+		 * Opens a new FileChannel using the shared OpenCryptoFile of this file.
+		 * <p>
+		 * The caller MUST NOT use the returned channel before this OpenOperation was closed, neither to truncate, write or read it, nor to close it after a later step of the open failed:
+		 * Truncating, writing and closing wait for readers of other channels of this file, which may in turn wait for the lock held by this OpenOperation, and reading may wait behind such a writer. Using the channel earlier can therefore deadlock.
+		 * Hence the channel is not truncated here, even if the options contain {@link java.nio.file.StandardOpenOption#TRUNCATE_EXISTING}. The caller must truncate it after closing this OpenOperation.
+		 * <p>
+		 * A {@link DecryptionFailedEvent} of a file header that cannot be decrypted is delivered when this OpenOperation gets closed.
+		 *
+		 * @param cleartextPath Cleartext path of the file to open
+		 * @param options The options to open the file channel with
+		 * @param attrs The file attributes to set when creating the file
+		 * @return A new file channel
+		 * @throws IOException If the file channel could not be opened
+		 */
+		public FileChannel newFileChannel(CryptoPath cleartextPath, EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
+			if (closed) {
+				throw new IllegalStateException("Open operation of " + ciphertextPath + " already closed");
+			}
+			OpenCryptoFile openFile = getOrCreate(ciphertextPath);
+			openFile.updateCurrentCleartextPath(cleartextPath);
+			try {
+				return openFile.newFileChannel(options, attrs);
+			} catch (HeaderDecryptionException e) {
+				decryptionFailedEvent = e.getEvent();
+				throw e;
+			}
+		}
+
+		@Override
+		public void close() {
+			closed = true;
+			unlock.run();
+			if (decryptionFailedEvent != null) {
+				eventConsumer.accept(decryptionFailedEvent);
+			}
+		}
 	}
 
 	public class TwoPhaseMove implements AutoCloseable {

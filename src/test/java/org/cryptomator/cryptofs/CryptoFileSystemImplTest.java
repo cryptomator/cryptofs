@@ -7,12 +7,12 @@ import org.cryptomator.cryptofs.attr.AttributeViewType;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.common.FinallyUtil;
 import org.cryptomator.cryptofs.common.RunnableThrowingException;
-import org.cryptomator.cryptofs.common.SupplierThrowingException;
 import org.cryptomator.cryptofs.dir.CiphertextDirectoryDeleter;
 import org.cryptomator.cryptofs.dir.DirectoryStreamFactory;
 import org.cryptomator.cryptofs.event.FileIsInUseEvent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
+import org.cryptomator.cryptofs.fh.OpenCryptoFiles.OpenOperation;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles.TwoPhaseMove;
 import org.cryptomator.cryptofs.inuse.FileAlreadyInUseException;
 import org.cryptomator.cryptofs.inuse.InUseManager;
@@ -495,6 +495,7 @@ public class CryptoFileSystemImplTest {
 		private final CryptoPath ciphertextFilePath = mock(CryptoPath.class, "d/00/00/path.c9r");
 		private final CiphertextFilePath ciphertextPath = mock(CiphertextFilePath.class);
 		private final FileChannel fileChannel = mock(FileChannel.class);
+		private final OpenOperation openOp = mock(OpenOperation.class);
 
 		@BeforeEach
 		public void setup() throws IOException {
@@ -503,8 +504,8 @@ public class CryptoFileSystemImplTest {
 			when(cryptoPathMapper.getCiphertextFilePath(cleartextPath)).thenReturn(ciphertextPath);
 			when(ciphertextPath.getFilePath()).thenReturn(ciphertextFilePath);
 			when(ciphertextFilePath.getName(3)).thenReturn(mock(CryptoPath.class, "path.c9r"));
-			when(openCryptoFiles.open(Mockito.eq(ciphertextFilePath), any())).thenAnswer(invocation -> invocation.<SupplierThrowingException<?, ?>>getArgument(1).get());
-			when(openCryptoFiles.newFileChannel(Mockito.eq(cleartextPath), Mockito.eq(ciphertextFilePath), any(), any(FileAttribute[].class))).thenReturn(fileChannel);
+			Mockito.doReturn(openOp).when(openCryptoFiles).beginOpen(ciphertextFilePath);
+			Mockito.doReturn(fileChannel).when(openOp).newFileChannel(Mockito.eq(cleartextPath), any(), any(FileAttribute[].class));
 		}
 
 		@Nested
@@ -558,7 +559,7 @@ public class CryptoFileSystemImplTest {
 				FileChannel ch = inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), attrs);
 
 				Assertions.assertSame(fileChannel, ch);
-				verify(openCryptoFiles).newFileChannel(Mockito.eq(cleartextPath), Mockito.eq(ciphertextFilePath), Mockito.any(), Mockito.eq(attrs));
+				verify(openOp).newFileChannel(Mockito.eq(cleartextPath), Mockito.any(), Mockito.eq(attrs));
 			}
 
 		}
@@ -604,7 +605,7 @@ public class CryptoFileSystemImplTest {
 		@Test
 		@DisplayName("newFileChannel fails if used by another file")
 		public void testNewFileChannelInUseFailure() throws IOException {
-			when(openCryptoFiles.newFileChannel(Mockito.eq(cleartextPath), Mockito.eq(ciphertextFilePath), any(), any(FileAttribute[].class))).thenThrow(FileAlreadyInUseException.class);
+			Mockito.doThrow(FileAlreadyInUseException.class).when(openOp).newFileChannel(Mockito.eq(cleartextPath), any(), any(FileAttribute[].class));
 
 			Assertions.assertThrows(FileAlreadyInUseException.class, () -> inTest.newFileChannel(cleartextPath, EnumSet.of(StandardOpenOption.WRITE)));
 			var isFileIsInUseEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof FileIsInUseEvent fiiue && fiiue.cleartextPath().equals(cleartextPath.toString());
@@ -629,7 +630,7 @@ public class CryptoFileSystemImplTest {
 		@DisplayName("newFileChannel reports usage by another file after the open operation")
 		public void testNewFileChannelInUseEventAfterOpening() throws IOException {
 			var opening = trackOpening();
-			when(openCryptoFiles.newFileChannel(Mockito.eq(cleartextPath), Mockito.eq(ciphertextFilePath), any(), any(FileAttribute[].class))).thenThrow(FileAlreadyInUseException.class);
+			Mockito.doThrow(FileAlreadyInUseException.class).when(openOp).newFileChannel(Mockito.eq(cleartextPath), any(), any(FileAttribute[].class));
 			Mockito.doAnswer(invocation -> {
 				Assertions.assertFalse(opening.get());
 				return null;
@@ -697,16 +698,16 @@ public class CryptoFileSystemImplTest {
 			verify(fileChannel).close();
 		}
 
-		private AtomicBoolean trackOpening() throws IOException {
+		private AtomicBoolean trackOpening() {
 			var opening = new AtomicBoolean();
-			when(openCryptoFiles.open(Mockito.eq(ciphertextFilePath), any())).thenAnswer(invocation -> {
+			Mockito.doAnswer(invocation -> {
 				opening.set(true);
-				try {
-					return invocation.<SupplierThrowingException<?, ?>>getArgument(1).get();
-				} finally {
-					opening.set(false);
-				}
-			});
+				return openOp;
+			}).when(openCryptoFiles).beginOpen(ciphertextFilePath);
+			Mockito.doAnswer(invocation -> {
+				opening.set(false);
+				return null;
+			}).when(openOp).close();
 			return opening;
 		}
 

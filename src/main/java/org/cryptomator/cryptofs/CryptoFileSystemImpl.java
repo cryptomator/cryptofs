@@ -68,7 +68,6 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -403,19 +402,40 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 		}
 		CiphertextFilePath ciphertextPath = cryptoPathMapper.getCiphertextFilePath(cleartextFilePath);
 		Path ciphertextFilePath = ciphertextPath.getFilePath();
-		AtomicReference<FileChannel> openedChannel = new AtomicReference<>();
+		FileChannel ch = null;
 		try {
-			FileChannel channel = openCryptoFiles.open(ciphertextFilePath, () -> openFileChannel(cleartextFilePath, ciphertextPath, openedChannel, options, attrs));
-			if (options.truncateExisting()) {
-				channel.truncate(0); // after the open operation, because truncation waits for readers that may wait for its lock
+			try (var openOp = openCryptoFiles.beginOpen(ciphertextFilePath)) {
+				if (options.createNew() && openCryptoFiles.get(ciphertextFilePath).isPresent()) {
+					throw new FileAlreadyExistsException(cleartextFilePath.toString());
+				}
+
+				//handle shortened files
+				if (ciphertextPath.isShortened() && options.createNew()) {
+					Files.createDirectory(ciphertextPath.getRawPath()); // might throw FileAlreadyExists
+				} else if (ciphertextPath.isShortened()) {
+					Files.createDirectories(ciphertextPath.getRawPath()); // suppresses FileAlreadyExists
+				}
+
+				ch = openOp.newFileChannel(cleartextFilePath, options, attrs); // might throw FileAlreadyExists
+				if (options.writable()) {
+					ciphertextPath.persistLongFileName();
+					stats.incrementAccessesWritten();
+				}
+				if (options.readable()) {
+					stats.incrementAccessesRead();
+				}
+				stats.incrementAccesses();
 			}
-			return channel;
+			// truncating and closing a failed channel wait for readers that may wait for the open operation's lock, so both happen after the open operation was closed
+			if (options.truncateExisting()) {
+				ch.truncate(0);
+			}
+			return ch;
 		} catch (Exception e) {
 			if (e instanceof FileAlreadyInUseException) {
 				var useInfo = inUseManager.getUseInfo(ciphertextFilePath).orElse(new UseInfo("UNKNOWN", Instant.now()));
 				eventConsumer.accept(new FileIsInUseEvent(cleartextFilePath, ciphertextFilePath, useInfo.owner(), useInfo.lastUpdated(), () -> inUseManager.ignoreInUse(ciphertextFilePath)));
 			}
-			FileChannel ch = openedChannel.get();
 			if (ch != null) {
 				try {
 					ch.close();
@@ -425,32 +445,6 @@ class CryptoFileSystemImpl extends CryptoFileSystem {
 			}
 			throw e;
 		}
-	}
-
-	private FileChannel openFileChannel(CryptoPath cleartextFilePath, CiphertextFilePath ciphertextPath, AtomicReference<FileChannel> openedChannel, EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
-		Path ciphertextFilePath = ciphertextPath.getFilePath();
-		if (options.createNew() && openCryptoFiles.get(ciphertextFilePath).isPresent()) {
-			throw new FileAlreadyExistsException(cleartextFilePath.toString());
-		}
-
-		//handle shortened files
-		if (ciphertextPath.isShortened() && options.createNew()) {
-			Files.createDirectory(ciphertextPath.getRawPath()); // might throw FileAlreadyExists
-		} else if (ciphertextPath.isShortened()) {
-			Files.createDirectories(ciphertextPath.getRawPath()); // suppresses FileAlreadyExists
-		}
-
-		FileChannel ch = openCryptoFiles.newFileChannel(cleartextFilePath, ciphertextFilePath, options, attrs); // might throw FileAlreadyExists
-		openedChannel.set(ch); // if a later step fails, the caller closes this channel after releasing the path lock, because flushing may wait for readers that wait for this lock
-		if (options.writable()) {
-			ciphertextPath.persistLongFileName();
-			stats.incrementAccessesWritten();
-		}
-		if (options.readable()) {
-			stats.incrementAccessesRead();
-		}
-		stats.incrementAccesses();
-		return ch;
 	}
 
 	void delete(CryptoPath cleartextPath) throws IOException {

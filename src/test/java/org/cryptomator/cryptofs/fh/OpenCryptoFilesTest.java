@@ -15,7 +15,6 @@ import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
@@ -272,14 +271,16 @@ public class OpenCryptoFilesTest {
 
 		Assertions.assertSame(openFile, inTest.get(path).get());
 		Mockito.verify(openFile, Mockito.never()).updateCurrentFilePath(Mockito.any());
-		Assertions.assertTimeoutPreemptively(Duration.ofSeconds(5), () -> inTest.open(path, () -> null));
+		Assertions.assertTimeoutPreemptively(Duration.ofSeconds(5), () -> inTest.beginOpen(path).close());
 	}
 
 	@Test
-	public void testNewFileChannelFailsOutsideOpenOperation() {
+	public void testNewFileChannelFailsAfterOpenOperationClosed() {
 		Path path = Path.of("/foo").toAbsolutePath();
+		OpenCryptoFiles.OpenOperation openOp = inTest.beginOpen(path);
+		openOp.close();
 
-		Assertions.assertThrows(IllegalStateException.class, () -> inTest.newFileChannel(Mockito.mock(CryptoPath.class), path, Mockito.mock(EffectiveOpenOptions.class)));
+		Assertions.assertThrows(IllegalStateException.class, () -> openOp.newFileChannel(Mockito.mock(CryptoPath.class), Mockito.mock(EffectiveOpenOptions.class)));
 	}
 
 	@Test
@@ -391,15 +392,12 @@ public class OpenCryptoFilesTest {
 		Path dst = Path.of("/dst").toAbsolutePath();
 		CountDownLatch opening = new CountDownLatch(1);
 		CountDownLatch finishOpening = new CountDownLatch(1);
-		FutureTask<Object> opened = new FutureTask<>(() -> inTest.open(dst, () -> {
-			opening.countDown();
-			try {
+		FutureTask<Object> opened = new FutureTask<>(() -> {
+			try (var _ = inTest.beginOpen(dst)) {
+				opening.countDown();
 				return finishOpening.await(5, TimeUnit.SECONDS);
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				throw new InterruptedIOException();
 			}
-		}));
+		});
 		FutureTask<Object> moved = new FutureTask<>(() -> {
 			inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class), true).close();
 			return null;
@@ -465,7 +463,9 @@ public class OpenCryptoFilesTest {
 	}
 
 	private FileChannel openChannel(Path path) throws IOException {
-		return inTest.open(path, () -> inTest.newFileChannel(Mockito.mock(CryptoPath.class), path, Mockito.mock(EffectiveOpenOptions.class)));
+		try (var openOp = inTest.beginOpen(path)) {
+			return openOp.newFileChannel(Mockito.mock(CryptoPath.class), Mockito.mock(EffectiveOpenOptions.class));
+		}
 	}
 
 	@Test
