@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -46,6 +45,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class CryptoFileSystemProviderInMemoryIntegrationTest {
 
@@ -245,8 +247,8 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 	private FileSystem setupCryptoFs(int ciphertextShorteningThreshold, int maxCleartextFilename, boolean readonly, Consumer<FilesystemEvent> eventConsumer) throws IOException {
 		byte[] key = new byte[64];
 		Arrays.fill(key, (byte) 0x55);
-		var keyLoader = Mockito.mock(MasterkeyLoader.class);
-		Mockito.when(keyLoader.loadKey(Mockito.any())).thenAnswer(ignored -> new Masterkey(key));
+		var keyLoader = mock(MasterkeyLoader.class);
+		when(keyLoader.loadKey(any())).thenAnswer(ignored -> new Masterkey(key));
 		var properties = CryptoFileSystemProperties.cryptoFileSystemProperties().withKeyLoader(keyLoader).withShorteningThreshold(ciphertextShorteningThreshold).withMaxCleartextNameLength(maxCleartextFilename).withFlags(readonly ? Set.of(CryptoFileSystemProperties.FileSystemFlags.READONLY) : Set.of()).build();
 		CryptoFileSystemProvider.initialize(pathToVault, properties, URI.create("test:key"));
 		URI fsUri = CryptoFileSystemUri.create(pathToVault);

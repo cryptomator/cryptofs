@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
@@ -31,13 +30,21 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class OpenCryptoFilesTest {
 
 	private final OpenCryptoFileComponent.Factory openCryptoFileComponentFactory = mock(OpenCryptoFileComponent.Factory.class);
 	private final OpenCryptoFile file = mock(OpenCryptoFile.class, "file");
-	private final FileChannel ciphertextFileChannel = Mockito.mock(FileChannel.class);
+	private final FileChannel ciphertextFileChannel = mock(FileChannel.class);
 	private final Consumer<FilesystemEvent> eventConsumer = mock(Consumer.class);
 
 	private OpenCryptoFiles inTest;
@@ -45,10 +52,10 @@ public class OpenCryptoFilesTest {
 	@BeforeEach
 	public void setup() throws IOException, ReflectiveOperationException {
 		OpenCryptoFileComponent subComponent = mock(OpenCryptoFileComponent.class);
-		Mockito.when(subComponent.openCryptoFile()).thenReturn(file);
+		when(subComponent.openCryptoFile()).thenReturn(file);
 
-		Mockito.when(openCryptoFileComponentFactory.create(Mockito.any(), Mockito.any())).thenReturn(subComponent);
-		Mockito.when(file.newFileChannel(Mockito.any())).thenReturn(ciphertextFileChannel);
+		when(openCryptoFileComponentFactory.create(any(), any())).thenReturn(subComponent);
+		when(file.newFileChannel(any())).thenReturn(ciphertextFileChannel);
 
 		inTest = new OpenCryptoFiles(openCryptoFileComponentFactory, eventConsumer);
 	}
@@ -57,13 +64,13 @@ public class OpenCryptoFilesTest {
 	public void testGetOrCreate() {
 		OpenCryptoFileComponent subComponent1 = mock(OpenCryptoFileComponent.class);
 		OpenCryptoFile file1 = mock(OpenCryptoFile.class);
-		Mockito.when(subComponent1.openCryptoFile()).thenReturn(file1);
+		when(subComponent1.openCryptoFile()).thenReturn(file1);
 
 		OpenCryptoFileComponent subComponent2 = mock(OpenCryptoFileComponent.class);
 		OpenCryptoFile file2 = mock(OpenCryptoFile.class);
-		Mockito.when(subComponent2.openCryptoFile()).thenReturn(file2);
+		when(subComponent2.openCryptoFile()).thenReturn(file2);
 
-		Mockito.when(openCryptoFileComponentFactory.create(Mockito.any(), Mockito.any())).thenReturn(subComponent1, subComponent2);
+		when(openCryptoFileComponentFactory.create(any(), any())).thenReturn(subComponent1, subComponent2);
 
 		Path p1 = Path.of("/foo");
 		Path p2 = Path.of("/bar");
@@ -77,27 +84,27 @@ public class OpenCryptoFilesTest {
 	@Test
 	public void testWriteCiphertextFile() throws IOException {
 		Path path = Path.of("/foo");
-		EffectiveOpenOptions openOptions = Mockito.mock(EffectiveOpenOptions.class);
+		EffectiveOpenOptions openOptions = mock(EffectiveOpenOptions.class);
 		ByteBuffer contents = StandardCharsets.UTF_8.encode("hello world");
 
-		inTest.writeCiphertextFile(Mockito.mock(CryptoPath.class), path, openOptions, contents);
+		inTest.writeCiphertextFile(mock(CryptoPath.class), path, openOptions, contents);
 
-		Mockito.verify(ciphertextFileChannel).write(contents);
+		verify(ciphertextFileChannel).write(contents);
 	}
 
 	@Test
 	public void testReadCiphertextFile() throws IOException {
 		byte[] contents = "hello world".getBytes(StandardCharsets.UTF_8);
 		Path path = Path.of("/foo");
-		EffectiveOpenOptions openOptions = Mockito.mock(EffectiveOpenOptions.class);
-		Mockito.when(ciphertextFileChannel.size()).thenReturn((long) contents.length);
-		Mockito.when(ciphertextFileChannel.read(Mockito.any(ByteBuffer.class))).thenAnswer(invocation -> {
+		EffectiveOpenOptions openOptions = mock(EffectiveOpenOptions.class);
+		when(ciphertextFileChannel.size()).thenReturn((long) contents.length);
+		when(ciphertextFileChannel.read(any(ByteBuffer.class))).thenAnswer(invocation -> {
 			ByteBuffer buf = invocation.getArgument(0);
 			buf.put(contents);
 			return contents.length;
 		});
 
-		ByteBuffer bytesRead = inTest.readCiphertextFile(Mockito.mock(CryptoPath.class), path, openOptions, 1337);
+		ByteBuffer bytesRead = inTest.readCiphertextFile(mock(CryptoPath.class), path, openOptions, 1337);
 
 		Assertions.assertEquals("hello world", StandardCharsets.UTF_8.decode(bytesRead).toString());
 	}
@@ -109,7 +116,7 @@ public class OpenCryptoFilesTest {
 		inTest.getOrCreate(dst);
 
 		Assertions.assertThrows(FileAlreadyExistsException.class, () -> {
-			inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class), false);
+			inTest.prepareMove(src, dst, mock(CryptoPath.class), false);
 		});
 	}
 
@@ -121,7 +128,7 @@ public class OpenCryptoFilesTest {
 
 		Assertions.assertTrue(inTest.get(src).isPresent());
 		Assertions.assertFalse(inTest.get(dst).isPresent());
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class), false)) {
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, mock(CryptoPath.class), false)) {
 			twoPhaseMove.rollback();
 		}
 		Assertions.assertTrue(inTest.get(src).isPresent());
@@ -137,7 +144,7 @@ public class OpenCryptoFilesTest {
 		Assertions.assertTrue(inTest.get(src).isPresent());
 		Assertions.assertFalse(inTest.get(dst).isPresent());
 		OpenCryptoFile srcFile = inTest.get(src).get();
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class), false)) {
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, mock(CryptoPath.class), false)) {
 			twoPhaseMove.commit();
 		}
 		Assertions.assertFalse(inTest.get(src).isPresent());
@@ -157,7 +164,7 @@ public class OpenCryptoFilesTest {
 			twoPhaseMove.commit();
 		}
 
-		Mockito.verify(srcFile).updateCurrentCleartextPath(cleartextDst);
+		verify(srcFile).updateCurrentCleartextPath(cleartextDst);
 	}
 
 	@Test
@@ -167,14 +174,14 @@ public class OpenCryptoFilesTest {
 		OpenCryptoFile srcFile = mockOpenCryptoFile(src);
 		OpenCryptoFile dstFile = mockOpenCryptoFile(dst);
 
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class), true)) {
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, mock(CryptoPath.class), true)) {
 			Assertions.assertSame(dstFile, inTest.get(dst).get());
 			twoPhaseMove.commit();
 		}
 
 		Assertions.assertFalse(inTest.get(src).isPresent());
 		Assertions.assertSame(srcFile, inTest.get(dst).get());
-		var inOrder = Mockito.inOrder(dstFile, srcFile);
+		var inOrder = inOrder(dstFile, srcFile);
 		inOrder.verify(dstFile).updateCurrentFilePath(null);
 		inOrder.verify(srcFile).updateCurrentFilePath(dst);
 	}
@@ -186,13 +193,13 @@ public class OpenCryptoFilesTest {
 		Path dst = Path.of("/dst").toAbsolutePath();
 		OpenCryptoFile dstFile = mockOpenCryptoFile(dst);
 
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, Path.of(movedTo).toAbsolutePath(), Mockito.mock(CryptoPath.class), true)) {
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, Path.of(movedTo).toAbsolutePath(), mock(CryptoPath.class), true)) {
 			twoPhaseMove.commit();
 		}
 
 		Assertions.assertFalse(inTest.get(src).isPresent());
 		Assertions.assertFalse(inTest.get(dst).isPresent());
-		Mockito.verify(dstFile).updateCurrentFilePath(null);
+		verify(dstFile).updateCurrentFilePath(null);
 	}
 
 	@Test
@@ -202,14 +209,14 @@ public class OpenCryptoFilesTest {
 		OpenCryptoFile srcFile = mockOpenCryptoFile(src);
 		OpenCryptoFile dstFile = mockOpenCryptoFile(dst);
 
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class), true)) {
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, mock(CryptoPath.class), true)) {
 			twoPhaseMove.rollback();
 		}
 
 		Assertions.assertSame(srcFile, inTest.get(src).get());
 		Assertions.assertSame(dstFile, inTest.get(dst).get());
-		Mockito.verify(srcFile, Mockito.never()).updateCurrentFilePath(Mockito.any());
-		Mockito.verify(dstFile, Mockito.never()).updateCurrentFilePath(Mockito.any());
+		verify(srcFile, never()).updateCurrentFilePath(any());
+		verify(dstFile, never()).updateCurrentFilePath(any());
 	}
 
 	@Test
@@ -219,12 +226,12 @@ public class OpenCryptoFilesTest {
 		Path replaced = Path.of("/replaced").toAbsolutePath();
 		OpenCryptoFile replacedFile = mockOpenCryptoFile(replaced);
 
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class), true, replaced)) {
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, mock(CryptoPath.class), true, replaced)) {
 			twoPhaseMove.commit();
 		}
 
 		Assertions.assertFalse(inTest.get(replaced).isPresent());
-		Mockito.verify(replacedFile).updateCurrentFilePath(null);
+		verify(replacedFile).updateCurrentFilePath(null);
 	}
 
 	@Test
@@ -233,9 +240,9 @@ public class OpenCryptoFilesTest {
 		Path dst = Path.of("/dst").toAbsolutePath();
 		OpenCryptoFile srcFile = mockOpenCryptoFile(src);
 		var closeListener = ArgumentCaptor.forClass(FileCloseListener.class);
-		Mockito.verify(openCryptoFileComponentFactory).create(Mockito.eq(src), closeListener.capture());
+		verify(openCryptoFileComponentFactory).create(eq(src), closeListener.capture());
 
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class), true)) {
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, mock(CryptoPath.class), true)) {
 			FutureTask<?> committed = new FutureTask<>(twoPhaseMove::commit, null);
 			synchronized (srcFile) { // unregister under the monitor, as the last channel closing does
 				startAndAwait(new Thread(committed), committed, Thread.State.BLOCKED);
@@ -246,7 +253,7 @@ public class OpenCryptoFilesTest {
 
 		Assertions.assertFalse(inTest.get(src).isPresent());
 		Assertions.assertFalse(inTest.get(dst).isPresent());
-		Mockito.verify(srcFile, Mockito.never()).updateCurrentFilePath(Mockito.any());
+		verify(srcFile, never()).updateCurrentFilePath(any());
 	}
 
 	@Test
@@ -254,10 +261,10 @@ public class OpenCryptoFilesTest {
 		Path path = Path.of("/foo").toAbsolutePath();
 		OpenCryptoFile openFile = mockOpenCryptoFile(path);
 
-		inTest.replace(path, () -> Mockito.verify(openFile, Mockito.never()).updateCurrentFilePath(Mockito.any()));
+		inTest.replace(path, () -> verify(openFile, never()).updateCurrentFilePath(any()));
 
 		Assertions.assertFalse(inTest.get(path).isPresent());
-		Mockito.verify(openFile).updateCurrentFilePath(null);
+		verify(openFile).updateCurrentFilePath(null);
 	}
 
 	@Test
@@ -270,7 +277,7 @@ public class OpenCryptoFilesTest {
 		}));
 
 		Assertions.assertSame(openFile, inTest.get(path).get());
-		Mockito.verify(openFile, Mockito.never()).updateCurrentFilePath(Mockito.any());
+		verify(openFile, never()).updateCurrentFilePath(any());
 		Assertions.assertTimeoutPreemptively(Duration.ofSeconds(5), () -> inTest.beginOpen(path).close());
 	}
 
@@ -280,7 +287,7 @@ public class OpenCryptoFilesTest {
 		OpenCryptoFiles.OpenOperation openOp = inTest.beginOpen(path);
 		openOp.close();
 
-		Assertions.assertThrows(IllegalStateException.class, () -> openOp.newFileChannel(Mockito.mock(CryptoPath.class), Mockito.mock(EffectiveOpenOptions.class)));
+		Assertions.assertThrows(IllegalStateException.class, () -> openOp.newFileChannel(mock(CryptoPath.class), mock(EffectiveOpenOptions.class)));
 	}
 
 	@Test
@@ -288,16 +295,16 @@ public class OpenCryptoFilesTest {
 		Path path = Path.of("/foo").toAbsolutePath();
 		HeaderDecryptionException headerDecryptionException = new HeaderDecryptionException(path, new IllegalArgumentException());
 		DecryptionFailedEvent event = headerDecryptionException.getEvent();
-		Mockito.when(file.newFileChannel(Mockito.any())).thenThrow(headerDecryptionException);
-		Mockito.doAnswer(invocation -> {
-			inTest.prepareMove(path, Path.of("/bar").toAbsolutePath(), Mockito.mock(CryptoPath.class), true).close(); // waits forever if the lock was still held
+		when(file.newFileChannel(any())).thenThrow(headerDecryptionException);
+		doAnswer(invocation -> {
+			inTest.prepareMove(path, Path.of("/bar").toAbsolutePath(), mock(CryptoPath.class), true).close(); // waits forever if the lock was still held
 			return null;
 		}).when(eventConsumer).accept(event);
 
 		Assertions.assertTimeoutPreemptively(Duration.ofSeconds(5), () -> {
 			Assertions.assertThrows(HeaderDecryptionException.class, () -> openChannel(path));
 		});
-		Mockito.verify(eventConsumer).accept(event);
+		verify(eventConsumer).accept(event);
 	}
 
 	@ParameterizedTest
@@ -305,21 +312,21 @@ public class OpenCryptoFilesTest {
 	public void testReadOrWriteCiphertextFileAccessesContentsAfterReleasingLock(boolean write) throws IOException {
 		Path path = Path.of("/foo").toAbsolutePath();
 		Answer<Integer> movingAnswer = invocation -> {
-			inTest.prepareMove(path, Path.of("/bar").toAbsolutePath(), Mockito.mock(CryptoPath.class), true).close(); // waits forever if the lock was still held
+			inTest.prepareMove(path, Path.of("/bar").toAbsolutePath(), mock(CryptoPath.class), true).close(); // waits forever if the lock was still held
 			return 0;
 		};
-		Mockito.when(ciphertextFileChannel.read(Mockito.any(ByteBuffer.class))).thenAnswer(movingAnswer);
-		Mockito.when(ciphertextFileChannel.write(Mockito.any(ByteBuffer.class))).thenAnswer(movingAnswer);
+		when(ciphertextFileChannel.read(any(ByteBuffer.class))).thenAnswer(movingAnswer);
+		when(ciphertextFileChannel.write(any(ByteBuffer.class))).thenAnswer(movingAnswer);
 
 		Assertions.assertTimeoutPreemptively(Duration.ofSeconds(5), () -> {
 			if (write) {
-				inTest.writeCiphertextFile(Mockito.mock(CryptoPath.class), path, Mockito.mock(EffectiveOpenOptions.class), ByteBuffer.allocate(0));
+				inTest.writeCiphertextFile(mock(CryptoPath.class), path, mock(EffectiveOpenOptions.class), ByteBuffer.allocate(0));
 			} else {
-				inTest.readCiphertextFile(Mockito.mock(CryptoPath.class), path, Mockito.mock(EffectiveOpenOptions.class), 1337);
+				inTest.readCiphertextFile(mock(CryptoPath.class), path, mock(EffectiveOpenOptions.class), 1337);
 			}
 		});
-		Mockito.verify(ciphertextFileChannel, write ? Mockito.never() : Mockito.times(1)).read(Mockito.any(ByteBuffer.class));
-		Mockito.verify(ciphertextFileChannel, write ? Mockito.times(1) : Mockito.never()).write(Mockito.any(ByteBuffer.class));
+		verify(ciphertextFileChannel, write ? never() : times(1)).read(any(ByteBuffer.class));
+		verify(ciphertextFileChannel, write ? times(1) : never()).write(any(ByteBuffer.class));
 	}
 
 	@ParameterizedTest
@@ -337,7 +344,7 @@ public class OpenCryptoFilesTest {
 		FutureTask<?> opened = new FutureTask<>(opening);
 		Thread opener = new Thread(opened);
 
-		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class), true, replaced)) {
+		try (OpenCryptoFiles.TwoPhaseMove twoPhaseMove = inTest.prepareMove(src, dst, mock(CryptoPath.class), true, replaced)) {
 			startAndAwait(opener, opened, Thread.State.WAITING);
 			twoPhaseMove.commit();
 		}
@@ -355,7 +362,7 @@ public class OpenCryptoFilesTest {
 
 		opened.get(5, TimeUnit.SECONDS);
 		Assertions.assertSame(file, inTest.get(path).get());
-		Mockito.verify(file, Mockito.never()).updateCurrentFilePath(Mockito.any());
+		verify(file, never()).updateCurrentFilePath(any());
 	}
 
 	@Test
@@ -373,7 +380,7 @@ public class OpenCryptoFilesTest {
 
 		openChannel(src);
 		inTest.replace(dst, () -> {});
-		inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class), true).close();
+		inTest.prepareMove(src, dst, mock(CryptoPath.class), true).close();
 
 		var pathLocksField = OpenCryptoFiles.class.getDeclaredField("pathLocks");
 		pathLocksField.setAccessible(true);
@@ -399,7 +406,7 @@ public class OpenCryptoFilesTest {
 			}
 		});
 		FutureTask<Object> moved = new FutureTask<>(() -> {
-			inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class), true).close();
+			inTest.prepareMove(src, dst, mock(CryptoPath.class), true).close();
 			return null;
 		});
 		Thread mover = new Thread(moved);
@@ -420,9 +427,9 @@ public class OpenCryptoFilesTest {
 		Path dst = Path.of("/dst").toAbsolutePath();
 		if (targetOpened) {
 			inTest.getOrCreate(dst);
-			Assertions.assertThrows(FileAlreadyExistsException.class, () -> inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class), false));
+			Assertions.assertThrows(FileAlreadyExistsException.class, () -> inTest.prepareMove(src, dst, mock(CryptoPath.class), false));
 		} else {
-			inTest.prepareMove(src, dst, Mockito.mock(CryptoPath.class), false).close();
+			inTest.prepareMove(src, dst, mock(CryptoPath.class), false).close();
 		}
 
 		for (Path path : List.of(src, dst)) {
@@ -444,7 +451,7 @@ public class OpenCryptoFilesTest {
 	}
 
 	private void repeatTwoPhaseMove(Path src, Path dst) {
-		CryptoPath cleartextDst = Mockito.mock(CryptoPath.class);
+		CryptoPath cleartextDst = mock(CryptoPath.class);
 		for (int i = 0; i < 1000; i++) {
 			try (var twoPhaseMove = inTest.prepareMove(src, dst, cleartextDst, true)) {
 				twoPhaseMove.commit();
@@ -457,36 +464,36 @@ public class OpenCryptoFilesTest {
 	private OpenCryptoFile mockOpenCryptoFile(Path path) {
 		OpenCryptoFileComponent subComponent = mock(OpenCryptoFileComponent.class);
 		OpenCryptoFile openCryptoFile = mock(OpenCryptoFile.class, path.toString());
-		Mockito.when(openCryptoFileComponentFactory.create(Mockito.eq(path), Mockito.any())).thenReturn(subComponent);
-		Mockito.when(subComponent.openCryptoFile()).thenReturn(openCryptoFile);
+		when(openCryptoFileComponentFactory.create(eq(path), any())).thenReturn(subComponent);
+		when(subComponent.openCryptoFile()).thenReturn(openCryptoFile);
 		return inTest.getOrCreate(path);
 	}
 
 	private FileChannel openChannel(Path path) throws IOException {
 		try (var openOp = inTest.beginOpen(path)) {
-			return openOp.newFileChannel(Mockito.mock(CryptoPath.class), Mockito.mock(EffectiveOpenOptions.class));
+			return openOp.newFileChannel(mock(CryptoPath.class), mock(EffectiveOpenOptions.class));
 		}
 	}
 
 	@Test
 	public void testCloseClosesRemainingOpenFiles() {
-		Path path1 = Mockito.mock(Path.class, "/file1");
-		Mockito.when(path1.toAbsolutePath()).thenReturn(path1);
-		Mockito.when(path1.normalize()).thenReturn(path1);
+		Path path1 = mock(Path.class, "/file1");
+		when(path1.toAbsolutePath()).thenReturn(path1);
+		when(path1.normalize()).thenReturn(path1);
 		OpenCryptoFileComponent subComponent1 = mock(OpenCryptoFileComponent.class);
 		OpenCryptoFile file1 = mock(OpenCryptoFile.class, "file1");
-		Mockito.when(openCryptoFileComponentFactory.create(Mockito.eq(path1), Mockito.any())).thenReturn(subComponent1);
-		Mockito.when(subComponent1.openCryptoFile()).thenReturn(file1);
-		Mockito.when(file1.getCurrentFilePath()).thenReturn(path1);
+		when(openCryptoFileComponentFactory.create(eq(path1), any())).thenReturn(subComponent1);
+		when(subComponent1.openCryptoFile()).thenReturn(file1);
+		when(file1.getCurrentFilePath()).thenReturn(path1);
 
-		Path path2 = Mockito.mock(Path.class, "/file2");
-		Mockito.when(path2.toAbsolutePath()).thenReturn(path2);
-		Mockito.when(path2.normalize()).thenReturn(path2);
+		Path path2 = mock(Path.class, "/file2");
+		when(path2.toAbsolutePath()).thenReturn(path2);
+		when(path2.normalize()).thenReturn(path2);
 		OpenCryptoFileComponent subComponent2 = mock(OpenCryptoFileComponent.class);
 		OpenCryptoFile file2 = mock(OpenCryptoFile.class, "file2");
-		Mockito.when(openCryptoFileComponentFactory.create(Mockito.eq(path2), Mockito.any())).thenReturn(subComponent2);
-		Mockito.when(subComponent2.openCryptoFile()).thenReturn(file2);
-		Mockito.when(file2.getCurrentFilePath()).thenReturn(path2);
+		when(openCryptoFileComponentFactory.create(eq(path2), any())).thenReturn(subComponent2);
+		when(subComponent2.openCryptoFile()).thenReturn(file2);
+		when(file2.getCurrentFilePath()).thenReturn(path2);
 
 		Assertions.assertEquals(file1, inTest.getOrCreate(path1));
 		Assertions.assertEquals(file2, inTest.getOrCreate(path2));
@@ -494,8 +501,8 @@ public class OpenCryptoFilesTest {
 		Assertions.assertEquals(file2, inTest.get(path2).get());
 		inTest.close();
 
-		Mockito.verify(file1).close();
-		Mockito.verify(file2).close();
+		verify(file1).close();
+		verify(file2).close();
 		Assertions.assertFalse(inTest.get(path1).isPresent());
 		Assertions.assertFalse(inTest.get(path2).isPresent());
 	}
