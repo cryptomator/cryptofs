@@ -72,7 +72,7 @@ public class OpenCryptoFile implements Closeable {
 	/**
 	 * Creates a new file channel with the given open options.
 	 *
-	 * @param options The options to use to open the file channel. For the most part these will be passed through to the ciphertext channel.
+	 * @param options The options to use to open the file channel. For the most part these will be passed through to the ciphertext channel. {@link java.nio.file.StandardOpenOption#TRUNCATE_EXISTING} is left to the caller, see {@link OpenCryptoFiles.OpenOperation#newFileChannel(org.cryptomator.cryptofs.CryptoPath, EffectiveOpenOptions, FileAttribute[])}.
 	 * @return A new file channel. Ideally used in a try-with-resource statement. If the channel is not properly closed, this OpenCryptoFile will stay open indefinite.
 	 * @throws IOException
 	 */
@@ -95,9 +95,6 @@ public class OpenCryptoFile implements Closeable {
 			cleartextFileChannel = component.newChannelComponent() //
 					.create(ciphertextFileChannel, options, this::cleartextChannelClosed) //
 					.channel();
-			if (options.truncateExisting()) {
-				cleartextFileChannel.truncate(0);
-			}
 		} finally {
 			if (cleartextFileChannel == null) { // i.e. something didn't work
 				cleartextChannelClosed(ciphertextFileChannel);
@@ -216,6 +213,7 @@ public class OpenCryptoFile implements Closeable {
 		currentCleartextPath.getAndUpdate(p -> currentFilePath.get() == null ? p : cleartextPath);
 	}
 
+	// a move remaps the file while holding this monitor, so the last channel unregisters it either before or after the remap
 	private synchronized void cleartextChannelClosed(FileChannel ciphertextFileChannel) {
 		if (ciphertextFileChannel != null) {
 			chunkIO.unregisterChannel(ciphertextFileChannel);

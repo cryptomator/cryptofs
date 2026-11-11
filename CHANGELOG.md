@@ -7,6 +7,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 The changelog starts with version 2.10.0.
 Changes to prior versions can be found on the [GitHub release page](https://github.com/cryptomator/cryptofs/releases).
 
+## [2.12.0](https://github.com/cryptomator/cryptofs/releases/tag/2.12.0) - 2026-11-11
+
+### Changed
+* Moving a file with `REPLACE_EXISTING` onto a file that is currently open now replaces it like a POSIX rename, instead of failing with `FileAlreadyExistsException`: channels of the replaced file keep reading its old content, while the path shows the moved file ([#374](https://github.com/cryptomator/cryptofs/pull/374))
+* `DecryptionFailedEvent` for an undecryptable file header is now delivered once internal locks are released, so event consumers may access the filesystem ([#374](https://github.com/cryptomator/cryptofs/pull/374))
+* Improved write performance by encrypting chunks from a writable buffer, which allows the JCE fast path for AES-GCM ([#370](https://github.com/cryptomator/cryptofs/pull/370))
+
+### Fixed
+* Fixed files with long (shortened) names becoming undecryptable when moved while open, or when replacing an open file ([#374](https://github.com/cryptomator/cryptofs/pull/374))
+* Fixed an open file keeping its old content at its path after `Files.copy` with `REPLACE_EXISTING` or a symlink replaced it ([#374](https://github.com/cryptomator/cryptofs/pull/374))
+* Fixed a partial write of an encrypted chunk going unnoticed and leaving a torn chunk on disk ([#370](https://github.com/cryptomator/cryptofs/pull/370))
+
+
 ## [2.11.1](https://github.com/cryptomator/cryptofs/releases/tag/2.11.1) - 2026-10-26
 
 ### Changed
