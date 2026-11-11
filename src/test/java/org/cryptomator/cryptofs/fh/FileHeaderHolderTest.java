@@ -1,7 +1,5 @@
 package org.cryptomator.cryptofs.fh;
 
-import org.cryptomator.cryptofs.event.DecryptionFailedEvent;
-import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
@@ -14,9 +12,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.ArgumentMatcher;
-import org.mockito.ArgumentMatchers;
-import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -24,9 +19,13 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -43,35 +42,34 @@ public class FileHeaderHolderTest {
 	private final Cryptor cryptor = mock(Cryptor.class);
 	private final Path path = mock(Path.class, "openFile.txt");
 	private final AtomicReference<Path> pathRef = new AtomicReference<>(path);
-	private final Consumer<FilesystemEvent> eventConsumer = mock(Consumer.class);
 
 	private FileHeaderHolder inTest;
 
 	@BeforeEach
 	public void setup() throws IOException {
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
-		when(fileHeaderCryptor.encryptHeader(Mockito.any())).thenReturn(ByteBuffer.wrap(new byte[0]));
-		inTest = new FileHeaderHolder(eventConsumer, cryptor, pathRef);
+		when(fileHeaderCryptor.encryptHeader(any())).thenReturn(ByteBuffer.wrap(new byte[0]));
+		inTest = new FileHeaderHolder(cryptor, pathRef);
 	}
 
 	@Nested
 	@DisplayName("existing header")
 	public class ExistingHeader {
 
-		private FileHeader headerToLoad = Mockito.mock(FileHeader.class);
-		private FileChannel channel = Mockito.mock(FileChannel.class);
+		private FileHeader headerToLoad = mock(FileHeader.class);
+		private FileChannel channel = mock(FileChannel.class);
 
 		@BeforeEach
 		public void setup() throws IOException, AuthenticationFailedException {
 			byte[] headerBytes = "leHeader".getBytes(StandardCharsets.US_ASCII);
 			when(fileHeaderCryptor.headerSize()).thenReturn(headerBytes.length);
-			when(channel.read(Mockito.any(ByteBuffer.class), Mockito.eq(0l))).thenAnswer(invocation -> {
+			when(channel.read(any(ByteBuffer.class), eq(0l))).thenAnswer(invocation -> {
 				ByteBuffer buf = invocation.getArgument(0);
 				Assertions.assertEquals(headerBytes.length, buf.capacity());
 				buf.put(headerBytes);
 				return headerBytes.length;
 			});
-			when(fileHeaderCryptor.decryptHeader(Mockito.argThat(buf -> StandardCharsets.US_ASCII.decode(buf).toString().equals("leHeader")))).thenReturn(headerToLoad);
+			when(fileHeaderCryptor.decryptHeader(argThat(buf -> StandardCharsets.US_ASCII.decode(buf).toString().equals("leHeader")))).thenReturn(headerToLoad);
 		}
 
 		@Test
@@ -84,7 +82,7 @@ public class FileHeaderHolderTest {
 			Assertions.assertSame(headerToLoad, loadedHeader2);
 			Assertions.assertSame(headerToLoad, loadedHeader3);
 
-			verify(fileHeaderCryptor, times(1)).decryptHeader(Mockito.any());
+			verify(fileHeaderCryptor, times(1)).decryptHeader(any());
 			Assertions.assertNotNull(inTest.get());
 			Assertions.assertNotNull(inTest.getEncrypted());
 			Assertions.assertTrue(inTest.headerIsPersisted().get());
@@ -94,11 +92,11 @@ public class FileHeaderHolderTest {
 		@DisplayName("load failure due to authenticationFailedException")
 		@ValueSource(classes = {AuthenticationFailedException.class, IllegalArgumentException.class})
 		public void testLoadExistingFailure(Class<? extends Exception> clazz) {
-			Mockito.doThrow(clazz).when(fileHeaderCryptor).decryptHeader(Mockito.any());
+			doThrow(clazz).when(fileHeaderCryptor).decryptHeader(any());
 
-			Assertions.assertThrows(IOException.class, () -> inTest.loadExisting(channel));
-			var isDecryptionFailedEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof DecryptionFailedEvent;
-			verify(eventConsumer).accept(ArgumentMatchers.argThat(isDecryptionFailedEvent));
+			var e = Assertions.assertThrows(HeaderDecryptionException.class, () -> inTest.loadExisting(channel));
+			Assertions.assertEquals(path, e.getEvent().ciphertextPath());
+			Assertions.assertInstanceOf(clazz, e.getEvent().e());
 		}
 
 	}
@@ -107,7 +105,7 @@ public class FileHeaderHolderTest {
 	@DisplayName("new header")
 	public class NewHeader {
 
-		private FileHeader headerToCreate = Mockito.mock(FileHeader.class);
+		private FileHeader headerToCreate = mock(FileHeader.class);
 
 		@BeforeEach
 		public void setup() throws IOException {
@@ -116,7 +114,7 @@ public class FileHeaderHolderTest {
 
 		@AfterEach
 		public void tearDown() throws AuthenticationFailedException {
-			verify(fileHeaderCryptor, Mockito.never()).decryptHeader(Mockito.any());
+			verify(fileHeaderCryptor, never()).decryptHeader(any());
 		}
 
 		@Test

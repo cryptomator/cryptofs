@@ -1,7 +1,5 @@
 package org.cryptomator.cryptofs.fh;
 
-import org.cryptomator.cryptofs.event.DecryptionFailedEvent;
-import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptolib.api.CryptoException;
 import org.cryptomator.cryptolib.api.Cryptor;
 import org.cryptomator.cryptolib.api.FileHeader;
@@ -15,14 +13,12 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 @OpenFileScoped
 public class FileHeaderHolder {
 
 	private static final Logger LOG = LoggerFactory.getLogger(FileHeaderHolder.class);
 
-	private final Consumer<FilesystemEvent> eventConsumer;
 	private final Cryptor cryptor;
 	private final AtomicReference<Path> path;
 	private final AtomicReference<FileHeader> header = new AtomicReference<>();
@@ -30,8 +26,7 @@ public class FileHeaderHolder {
 	private final AtomicBoolean isPersisted = new AtomicBoolean();
 
 	@Inject
-	public FileHeaderHolder(Consumer<FilesystemEvent> eventConsumer, Cryptor cryptor, @CurrentOpenFilePath AtomicReference<Path> path) {
-		this.eventConsumer = eventConsumer;
+	public FileHeaderHolder(Cryptor cryptor, @CurrentOpenFilePath AtomicReference<Path> path) {
 		this.cryptor = cryptor;
 		this.path = path;
 	}
@@ -80,8 +75,7 @@ public class FileHeaderHolder {
 			isPersisted.set(true);
 			return existingHeader;
 		} catch (IllegalArgumentException | CryptoException e) {
-			eventConsumer.accept(new DecryptionFailedEvent(path.get(), e));
-			throw new IOException("Unable to decrypt header of file " + path.get(), e);
+			throw new HeaderDecryptionException(path.get(), e);
 		}
 	}
 
