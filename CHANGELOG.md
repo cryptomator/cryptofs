@@ -14,6 +14,10 @@ No changes yet.
 
 ## [2.12.0](https://github.com/cryptomator/cryptofs/releases/tag/2.12.0) - 2026-11-11
 
+### Added
+* Property `vaultId` in `CryptoFileSystemProperties` to set the vault id during vault initialization ([#358](https://github.com/cryptomator/cryptofs/pull/358))
+* Getter `UnverifiedVaultConfig::allegedVaultId` to get the vault id of an unverified vault config ([#358](https://github.com/cryptomator/cryptofs/pull/358))
+
 ### Changed
 * Moving a file with `REPLACE_EXISTING` onto a file that is currently open now replaces it like a POSIX rename, instead of failing with `FileAlreadyExistsException`: channels of the replaced file keep reading its old content, while the path shows the moved file ([#374](https://github.com/cryptomator/cryptofs/pull/374))
 * `DecryptionFailedEvent` for an undecryptable file header is now delivered once internal locks are released, so event consumers may access the filesystem ([#374](https://github.com/cryptomator/cryptofs/pull/374))
