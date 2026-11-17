@@ -220,8 +220,8 @@ public class OrphanContentDir implements DiagnosticResult {
 	}
 
 	private static String createClearnameToBeShortened(int threshold) {
-		int neededLength = (threshold - 4) / 4 * 3 - 16;
-		return LONG_NAME_SUFFIX_BASE.repeat((neededLength % LONG_NAME_SUFFIX_BASE.length()) + 1);
+		int maxUnshortenedLength = (threshold - 4) / 4 * 3 - 16;
+		return LONG_NAME_SUFFIX_BASE.repeat((maxUnshortenedLength / LONG_NAME_SUFFIX_BASE.length()) + 1);
 	}
 
 	private static String encrypt(FileNameCryptor cryptor, String clearTextName, String dirId) {
