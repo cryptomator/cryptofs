@@ -1,13 +1,16 @@
 package org.cryptomator.cryptofs.health.dirid;
 
+import com.google.common.collect.MoreCollectors;
 import com.google.common.io.BaseEncoding;
 import org.cryptomator.cryptofs.CiphertextDirectory;
 import org.cryptomator.cryptofs.DirectoryIdBackup;
 import org.cryptomator.cryptofs.VaultConfig;
 import org.cryptomator.cryptofs.common.Constants;
+import org.cryptomator.cryptofs.mocks.NullSecureRandom;
 import org.cryptomator.cryptofs.util.TestCryptoException;
 import org.cryptomator.cryptolib.api.AuthenticationFailedException;
 import org.cryptomator.cryptolib.api.Cryptor;
+import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.FileNameCryptor;
 import org.cryptomator.cryptolib.api.Masterkey;
 import org.junit.jupiter.api.Assertions;
@@ -420,6 +423,45 @@ public class OrphanContentDirTest {
 
 		Mockito.verify(resultSpy, Mockito.times(2)).adoptOrphanedResource(Mockito.any(), Mockito.any(), Mockito.anyBoolean(), Mockito.eq(stepParentDir), Mockito.eq(fileNameCryptor), Mockito.any());
 		Assertions.assertTrue(Files.notExists(cipherOrphan));
+	}
+
+	static List<Integer> shorteningThresholds = List.of(36, 116, 140, 164, 170, 184, 210, 219, 220);
+
+	@ParameterizedTest
+	@DisplayName("fix() gives a shortened orphan a ciphertext name exceeding the shortening threshold (dirId not present)")
+	@FieldSource("shorteningThresholds")
+	public void testFixNoDirIdKeepsShortenedOrphanShortened(int shorteningThreshold) throws IOException {
+		result = new OrphanContentDir(dataDir.relativize(cipherOrphan));
+		var resultSpy = Mockito.spy(result);
+
+		Path orphan = cipherOrphan.resolve("orphan_with_at_least_26chars.c9s");
+		Files.createDirectories(orphan);
+
+		CiphertextDirectory stepParentDir = new CiphertextDirectory("aaaaaa", dataDir.resolve("22/2222"));
+		Files.createDirectories(stepParentDir.path());
+
+		Cryptor realCryptor = CryptorProvider.forScheme(CryptorProvider.Scheme.SIV_GCM).provide(new Masterkey(new byte[64]), NullSecureRandom.INSTANCE);
+		var realFileNameCryptor = realCryptor.fileNameCryptor();
+		Mockito.doReturn(realFileNameCryptor).when(cryptor).fileNameCryptor();
+
+		VaultConfig config = Mockito.mock(VaultConfig.class);
+		Mockito.doReturn(shorteningThreshold).when(config).getShorteningThreshold();
+		Masterkey masterkey = Mockito.mock(Masterkey.class);
+
+		Mockito.doReturn(cipherRecovery).when(resultSpy).prepareRecoveryDir(pathToVault, realFileNameCryptor);
+		Mockito.doReturn(stepParentDir).when(resultSpy).prepareStepParent(Mockito.eq(dataDir), Mockito.eq(cipherRecovery), Mockito.eq(cryptor), Mockito.any());
+
+		try (var dirIdBackup = mockStatic(DirectoryIdBackup.class)) {
+			dirIdBackup.when(() -> DirectoryIdBackup.read(cryptor, cipherOrphan)).thenThrow(IllegalStateException.class);
+			resultSpy.fix(pathToVault, config, masterkey, cryptor);
+		}
+
+		try (var adopted = Files.list(stepParentDir.path())) {
+			Path adoptedOrphan = adopted.collect(MoreCollectors.onlyElement());
+			Assertions.assertTrue(adoptedOrphan.getFileName().toString().endsWith(Constants.DEFLATED_FILE_SUFFIX));
+			String cipherName = Files.readString(adoptedOrphan.resolve(Constants.INFLATED_FILE_NAME));
+			Assertions.assertTrue(cipherName.length() > shorteningThreshold, () -> "ciphertext name of length " + cipherName.length() + " does not exceed shortening threshold " + shorteningThreshold);
+		}
 	}
 
 	@Test

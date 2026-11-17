@@ -9,7 +9,8 @@ Changes to prior versions can be found on the [GitHub release page](https://gith
 
 ## [Unreleased](https://github.com/cryptomator/cryptofs/compare/2.12.0...HEAD)
 
-No changes yet.
+### Fixed
+* Fixed long-named items that the orphaned directory health check recovers into `LOST+FOUND` being unreadable in vaults with certain shortening thresholds, when the original directory ID was lost ([#375](https://github.com/cryptomator/cryptofs/issues/375))
 
 
 ## [2.12.0](https://github.com/cryptomator/cryptofs/releases/tag/2.12.0) - 2026-11-11
