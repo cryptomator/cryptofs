@@ -15,10 +15,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.*;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
 
 public class CryptoFileSystemPropertiesTest {
@@ -84,6 +86,46 @@ public class CryptoFileSystemPropertiesTest {
 						anEntry(PROPERTY_EVENT_CONSUMER, DEFAULT_EVENT_CONSUMER), //
 						anEntry(PROPERTY_OWNER_GETTER, DEFAULT_OWNER_GETTER)) //
 		);
+	}
+
+	@Test
+	public void testVaultIdAbsentByDefault() {
+		CryptoFileSystemProperties inTest = cryptoFileSystemProperties().withKeyLoader(keyLoader).build();
+
+		Assertions.assertTrue(inTest.vaultId().isEmpty());
+		Assertions.assertFalse(inTest.containsKey(PROPERTY_VAULT_ID));
+	}
+
+	@Test
+	public void testSetVaultId() {
+		CryptoFileSystemProperties inTest = cryptoFileSystemProperties().withKeyLoader(keyLoader).withVaultId("my-vault-id").build();
+
+		Assertions.assertEquals(Optional.of("my-vault-id"), inTest.vaultId());
+		MatcherAssert.assertThat(inTest.entrySet(), hasItem(anEntry(PROPERTY_VAULT_ID, "my-vault-id")));
+	}
+
+	@Test
+	public void testVaultIdFromMap() {
+		Map<String, Object> map = new HashMap<>();
+		map.put(PROPERTY_KEYLOADER, keyLoader);
+		map.put(PROPERTY_VAULT_ID, "my-vault-id");
+		CryptoFileSystemProperties inTest = cryptoFileSystemPropertiesFrom(map).build();
+
+		Assertions.assertEquals(Optional.of("my-vault-id"), inTest.vaultId());
+	}
+
+	@Test
+	public void testBlankVaultIdThrowsIAE() {
+		Assertions.assertThrows(IllegalArgumentException.class, () -> cryptoFileSystemProperties().withVaultId(" "));
+	}
+
+	@Test
+	public void testWrapMapWithInvalidVaultId() {
+		Map<String, Object> map = new HashMap<>();
+		map.put(PROPERTY_KEYLOADER, keyLoader);
+		map.put(PROPERTY_VAULT_ID, 42);
+
+		Assertions.assertThrows(IllegalArgumentException.class, () -> CryptoFileSystemProperties.wrap(map));
 	}
 
 	@Test
