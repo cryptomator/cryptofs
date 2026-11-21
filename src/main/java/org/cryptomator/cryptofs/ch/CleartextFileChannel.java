@@ -321,6 +321,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		FileTime lastModifiedTime = isWritable() ? FileTime.from(lastModified.get()) : null;
 		FileTime lastAccessTime = FileTime.from(Instant.now());
 		var p = currentFilePath.get();
+		// best effort: setTimes resolves the path again, because NIO can't set times through an open channel. A replacement right after the check goes unnoticed.
 		if (p != null && isSameCiphertextFile(p)) {
 			p.getFileSystem().provider() //
 					.getFileAttributeView(p, BasicFileAttributeView.class) //

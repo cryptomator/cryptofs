@@ -298,7 +298,7 @@ public class RealUseTokenTest {
 	public void testCloseKeepsModifiedFile() throws IOException {
 		var filePath = tmpDir.resolve("inUse.file");
 
-		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
+		try (var _ = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
 			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX) //
 					.untilAsserted(() -> assertInUseFile("test3000", filePath));
 
@@ -309,7 +309,7 @@ public class RealUseTokenTest {
 
 	@Test
 	@DisplayName("Refreshing a token whose in-use file cannot be inspected closes the token, but does not delete the file")
-	public void testRefreshWithFailingStatKeepsFile() throws IOException {
+	public void testRefreshWithFailingStatKeepsFile() {
 		var filePath = tmpDir.resolve("inUse.file");
 
 		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {

@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-public class CiphertextFileKeyTest {
+class CiphertextFileKeyTest {
 
 	private final CiphertextFileKey inTest = new CiphertextFileKey();
 
@@ -12,14 +12,14 @@ public class CiphertextFileKeyTest {
 
 	@Test
 	@DisplayName("every key matches while none was captured")
-	public void testMatchesWithoutCapturedKey() {
+	void testMatchesWithoutCapturedKey() {
 		Assertions.assertFalse(inTest.isCaptured());
 		Assertions.assertTrue(inTest.matches(new Key(1)));
 	}
 
 	@Test
 	@DisplayName("an unknown key matches a captured one")
-	public void testMatchesUnknownKey() {
+	void testMatchesUnknownKey() {
 		inTest.capture(new Key(1));
 
 		Assertions.assertTrue(inTest.isCaptured());
@@ -28,7 +28,7 @@ public class CiphertextFileKeyTest {
 
 	@Test
 	@DisplayName("an equal key matches")
-	public void testMatchesEqualKey() {
+	void testMatchesEqualKey() {
 		inTest.capture(new Key(1));
 
 		Assertions.assertTrue(inTest.matches(new Key(1)));
@@ -36,7 +36,7 @@ public class CiphertextFileKeyTest {
 
 	@Test
 	@DisplayName("a different key doesn't match")
-	public void testDoesntMatchDifferentKey() {
+	void testDoesntMatchDifferentKey() {
 		inTest.capture(new Key(1));
 
 		Assertions.assertFalse(inTest.matches(new Key(2)));

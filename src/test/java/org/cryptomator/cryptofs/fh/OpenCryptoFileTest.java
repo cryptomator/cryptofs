@@ -494,7 +494,7 @@ public class OpenCryptoFileTest {
 
 	@Nested
 	@DisplayName("detecting a replaced ciphertext file")
-	public class ReplacementDetection {
+	class ReplacementDetection {
 
 		private static final Object FIRST_KEY = "first key";
 		private static final Object REPLACEMENT_KEY = "replacement key";
@@ -514,7 +514,7 @@ public class OpenCryptoFileTest {
 		private OpenCryptoFile inTest;
 
 		@BeforeEach
-		public void setup() throws IOException {
+		void setup() throws IOException {
 			when(path.getFileSystem()).thenReturn(fileSystem);
 			when(fileSystem.provider()).thenReturn(provider);
 			when(provider.newFileChannel(eq(path), any(), any(FileAttribute[].class))).thenReturn(firstCiphertextChannel, candidate);
@@ -547,7 +547,7 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@DisplayName("a channel joining after the ciphertext was replaced detaches the open file without opening the replacement")
-		public void testKeyMismatchBeforeOpen() throws IOException {
+		void testKeyMismatchBeforeOpen() throws IOException {
 			openFirstChannel();
 
 			try (var fileKeys = mockStatic(CiphertextFileKey.class)) {
@@ -562,7 +562,7 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@DisplayName("a channel joining while the ciphertext gets replaced detaches the open file and closes the candidate")
-		public void testKeyMismatchAfterOpen() throws IOException {
+		void testKeyMismatchAfterOpen() throws IOException {
 			openFirstChannel();
 
 			try (var fileKeys = mockStatic(CiphertextFileKey.class)) {
@@ -579,7 +579,7 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@DisplayName("a first channel whose ciphertext gets replaced while opening detaches the open file")
-		public void testFirstChannelKeyRace() throws IOException {
+		void testFirstChannelKeyRace() throws IOException {
 			try (var fileKeys = mockStatic(CiphertextFileKey.class)) {
 				fileKeys.when(() -> CiphertextFileKey.read(path)).thenReturn(FIRST_KEY);
 				fileKeys.when(() -> CiphertextFileKey.readAttributes(path)).thenReturn(replacementAttributes);
@@ -592,8 +592,50 @@ public class OpenCryptoFileTest {
 		}
 
 		@Test
+		@DisplayName("a first channel without a file key from before opening detects a file of another size that replaced the opened one")
+		void testFirstChannelWithoutKeyDetectsReplacementBySize() throws IOException {
+			when(replacementAttributes.size()).thenReturn(100L);
+			when(firstCiphertextChannel.size()).thenReturn(0L);
+			try (var fileKeys = mockStatic(CiphertextFileKey.class)) {
+				fileKeys.when(() -> CiphertextFileKey.read(path)).thenThrow(new NoSuchFileException("joinedFile"));
+				fileKeys.when(() -> CiphertextFileKey.readAttributes(path)).thenReturn(replacementAttributes);
+				var e = Assertions.assertThrows(CiphertextReplacedException.class, () -> inTest.newFileChannel(options));
+				Assertions.assertTrue(e.retryable());
+			}
+
+			verify(firstCiphertextChannel).close();
+			assertDetachedAsReplaced();
+		}
+
+		@Test
+		@DisplayName("a first channel without a file key from before opening captures the key of the file it opened")
+		void testFirstChannelWithoutKeyCapturesKeyAfterOpen() throws IOException {
+			when(firstAttributes.size()).thenReturn(100L);
+			when(firstCiphertextChannel.size()).thenReturn(100L);
+			try (var fileKeys = mockStatic(CiphertextFileKey.class)) {
+				fileKeys.when(() -> CiphertextFileKey.read(path)).thenThrow(new NoSuchFileException("joinedFile"));
+				fileKeys.when(() -> CiphertextFileKey.readAttributes(path)).thenReturn(firstAttributes);
+				inTest.newFileChannel(options);
+			}
+
+			Assertions.assertFalse(ciphertextFileKey.matches(REPLACEMENT_KEY));
+		}
+
+		@Test
+		@DisplayName("a first channel keeps the file key from before opening if the attributes after opening are unavailable")
+		void testFirstChannelKeepsKeyWithoutAttributesAfterOpen() throws IOException {
+			try (var fileKeys = mockStatic(CiphertextFileKey.class)) {
+				fileKeys.when(() -> CiphertextFileKey.read(path)).thenReturn(FIRST_KEY);
+				fileKeys.when(() -> CiphertextFileKey.readAttributes(path)).thenThrow(new IOException("stat failed"));
+				inTest.newFileChannel(options);
+			}
+
+			Assertions.assertFalse(ciphertextFileKey.matches(REPLACEMENT_KEY));
+		}
+
+		@Test
 		@DisplayName("a first channel takes the last-modified time from the file whose key it captured")
-		public void testFirstChannelTakesModifiedTimeOfCapturedFile() throws IOException {
+		void testFirstChannelTakesModifiedTimeOfCapturedFile() throws IOException {
 			openFirstChannel();
 
 			Assertions.assertEquals(FIRST_MODIFIED, inTest.getLastModifiedTime());
@@ -601,7 +643,7 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@DisplayName("a first channel keeps a last-modified time set while it opens")
-		public void testFirstChannelKeepsModifiedTimeSetDuringOpen() throws IOException {
+		void testFirstChannelKeepsModifiedTimeSetDuringOpen() throws IOException {
 			var setDuringOpen = FileTime.from(Instant.parse("2024-01-01T00:00:00Z"));
 			try (var fileKeys = mockStatic(CiphertextFileKey.class)) {
 				fileKeys.when(() -> CiphertextFileKey.read(path)).thenAnswer(invocation -> {
@@ -617,7 +659,7 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@DisplayName("a joining channel keeps the open file's last-modified time")
-		public void testJoiningChannelKeepsModifiedTime() throws IOException {
+		void testJoiningChannelKeepsModifiedTime() throws IOException {
 			openFirstChannel();
 			var modifiedByWrite = FileTime.from(Instant.parse("2024-01-01T00:00:00Z"));
 			inTest.setLastModifiedTime(modifiedByWrite);
@@ -634,9 +676,9 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@DisplayName("a joining open with DELETE_ON_CLOSE detaches the open file after unlinking it, even without a captured file key")
-		public void testDeleteOnCloseJoinWithoutFileKeyDetaches() throws IOException {
+		void testDeleteOnCloseJoinWithoutFileKeyDetaches() throws IOException {
 			try (var fileKeys = mockStatic(CiphertextFileKey.class)) {
-				fileKeys.when(() -> CiphertextFileKey.read(path)).thenReturn(FIRST_KEY);
+				fileKeys.when(() -> CiphertextFileKey.read(path)).thenThrow(new IOException("stat failed"));
 				fileKeys.when(() -> CiphertextFileKey.readAttributes(path)).thenThrow(new IOException("stat failed"));
 				inTest.newFileChannel(options);
 			}
@@ -653,7 +695,7 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@DisplayName("a deleted open file refuses new channels with IllegalStateException")
-		public void testDeletedFile() {
+		void testDeletedFile() {
 			inTest.updateCurrentFilePath(null);
 
 			Assertions.assertThrows(IllegalStateException.class, () -> inTest.newFileChannel(options));
@@ -661,7 +703,7 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@DisplayName("an open with DELETE_ON_CLOSE that unlinked the ciphertext detaches the open file, so that concurrent openers retry")
-		public void testDeleteOnCloseUnlinkingDetaches() throws IOException {
+		void testDeleteOnCloseUnlinkingDetaches() throws IOException {
 			try (var fileKeys = mockStatic(CiphertextFileKey.class)) {
 				fileKeys.when(() -> CiphertextFileKey.read(path)).thenReturn(FIRST_KEY);
 				fileKeys.when(() -> CiphertextFileKey.readAttributes(path)).thenThrow(new NoSuchFileException("joinedFile"));
@@ -678,7 +720,7 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@DisplayName("an open with DELETE_ON_CLOSE that detects a replacement after opening is not retryable")
-		public void testDeleteOnCloseReplacementNotRetryable() throws IOException {
+		void testDeleteOnCloseReplacementNotRetryable() throws IOException {
 			openFirstChannel();
 
 			try (var fileKeys = mockStatic(CiphertextFileKey.class)) {
@@ -696,7 +738,7 @@ public class OpenCryptoFileTest {
 
 	@Nested
 	@DisplayName("comparing file headers of joining channels")
-	public class HeaderCheck {
+	class HeaderCheck {
 
 		private final Cryptor realCryptor = CryptorProvider.forScheme(CryptorProvider.Scheme.SIV_GCM).provide(new Masterkey(new byte[64]), new SecureRandom());
 		private final int headerSize = realCryptor.fileHeaderCryptor().headerSize();
@@ -706,7 +748,7 @@ public class OpenCryptoFileTest {
 		private OpenCryptoFile inTest;
 
 		@BeforeEach
-		public void setup() {
+		void setup() {
 			fileSystem = Jimfs.newFileSystem(Configuration.unix());
 			path = new AtomicReference<>(fileSystem.getPath("/file"));
 			realHeaderHolder = new FileHeaderHolder(realCryptor, path);
@@ -714,7 +756,7 @@ public class OpenCryptoFileTest {
 		}
 
 		@AfterEach
-		public void tearDown() throws IOException {
+		void tearDown() throws IOException {
 			fileSystem.close();
 		}
 
@@ -749,7 +791,7 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@DisplayName("a loaded header on disk matches")
-		public void testSameLoadedHeader() throws IOException {
+		void testSameLoadedHeader() throws IOException {
 			var header = newEncryptedHeader();
 			realHeaderHolder.loadExisting(serving(header, Integer.MAX_VALUE));
 
@@ -758,7 +800,7 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@DisplayName("a created and written header on disk matches")
-		public void testSameCreatedHeader() throws IOException {
+		void testSameCreatedHeader() throws IOException {
 			realHeaderHolder.createNew();
 			realHeaderHolder.headerIsPersisted().set(true);
 
@@ -767,7 +809,7 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@DisplayName("another header on disk doesn't match")
-		public void testDifferentHeader() throws IOException {
+		void testDifferentHeader() throws IOException {
 			realHeaderHolder.loadExisting(serving(newEncryptedHeader(), Integer.MAX_VALUE));
 
 			Assertions.assertFalse(inTest.verifySameCiphertext(null, serving(newEncryptedHeader(), Integer.MAX_VALUE)));
@@ -775,7 +817,7 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@DisplayName("an empty file matches a header not written yet")
-		public void testEmptyFileWithUnpersistedHeader() throws IOException {
+		void testEmptyFileWithUnpersistedHeader() throws IOException {
 			realHeaderHolder.createNew();
 
 			Assertions.assertTrue(inTest.verifySameCiphertext(null, serving(new byte[0], Integer.MAX_VALUE)));
@@ -783,7 +825,7 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@DisplayName("another header doesn't match a header not written yet")
-		public void testOtherHeaderWithUnpersistedHeader() throws IOException {
+		void testOtherHeaderWithUnpersistedHeader() throws IOException {
 			realHeaderHolder.createNew();
 
 			Assertions.assertFalse(inTest.verifySameCiphertext(null, serving(newEncryptedHeader(), Integer.MAX_VALUE)));
@@ -791,7 +833,7 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@DisplayName("a file shorter than a persisted header doesn't match")
-		public void testShortFileWithPersistedHeader() throws IOException {
+		void testShortFileWithPersistedHeader() throws IOException {
 			var header = newEncryptedHeader();
 			realHeaderHolder.loadExisting(serving(header, Integer.MAX_VALUE));
 
@@ -801,7 +843,7 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@DisplayName("a header read in several parts matches")
-		public void testHeaderReadInParts() throws IOException {
+		void testHeaderReadInParts() throws IOException {
 			var header = newEncryptedHeader();
 			realHeaderHolder.loadExisting(serving(header, Integer.MAX_VALUE));
 
@@ -810,7 +852,7 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@DisplayName("an empty file matches a header that gets written while reading")
-		public void testHeaderPersistedWhileReading() throws IOException {
+		void testHeaderPersistedWhileReading() throws IOException {
 			realHeaderHolder.createNew();
 			FileChannel channel = mock(FileChannel.class);
 			when(channel.read(any(ByteBuffer.class), anyLong())).thenAnswer(invocation -> {
@@ -823,7 +865,7 @@ public class OpenCryptoFileTest {
 
 		@Test
 		@DisplayName("without file keys, a channel joining after the header changed on disk detaches the open file")
-		public void testReplacedHeaderWithoutFileKeys() throws IOException {
+		void testReplacedHeaderWithoutFileKeys() throws IOException {
 			Files.write(path.get(), newEncryptedHeader());
 			var options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.READ), readonlyFlag);
 			when(openCryptoFileComponent.newChannelComponent()).thenReturn(channelComponentFactory);

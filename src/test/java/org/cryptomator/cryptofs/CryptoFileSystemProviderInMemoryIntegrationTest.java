@@ -314,7 +314,7 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 			Files.write(a, repeat('o', 200_000));
 			Files.write(b, repeat('R', 100_000));
 
-			try (var ch = FileChannel.open(a, READ)) {
+			try (var _ = FileChannel.open(a, READ)) {
 				var ciphertext = replaceCiphertext(fs, a, ciphertextPath(fs, b));
 				Files.setLastModifiedTime(ciphertext, LONG_AGO);
 				assertEquals(100_000, Files.size(a));

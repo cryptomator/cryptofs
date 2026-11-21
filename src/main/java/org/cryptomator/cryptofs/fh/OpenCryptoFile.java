@@ -43,7 +43,7 @@ public class OpenCryptoFile implements Closeable {
 
 	private final AtomicInteger openChannelsCount = new AtomicInteger(0);
 	private volatile UseToken useToken;
-	private volatile Path detachedPath; // non-null once an open detached this file, so later opens retry instead of failing like after a delete
+	private Path detachedPath; // guarded by this; non-null once an open detached this file, so later opens retry instead of failing like after a delete
 
 	@Inject
 	public OpenCryptoFile(FileCloseListener listener, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, CiphertextFileKey ciphertextFileKey, //
@@ -96,12 +96,7 @@ public class OpenCryptoFile implements Closeable {
 		try {
 			Instant lastModifiedBeforeOpen = lastModified.get();
 			boolean readFileKey = !joining || ciphertextFileKey.isCaptured();
-			Object keyBeforeOpen = readFileKey ? readFileKeyOrNull(path) : null;
-			if (!joining) {
-				ciphertextFileKey.capture(keyBeforeOpen); // compared with the key read after opening, to notice a replacement during the open
-			} else if (!ciphertextFileKey.matches(keyBeforeOpen)) {
-				throw detachAsReplaced(path, true); // before opening, as an open with DELETE_ON_CLOSE unlinks the file at the path
-			}
+			captureOrMatchFileKeyBeforeOpen(path, joining, readFileKey);
 			if (options.writable() && useToken.isClosed()) { //the token was closed prematurely, so we try to get a new one
 				useToken = inUseManager.use(path);
 			}
@@ -110,25 +105,16 @@ public class OpenCryptoFile implements Closeable {
 			if (readFileKey || options.deleteOnClose()) {
 				try {
 					attrsAfterOpen = CiphertextFileKey.readAttributes(path);
-				} catch (NoSuchFileException e) {
+				} catch (NoSuchFileException _) {
 					unlinkedByOpen = options.deleteOnClose(); // the JDK unlinks such files while opening them, except on Windows
 				} catch (IOException e) {
 					LOG.debug("Failed to read file key of {}.", path, e);
 				}
 			}
-			Object keyAfterOpen = attrsAfterOpen != null ? attrsAfterOpen.fileKey() : null;
-			boolean replacedDuringOpen = joining //
-					? !verifySameCiphertext(keyAfterOpen, ciphertextFileChannel) //
-					: !ciphertextFileKey.matches(keyAfterOpen);
-			if (replacedDuringOpen) {
-				throw detachAsReplaced(path, !options.deleteOnClose()); // reopening might unlink another file
-			}
+			checkSameCiphertextAfterOpen(path, options, joining, attrsAfterOpen, ciphertextFileChannel);
 			initFileHeader(options, ciphertextFileChannel);
 			if (!joining) {
-				ciphertextFileKey.capture(keyAfterOpen);
-				if (attrsAfterOpen != null) { // the file may have been replaced since this open file got created; a time set while this open ran, e.g. via an attribute view, wins
-					lastModified.compareAndSet(lastModifiedBeforeOpen, attrsAfterOpen.lastModifiedTime().toInstant());
-				}
+				adoptAttributes(attrsAfterOpen, lastModifiedBeforeOpen);
 			}
 			initFileSize(ciphertextFileChannel);
 			cleartextFileChannel = component.newChannelComponent() //
@@ -148,6 +134,43 @@ public class OpenCryptoFile implements Closeable {
 		return cleartextFileChannel;
 	}
 
+	private void captureOrMatchFileKeyBeforeOpen(Path path, boolean joining, boolean readFileKey) throws CiphertextReplacedException {
+		Object keyBeforeOpen = readFileKey ? readFileKeyOrNull(path) : null;
+		if (!joining) {
+			ciphertextFileKey.capture(keyBeforeOpen); // compared with the key read after opening, to notice a replacement during the open
+		} else if (!ciphertextFileKey.matches(keyBeforeOpen)) {
+			throw detachAsReplaced(path, true); // an open with DELETE_ON_CLOSE would unlink the replacement
+		}
+	}
+
+	private void checkSameCiphertextAfterOpen(Path path, EffectiveOpenOptions options, boolean joining, BasicFileAttributes attrsAfterOpen, FileChannel ciphertextFileChannel) throws IOException {
+		Object keyAfterOpen = attrsAfterOpen != null ? attrsAfterOpen.fileKey() : null;
+		boolean sameCiphertext = joining //
+				? verifySameCiphertext(keyAfterOpen, ciphertextFileChannel) //
+				: isOpenedFileAtPath(keyAfterOpen, attrsAfterOpen, ciphertextFileChannel);
+		if (!sameCiphertext) {
+			throw detachAsReplaced(path, !options.deleteOnClose()); // reopening might unlink another file
+		}
+	}
+
+	private boolean isOpenedFileAtPath(Object keyAfterOpen, BasicFileAttributes attrsAfterOpen, FileChannel ciphertextFileChannel) throws IOException {
+		if (keyAfterOpen == null || ciphertextFileKey.isCaptured()) {
+			return ciphertextFileKey.matches(keyAfterOpen);
+		} else {
+			// Without a file key captured before opening, e.g. for a file this open created, nothing ties the key read from the path to the opened file.
+			// A size that differs from the channel's shows that another file got there in between.
+			return attrsAfterOpen.size() == ciphertextFileChannel.size();
+		}
+	}
+
+	private void adoptAttributes(BasicFileAttributes attrsAfterOpen, Instant lastModifiedBeforeOpen) {
+		if (attrsAfterOpen != null) { // otherwise the file key read before opening stays captured
+			ciphertextFileKey.capture(attrsAfterOpen.fileKey());
+			// The file may have been replaced since this open file got created. A time set while this open ran, e.g. via an attribute view, wins.
+			lastModified.compareAndSet(lastModifiedBeforeOpen, attrsAfterOpen.lastModifiedTime().toInstant());
+		}
+	}
+
 	/**
 	 * Checks whether the given ciphertext channel, just opened to join this open file, is opened on the same file as the other channels.
 	 *
@@ -164,7 +187,7 @@ public class OpenCryptoFile implements Closeable {
 	private static Object readFileKeyOrNull(Path path) {
 		try {
 			return CiphertextFileKey.read(path);
-		} catch (IOException e) {
+		} catch (IOException _) {
 			return null;
 		}
 	}

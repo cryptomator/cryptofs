@@ -337,7 +337,7 @@ public class OpenCryptoFilesTest {
 		}).when(replacedFile).updateCurrentCleartextPath(any());
 		when(replacedFile.newFileChannel(any())).thenAnswer(invocation -> { // the inline mock keeps the real method's synchronized modifier, so the second opener enters once the first one detached the file
 			if (detached.compareAndSet(false, true)) {
-				bothGotOpenFile.await();
+				Assertions.assertTrue(bothGotOpenFile.await(5, TimeUnit.SECONDS));
 				closeListener.get().close(path, replacedFile);
 			}
 			throw new CiphertextReplacedException(path, true);

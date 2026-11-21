@@ -22,6 +22,7 @@ public class CiphertextFileKey {
 
 	@Inject
 	public CiphertextFileKey() {
+		// nothing to initialize, the key gets captured later
 	}
 
 	/**
