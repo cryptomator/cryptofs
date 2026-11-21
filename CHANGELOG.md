@@ -11,6 +11,12 @@ Changes to prior versions can be found on the [GitHub release page](https://gith
 
 ### Fixed
 * Fixed long-named items that the orphaned directory health check recovers into `LOST+FOUND` being unreadable in vaults with certain shortening thresholds, when the original directory ID was lost ([#375](https://github.com/cryptomator/cryptofs/issues/375), [#376](https://github.com/cryptomator/cryptofs/pull/376))
+* Fixed a file that a sync client replaced while it was open getting corrupted by channels opened afterwards, which still used the replaced file's header ([#377](https://github.com/cryptomator/cryptofs/issues/377))
+* Fixed closing a channel overwriting the last-modified time of a file that a sync client replaced in the meantime, on file systems that report file keys ([#377](https://github.com/cryptomator/cryptofs/issues/377))
+* Fixed a file created at the path of a file still open with `DELETE_ON_CLOSE` getting mixed up with the deleted file instead of being a new file ([#377](https://github.com/cryptomator/cryptofs/issues/377))
+* Fixed closing a file deleting the Files-in-Use marker that another device had written over this device's marker ([#377](https://github.com/cryptomator/cryptofs/issues/377))
+* Fixed a read near the end of a file returning no bytes when the destination buffer's position was not zero, which could make `Files.readAllBytes` fail with `OutOfMemoryError`
+* Fixed a partial write of a file header going unnoticed and leaving a torn, undecryptable header on disk
 
 
 ## [2.12.0](https://github.com/cryptomator/cryptofs/releases/tag/2.12.0) - 2026-11-11

@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -26,7 +27,9 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -40,6 +43,7 @@ import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -50,6 +54,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class CryptoFileSystemProviderInMemoryIntegrationTest {
+
+	private static final FileTime LONG_AGO = FileTime.from(Instant.parse("2000-01-01T00:00:00Z"));
 
 	private static FileSystem tmpFs;
 	private static Path pathToVault;
@@ -203,6 +209,120 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 		}
 	}
 
+	@ParameterizedTest
+	@DisplayName("Open a file whose ciphertext was replaced externally while it was open")
+	@ValueSource(strings = {"/a.txt", "/50char1_50char1_50char1_50char1_50char1_50char.txt"})
+	public void testOpenExternallyReplacedOpenedFile(String name) throws IOException {
+		try (var fs = setupCryptoFs(50, 100, false)) {
+			var a = fs.getPath(name);
+			var b = fs.getPath("/b.txt");
+			Files.write(a, repeat('o', 200_000));
+			Files.write(b, repeat('R', 200_000));
+
+			try (var first = FileChannel.open(a, READ)) {
+				first.read(ByteBuffer.allocate(4), 0);
+				replaceCiphertext(fs, a, ciphertextPath(fs, b));
+				try (var second = FileChannel.open(a, READ, WRITE)) {
+					assertEquals("oooo", read(first, 98304, 4));
+					first.close();
+					assertEquals("RRRR", read(second, 98304, 4));
+					second.write(ByteBuffer.wrap(repeat('w', 32768)), 98304);
+				}
+			}
+			var expected = repeat('R', 200_000);
+			Arrays.fill(expected, 98304, 98304 + 32768, (byte) 'w');
+			assertArrayEquals(expected, Files.readAllBytes(a));
+		}
+	}
+
+	@Test
+	@DisplayName("Keep writing to a file whose ciphertext was replaced externally, next to a channel opened afterwards")
+	public void testWriteExternallyReplacedOpenedFileNextToLaterChannel() throws IOException {
+		try (var fs = setupCryptoFs(50, 100, false)) {
+			var a = fs.getPath("/a.txt");
+			var b = fs.getPath("/b.txt");
+			Files.write(a, repeat('o', 200_000));
+			Files.write(b, repeat('R', 200_000));
+
+			try (var first = FileChannel.open(a, READ, WRITE)) {
+				first.write(ByteBuffer.wrap(repeat('x', 6 * 32768)), 0);
+				var ciphertext = replaceCiphertext(fs, a, ciphertextPath(fs, b));
+				Files.setLastModifiedTime(ciphertext, LONG_AGO);
+				try (var second = FileChannel.open(a, READ, WRITE)) {
+					first.force(true);
+					assertEquals(LONG_AGO, Files.getLastModifiedTime(ciphertext));
+					first.truncate(100_000);
+					assertEquals(200_000, second.size());
+					assertEquals(100_000, first.size());
+					assertEquals("xxxx", read(first, 99_996, 4));
+					first.close();
+					assertEquals(LONG_AGO, Files.getLastModifiedTime(ciphertext));
+				}
+			}
+			assertArrayEquals(repeat('R', 200_000), Files.readAllBytes(a));
+		}
+	}
+
+	@Test
+	@DisplayName("Open a file whose ciphertext was replaced externally by another version with the same header")
+	public void testOpenOpenedFileReplacedBySameHeader() throws IOException {
+		try (var fs = setupCryptoFs(50, 100, false)) {
+			var a = fs.getPath("/a.txt");
+			Files.write(a, repeat('o', 200_000));
+			var snapshot = pathToVault.resolve("snapshot");
+			Files.copy(ciphertextPath(fs, a), snapshot);
+			try (var ch = FileChannel.open(a, WRITE)) {
+				ch.write(ByteBuffer.wrap(repeat('p', 200_000)), 0);
+			}
+
+			try (var first = FileChannel.open(a, READ)) {
+				first.read(ByteBuffer.allocate(4), 0);
+				replaceCiphertext(fs, a, snapshot);
+				try (var second = FileChannel.open(a, READ)) {
+					assertEquals("oooo", read(second, 0, 4));
+				}
+			}
+		}
+	}
+
+	@Test
+	@DisplayName("Closing a file whose ciphertext was replaced externally leaves the replacement's last-modified time alone")
+	public void testCloseExternallyReplacedOpenedFile() throws IOException {
+		try (var fs = setupCryptoFs(50, 100, false)) {
+			var a = fs.getPath("/a.txt");
+			var b = fs.getPath("/b.txt");
+			Files.write(a, repeat('o', 200_000));
+			Files.write(b, repeat('R', 200_000));
+
+			Path ciphertext;
+			try (var ch = FileChannel.open(a, WRITE)) {
+				ch.write(StandardCharsets.UTF_8.encode("abc"), 0);
+				ciphertext = replaceCiphertext(fs, a, ciphertextPath(fs, b));
+				Files.setLastModifiedTime(ciphertext, LONG_AGO);
+			}
+			assertEquals(LONG_AGO, Files.getLastModifiedTime(ciphertext));
+			assertArrayEquals(repeat('R', 200_000), Files.readAllBytes(a));
+		}
+	}
+
+	@Test
+	@DisplayName("Read the attributes of a file whose ciphertext was replaced externally while it was open")
+	public void testAttributesOfExternallyReplacedOpenedFile() throws IOException {
+		try (var fs = setupCryptoFs(50, 100, false)) {
+			var a = fs.getPath("/a.txt");
+			var b = fs.getPath("/b.txt");
+			Files.write(a, repeat('o', 200_000));
+			Files.write(b, repeat('R', 100_000));
+
+			try (var ch = FileChannel.open(a, READ)) {
+				var ciphertext = replaceCiphertext(fs, a, ciphertextPath(fs, b));
+				Files.setLastModifiedTime(ciphertext, LONG_AGO);
+				assertEquals(100_000, Files.size(a));
+				assertEquals(LONG_AGO, Files.getLastModifiedTime(a));
+			}
+		}
+	}
+
 	@Test
 	@DisplayName("Report an undecryptable file header to a consumer that may access the file system")
 	public void testReportUndecryptableHeader() throws IOException {
@@ -238,6 +358,31 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 		var buf = ByteBuffer.allocate(100);
 		ch.read(buf, 0);
 		return StandardCharsets.UTF_8.decode(buf.flip()).toString();
+	}
+
+	private static String read(FileChannel ch, long position, int length) throws IOException {
+		var buf = ByteBuffer.allocate(length);
+		ch.read(buf, position);
+		return StandardCharsets.UTF_8.decode(buf.flip()).toString();
+	}
+
+	private static byte[] repeat(char c, int count) {
+		var bytes = new byte[count];
+		Arrays.fill(bytes, (byte) c);
+		return bytes;
+	}
+
+	private static Path ciphertextPath(FileSystem fs, Path cleartextPath) throws IOException {
+		return ((CryptoFileSystem) fs).getCiphertextPath(cleartextPath);
+	}
+
+	// replaces the ciphertext like a sync client does
+	private static Path replaceCiphertext(FileSystem fs, Path cleartextPath, Path replacement) throws IOException {
+		var ciphertext = ciphertextPath(fs, cleartextPath);
+		var tmp = ciphertext.resolveSibling("replacement.tmp");
+		Files.copy(replacement, tmp);
+		Files.move(tmp, ciphertext, REPLACE_EXISTING, ATOMIC_MOVE);
+		return ciphertext;
 	}
 
 	private FileSystem setupCryptoFs(int ciphertextShorteningThreshold, int maxCleartextFilename, boolean readonly) throws IOException {

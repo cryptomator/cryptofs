@@ -58,10 +58,10 @@ public class FileHeaderHolderTest {
 
 		private FileHeader headerToLoad = mock(FileHeader.class);
 		private FileChannel channel = mock(FileChannel.class);
+		private byte[] headerBytes = "leHeader".getBytes(StandardCharsets.US_ASCII);
 
 		@BeforeEach
 		public void setup() throws IOException, AuthenticationFailedException {
-			byte[] headerBytes = "leHeader".getBytes(StandardCharsets.US_ASCII);
 			when(fileHeaderCryptor.headerSize()).thenReturn(headerBytes.length);
 			when(channel.read(any(ByteBuffer.class), eq(0l))).thenAnswer(invocation -> {
 				ByteBuffer buf = invocation.getArgument(0);
@@ -69,7 +69,7 @@ public class FileHeaderHolderTest {
 				buf.put(headerBytes);
 				return headerBytes.length;
 			});
-			when(fileHeaderCryptor.decryptHeader(argThat(buf -> StandardCharsets.US_ASCII.decode(buf).toString().equals("leHeader")))).thenReturn(headerToLoad);
+			when(fileHeaderCryptor.decryptHeader(argThat(buf -> StandardCharsets.US_ASCII.decode(buf.duplicate()).toString().equals("leHeader")))).thenReturn(headerToLoad); // reads a duplicate, as cryptolib does
 		}
 
 		@Test
@@ -86,6 +86,14 @@ public class FileHeaderHolderTest {
 			Assertions.assertNotNull(inTest.get());
 			Assertions.assertNotNull(inTest.getEncrypted());
 			Assertions.assertTrue(inTest.headerIsPersisted().get());
+		}
+
+		@Test
+		@DisplayName("load keeps the complete encrypted header")
+		public void testLoadExistingKeepsEncryptedHeader() throws IOException {
+			inTest.loadExisting(channel);
+
+			Assertions.assertEquals(ByteBuffer.wrap(headerBytes), inTest.getEncrypted());
 		}
 
 		@ParameterizedTest(name = "Failures in decryption")

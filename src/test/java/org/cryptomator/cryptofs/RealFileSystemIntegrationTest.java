@@ -14,12 +14,17 @@ import org.cryptomator.cryptolib.api.MasterkeyLoadingFailedException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -27,6 +32,9 @@ import java.nio.file.Path;
 import java.nio.file.attribute.UserPrincipal;
 
 import static org.cryptomator.cryptofs.CryptoFileSystemProperties.cryptoFileSystemProperties;
+import static java.nio.file.StandardOpenOption.CREATE_NEW;
+import static java.nio.file.StandardOpenOption.DELETE_ON_CLOSE;
+import static java.nio.file.StandardOpenOption.WRITE;
 import static org.cryptomator.cryptofs.CryptoFileSystemUri.create;
 
 public class RealFileSystemIntegrationTest {
@@ -53,6 +61,21 @@ public class RealFileSystemIntegrationTest {
 		Files.write(file, new byte[1]);
 
 		Assertions.assertNotNull(Files.getOwner(file));
+	}
+
+	@Test
+	@EnabledOnOs({OS.MAC, OS.LINUX}) // Windows deletes on close, not at open
+	@DisplayName("A file opened with DELETE_ON_CLOSE can be created again while it is open")
+	public void testRecreateFileOpenedWithDeleteOnClose() throws IOException {
+		Path file = fileSystem.getPath("/deleteOnClose");
+		try (var ch = FileChannel.open(file, CREATE_NEW, WRITE, DELETE_ON_CLOSE)) {
+			ch.write(StandardCharsets.UTF_8.encode("deleted"));
+			try (var ch2 = FileChannel.open(file, CREATE_NEW, WRITE)) {
+				ch2.write(StandardCharsets.UTF_8.encode("recreated"));
+			}
+		}
+
+		Assertions.assertEquals("recreated", Files.readString(file));
 	}
 
 }
