@@ -128,7 +128,7 @@ public final class RealUseToken implements UseToken {
 			writeInUseFile();
 		} catch (IOException e) {
 			LOG.debug("Failed to write in-use file {} with open options {}.", filePath, openOptions, e);
-			close();
+			close(true); // a partially written file has no recorded last modified time, but is ours
 		} finally {
 			fileCreationSync.unlock();
 		}
@@ -141,17 +141,15 @@ public final class RealUseToken implements UseToken {
 			if (closed || channel == null) {
 				return;
 			}
-			var currentLastModfied = Files.getLastModifiedTime(filePath).toMillis();
-			if (currentLastModfied != lastModified) {
-				throw new ModifiedFileException(); //someone edited _our_ file.
+			if (isModifiedByOthers()) {
+				LOG.debug("In-use file {} was modified by someone else.", filePath);
+				close(false);
+				return;
 			}
 			writeInUseFile();
-		} catch (ModifiedFileException e) {
-			LOG.debug("Failed to refresh in-use file {}.", filePath, e);
-			close(false);
 		} catch (IOException e) {
 			LOG.debug("Failed to refresh in-use file {}.", filePath, e);
-			close();
+			close(true); // a failed rewrite changed the last modified time of our own file, so close() would keep it
 		} finally {
 			fileCreationSync.unlock();
 		}
@@ -213,9 +211,29 @@ public final class RealUseToken implements UseToken {
 		return closed;
 	}
 
+	/**
+	 * Closes this token and deletes its in-use file, unless someone else modified that file since this token last wrote it, or its last modified time cannot be read.
+	 */
 	@Override
 	public void close() {
-		close(true);
+		fileCreationSync.lock();
+		try {
+			close(!isModifiedByOthers());
+		} finally {
+			fileCreationSync.unlock();
+		}
+	}
+
+	private boolean isModifiedByOthers() {
+		if (closed || channel == null) {
+			return false;
+		}
+		try {
+			return Files.getLastModifiedTime(filePath).toMillis() != lastModified;
+		} catch (IOException e) {
+			LOG.debug("Failed to read last modified time of in-use file {}. Keeping it.", filePath, e);
+			return true;
+		}
 	}
 
 	void close(boolean deleteFile) {
@@ -273,9 +291,5 @@ public final class RealUseToken implements UseToken {
 		public int read(ByteBuffer dst) throws IOException {
 			return delegate.read(dst);
 		}
-	}
-
-	static class ModifiedFileException extends RuntimeException {
-
 	}
 }

@@ -15,6 +15,7 @@ import org.opentest4j.AssertionFailedError;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -32,10 +33,13 @@ import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class RealUseTokenTest {
 
@@ -287,6 +291,72 @@ public class RealUseTokenTest {
 			Assertions.assertTrue(Files.exists(filePath));
 		}
 		Assertions.assertTrue(Files.exists(filePath));
+	}
+
+	@Test
+	@DisplayName("Closing a token whose in-use file was modified by someone else does not delete the file")
+	public void testCloseKeepsModifiedFile() throws IOException {
+		var filePath = tmpDir.resolve("inUse.file");
+
+		try (var _ = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
+			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX) //
+					.untilAsserted(() -> assertInUseFile("test3000", filePath));
+
+			Files.setLastModifiedTime(filePath, FileTime.from(Instant.ofEpochMilli(0)));
+		}
+		Assertions.assertTrue(Files.exists(filePath));
+	}
+
+	@Test
+	@DisplayName("Refreshing a token whose in-use file cannot be inspected closes the token, but does not delete the file")
+	public void testRefreshWithFailingStatKeepsFile() {
+		var filePath = tmpDir.resolve("inUse.file");
+
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
+			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX) //
+					.untilAsserted(() -> assertInUseFile("test3000", filePath));
+
+			try (var files = mockStatic(Files.class, CALLS_REAL_METHODS)) {
+				files.when(() -> Files.getLastModifiedTime(filePath)).thenThrow(new IOException("stat failed"));
+				token.refresh();
+			}
+
+			Assertions.assertTrue(token.isClosed());
+		}
+		Assertions.assertTrue(Files.exists(filePath));
+	}
+
+	@Test
+	@DisplayName("A token that fails to write its in-use file deletes it")
+	public void testFailedCreationDeletesFile() throws IOException {
+		var filePath = tmpDir.resolve("inUse.file");
+		var failingChannel = mock(WritableByteChannel.class);
+		when(failingChannel.write(any())).thenThrow(new IOException("write failed"));
+		doAnswer(invocation -> failingChannel).when(encWrapper).wrapWithEncryption(any(), eq(cryptor));
+
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
+			Awaitility.await().atMost(FILE_OPERATION_MAX).until(token::isClosed);
+		}
+		Assertions.assertTrue(Files.notExists(filePath));
+	}
+
+	@Test
+	@DisplayName("A token that fails to rewrite its in-use file deletes it")
+	public void testFailedRefreshDeletesFile() throws IOException {
+		var filePath = tmpDir.resolve("inUse.file");
+
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
+			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX) //
+					.untilAsserted(() -> assertInUseFile("test3000", filePath));
+			var failingChannel = mock(WritableByteChannel.class);
+			when(failingChannel.write(any())).thenThrow(new IOException("write failed"));
+			doAnswer(invocation -> failingChannel).when(encWrapper).wrapWithEncryption(any(), eq(cryptor));
+
+			token.refresh();
+
+			Assertions.assertTrue(token.isClosed());
+		}
+		Assertions.assertTrue(Files.notExists(filePath));
 	}
 
 	@Test
