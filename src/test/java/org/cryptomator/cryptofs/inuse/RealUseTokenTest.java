@@ -283,6 +283,7 @@ public class RealUseTokenTest {
 			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX) //
 					.untilAsserted(() -> assertInUseFile("test3000", filePath));
 
+			token.refresh(); // blocks on the lock the delayed creation holds until it has recorded the in-use file's last modified time
 			Files.setLastModifiedTime(filePath, FileTime.from(Instant.ofEpochMilli(0)));
 
 			token.refresh();
@@ -298,10 +299,11 @@ public class RealUseTokenTest {
 	public void testCloseKeepsModifiedFile() throws IOException {
 		var filePath = tmpDir.resolve("inUse.file");
 
-		try (var _ = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
+		try (var token = new RealUseToken(filePath, "test3000", cryptor, useTokens, tokenPersistor, CREATION_DELAY_MILLIS, StandardOpenOption.CREATE_NEW, encWrapper)) {
 			Awaitility.await().atLeast(FILE_OPERATION_DELAY).atMost(FILE_OPERATION_MAX) //
 					.untilAsserted(() -> assertInUseFile("test3000", filePath));
 
+			token.refresh(); // blocks on the lock the delayed creation holds until it has recorded the in-use file's last modified time
 			Files.setLastModifiedTime(filePath, FileTime.from(Instant.ofEpochMilli(0)));
 		}
 		Assertions.assertTrue(Files.exists(filePath));

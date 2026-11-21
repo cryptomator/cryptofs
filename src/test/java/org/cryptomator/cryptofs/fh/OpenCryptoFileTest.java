@@ -622,15 +622,47 @@ public class OpenCryptoFileTest {
 		}
 
 		@Test
-		@DisplayName("a first channel keeps the file key from before opening if the attributes after opening are unavailable")
-		void testFirstChannelKeepsKeyWithoutAttributesAfterOpen() throws IOException {
+		@DisplayName("a first channel that read a file key before opening detaches the open file if the attributes after opening are unavailable")
+		void testFirstChannelWithoutAttributesAfterOpenDetaches() throws IOException {
+			try (var fileKeys = mockStatic(CiphertextFileKey.class)) {
+				fileKeys.when(() -> CiphertextFileKey.read(path)).thenReturn(FIRST_KEY);
+				fileKeys.when(() -> CiphertextFileKey.readAttributes(path)).thenThrow(new IOException("stat failed"));
+				var e = Assertions.assertThrows(CiphertextReplacedException.class, () -> inTest.newFileChannel(options));
+				Assertions.assertTrue(e.retryable());
+			}
+
+			verify(firstCiphertextChannel).close();
+			assertDetachedAsReplaced();
+		}
+
+		@Test
+		@DisplayName("a joining channel whose attributes after opening are unavailable joins on a matching header instead of detaching the open file")
+		void testJoiningChannelWithoutAttributesAfterOpenJoins() throws IOException {
+			openFirstChannel();
+
 			try (var fileKeys = mockStatic(CiphertextFileKey.class)) {
 				fileKeys.when(() -> CiphertextFileKey.read(path)).thenReturn(FIRST_KEY);
 				fileKeys.when(() -> CiphertextFileKey.readAttributes(path)).thenThrow(new IOException("stat failed"));
 				inTest.newFileChannel(options);
 			}
 
-			Assertions.assertFalse(ciphertextFileKey.matches(REPLACEMENT_KEY));
+			verify(chunkIO).registerChannel(candidate, false);
+			Assertions.assertSame(path, inTest.getCurrentFilePath());
+			verify(closeListener, never()).close(any(), any());
+		}
+
+		@Test
+		@DisplayName("an open with DELETE_ON_CLOSE whose attributes after opening are unavailable for another reason detaches without retry")
+		void testDeleteOnCloseWithoutAttributesAfterOpenDetaches() throws IOException {
+			try (var fileKeys = mockStatic(CiphertextFileKey.class)) {
+				fileKeys.when(() -> CiphertextFileKey.read(path)).thenReturn(FIRST_KEY);
+				fileKeys.when(() -> CiphertextFileKey.readAttributes(path)).thenThrow(new IOException("stat failed"));
+				var e = Assertions.assertThrows(CiphertextReplacedException.class, () -> inTest.newFileChannel(deleteOnCloseOptions));
+				Assertions.assertFalse(e.retryable());
+			}
+
+			verify(firstCiphertextChannel).close();
+			Assertions.assertNull(inTest.getCurrentFilePath());
 		}
 
 		@Test

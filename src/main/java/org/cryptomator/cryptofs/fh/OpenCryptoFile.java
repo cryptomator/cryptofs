@@ -79,7 +79,7 @@ public class OpenCryptoFile implements Closeable {
 	 *
 	 * @param options The options to use to open the file channel. For the most part these will be passed through to the ciphertext channel. {@link java.nio.file.StandardOpenOption#TRUNCATE_EXISTING} is left to the caller, see {@link OpenCryptoFiles.OpenOperation#newFileChannel(org.cryptomator.cryptofs.CryptoPath, EffectiveOpenOptions, FileAttribute[])}.
 	 * @return A new file channel. Ideally used in a try-with-resource statement. If the channel is not properly closed, this OpenCryptoFile will stay open indefinite.
-	 * @throws IOException Also if the ciphertext file at the path is no longer the one of this open file, because it was replaced outside of this file system or unlinked by another open. In that case this open file has been detached like a deleted file.
+	 * @throws IOException Also a {@link CiphertextReplacedException} if the ciphertext file at the path is no longer, or can't be confirmed to be, the one of this open file. In that case this open file has been detached like a deleted file.
 	 */
 	public synchronized FileChannel newFileChannel(EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
 		Path path = currentFilePath.get();
@@ -111,7 +111,7 @@ public class OpenCryptoFile implements Closeable {
 					LOG.debug("Failed to read file key of {}.", path, e);
 				}
 			}
-			checkSameCiphertextAfterOpen(path, options, joining, attrsAfterOpen, ciphertextFileChannel);
+			checkSameCiphertextAfterOpen(path, options, joining, attrsAfterOpen, unlinkedByOpen, ciphertextFileChannel);
 			initFileHeader(options, ciphertextFileChannel);
 			if (!joining) {
 				adoptAttributes(attrsAfterOpen, lastModifiedBeforeOpen);
@@ -143,19 +143,22 @@ public class OpenCryptoFile implements Closeable {
 		}
 	}
 
-	private void checkSameCiphertextAfterOpen(Path path, EffectiveOpenOptions options, boolean joining, BasicFileAttributes attrsAfterOpen, FileChannel ciphertextFileChannel) throws IOException {
+	private void checkSameCiphertextAfterOpen(Path path, EffectiveOpenOptions options, boolean joining, BasicFileAttributes attrsAfterOpen, boolean unlinkedByOpen, FileChannel ciphertextFileChannel) throws IOException {
 		Object keyAfterOpen = attrsAfterOpen != null ? attrsAfterOpen.fileKey() : null;
+		// a joining channel needs evidence of a replacement, as detaching leaves the other channels on an open file whose ciphertext a fresh one may then open too
 		boolean sameCiphertext = joining //
 				? verifySameCiphertext(keyAfterOpen, ciphertextFileChannel) //
-				: isOpenedFileAtPath(keyAfterOpen, attrsAfterOpen, ciphertextFileChannel);
+				: isOpenedFileAtPath(attrsAfterOpen, unlinkedByOpen, ciphertextFileChannel);
 		if (!sameCiphertext) {
 			throw detachAsReplaced(path, !options.deleteOnClose()); // reopening might unlink another file
 		}
 	}
 
-	private boolean isOpenedFileAtPath(Object keyAfterOpen, BasicFileAttributes attrsAfterOpen, FileChannel ciphertextFileChannel) throws IOException {
-		if (keyAfterOpen == null || ciphertextFileKey.isCaptured()) {
-			return ciphertextFileKey.matches(keyAfterOpen);
+	private boolean isOpenedFileAtPath(BasicFileAttributes attrsAfterOpen, boolean unlinkedByOpen, FileChannel ciphertextFileChannel) throws IOException {
+		if (attrsAfterOpen == null) {
+			return !ciphertextFileKey.isCaptured() || unlinkedByOpen; // a captured key needs the attributes to be confirmed, unless this open unlinked the file
+		} else if (attrsAfterOpen.fileKey() == null || ciphertextFileKey.isCaptured()) {
+			return ciphertextFileKey.matches(attrsAfterOpen.fileKey());
 		} else {
 			// Without a file key captured before opening, e.g. for a file this open created, nothing ties the key read from the path to the opened file.
 			// A size that differs from the channel's shows that another file got there in between.
@@ -164,7 +167,7 @@ public class OpenCryptoFile implements Closeable {
 	}
 
 	private void adoptAttributes(BasicFileAttributes attrsAfterOpen, Instant lastModifiedBeforeOpen) {
-		if (attrsAfterOpen != null) { // otherwise the file key read before opening stays captured
+		if (attrsAfterOpen != null) {
 			ciphertextFileKey.capture(attrsAfterOpen.fileKey());
 			// The file may have been replaced since this open file got created. A time set while this open ran, e.g. via an attribute view, wins.
 			lastModified.compareAndSet(lastModifiedBeforeOpen, attrsAfterOpen.lastModifiedTime().toInstant());
