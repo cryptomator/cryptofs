@@ -44,6 +44,7 @@ public class OpenCryptoFile implements Closeable {
 	private final AtomicInteger openChannelsCount = new AtomicInteger(0);
 	private volatile UseToken useToken;
 	private Path detachedPath; // guarded by this; non-null once an open detached this file, so later opens retry instead of failing like after a delete
+	private boolean retired; // guarded by this; true once closed, so opens that got this file before it was unregistered retry with a fresh one
 
 	@Inject
 	public OpenCryptoFile(FileCloseListener listener, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, CiphertextFileKey ciphertextFileKey, //
@@ -80,14 +81,10 @@ public class OpenCryptoFile implements Closeable {
 	 * @param options The options to use to open the file channel. For the most part these will be passed through to the ciphertext channel. {@link java.nio.file.StandardOpenOption#TRUNCATE_EXISTING} is left to the caller, see {@link OpenCryptoFiles.OpenOperation#newFileChannel(org.cryptomator.cryptofs.CryptoPath, EffectiveOpenOptions, FileAttribute[])}.
 	 * @return A new file channel. Ideally used in a try-with-resource statement. If the channel is not properly closed, this OpenCryptoFile will stay open indefinite.
 	 * @throws IOException Also a {@link CiphertextReplacedException} if the ciphertext file at the path is no longer, or can't be confirmed to be, the one of this open file. In that case this open file has been detached like a deleted file.
+	 * An {@link OpenFileRetiredException} if this open file has been closed.
 	 */
 	public synchronized FileChannel newFileChannel(EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
-		Path path = currentFilePath.get();
-		if (path == null && detachedPath != null) {
-			throw new CiphertextReplacedException(detachedPath, true);
-		} else if (path == null) {
-			throw new IllegalStateException("Cannot create file channel to deleted file");
-		}
+		Path path = pathToOpen();
 		FileChannel ciphertextFileChannel = null;
 		CleartextFileChannel cleartextFileChannel = null;
 		boolean unlinkedByOpen = false;
@@ -132,6 +129,18 @@ public class OpenCryptoFile implements Closeable {
 			detach(path);
 		}
 		return cleartextFileChannel;
+	}
+
+	private Path pathToOpen() throws IOException {
+		Path path = currentFilePath.get();
+		if (path == null && detachedPath != null) {
+			throw new CiphertextReplacedException(detachedPath, true);
+		} else if (path == null) {
+			throw new IllegalStateException("Cannot create file channel to deleted file");
+		} else if (retired) {
+			throw new OpenFileRetiredException(path);
+		}
+		return path;
 	}
 
 	private void captureOrMatchFileKeyBeforeOpen(Path path, boolean joining, boolean readFileKey) throws CiphertextReplacedException {
@@ -333,7 +342,8 @@ public class OpenCryptoFile implements Closeable {
 	}
 
 	@Override
-	public void close() {
+	public synchronized void close() {
+		retired = true;
 		var p = currentFilePath.get();
 		if (p != null) {
 			useToken.close();

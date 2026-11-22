@@ -252,6 +252,7 @@ public class OpenCryptoFiles implements Closeable {
 		 * <p>
 		 * If the ciphertext file of an open file was detectably replaced outside of this file system, the open file gets detached like a {@link #delete(Path) deleted} file and the open is retried with the file now at the path.
 		 * It fails after a few attempts, or when an open with {@link java.nio.file.StandardOpenOption#DELETE_ON_CLOSE} detects the replacement only after opening it.
+		 * Likewise, if the open file got closed after it was looked up, because its last channel or the file system closed, the open is retried with a fresh open file.
 		 *
 		 * @param cleartextPath Cleartext path of the file to open
 		 * @param options The options to open the file channel with
@@ -263,7 +264,9 @@ public class OpenCryptoFiles implements Closeable {
 			if (closed) {
 				throw new IllegalStateException("Open operation of " + ciphertextPath + " already closed");
 			}
-			for (int attempt = 1; ; attempt++) {
+			int replacedAttempts = 0;
+			int retiredAttempts = 0;
+			while (true) {
 				OpenCryptoFile openFile = getOrCreate(ciphertextPath);
 				openFile.updateCurrentCleartextPath(cleartextPath);
 				try {
@@ -271,9 +274,14 @@ public class OpenCryptoFiles implements Closeable {
 				} catch (HeaderDecryptionException e) {
 					decryptionFailedEvent = e.getEvent();
 					throw e;
+				} catch (OpenFileRetiredException e) {
+					LOG.debug("Open file of {} was closed while opening.", ciphertextPath);
+					if (++retiredAttempts >= MAX_OPEN_ATTEMPTS) {
+						throw e;
+					}
 				} catch (CiphertextReplacedException e) {
 					LOG.info("Ciphertext file {} is no longer the one of the open file.", ciphertextPath);
-					if (!e.retryable() || attempt >= MAX_OPEN_ATTEMPTS) {
+					if (!e.retryable() || ++replacedAttempts >= MAX_OPEN_ATTEMPTS) {
 						throw e;
 					}
 				}

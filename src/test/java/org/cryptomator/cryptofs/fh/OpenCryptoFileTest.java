@@ -278,6 +278,19 @@ public class OpenCryptoFileTest {
 	}
 
 	@Test
+	@DisplayName("a closed file refuses new channels with OpenFileRetiredException, without opening the ciphertext")
+	public void testClosedFileRefusesNewChannels() throws IOException {
+		var openCryptoFile = getTestInstance("testClosedFileRefusesNewChannels");
+		var ciphertextPath = CURRENT_FILE_PATH.get();
+		EffectiveOpenOptions options = EffectiveOpenOptions.from(EnumSet.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE), readonlyFlag);
+
+		openCryptoFile.close();
+
+		Assertions.assertThrows(OpenFileRetiredException.class, () -> openCryptoFile.newFileChannel(options));
+		Assertions.assertTrue(Files.notExists(ciphertextPath));
+	}
+
+	@Test
 	@DisplayName("Opening a file channel with TRUNCATE_EXISTING leaves truncation to the caller")
 	public void testCleartextChannelNotTruncatedOnTruncateExisting() throws IOException {
 		var openCryptoFile = spy(getTestInstance("testCleartextChannelNotTruncated"));

@@ -17,6 +17,7 @@ Changes to prior versions can be found on the [GitHub release page](https://gith
 * Fixed closing a file deleting the Files-in-Use marker that another device had written over this device's marker ([#377](https://github.com/cryptomator/cryptofs/issues/377), [#380](https://github.com/cryptomator/cryptofs/pull/380))
 * Fixed a read near the end of a file returning no bytes when the destination buffer's position was not zero, which could make `Files.readAllBytes` fail with `OutOfMemoryError` ([#378](https://github.com/cryptomator/cryptofs/issues/378), [#380](https://github.com/cryptomator/cryptofs/pull/380))
 * Fixed a partial write of a file header going unnoticed and leaving a torn, undecryptable header on disk ([#380](https://github.com/cryptomator/cryptofs/pull/380))
+* Fixed a file possibly getting corrupted when it was opened at the same moment its last open channel was closed ([#380](https://github.com/cryptomator/cryptofs/pull/380))
 
 
 ## [2.12.0](https://github.com/cryptomator/cryptofs/releases/tag/2.12.0) - 2026-11-11
