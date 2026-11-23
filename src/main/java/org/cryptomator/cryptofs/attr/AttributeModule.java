@@ -28,12 +28,13 @@ abstract class AttributeModule {
 	@Named("cleartext")
 	@AttributeScoped
 	public static BasicFileAttributes provideAttributes(@Named("ciphertext") BasicFileAttributes ciphertextAttributes, CiphertextFileType ciphertextFileType, Path ciphertextPath, Cryptor cryptor, Optional<OpenCryptoFile> openCryptoFile, CryptoFileSystemProperties fileSystemProperties) {
+		var unreplacedOpenFile = openCryptoFile.filter(f -> f.matchesFileKey(ciphertextAttributes.fileKey()));
 		if (ciphertextAttributes instanceof PosixFileAttributes attr) {
-			return new CryptoPosixFileAttributes(attr, ciphertextFileType, ciphertextPath, cryptor, openCryptoFile, fileSystemProperties);
+			return new CryptoPosixFileAttributes(attr, ciphertextFileType, ciphertextPath, cryptor, unreplacedOpenFile, fileSystemProperties);
 		} else if (ciphertextAttributes instanceof DosFileAttributes attr) {
-			return new CryptoDosFileAttributes(attr, ciphertextFileType, ciphertextPath, cryptor, openCryptoFile, fileSystemProperties);
+			return new CryptoDosFileAttributes(attr, ciphertextFileType, ciphertextPath, cryptor, unreplacedOpenFile, fileSystemProperties);
 		} else {
-			return new CryptoBasicFileAttributes(ciphertextAttributes, ciphertextFileType, ciphertextPath, cryptor, openCryptoFile);
+			return new CryptoBasicFileAttributes(ciphertextAttributes, ciphertextFileType, ciphertextPath, cryptor, unreplacedOpenFile);
 		}
 	}
 	
