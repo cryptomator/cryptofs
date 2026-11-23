@@ -8,7 +8,6 @@
  *******************************************************************************/
 package org.cryptomator.cryptofs;
 
-import com.google.common.base.Strings;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptolib.api.CryptorProvider;
 import org.cryptomator.cryptolib.api.MasterkeyLoader;
@@ -19,7 +18,9 @@ import java.nio.file.Path;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -117,6 +118,13 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	static final CryptorProvider.Scheme DEFAULT_CIPHER_COMBO = CryptorProvider.Scheme.SIV_GCM;
 
 	/**
+	 * Key identifying the id of a vault. Only meaningful during vault initialization. If absent, a random id is generated.
+	 *
+	 * @since 2.11.0
+	 */
+	public static final String PROPERTY_VAULT_ID = "vaultId";
+
+	/**
 	 * Key identifying the filesystem owner supply method.
 	 *
 	 * @since 2.10.0
@@ -128,7 +136,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	private final Set<Entry<String, Object>> entries;
 
 	private CryptoFileSystemProperties(Builder builder) {
-		this.entries = Set.of( //
+		var entries = new HashSet<Entry<String, Object>>(Set.of( //
 				Map.entry(PROPERTY_KEYLOADER, builder.keyLoader), //
 				Map.entry(PROPERTY_FILESYSTEM_FLAGS, builder.flags), //
 				Map.entry(PROPERTY_VAULTCONFIG_FILENAME, builder.vaultConfigFilename), //
@@ -138,7 +146,11 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 				Map.entry(PROPERTY_SHORTENING_THRESHOLD, builder.shorteningThreshold), //
 				Map.entry(PROPERTY_CIPHER_COMBO, builder.cipherCombo), //
 				Map.entry(PROPERTY_OWNER_GETTER, builder.ownerGetter) //
-		);
+		));
+		if (builder.vaultId != null) {
+			entries.add(Map.entry(PROPERTY_VAULT_ID, builder.vaultId));
+		}
+		this.entries = Set.copyOf(entries);
 	}
 
 	MasterkeyLoader keyLoader() {
@@ -147,6 +159,14 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 
 	public CryptorProvider.Scheme cipherCombo() {
 		return (CryptorProvider.Scheme) get(PROPERTY_CIPHER_COMBO);
+	}
+
+	/**
+	 * @return the vault id to use during vault initialization, or empty if a random id should be generated
+	 * @since 2.11.0
+	 */
+	public Optional<String> vaultId() {
+		return Optional.ofNullable((String) get(PROPERTY_VAULT_ID));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -233,6 +253,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 	public static class Builder {
 
 		public CryptorProvider.Scheme cipherCombo = DEFAULT_CIPHER_COMBO;
+		private String vaultId = null;
 		private MasterkeyLoader keyLoader = null;
 		private final Set<FileSystemFlags> flags = EnumSet.copyOf(DEFAULT_FILESYSTEM_FLAGS);
 		private String vaultConfigFilename = DEFAULT_VAULTCONFIG_FILENAME;
@@ -253,6 +274,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 			checkedSet(Integer.class, PROPERTY_MAX_CLEARTEXT_NAME_LENGTH, properties, this::withMaxCleartextNameLength);
 			checkedSet(Integer.class, PROPERTY_SHORTENING_THRESHOLD, properties, this::withShorteningThreshold);
 			checkedSet(CryptorProvider.Scheme.class, PROPERTY_CIPHER_COMBO, properties, this::withCipherCombo);
+			checkedSet(String.class, PROPERTY_VAULT_ID, properties, this::withVaultId);
 			checkedSet(Consumer.class, PROPERTY_EVENT_CONSUMER, properties, this::withFilesystemEventConsumer);
 			checkedSet(Supplier.class, PROPERTY_OWNER_GETTER, properties, this::withOwnerGetter);
 		}
@@ -304,6 +326,21 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 		 */
 		public Builder withCipherCombo(CryptorProvider.Scheme cipherCombo) {
 			this.cipherCombo = cipherCombo;
+			return this;
+		}
+
+		/**
+		 * Sets the vault id used during vault initialization. If not set, a random id is generated.
+		 *
+		 * @param vaultId The id of the vault
+		 * @return this
+		 * @since 2.11.0
+		 */
+		public Builder withVaultId(String vaultId) {
+			if (vaultId == null || vaultId.isBlank()) {
+				throw new IllegalArgumentException("Parameter vaultId must not be null or blank");
+			}
+			this.vaultId = vaultId;
 			return this;
 		}
 
@@ -417,7 +454,7 @@ public class CryptoFileSystemProperties extends AbstractMap<String, Object> {
 			if (keyLoader == null) {
 				throw new IllegalStateException("keyLoader is required");
 			}
-			if (Strings.nullToEmpty(masterkeyFilename).trim().isEmpty()) {
+			if (masterkeyFilename == null || masterkeyFilename.isBlank()) {
 				throw new IllegalStateException("masterkeyFilename is required");
 			}
 		}
