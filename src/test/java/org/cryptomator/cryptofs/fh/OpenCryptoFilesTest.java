@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.stubbing.Answer;
@@ -28,6 +29,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -305,6 +308,98 @@ public class OpenCryptoFilesTest {
 			Assertions.assertThrows(HeaderDecryptionException.class, () -> openChannel(path));
 		});
 		verify(eventConsumer).accept(event);
+	}
+
+	@ParameterizedTest(name = "retired: {0}")
+	@ValueSource(booleans = {true, false})
+	public void testOpenRetriesWithFreshOpenFileWhenOpenFileIsStale(boolean retired) throws IOException {
+		Path path = Path.of("/foo").toAbsolutePath();
+		var closeListener = new AtomicReference<FileCloseListener>();
+		OpenCryptoFile staleFile = mockStaleOpenFile(path, closeListener);
+		when(staleFile.newFileChannel(any())).thenAnswer(invocation -> {
+			closeListener.get().close(path, staleFile); // unregisters, as the real OpenCryptoFile does on close or detach
+			throw retired ? new OpenFileRetiredException(path) : new CiphertextReplacedException(path, true);
+		});
+
+		Assertions.assertSame(ciphertextFileChannel, openChannel(path));
+		Assertions.assertSame(file, inTest.get(path).get());
+	}
+
+	@Test
+	public void testRetiredOpenFilesDontUseUpReplacementAttempts() throws IOException {
+		Path path = Path.of("/foo").toAbsolutePath();
+		when(file.newFileChannel(any())) //
+				.thenThrow(new OpenFileRetiredException(path), new OpenFileRetiredException(path)) //
+				.thenThrow(new CiphertextReplacedException(path, true), new CiphertextReplacedException(path, true)) //
+				.thenReturn(ciphertextFileChannel);
+
+		Assertions.assertSame(ciphertextFileChannel, openChannel(path));
+	}
+
+	@Test
+	public void testConcurrentOpenersRetryWithSameFreshOpenFile() throws Exception {
+		Path path = Path.of("/foo").toAbsolutePath();
+		var closeListener = new AtomicReference<FileCloseListener>();
+		OpenCryptoFile replacedFile = mockStaleOpenFile(path, closeListener);
+		CountDownLatch bothGotOpenFile = new CountDownLatch(2);
+		AtomicBoolean detached = new AtomicBoolean();
+		doAnswer(invocation -> {
+			bothGotOpenFile.countDown();
+			return null;
+		}).when(replacedFile).updateCurrentCleartextPath(any());
+		when(replacedFile.newFileChannel(any())).thenAnswer(invocation -> { // the inline mock keeps the real method's synchronized modifier, so the second opener enters once the first one detached the file
+			if (detached.compareAndSet(false, true)) {
+				Assertions.assertTrue(bothGotOpenFile.await(5, TimeUnit.SECONDS));
+				closeListener.get().close(path, replacedFile);
+			}
+			throw new CiphertextReplacedException(path, true);
+		});
+
+		FutureTask<FileChannel> first = new FutureTask<>(() -> openChannel(path));
+		FutureTask<FileChannel> second = new FutureTask<>(() -> openChannel(path));
+		new Thread(first).start();
+		new Thread(second).start();
+
+		Assertions.assertSame(ciphertextFileChannel, first.get(5, TimeUnit.SECONDS));
+		Assertions.assertSame(ciphertextFileChannel, second.get(5, TimeUnit.SECONDS));
+		verify(openCryptoFileComponentFactory, times(2)).create(eq(path), any());
+	}
+
+	@ParameterizedTest
+	@CsvSource({"true, 3", "false, 1"})
+	public void testOpenGivesUpWhenCiphertextKeepsBeingReplaced(boolean retryable, int expectedAttempts) throws IOException {
+		Path path = Path.of("/foo").toAbsolutePath();
+		when(file.newFileChannel(any())).thenThrow(new CiphertextReplacedException(path, retryable));
+
+		Assertions.assertThrows(CiphertextReplacedException.class, () -> openChannel(path));
+
+		verify(file, times(expectedAttempts)).newFileChannel(any());
+		Assertions.assertTimeoutPreemptively(Duration.ofSeconds(5), () -> inTest.prepareMove(path, Path.of("/bar").toAbsolutePath(), mock(CryptoPath.class), true).close());
+	}
+
+	@Test
+	public void testOpenGivesUpWhenOpenFileKeepsBeingRetired() throws IOException {
+		Path path = Path.of("/foo").toAbsolutePath();
+		when(file.newFileChannel(any())).thenThrow(new OpenFileRetiredException(path));
+
+		Assertions.assertThrows(OpenFileRetiredException.class, () -> openChannel(path));
+
+		verify(file, times(3)).newFileChannel(any());
+	}
+
+	// the OpenCryptoFile created first for the path is the returned one, later creations get the default file mock
+	private OpenCryptoFile mockStaleOpenFile(Path path, AtomicReference<FileCloseListener> closeListener) {
+		OpenCryptoFile staleFile = mock(OpenCryptoFile.class, "stale");
+		OpenCryptoFileComponent staleSubComponent = mock(OpenCryptoFileComponent.class);
+		OpenCryptoFileComponent freshSubComponent = mock(OpenCryptoFileComponent.class);
+		when(staleSubComponent.openCryptoFile()).thenReturn(staleFile);
+		when(freshSubComponent.openCryptoFile()).thenReturn(file);
+		var created = new AtomicBoolean();
+		when(openCryptoFileComponentFactory.create(eq(path), any())).thenAnswer(invocation -> {
+			closeListener.set(invocation.getArgument(1));
+			return created.getAndSet(true) ? freshSubComponent : staleSubComponent;
+		});
+		return staleFile;
 	}
 
 	@ParameterizedTest

@@ -7,6 +7,7 @@ import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptofs.fh.BufferPool;
 import org.cryptomator.cryptofs.fh.Chunk;
 import org.cryptomator.cryptofs.fh.ChunkCache;
+import org.cryptomator.cryptofs.fh.CiphertextFileKey;
 import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptofs.fh.FileHeaderHolder;
 import org.cryptomator.cryptofs.inuse.FileAlreadyInUseException;
@@ -38,8 +39,10 @@ import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.FileSystem;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.nio.file.spi.FileSystemProvider;
 import java.time.Instant;
@@ -54,10 +57,12 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -88,6 +93,9 @@ public class CleartextFileChannelTest {
 	private InUseManager inUseManager = mock(InUseManager.class);
 	private CryptoPath cleartextPath = mock(CryptoPath.class, "/clear/path");
 	private AtomicReference<CryptoPath> currentCleartextPath = new AtomicReference<>(cleartextPath);
+	private FileSystemProvider fsProvider = mock(FileSystemProvider.class);
+	private BasicFileAttributes ciphertextAttributes = mock(BasicFileAttributes.class);
+	private CiphertextFileKey ciphertextFileKey = new CiphertextFileKey();
 
 	private CleartextFileChannel inTest;
 
@@ -101,10 +109,11 @@ public class CleartextFileChannelTest {
 		when(fileHeaderCryptor.headerSize()).thenReturn(50);
 		when(headerHolder.headerIsPersisted()).thenReturn(headerIsPersisted);
 		when(headerIsPersisted.getAndSet(anyBoolean())).thenReturn(true);
+		when(headerHolder.getEncrypted()).thenReturn(ByteBuffer.allocate(50).asReadOnlyBuffer());
+		when(ciphertextFileChannel.write(any(ByteBuffer.class), anyLong())).thenAnswer(invocation -> writeAtMost(invocation.getArgument(0), Integer.MAX_VALUE));
 		when(fileContentCryptor.cleartextChunkSize()).thenReturn(100);
 		when(fileContentCryptor.ciphertextChunkSize()).thenReturn(110);
 		var fs = Mockito.mock(FileSystem.class);
-		var fsProvider = Mockito.mock(FileSystemProvider.class);
 		when(filePath.getFileSystem()).thenReturn(fs);
 		when(fs.provider()).thenReturn(fsProvider);
 		when(fsProvider.getFileAttributeView(filePath, BasicFileAttributeView.class)).thenReturn(attributeView);
@@ -112,6 +121,18 @@ public class CleartextFileChannelTest {
 		when(readWriteLock.writeLock()).thenReturn(writeLock);
 
 		inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, exceptionsDuringWrite, closeListener, stats);
+	}
+
+	private static int writeAtMost(ByteBuffer src, int maxBytes) {
+		int n = Math.min(src.remaining(), maxBytes);
+		src.position(src.position() + n);
+		return n;
+	}
+
+	private CleartextFileChannel newChannelWithFileKey(Object capturedKey) {
+		ciphertextFileKey.capture(capturedKey);
+		return new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, currentCleartextPath, ciphertextFileKey, //
+				exceptionsDuringWrite, closeListener, eventConsumer, stats, inUseManager);
 	}
 
 	@Test
@@ -239,6 +260,47 @@ public class CleartextFileChannelTest {
 			verify(attributeView, Mockito.never()).setTimes(Mockito.any(), Mockito.any(), Mockito.any());
 		}
 
+		@Test
+		@DisplayName("without a captured file key, force(true) sets the times without reading the file key")
+		public void testForceWithoutCapturedFileKey() throws IOException {
+			inTest.force(true);
+
+			verify(attributeView).setTimes(any(), any(), any());
+			verify(fsProvider, never()).readAttributes(any(Path.class), eq(BasicFileAttributes.class), any(LinkOption[].class));
+		}
+
+		@Test
+		@DisplayName("force(true) sets the times of the ciphertext file with the captured file key")
+		public void testForceWithMatchingFileKey() throws IOException {
+			when(fsProvider.readAttributes(eq(filePath), eq(BasicFileAttributes.class), any(LinkOption[].class))).thenReturn(ciphertextAttributes);
+			when(ciphertextAttributes.fileKey()).thenReturn("key");
+
+			newChannelWithFileKey("key").force(true);
+
+			verify(attributeView).setTimes(any(), any(), any());
+		}
+
+		@Test
+		@DisplayName("force(true) leaves the times of a replaced ciphertext file alone")
+		public void testForceWithOtherFileKey() throws IOException {
+			when(fsProvider.readAttributes(eq(filePath), eq(BasicFileAttributes.class), any(LinkOption[].class))).thenReturn(ciphertextAttributes);
+			when(ciphertextAttributes.fileKey()).thenReturn("replacement key");
+
+			newChannelWithFileKey("key").force(true);
+
+			verify(attributeView, never()).setTimes(any(), any(), any());
+		}
+
+		@Test
+		@DisplayName("force(true) leaves the times alone, if the file key cannot be read")
+		public void testForceWithUnreadableFileKey() throws IOException {
+			when(fsProvider.readAttributes(eq(filePath), eq(BasicFileAttributes.class), any(LinkOption[].class))).thenThrow(new IOException("fail"));
+
+			newChannelWithFileKey("key").force(true);
+
+			verify(attributeView, never()).setTimes(any(), any(), any());
+		}
+
 	}
 
 	@Nested
@@ -312,6 +374,18 @@ public class CleartextFileChannelTest {
 
 			verify(attributeView).setTimes(Mockito.isNull(), Mockito.any(), Mockito.isNull());
 		}
+
+		@Test
+		@DisplayName("Closing leaves the times of a replaced ciphertext file alone")
+		public void testCloseWithOtherFileKey() throws IOException {
+			when(options.writable()).thenReturn(true);
+			when(fsProvider.readAttributes(eq(filePath), eq(BasicFileAttributes.class), any(LinkOption[].class))).thenReturn(ciphertextAttributes);
+			when(ciphertextAttributes.fileKey()).thenReturn("replacement key");
+
+			newChannelWithFileKey("key").implCloseChannel();
+
+			verify(attributeView, never()).setTimes(any(), any(), any());
+		}
 	}
 
 	@Test
@@ -368,6 +442,29 @@ public class CleartextFileChannelTest {
 			Assertions.assertEquals(delegate, cleartextFileLock.delegate());
 			Assertions.assertEquals(372l, cleartextFileLock.position());
 			Assertions.assertEquals(3828l, cleartextFileLock.size());
+		}
+
+		@ParameterizedTest(name = "lock({0}, {1})")
+		@CsvSource({"0,9223372036854775807", "372,9223372036854775435"})
+		@DisplayName("a whole-file lock() leaves the header unlocked")
+		public void testWholeFileLockLeavesHeaderUnlocked(long position, long size) throws IOException {
+			when(options.writable()).thenReturn(true);
+			when(ciphertextFileChannel.lock(50L, Long.MAX_VALUE - 50L, false)).thenReturn(delegate);
+
+			FileLock result = inTest.lock(position, size, false);
+
+			Assertions.assertEquals(delegate, ((CleartextFileLock) result).delegate());
+		}
+
+		@ParameterizedTest(name = "tryLock({0}, {1})")
+		@CsvSource({"0,9223372036854775807", "372,9223372036854775435"})
+		@DisplayName("a whole-file tryLock() leaves the header unlocked")
+		public void testWholeFileTryLockLeavesHeaderUnlocked(long position, long size) throws IOException {
+			when(ciphertextFileChannel.tryLock(50L, Long.MAX_VALUE - 50L, true)).thenReturn(delegate);
+
+			FileLock result = inTest.tryLock(position, size, true);
+
+			Assertions.assertEquals(delegate, ((CleartextFileLock) result).delegate());
 		}
 
 		@Test
@@ -427,6 +524,19 @@ public class CleartextFileChannelTest {
 			inOrder.verify(chunkCache).getChunk(2l); // B
 			inOrder.verify(chunkCache).getChunk(50_000_000l); // C
 			inOrder.verifyNoMoreInteractions();
+		}
+
+		@Test
+		@DisplayName("reading near EOF into a buffer with a position reads until EOF")
+		public void testReadNearEofIntoBufferWithPosition() throws IOException {
+			when(options.readable()).thenReturn(true);
+			ByteBuffer buffer = ByteBuffer.allocate(100).position(60);
+
+			int read = inTest.read(buffer, 70);
+
+			Assertions.assertEquals(30, read);
+			Assertions.assertEquals(90, buffer.position());
+			Assertions.assertEquals(100, buffer.limit());
 		}
 
 		@Test
@@ -574,6 +684,34 @@ public class CleartextFileChannelTest {
 		}
 
 		@Test
+		@DisplayName("a short header write is continued until the header is complete")
+		public void testWriteHeaderCompletesShortWrites() throws IOException {
+			when(options.writable()).thenReturn(true);
+			when(headerIsPersisted.get()).thenReturn(false);
+			when(ciphertextFileChannel.write(any(ByteBuffer.class), anyLong())).thenAnswer(invocation -> writeAtMost(invocation.getArgument(0), 20));
+
+			inTest.force(false);
+
+			var ordering = inOrder(ciphertextFileChannel, headerIsPersisted);
+			ordering.verify(ciphertextFileChannel).write(any(ByteBuffer.class), eq(0L));
+			ordering.verify(ciphertextFileChannel).write(any(ByteBuffer.class), eq(20L));
+			ordering.verify(ciphertextFileChannel).write(any(ByteBuffer.class), eq(40L));
+			ordering.verify(headerIsPersisted).set(true);
+		}
+
+		@Test
+		@DisplayName("a header write without progress fails and leaves the header unpersisted")
+		public void testWriteHeaderWithoutProgressFails() throws IOException {
+			when(options.writable()).thenReturn(true);
+			when(headerIsPersisted.get()).thenReturn(false);
+			when(ciphertextFileChannel.write(any(ByteBuffer.class), anyLong())).thenReturn(0);
+
+			Assertions.assertThrows(IOException.class, () -> inTest.force(false));
+
+			verify(headerIsPersisted, never()).set(anyBoolean());
+		}
+
+		@Test
 		@DisplayName("don't write header if it is already written")
 		public void testDontRewriteHeader() throws IOException {
 			when(options.writable()).thenReturn(true);
@@ -591,7 +729,7 @@ public class CleartextFileChannelTest {
 			when(options.writable()).thenReturn(true);
 			when(inUseManager.isInUseByOthers(filePath)).thenReturn(true);
 			when(inUseManager.getUseInfo(filePath)).thenReturn(java.util.Optional.of(new UseInfo("alice", Instant.now())));
-			var channel = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, currentCleartextPath,
+			var channel = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, currentCleartextPath, new CiphertextFileKey(),
 					exceptionsDuringWrite, closeListener, eventConsumer, stats, inUseManager);
 
 			Assertions.assertThrows(FileAlreadyInUseException.class, () -> channel.write(ByteBuffer.allocate(1), 0));

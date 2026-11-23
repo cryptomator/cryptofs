@@ -15,6 +15,8 @@ import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.common.RunnableThrowingException;
 import org.cryptomator.cryptofs.event.DecryptionFailedEvent;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -39,6 +41,9 @@ import java.util.stream.Stream;
 
 @CryptoFileSystemScoped
 public class OpenCryptoFiles implements Closeable {
+
+	private static final Logger LOG = LoggerFactory.getLogger(OpenCryptoFiles.class);
+	private static final int MAX_OPEN_ATTEMPTS = 3;
 
 	private final OpenCryptoFileComponent.Factory openCryptoFileComponentFactory;
 	private final Consumer<FilesystemEvent> eventConsumer;
@@ -82,6 +87,7 @@ public class OpenCryptoFiles implements Closeable {
 	 * MUST be invoked using a try-with-resource statement. Until the returned OpenOperation is closed, moving or replacing this file waits, so that all steps of the open see the same file.
 	 * A channel opened by it MUST NOT be used before the OpenOperation was closed, not even to truncate it, see {@link OpenOperation#newFileChannel(CryptoPath, EffectiveOpenOptions, FileAttribute[])}.
 	 * Events must be emitted by the caller after the OpenOperation was closed, so that event consumers may access the file system.
+	 * An open file whose ciphertext file was detectably replaced outside of this file system gets detached like a {@link #delete(Path) deleted} file, see {@link OpenOperation#newFileChannel(CryptoPath, EffectiveOpenOptions, FileAttribute[])}.
 	 *
 	 * @param ciphertextPath Path of the file to open
 	 * @return Utility to open file channels of this file
@@ -243,6 +249,10 @@ public class OpenCryptoFiles implements Closeable {
 		 * Hence the channel is not truncated here, even if the options contain {@link java.nio.file.StandardOpenOption#TRUNCATE_EXISTING}. The caller must truncate it after closing this OpenOperation.
 		 * <p>
 		 * A {@link DecryptionFailedEvent} of a file header that cannot be decrypted is delivered when this OpenOperation gets closed.
+		 * <p>
+		 * If the ciphertext file of an open file was detectably replaced outside of this file system, the open file gets detached like a {@link #delete(Path) deleted} file and the open is retried with the file now at the path.
+		 * It fails after a few attempts, or when an open with {@link java.nio.file.StandardOpenOption#DELETE_ON_CLOSE} detects the replacement only after opening it.
+		 * Likewise, if the open file got closed after it was looked up, because its last channel or the file system closed, the open is retried with a fresh open file.
 		 *
 		 * @param cleartextPath Cleartext path of the file to open
 		 * @param options The options to open the file channel with
@@ -254,13 +264,27 @@ public class OpenCryptoFiles implements Closeable {
 			if (closed) {
 				throw new IllegalStateException("Open operation of " + ciphertextPath + " already closed");
 			}
-			OpenCryptoFile openFile = getOrCreate(ciphertextPath);
-			openFile.updateCurrentCleartextPath(cleartextPath);
-			try {
-				return openFile.newFileChannel(options, attrs);
-			} catch (HeaderDecryptionException e) {
-				decryptionFailedEvent = e.getEvent();
-				throw e;
+			int replacedAttempts = 0;
+			int retiredAttempts = 0;
+			while (true) {
+				OpenCryptoFile openFile = getOrCreate(ciphertextPath);
+				openFile.updateCurrentCleartextPath(cleartextPath);
+				try {
+					return openFile.newFileChannel(options, attrs);
+				} catch (HeaderDecryptionException e) {
+					decryptionFailedEvent = e.getEvent();
+					throw e;
+				} catch (OpenFileRetiredException e) {
+					LOG.debug("Open file of {} was closed while opening.", ciphertextPath);
+					if (++retiredAttempts >= MAX_OPEN_ATTEMPTS) {
+						throw e;
+					}
+				} catch (CiphertextReplacedException e) {
+					LOG.info("Ciphertext file {} is no longer the one of the open file.", ciphertextPath);
+					if (!e.retryable() || ++replacedAttempts >= MAX_OPEN_ATTEMPTS) {
+						throw e;
+					}
+				}
 			}
 		}
 

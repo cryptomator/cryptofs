@@ -11,6 +11,7 @@ import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptofs.fh.BufferPool;
 import org.cryptomator.cryptofs.fh.Chunk;
 import org.cryptomator.cryptofs.fh.ChunkCache;
+import org.cryptomator.cryptofs.fh.CiphertextFileKey;
 import org.cryptomator.cryptofs.fh.CurrentOpenFileCleartextPath;
 import org.cryptomator.cryptofs.fh.CurrentOpenFilePath;
 import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
@@ -67,6 +68,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 	private final CryptoFileSystemStats stats;
 	private final InUseManager inUseManager;
 	private final AtomicReference<CryptoPath> currentCleartextPath;
+	private final CiphertextFileKey ciphertextFileKey;
 
 	@Inject
 	public CleartextFileChannel(FileChannel ciphertextFileChannel, //
@@ -80,6 +82,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 								@OpenFileModifiedDate AtomicReference<Instant> lastModified, //
 								@CurrentOpenFilePath AtomicReference<Path> currentPath, //
 								@CurrentOpenFileCleartextPath AtomicReference<CryptoPath> currentCleartextPath, //
+								CiphertextFileKey ciphertextFileKey, //
 								ExceptionsDuringWrite exceptionsDuringWrite, //
 								Consumer<FileChannel> closeListener, //
 								Consumer<FilesystemEvent> eventConsumer, //
@@ -94,6 +97,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		this.options = options;
 		this.currentFilePath = currentPath;
 		this.currentCleartextPath = currentCleartextPath;
+		this.ciphertextFileKey = ciphertextFileKey;
 		this.fileSize = fileSize;
 		this.lastModified = lastModified;
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
@@ -123,7 +127,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 						 ExceptionsDuringWrite exceptionsDuringWrite, //
 						 Consumer<FileChannel> closeListener, //
 						 CryptoFileSystemStats stats) {
-		this(ciphertextFileChannel, fileHeaderHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentPath, new AtomicReference<>(null), exceptionsDuringWrite, closeListener, ignored -> {}, stats, new StubInUseManager());
+		this(ciphertextFileChannel, fileHeaderHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentPath, new AtomicReference<>(null), new CiphertextFileKey(), exceptionsDuringWrite, closeListener, ignored -> {}, stats, new StubInUseManager());
 	}
 
 	@Override
@@ -149,7 +153,7 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		if (limitConsideringEof < 1) {
 			return -1;
 		}
-		dst.limit((int) min(origLimit, limitConsideringEof));
+		dst.limit((int) min(origLimit, dst.position() + limitConsideringEof));
 		int read = 0;
 		int payloadSize = cryptor.fileContentCryptor().cleartextChunkSize();
 		while (dst.hasRemaining()) {
@@ -247,7 +251,12 @@ public class CleartextFileChannel extends AbstractFileChannel {
 			return;
 		}
 		LOG.trace("{} - Writing file header.", this);
-		ciphertextFileChannel.write(fileHeaderHolder.getEncrypted(), 0);
+		ByteBuffer header = fileHeaderHolder.getEncrypted().duplicate().rewind();
+		while (header.hasRemaining()) { // a short write must not leave a torn header marked as persisted
+			if (ciphertextFileChannel.write(header, header.position()) <= 0) {
+				throw new IOException("Unable to make progress while writing file header");
+			}
+		}
 		fileHeaderHolder.headerIsPersisted().set(true);
 	}
 
@@ -312,12 +321,28 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		FileTime lastModifiedTime = isWritable() ? FileTime.from(lastModified.get()) : null;
 		FileTime lastAccessTime = FileTime.from(Instant.now());
 		var p = currentFilePath.get();
-		if (p != null) {
+		// best effort: setTimes resolves the path again, because NIO can't set times through an open channel. A replacement right after the check goes unnoticed.
+		if (p != null && isSameCiphertextFile(p)) {
 			p.getFileSystem().provider() //
 					.getFileAttributeView(p, BasicFileAttributeView.class) //
 					.setTimes(lastModifiedTime, lastAccessTime, null);
 		}
 
+	}
+
+	private boolean isSameCiphertextFile(Path p) {
+		if (!ciphertextFileKey.isCaptured()) {
+			return true;
+		}
+		try {
+			if (ciphertextFileKey.matches(CiphertextFileKey.read(p))) {
+				return true;
+			}
+			LOG.debug("Not persisting last modified time, ciphertext file {} was replaced.", p);
+		} catch (IOException e) {
+			LOG.debug("Not persisting last modified time, failed to read file key of {}.", p, e);
+		}
+		return false;
 	}
 
 	@Override
@@ -333,15 +358,8 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		} else if (!shared && !options.writable()) {
 			throw new NonWritableChannelException(); // exclusive lock only available on writable channel
 		}
-		long beginOfFirstChunk = beginOfChunk(pos);
-		long beginOfLastChunk = beginOfChunk(pos + size);
-		final FileLock ciphertextLock;
-		if (beginOfFirstChunk == Long.MAX_VALUE || beginOfLastChunk == Long.MAX_VALUE) {
-			ciphertextLock = ciphertextFileChannel.lock(0l, Long.MAX_VALUE, shared);
-		} else {
-			long endOfLastChunk = beginOfLastChunk + cryptor.fileContentCryptor().ciphertextChunkSize();
-			ciphertextLock = ciphertextFileChannel.lock(beginOfFirstChunk, endOfLastChunk - beginOfFirstChunk, shared);
-		}
+		var range = ciphertextRangeOfChunks(pos, size);
+		FileLock ciphertextLock = ciphertextFileChannel.lock(range.position(), range.size(), shared);
 		return new CleartextFileLock(this, ciphertextLock, pos, size);
 	}
 
@@ -353,19 +371,26 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		} else if (!shared && !options.writable()) {
 			throw new NonWritableChannelException(); // exclusive lock only available on writable channel
 		}
-		long beginOfFirstChunk = beginOfChunk(pos);
-		long beginOfLastChunk = beginOfChunk(pos + size);
-		final FileLock ciphertextLock;
-		if (beginOfFirstChunk == Long.MAX_VALUE || beginOfLastChunk == Long.MAX_VALUE) {
-			ciphertextLock = ciphertextFileChannel.tryLock(0l, Long.MAX_VALUE, shared);
-		} else {
-			long endOfLastChunk = beginOfLastChunk + cryptor.fileContentCryptor().ciphertextChunkSize();
-			ciphertextLock = ciphertextFileChannel.tryLock(beginOfFirstChunk, endOfLastChunk - beginOfFirstChunk, shared);
-		}
+		var range = ciphertextRangeOfChunks(pos, size);
+		FileLock ciphertextLock = ciphertextFileChannel.tryLock(range.position(), range.size(), shared);
 		if (ciphertextLock == null) {
 			return null;
 		} else {
 			return new CleartextFileLock(this, ciphertextLock, pos, size);
+		}
+	}
+
+	private record CiphertextRange(long position, long size) {}
+
+	private CiphertextRange ciphertextRangeOfChunks(long cleartextPos, long cleartextSize) {
+		long beginOfFirstChunk = beginOfChunk(cleartextPos);
+		long beginOfLastChunk = beginOfChunk(cleartextPos + cleartextSize);
+		if (beginOfFirstChunk == Long.MAX_VALUE || beginOfLastChunk == Long.MAX_VALUE) {
+			long headerSize = cryptor.fileHeaderCryptor().headerSize();
+			return new CiphertextRange(headerSize, Long.MAX_VALUE - headerSize); // leaves the header readable, as joining channels verify it and Windows denies reads in a range locked by another handle
+		} else {
+			long endOfLastChunk = beginOfLastChunk + cryptor.fileContentCryptor().ciphertextChunkSize();
+			return new CiphertextRange(beginOfFirstChunk, endOfLastChunk - beginOfFirstChunk);
 		}
 	}
 
