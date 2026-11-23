@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 The changelog starts with version 2.10.0.
 Changes to prior versions can be found on the [GitHub release page](https://github.com/cryptomator/cryptofs/releases).
 
-## [Unreleased](https://github.com/cryptomator/cryptofs/compare/2.12.0...HEAD)
+## [2.12.1](https://github.com/cryptomator/cryptofs/releases/tag/2.12.1) - 2026-11-23
 
 ### Fixed
 * Fixed long-named items that the orphaned directory health check recovers into `LOST+FOUND` being unreadable in vaults with certain shortening thresholds, when the original directory ID was lost ([#375](https://github.com/cryptomator/cryptofs/issues/375), [#376](https://github.com/cryptomator/cryptofs/pull/376))
