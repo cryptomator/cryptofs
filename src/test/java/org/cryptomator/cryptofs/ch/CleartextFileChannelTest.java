@@ -133,6 +133,10 @@ public class CleartextFileChannelTest {
 			invocation.<RunnableThrowingException<IOException>>getArgument(2).run();
 			return null;
 		}).when(writeGuard).guardedHeaderWrite(any(), any(), any());
+		doAnswer(invocation -> {
+			invocation.<RunnableThrowingException<IOException>>getArgument(0).run();
+			return null;
+		}).when(writeGuard).guardedClose(any());
 		when(writeGuard.readableSize(any(), anyLong())).thenAnswer(invocation -> invocation.getArgument(1));
 		doAnswer(invocation -> {
 			boolean mayWriteModifiedTime = invocation.getArgument(0);
@@ -449,6 +453,28 @@ public class CleartextFileChannelTest {
 			inTest.implCloseChannel();
 
 			verify(attributeView).setTimes(Mockito.isNull(), Mockito.any(), Mockito.isNull());
+		}
+
+		@Test
+		@DisplayName("Closing a writable channel closes its ciphertext channel through the guard")
+		public void testCloseOfWritableChannelGoesThroughGuard() throws IOException {
+			when(options.writable()).thenReturn(true);
+
+			inTest.implCloseChannel();
+
+			verify(writeGuard).guardedClose(any());
+			verify(ciphertextFileChannel).close();
+		}
+
+		@Test
+		@DisplayName("Closing a read-only channel closes its ciphertext channel directly")
+		public void testCloseOfReadOnlyChannelBypassesGuard() throws IOException {
+			when(options.writable()).thenReturn(false);
+
+			inTest.implCloseChannel();
+
+			verify(writeGuard, never()).guardedClose(any());
+			verify(ciphertextFileChannel).close();
 		}
 
 		@Test

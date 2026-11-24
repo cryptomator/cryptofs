@@ -61,6 +61,7 @@ public class CiphertextWriteGuardTest {
 
 	private static final FileTime FOREIGN_TIME = FileTime.from(Instant.parse("2031-03-04T05:06:07Z"));
 	private static final FileTime VIEW_TIME = FileTime.from(Instant.parse("2029-01-02T03:04:05Z"));
+	private static final FileTime CLOSE_TIME = FileTime.from(Instant.parse("2030-02-03T04:05:06Z"));
 
 	private final Cryptor cryptor = CryptorProvider.forScheme(CryptorProvider.Scheme.SIV_GCM).provide(new Masterkey(new byte[64]), new SecureRandom());
 	private final int headerSize = cryptor.fileHeaderCryptor().headerSize();
@@ -535,6 +536,49 @@ public class CiphertextWriteGuardTest {
 		concurrentSave.get(5, TimeUnit.SECONDS);
 		assertFalse(savedDuringWrite.get());
 		assertArrayEquals(filled(9), storedChunk(1));
+	}
+
+	@Test
+	@DisplayName("a time the file system sets while closing a channel after an own save stays the file's own")
+	void testCloseTimeAfterOwnSaveIsOwn() throws IOException {
+		save(0, 9);
+
+		inTest.guardedClose(() -> Files.setLastModifiedTime(path, CLOSE_TIME)); // like Windows, which may set the time once a written handle closes
+
+		assertEquals(FileTime.fromMillis(1), persistedModifiedTime());
+	}
+
+	@Test
+	@DisplayName("a time the file system sets while closing a channel after the own time was persisted is set back to it")
+	void testCloseTimeAfterPersistedOwnTimeIsOwn() throws IOException {
+		save(0, 9);
+		assertEquals(FileTime.fromMillis(1), persistedModifiedTime()); // e.g. force(true) before closing
+
+		inTest.guardedClose(() -> Files.setLastModifiedTime(path, CLOSE_TIME));
+
+		assertEquals(FileTime.fromMillis(1), persistedModifiedTime());
+	}
+
+	@Test
+	@DisplayName("a close that leaves the time alone leaves nothing to persist once the own time was persisted")
+	void testUnchangedCloseTimeAfterPersistedOwnTime() throws IOException {
+		save(0, 9);
+		assertEquals(FileTime.fromMillis(1), persistedModifiedTime());
+
+		inTest.guardedClose(() -> {});
+
+		assertNull(persistedModifiedTime());
+	}
+
+	@Test
+	@DisplayName("a foreign time change before closing a channel still keeps an own save's time from being persisted")
+	void testForeignTimeBeforeCloseBlocksPersisting() throws IOException {
+		save(0, 9);
+		Files.setLastModifiedTime(path, FOREIGN_TIME);
+
+		inTest.guardedClose(() -> Files.setLastModifiedTime(path, CLOSE_TIME));
+
+		assertNull(persistedModifiedTime());
 	}
 
 	private FileTime persistedModifiedTime() throws IOException {

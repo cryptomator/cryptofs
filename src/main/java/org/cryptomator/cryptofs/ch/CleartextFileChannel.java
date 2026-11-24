@@ -514,9 +514,17 @@ public class CleartextFileChannel extends AbstractFileChannel {
 		var closeActions = List.<CloseAction>of(this::flush, //
 				super::implCloseChannel, //
 				() -> closeListener.accept(ciphertextFileChannel), //
-				ciphertextFileChannel::close, //
+				this::closeCiphertext, //
 				this::tryPersistLastModified);
 		tryAll(closeActions.iterator());
+	}
+
+	private void closeCiphertext() throws IOException {
+		if (isWritable()) {
+			writeGuard.guardedClose(ciphertextFileChannel::close);
+		} else {
+			ciphertextFileChannel.close();
+		}
 	}
 
 	private void tryPersistLastModified() {

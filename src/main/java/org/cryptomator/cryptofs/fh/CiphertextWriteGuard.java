@@ -61,6 +61,8 @@ public class CiphertextWriteGuard {
 	private volatile long expectedSize; // written under lock
 	private boolean adoptedForeignShrink; // guarded by lock
 	private boolean ownChanges; // guarded by lock
+	private boolean savedOnce; // guarded by lock
+	private boolean timeReadAtClose; // guarded by lock
 	private FileTime timeBaseline; // guarded by lock
 	private boolean foreignTimeChange; // guarded by lock
 
@@ -392,6 +394,39 @@ public class CiphertextWriteGuard {
 		}
 	}
 
+	/**
+	 * Closes a ciphertext channel of this file. Once this file saved, a modification time the file system sets during the close is this file's own, so this file's time gets persisted again.
+	 * Windows may complete the time of a written file only when its handle closes.
+	 * A foreign time change before the close still keeps this file's time from being persisted, and so does a close that fails.
+	 *
+	 * @param close Closes the channel, under this guard's lock
+	 * @throws IOException If closing fails
+	 */
+	public void guardedClose(RunnableThrowingException<IOException> close) throws IOException {
+		lock.lock();
+		try {
+			if (!savedOnce || timeBaseline == null || foreignTimeChange || isConflicted()) {
+				close.run();
+				return;
+			}
+			try {
+				noteForeignTimeChange();
+			} finally {
+				close.run();
+			}
+			if (!foreignTimeChange) {
+				var timeAfterClose = readTimeOrNull();
+				if (timeAfterClose != null && !timeAfterClose.equals(timeBaseline)) {
+					ownChanges = true;
+					timeBaseline = timeAfterClose;
+				}
+				timeReadAtClose = timeAfterClose != null;
+			}
+		} finally {
+			lock.unlock();
+		}
+	}
+
 	private void checkUnchanged(FileChannel channel) throws IOException {
 		noteForeignTimeChange();
 		if (!headerHolder.isHeaderOf(channel) || channel.size() != expectedSize) {
@@ -402,7 +437,9 @@ public class CiphertextWriteGuard {
 	private void recordOwnChange(long newExpectedSize) {
 		expectedSize = newExpectedSize;
 		ownChanges = true;
+		savedOnce = true;
 		timeBaseline = readTimeOrNull();
+		timeReadAtClose = false;
 	}
 
 	private void noteForeignTimeChange() {
@@ -422,7 +459,8 @@ public class CiphertextWriteGuard {
 	public void persistOwnTimes(boolean mayWriteModifiedTime, TimesWrite write) throws IOException {
 		lock.lock();
 		try {
-			boolean ownTime = mayWriteModifiedTime && ownChanges && !isConflicted() && !foreignTimeChange && timeBaseline != null && timeBaseline.equals(readTimeOrNull());
+			boolean ownTime = mayWriteModifiedTime && ownChanges && !isConflicted() && !foreignTimeChange && timeBaseline != null && (timeReadAtClose || timeBaseline.equals(readTimeOrNull())); // a close just read the time
+			timeReadAtClose = false;
 			write.write(ownTime ? FileTime.from(lastModified.get()) : null);
 			if (mayWriteModifiedTime) {
 				ownChanges = false;
