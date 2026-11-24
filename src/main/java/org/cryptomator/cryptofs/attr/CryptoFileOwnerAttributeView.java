@@ -26,8 +26,8 @@ final class CryptoFileOwnerAttributeView extends AbstractCryptoFileAttributeView
 	private final ReadonlyFlag readonlyFlag;
 
 	@Inject
-	public CryptoFileOwnerAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, LinkOption[] linkOptions, Symlinks symlinks, OpenCryptoFiles openCryptoFiles, ReadonlyFlag readonlyFlag) {
-		super(cleartextPath, pathMapper, linkOptions, symlinks, openCryptoFiles);
+	public CryptoFileOwnerAttributeView(CryptoPath cleartextPath, CryptoPathMapper pathMapper, LinkOption[] linkOptions, Symlinks symlinks, ReadonlyFlag readonlyFlag) {
+		super(cleartextPath, pathMapper, linkOptions, symlinks);
 		this.readonlyFlag = readonlyFlag;
 	}
 
