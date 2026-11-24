@@ -77,10 +77,14 @@ class CopyOperation {
 		try (FileChannel sourceChannel = source.getFileSystem().newFileChannel(source, EnumSet.of(READ)); //
 				FileChannel targetChannel = target.getFileSystem().newFileChannel(target, EnumSet.of(CREATE_NEW, WRITE))) {
 			long transferred = 0;
-			long toTransfer = sourceChannel.size();
-			while (toTransfer > 0) {
-				transferred += sourceChannel.transferTo(transferred, toTransfer, targetChannel);
-				toTransfer = sourceChannel.size() - transferred;
+			long size = sourceChannel.size();
+			while (transferred < size) {
+				long progress = sourceChannel.transferTo(transferred, size - transferred, targetChannel);
+				if (progress == 0) { // the source got shorter than its size while it was open
+					throw new IOException("Unexpected end of " + source + " after " + transferred + " of " + size + " bytes");
+				}
+				transferred += progress;
+				size = Math.max(size, sourceChannel.size()); // a source that grows meanwhile is copied in full
 			}
 		}
 	}

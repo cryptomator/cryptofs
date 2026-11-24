@@ -87,7 +87,7 @@ public class OpenCryptoFiles implements Closeable {
 	 * MUST be invoked using a try-with-resource statement. Until the returned OpenOperation is closed, moving or replacing this file waits, so that all steps of the open see the same file.
 	 * A channel opened by it MUST NOT be used before the OpenOperation was closed, not even to truncate it, see {@link OpenOperation#newFileChannel(CryptoPath, EffectiveOpenOptions, FileAttribute[])}.
 	 * Events must be emitted by the caller after the OpenOperation was closed, so that event consumers may access the file system.
-	 * An open file whose ciphertext file was detectably replaced outside of this file system gets detached like a {@link #delete(Path) deleted} file, see {@link OpenOperation#newFileChannel(CryptoPath, EffectiveOpenOptions, FileAttribute[])}.
+	 * An open file whose ciphertext file was detectably replaced outside of this file system, or changed in place so that it stopped saving, gets detached like a {@link #delete(Path) deleted} file, see {@link OpenOperation#newFileChannel(CryptoPath, EffectiveOpenOptions, FileAttribute[])}.
 	 *
 	 * @param ciphertextPath Path of the file to open
 	 * @return Utility to open file channels of this file
@@ -206,7 +206,7 @@ public class OpenCryptoFiles implements Closeable {
 		};
 	}
 
-	private static Path normalize(Path ciphertextPath) {
+	static Path normalize(Path ciphertextPath) {
 		return ciphertextPath.toAbsolutePath().normalize();
 	}
 
@@ -250,7 +250,7 @@ public class OpenCryptoFiles implements Closeable {
 		 * <p>
 		 * A {@link DecryptionFailedEvent} of a file header that cannot be decrypted is delivered when this OpenOperation gets closed.
 		 * <p>
-		 * If the ciphertext file of an open file was detectably replaced outside of this file system, the open file gets detached like a {@link #delete(Path) deleted} file and the open is retried with the file now at the path.
+		 * If the ciphertext file of an open file was detectably replaced outside of this file system, or changed in place so that the open file stopped saving, the open file gets detached like a {@link #delete(Path) deleted} file and the open is retried with the file now at the path.
 		 * It fails after a few attempts, or when an open with {@link java.nio.file.StandardOpenOption#DELETE_ON_CLOSE} detects the replacement only after opening it.
 		 * Likewise, if the open file got closed after it was looked up, because its last channel or the file system closed, the open is retried with a fresh open file.
 		 *

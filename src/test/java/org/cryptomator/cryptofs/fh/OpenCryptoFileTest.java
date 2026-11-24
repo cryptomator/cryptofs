@@ -79,6 +79,7 @@ public class OpenCryptoFileTest {
 	private FileHeaderHolder headerHolder = mock(FileHeaderHolder.class);
 	private ChunkIO chunkIO = mock(ChunkIO.class);
 	private CiphertextFileKey ciphertextFileKey = new CiphertextFileKey();
+	private CiphertextWriteGuard writeGuard = mock(CiphertextWriteGuard.class);
 	private AtomicLong fileSize = mock(AtomicLong.class);
 	private AtomicReference<Instant> lastModified = new AtomicReference(Instant.ofEpochMilli(0));
 	private OpenCryptoFileComponent openCryptoFileComponent = mock(OpenCryptoFileComponent.class);
@@ -110,7 +111,7 @@ public class OpenCryptoFileTest {
 			throw new RuntimeException("Path " + p + "already exists.");
 		}
 		CURRENT_FILE_PATH.set(p);
-		return new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, ciphertextFileKey, CURRENT_FILE_PATH, fileSize, CURRENT_CLEARTEXT_FILE_PATH, lastModified, openCryptoFileComponent, inUseManager, useToken);
+		return new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, ciphertextFileKey, writeGuard, CURRENT_FILE_PATH, fileSize, CURRENT_CLEARTEXT_FILE_PATH, lastModified, openCryptoFileComponent, inUseManager, useToken);
 	}
 
 	@Test
@@ -317,7 +318,7 @@ public class OpenCryptoFileTest {
 		var currentPath = mock(Path.class, "current Path");
 		var newPath = mock(Path.class, "new Path");
 		var currentPathWrapper = new AtomicReference<>(currentPath);
-		OpenCryptoFile openCryptoFile = new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, ciphertextFileKey, currentPathWrapper, fileSize, CURRENT_CLEARTEXT_FILE_PATH, lastModified, openCryptoFileComponent, inUseManager, useToken);
+		OpenCryptoFile openCryptoFile = new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, ciphertextFileKey, writeGuard, currentPathWrapper, fileSize, CURRENT_CLEARTEXT_FILE_PATH, lastModified, openCryptoFileComponent, inUseManager, useToken);
 		doNothing().when(useToken).moveTo(newPath);
 
 		openCryptoFile.updateCurrentFilePath(newPath);
@@ -329,7 +330,7 @@ public class OpenCryptoFileTest {
 	public void testUpdateCurrentPathWithNull() {
 		var currentPath = mock(Path.class, "current Path");
 		var currentPathWrapper = new AtomicReference<>(currentPath);
-		OpenCryptoFile openCryptoFile = new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, ciphertextFileKey, currentPathWrapper, fileSize, CURRENT_CLEARTEXT_FILE_PATH, lastModified, openCryptoFileComponent, inUseManager, useToken);
+		OpenCryptoFile openCryptoFile = new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, ciphertextFileKey, writeGuard, currentPathWrapper, fileSize, CURRENT_CLEARTEXT_FILE_PATH, lastModified, openCryptoFileComponent, inUseManager, useToken);
 		doNothing().when(useToken).close();
 
 		openCryptoFile.updateCurrentFilePath(null);
@@ -343,7 +344,7 @@ public class OpenCryptoFileTest {
 
 		EffectiveOpenOptions options = mock(EffectiveOpenOptions.class);
 		FileChannel cipherFileChannel = mock(FileChannel.class, "cipherFilechannel");
-		OpenCryptoFile inTest = new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, ciphertextFileKey, CURRENT_FILE_PATH, fileSize, CURRENT_CLEARTEXT_FILE_PATH, lastModified, openCryptoFileComponent, inUseManager);
+		OpenCryptoFile inTest = new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, ciphertextFileKey, writeGuard, CURRENT_FILE_PATH, fileSize, CURRENT_CLEARTEXT_FILE_PATH, lastModified, openCryptoFileComponent, inUseManager);
 
 		@Test
 		@DisplayName("Skip file header init, if the file header already exists in memory")
@@ -427,7 +428,7 @@ public class OpenCryptoFileTest {
 		public void setup() throws IOException {
 			FS = Jimfs.newFileSystem("OpenCryptoFileTest.FileChannelFactoryTest", Configuration.unix().toBuilder().setAttributeViews("basic", "posix").build());
 			CURRENT_FILE_PATH = new AtomicReference<>(FS.getPath("currentFile"));
-			openCryptoFile = new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, ciphertextFileKey, CURRENT_FILE_PATH, realFileSize, CURRENT_CLEARTEXT_FILE_PATH, lastModified, openCryptoFileComponent, inUseManager);
+			openCryptoFile = new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, ciphertextFileKey, writeGuard, CURRENT_FILE_PATH, realFileSize, CURRENT_CLEARTEXT_FILE_PATH, lastModified, openCryptoFileComponent, inUseManager);
 			cleartextFileChannel = mock(CleartextFileChannel.class);
 			listener = new AtomicReference<>();
 			ciphertextChannel = new AtomicReference<>();
@@ -540,7 +541,7 @@ public class OpenCryptoFileTest {
 			when(firstAttributes.lastModifiedTime()).thenReturn(FIRST_MODIFIED);
 			when(replacementAttributes.fileKey()).thenReturn(REPLACEMENT_KEY);
 			when(headerHolder.isHeaderOf(any())).thenReturn(true);
-			inTest = new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, ciphertextFileKey, new AtomicReference<>(path), fileSize, new AtomicReference<>(), lastModified, openCryptoFileComponent, inUseManager, useToken);
+			inTest = new OpenCryptoFile(closeListener, cryptor, headerHolder, chunkIO, ciphertextFileKey, writeGuard, new AtomicReference<>(path), fileSize, new AtomicReference<>(), lastModified, openCryptoFileComponent, inUseManager, useToken);
 		}
 
 		private void openFirstChannel() throws IOException {
@@ -692,7 +693,7 @@ public class OpenCryptoFileTest {
 			var setDuringOpen = FileTime.from(Instant.parse("2024-01-01T00:00:00Z"));
 			try (var fileKeys = mockStatic(CiphertextFileKey.class)) {
 				fileKeys.when(() -> CiphertextFileKey.read(path)).thenAnswer(invocation -> {
-					inTest.setLastModifiedTime(setDuringOpen);
+					lastModified.set(setDuringOpen.toInstant());
 					return FIRST_KEY;
 				});
 				fileKeys.when(() -> CiphertextFileKey.readAttributes(path)).thenReturn(firstAttributes);
@@ -707,7 +708,7 @@ public class OpenCryptoFileTest {
 		void testJoiningChannelKeepsModifiedTime() throws IOException {
 			openFirstChannel();
 			var modifiedByWrite = FileTime.from(Instant.parse("2024-01-01T00:00:00Z"));
-			inTest.setLastModifiedTime(modifiedByWrite);
+			lastModified.set(modifiedByWrite.toInstant());
 
 			try (var fileKeys = mockStatic(CiphertextFileKey.class)) {
 				fileKeys.when(() -> CiphertextFileKey.read(path)).thenReturn(FIRST_KEY);
@@ -736,6 +737,19 @@ public class OpenCryptoFileTest {
 
 			Assertions.assertNull(inTest.getCurrentFilePath());
 			verify(closeListener).close(path, inTest);
+		}
+
+		@Test
+		@DisplayName("a channel joining a conflicted open file detaches it without opening the ciphertext, so that the open retries with a fresh one")
+		void testJoiningConflictedFileDetaches() throws IOException {
+			openFirstChannel();
+			when(writeGuard.isConflicted()).thenReturn(true);
+
+			var e = Assertions.assertThrows(CiphertextReplacedException.class, () -> inTest.newFileChannel(options));
+
+			Assertions.assertTrue(e.retryable());
+			verify(provider, times(1)).newFileChannel(eq(path), any(), any(FileAttribute[].class));
+			assertDetachedAsReplaced();
 		}
 
 		@Test
@@ -797,7 +811,7 @@ public class OpenCryptoFileTest {
 			fileSystem = Jimfs.newFileSystem(Configuration.unix());
 			path = new AtomicReference<>(fileSystem.getPath("/file"));
 			realHeaderHolder = new FileHeaderHolder(realCryptor, path);
-			inTest = new OpenCryptoFile(closeListener, realCryptor, realHeaderHolder, chunkIO, ciphertextFileKey, path, new AtomicLong(-1L), new AtomicReference<>(), lastModified, openCryptoFileComponent, inUseManager, useToken);
+			inTest = new OpenCryptoFile(closeListener, realCryptor, realHeaderHolder, chunkIO, ciphertextFileKey, writeGuard, path, new AtomicLong(-1L), new AtomicReference<>(), lastModified, openCryptoFileComponent, inUseManager, useToken);
 		}
 
 		@AfterEach

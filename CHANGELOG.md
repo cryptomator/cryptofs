@@ -9,7 +9,20 @@ Changes to prior versions can be found on the [GitHub release page](https://gith
 
 ## [Unreleased](https://github.com/cryptomator/cryptofs/compare/2.12.1...HEAD)
 
-No changes yet.
+### Added
+* `FileWriteConflictEvent`, emitted once when a write or save through an open file is refused, because its ciphertext changed outside of this file system while the file was open ([#381](https://github.com/cryptomator/cryptofs/issues/381), [#385](https://github.com/cryptomator/cryptofs/pull/385))
+
+### Changed
+* `DecryptionFailedEvent` for an undecryptable chunk is now delivered on its own thread and always names the file ([#385](https://github.com/cryptomator/cryptofs/pull/385))
+
+### Fixed
+* Fixed an open file putting data it buffered before a sync client or another device changed its ciphertext in place over the new version, which could also leave chunks undecryptable: the write, force, close or truncate that finds the change now fails with an I/O error, and the open file saves nothing more until it is reopened ([#381](https://github.com/cryptomator/cryptofs/issues/381), [#385](https://github.com/cryptomator/cryptofs/pull/385))
+* Fixed a write past the end of a file that was shortened outside of this file system while it was open encrypting leftover bytes of another file into it. Such a write now fails as a conflict ([#382](https://github.com/cryptomator/cryptofs/issues/382), [#385](https://github.com/cryptomator/cryptofs/pull/385))
+* Fixed a read past the end of a file that was shortened outside of this file system while it was open hanging or throwing `IllegalArgumentException`. It now ends at the new end of the file ([#382](https://github.com/cryptomator/cryptofs/issues/382), [#385](https://github.com/cryptomator/cryptofs/pull/385))
+* Fixed closing a channel setting the last-modified time of a file that was changed in place outside of this file system back to an older time ([#383](https://github.com/cryptomator/cryptofs/issues/383), [#385](https://github.com/cryptomator/cryptofs/pull/385))
+* Fixed copying a file to another vault hanging when the source got shorter during the copy. The copy now fails with an I/O error ([#384](https://github.com/cryptomator/cryptofs/issues/384), [#385](https://github.com/cryptomator/cryptofs/pull/385))
+* Fixed `transferFrom` and `transferTo` of a file channel hanging when the other channel is non-blocking and has no bytes ready or no room left. They now return the number of bytes transferred so far ([#385](https://github.com/cryptomator/cryptofs/pull/385))
+* Fixed `transferFrom` of a file channel taking up to 4 KiB more from the source channel than it wrote to the file ([#385](https://github.com/cryptomator/cryptofs/pull/385))
 
 
 ## [2.12.1](https://github.com/cryptomator/cryptofs/releases/tag/2.12.1) - 2026-11-23

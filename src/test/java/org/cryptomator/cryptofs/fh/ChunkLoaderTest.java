@@ -21,7 +21,6 @@ import org.mockito.stubbing.Answer;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -30,10 +29,14 @@ import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.hasAtLeastRema
 import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.hamcrest.MockitoHamcrest.argThat;
@@ -53,8 +56,9 @@ public class ChunkLoaderTest {
 	private final FileHeaderHolder headerHolder = mock(FileHeaderHolder.class);
 	private final BufferPool bufferPool = mock(BufferPool.class);
 	private final Consumer<FilesystemEvent> eventConsumer = mock(Consumer.class);
-	private final AtomicReference<Path> filePath = new AtomicReference<>(mock(Path.class, "The filepath"));
-	private final ChunkLoader inTest = new ChunkLoader(eventConsumer, filePath,cryptor, chunkIO, headerHolder, stats, bufferPool);
+	private final Path filePath = mock(Path.class, "The filepath");
+	private final CiphertextWriteGuard writeGuard = mock(CiphertextWriteGuard.class);
+	private final ChunkLoader inTest = new ChunkLoader(eventConsumer, cryptor, chunkIO, headerHolder, stats, bufferPool, writeGuard);
 
 	@BeforeEach
 	public void setup() throws IOException {
@@ -66,6 +70,7 @@ public class ChunkLoaderTest {
 		when(fileHeaderCryptor.headerSize()).thenReturn(HEADER_SIZE);
 		when(bufferPool.getCiphertextBuffer()).thenAnswer(invocation -> ByteBuffer.allocate(CIPHERTEXT_CHUNK_SIZE));
 		when(bufferPool.getCleartextBuffer()).thenAnswer(invocation -> ByteBuffer.allocate(CLEARTEXT_CHUNK_SIZE));
+		when(writeGuard.ciphertextPath()).thenReturn(filePath);
 	}
 
 	@Test
@@ -133,7 +138,7 @@ public class ChunkLoaderTest {
 	}
 
 	@Test
-	@DisplayName("load() rethrows on failed decryption the exception and creates an event")
+	@DisplayName("load() rethrows on failed decryption the exception and creates an event, and records no baseline")
 	public void testLoadThrowsAndNotifiesOnFailedDecryption() throws IOException {
 		long chunkIndex = 482L;
 		long chunkOffset = chunkIndex * CIPHERTEXT_CHUNK_SIZE + HEADER_SIZE;
@@ -145,8 +150,35 @@ public class ChunkLoaderTest {
 			);
 
 		Assertions.assertThrows(AuthenticationFailedException.class, () -> inTest.load(chunkIndex));
-		var isDecryptionFailedEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof DecryptionFailedEvent;
-		verify(eventConsumer).accept(ArgumentMatchers.argThat(isDecryptionFailedEvent));
+		var isDecryptionFailedEvent = (ArgumentMatcher<FilesystemEvent>) ev -> ev instanceof DecryptionFailedEvent failed && failed.ciphertextPath() == filePath;
+		verify(eventConsumer, timeout(5000)).accept(ArgumentMatchers.argThat(isDecryptionFailedEvent));
+		verify(writeGuard, never()).observe(anyLong(), any());
+	}
+
+	@Test
+	@DisplayName("load() continues after a short read until the chunk is complete")
+	public void testLoadContinuesAfterShortRead() throws IOException, AuthenticationFailedException {
+		long chunkIndex = 482L;
+		long chunkOffset = chunkIndex * CIPHERTEXT_CHUNK_SIZE + HEADER_SIZE;
+		when(chunkIO.read(any(ByteBuffer.class), eq(chunkOffset))).then(fillBufferWith((byte) 3, 10));
+		when(chunkIO.read(any(ByteBuffer.class), eq(chunkOffset + 10))).then(fillBufferWith((byte) 3, CIPHERTEXT_CHUNK_SIZE - 10));
+
+		inTest.load(chunkIndex);
+
+		verify(fileContentCryptor).decryptChunk(argThat(contains(repeat(3).times(CIPHERTEXT_CHUNK_SIZE).asByteBuffer())), any(), eq(chunkIndex), eq(header), eq(true));
+	}
+
+	@Test
+	@DisplayName("load() returns an empty chunk for a remainder too short to hold one")
+	public void testLoadReturnsEmptyChunkForRemainderShorterThanOverhead() throws IOException, AuthenticationFailedException {
+		long chunkIndex = 482L;
+		long chunkOffset = chunkIndex * CIPHERTEXT_CHUNK_SIZE + HEADER_SIZE;
+		when(chunkIO.read(any(ByteBuffer.class), eq(chunkOffset))).then(fillBufferWith((byte) 3, CIPHERTEXT_CHUNK_SIZE - CLEARTEXT_CHUNK_SIZE));
+
+		var data = inTest.load(chunkIndex);
+
+		Assertions.assertEquals(0, data.remaining());
+		verify(fileContentCryptor, never()).decryptChunk(any(), any(), anyLong(), any(), anyBoolean());
 	}
 
 	private Answer<Integer> fillBufferWith(byte value, int amount) {

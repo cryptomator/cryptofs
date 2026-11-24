@@ -40,13 +40,19 @@ abstract sealed class AbstractCryptoFileAttributeView implements FileAttributeVi
 	}
 
 	protected <T extends FileAttributeView> T getCiphertextAttributeView(Class<T> delegateType) throws IOException {
-		Path ciphertextPath = getCiphertextPath(cleartextPath);
+		return getCiphertextAttributeView(getCiphertextPath(), delegateType);
+	}
+
+	protected <T extends FileAttributeView> T getCiphertextAttributeView(Path ciphertextPath, Class<T> delegateType) {
 		return ciphertextPath.getFileSystem().provider().getFileAttributeView(ciphertextPath, delegateType);
 	}
 
-	protected Optional<OpenCryptoFile> getOpenCryptoFile() throws IOException {
-		Path ciphertextPath = getCiphertextPath(cleartextPath);
+	protected Optional<OpenCryptoFile> getOpenCryptoFile(Path ciphertextPath) {
 		return openCryptoFiles.get(ciphertextPath);
+	}
+
+	protected Path getCiphertextPath() throws IOException {
+		return getCiphertextPath(cleartextPath);
 	}
 
 	private Path getCiphertextPath(CryptoPath path) throws IOException {

@@ -12,11 +12,13 @@ import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
 import org.cryptomator.cryptofs.ReadonlyFlag;
 import org.cryptomator.cryptofs.Symlinks;
+import org.cryptomator.cryptofs.common.RunnableThrowingException;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
@@ -48,10 +50,15 @@ sealed class CryptoBasicFileAttributeView extends AbstractCryptoFileAttributeVie
 	@Override
 	public void setTimes(FileTime lastModifiedTime, FileTime lastAccessTime, FileTime createTime) throws IOException {
 		readonlyFlag.assertWritable();
-		if (lastModifiedTime != null) {
-			getOpenCryptoFile().ifPresent(file -> file.setLastModifiedTime(lastModifiedTime));
+		Path ciphertextPath = getCiphertextPath();
+		BasicFileAttributeView ciphertextView = getCiphertextAttributeView(ciphertextPath, BasicFileAttributeView.class);
+		RunnableThrowingException<IOException> write = () -> ciphertextView.setTimes(lastModifiedTime, lastAccessTime, createTime);
+		var openCryptoFile = getOpenCryptoFile(ciphertextPath);
+		if (openCryptoFile.isPresent()) {
+			openCryptoFile.get().writeTimes(ciphertextPath, lastModifiedTime, write);
+		} else {
+			write.run();
 		}
-		getCiphertextAttributeView(BasicFileAttributeView.class).setTimes(lastModifiedTime, lastAccessTime, createTime);
 	}
 
 }

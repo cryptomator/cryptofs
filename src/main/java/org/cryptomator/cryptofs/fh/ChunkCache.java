@@ -11,6 +11,7 @@ import jakarta.inject.Inject;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.channels.NonWritableChannelException;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.Lock;
@@ -27,6 +28,7 @@ public class ChunkCache {
 	private final CryptoFileSystemStats stats;
 	private final BufferPool bufferPool;
 	private final ExceptionsDuringWrite exceptionsDuringWrite;
+	private final CiphertextWriteGuard writeGuard;
 	private final Cache<Long, Chunk> chunkCache;
 	private final ConcurrentMap<Long, Chunk> cachedChunks;
 
@@ -48,12 +50,13 @@ public class ChunkCache {
 	private final Lock exclusiveLock = lock.writeLock(); // required when accessing multiple chunks at once
 
 	@Inject
-	public ChunkCache(ChunkLoader chunkLoader, ChunkSaver chunkSaver, CryptoFileSystemStats stats, BufferPool bufferPool, ExceptionsDuringWrite exceptionsDuringWrite) {
+	public ChunkCache(ChunkLoader chunkLoader, ChunkSaver chunkSaver, CryptoFileSystemStats stats, BufferPool bufferPool, ExceptionsDuringWrite exceptionsDuringWrite, CiphertextWriteGuard writeGuard) {
 		this.chunkLoader = chunkLoader;
 		this.chunkSaver = chunkSaver;
 		this.stats = stats;
 		this.bufferPool = bufferPool;
 		this.exceptionsDuringWrite = exceptionsDuringWrite;
+		this.writeGuard = writeGuard;
 		this.chunkCache = Caffeine.newBuilder() //
 				.maximumWeight(MAX_CACHED_CLEARTEXT_CHUNKS) //
 				.weigher(this::weigh) //
@@ -72,17 +75,24 @@ public class ChunkCache {
 	}
 
 	/**
-	 * Overwrites data at the given index and increments the access counter of the returned chunk
+	 * Overwrites data at the given index, sets the dirty flag and increments the access counter of the returned chunk.
+	 * Unless the chunk holds unsaved data, what is on disk now becomes the version this write replaces.
+	 * The caller must hold {@link #lockForEdit()} and mark the chunk unsaved before releasing it.
 	 *
 	 * @param chunkIndex Which chunk to overwrite
 	 * @param chunkData The cleartext data
+	 * @param own The ciphertext channel of the channel that is writing
 	 * @return The chunk
+	 * @throws IOException If the ciphertext can't be checked or belongs to another file version
 	 * @throws IllegalArgumentException If {@code chunkData}'s remaining bytes is not equal to the number of bytes fitting into a chunk
 	 */
-	public Chunk putChunk(long chunkIndex, ByteBuffer chunkData) throws IllegalArgumentException {
+	public Chunk putChunk(long chunkIndex, ByteBuffer chunkData, FileChannel own) throws IOException, IllegalArgumentException {
 		sharedLock.lock();
 		try {
 			return cachedChunks.compute(chunkIndex, (index, chunk) -> {
+				if (chunk == null || !chunk.isDirty()) {
+					checkHeaderAndCaptureCurrent(index, own);
+				}
 				if (chunk == null) {
 					chunk = new Chunk(chunkData, true, () -> releaseChunk(chunkIndex));
 				} else {
@@ -95,6 +105,8 @@ public class ChunkCache {
 				chunk.currentAccesses().incrementAndGet();
 				return chunk;
 			});
+		} catch (UncheckedIOException e) {
+			throw e.getCause();
 		} finally {
 			sharedLock.unlock();
 		}
@@ -124,6 +136,84 @@ public class ChunkCache {
 			}
 		} finally {
 			sharedLock.unlock();
+		}
+	}
+
+	/**
+	 * Returns the chunk for a partial write, reloading it first if it is clean, not in use and no longer what is on disk.
+	 * The caller must hold {@link #lockForEdit()} and, once its edit succeeded, set the dirty flag and mark the chunk unsaved.
+	 *
+	 * @param chunkIndex Which chunk to load
+	 * @param own The ciphertext channel of the channel that is writing
+	 * @return The chunk
+	 * @throws IOException If reading or decrypting the chunk failed, or the ciphertext belongs to another file version
+	 */
+	public Chunk getChunkForWrite(long chunkIndex, FileChannel own) throws IOException {
+		sharedLock.lock();
+		try {
+			stats.addChunkCacheAccess();
+			return cachedChunks.compute(chunkIndex, (idx, chunk) -> {
+				if (chunk == null || !chunk.isDirty()) {
+					checkHeader(own);
+				}
+				if (chunk == null) {
+					chunk = loadChunk(idx);
+				} else if (!chunk.isDirty() && chunk.currentAccesses().get() == 0 && !isCurrent(idx, own)) {
+					Chunk replacement = loadChunk(idx); // throws before the old buffer, which the cache still references, is given away
+					bufferPool.recycle(chunk.data());
+					chunk = replacement;
+				}
+				chunk.currentAccesses().incrementAndGet();
+				return chunk;
+			});
+		} catch (UncheckedIOException e) {
+			throw e.getCause();
+		} catch (AuthenticationFailedException e) {
+			throw new IOException(e);
+		} finally {
+			sharedLock.unlock();
+		}
+	}
+
+	/**
+	 * Keeps {@link #flush()} out while the caller edits a chunk and sets its dirty flag, so that a flush never encrypts a half-made edit or clears a flag it did not save.
+	 * MUST be invoked using a try-with-resource statement.
+	 *
+	 * @return A handle that releases the lock on close
+	 */
+	public EditLock lockForEdit() {
+		sharedLock.lock();
+		return sharedLock::unlock;
+	}
+
+	public interface EditLock extends AutoCloseable {
+
+		@Override
+		void close();
+	}
+
+	private void checkHeader(FileChannel own) {
+		try {
+			writeGuard.checkHeader(own);
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	private void checkHeaderAndCaptureCurrent(long chunkIndex, FileChannel own) {
+		try {
+			writeGuard.checkHeader(own);
+			writeGuard.captureCurrent(chunkIndex, own);
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
+	private boolean isCurrent(long chunkIndex, FileChannel own) {
+		try {
+			return writeGuard.isCurrent(chunkIndex, own);
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -172,12 +262,35 @@ public class ChunkCache {
 	}
 
 	/**
+	 * Like {@link #flush()}, but if a save fails, runs the given action before another flush can save anything.
+	 *
+	 * @param onFailure Runs with the exclusive lock still held
+	 */
+	public void flush(Runnable onFailure) throws IOException {
+		exclusiveLock.lock();
+		try {
+			flush();
+		} catch (IOException e) {
+			onFailure.run();
+			throw e;
+		} finally {
+			exclusiveLock.unlock();
+		}
+	}
+
+	/**
 	 * Removes stale chunks from cache.
 	 */
 	public void invalidateStale() {
 		exclusiveLock.lock();
 		try {
-			cachedChunks.entrySet().removeIf(entry -> entry.getValue().currentAccesses().get() == 0);
+			cachedChunks.entrySet().removeIf(entry -> {
+				boolean stale = entry.getValue().currentAccesses().get() == 0;
+				if (stale) {
+					writeGuard.forget(entry.getKey());
+				}
+				return stale;
+			});
 		} finally {
 			exclusiveLock.unlock();
 		}
@@ -192,6 +305,7 @@ public class ChunkCache {
 		} catch (IOException | NonWritableChannelException e) {
 			exceptionsDuringWrite.add(e);
 		}
+		writeGuard.forget(index);
 		bufferPool.recycle(chunk.data());
 	}
 }

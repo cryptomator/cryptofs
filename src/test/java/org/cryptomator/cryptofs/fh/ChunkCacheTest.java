@@ -14,9 +14,21 @@ import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.AccessDeniedException;
+import java.time.Duration;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.awaitility.Awaitility.await;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -28,11 +40,13 @@ public class ChunkCacheTest {
 	private final CryptoFileSystemStats stats = mock(CryptoFileSystemStats.class);
 	private final BufferPool bufferPool = mock(BufferPool.class);
 	private final ExceptionsDuringWrite exceptionsDuringWrite = mock(ExceptionsDuringWrite.class);
+	private final CiphertextWriteGuard writeGuard = mock(CiphertextWriteGuard.class);
+	private final FileChannel ownChannel = mock(FileChannel.class);
 	private ChunkCache inTest;
 
 	@BeforeEach
 	public void setup() {
-		 inTest = new ChunkCache(chunkLoader, chunkSaver, stats, bufferPool, exceptionsDuringWrite);
+		 inTest = new ChunkCache(chunkLoader, chunkSaver, stats, bufferPool, exceptionsDuringWrite, writeGuard);
 	}
 
 	@Test
@@ -94,17 +108,17 @@ public class ChunkCacheTest {
 		private Chunk staleChunk46;
 
 		@BeforeEach
-		public void setup() {
+		public void setup() throws IOException {
 			Assumptions.assumeTrue(ChunkCache.MAX_CACHED_CLEARTEXT_CHUNKS == 5);
 
-			activeChunk1 = inTest.putChunk(1L, ByteBuffer.allocate(0));
+			activeChunk1 = inTest.putChunk(1L, ByteBuffer.allocate(0), ownChannel);
 			Assertions.assertEquals(1, activeChunk1.currentAccesses().get());
 
-			staleChunk42 = inTest.putChunk(42L, ByteBuffer.allocate(0));
-			staleChunk43 = inTest.putChunk(43L, ByteBuffer.allocate(0));
-			staleChunk44 = inTest.putChunk(44L, ByteBuffer.allocate(0));
-			staleChunk45 = inTest.putChunk(45L, ByteBuffer.allocate(0));
-			staleChunk46 = inTest.putChunk(46L, ByteBuffer.allocate(0));
+			staleChunk42 = inTest.putChunk(42L, ByteBuffer.allocate(0), ownChannel);
+			staleChunk43 = inTest.putChunk(43L, ByteBuffer.allocate(0), ownChannel);
+			staleChunk44 = inTest.putChunk(44L, ByteBuffer.allocate(0), ownChannel);
+			staleChunk45 = inTest.putChunk(45L, ByteBuffer.allocate(0), ownChannel);
+			staleChunk46 = inTest.putChunk(46L, ByteBuffer.allocate(0), ownChannel);
 			staleChunk42.close();
 			staleChunk43.close();
 			staleChunk44.close();
@@ -182,7 +196,7 @@ public class ChunkCacheTest {
 		@Test
 		@DisplayName("flush() saves all active chunks")
 		public void testFlushInvokesSaverForAllActiveChunks() throws IOException, AuthenticationFailedException {
-			try (var activeChunk2 = inTest.putChunk(2L, ByteBuffer.allocate(0))) {
+			try (var activeChunk2 = inTest.putChunk(2L, ByteBuffer.allocate(0), ownChannel)) {
 				inTest.flush();
 
 				verify(chunkSaver).save(1L, activeChunk1);
@@ -235,10 +249,10 @@ public class ChunkCacheTest {
 
 		@Test
 		@DisplayName("putChunk() returns active chunk if already present")
-		public void testPutChunkReturnsActiveChunk() {
+		public void testPutChunkReturnsActiveChunk() throws IOException {
 			activeChunk1.dirty().set(false);
 
-			var chunk = inTest.putChunk(1L, ByteBuffer.allocate(0));
+			var chunk = inTest.putChunk(1L, ByteBuffer.allocate(0), ownChannel);
 
 			Assertions.assertSame(activeChunk1, chunk);
 			Assertions.assertEquals(2, chunk.currentAccesses().get());
@@ -247,8 +261,8 @@ public class ChunkCacheTest {
 
 		@Test
 		@DisplayName("putChunk() returns new chunk if neither stale nor active")
-		public void testPutChunkReturnsNewChunk() {
-			var chunk = inTest.putChunk(100L, ByteBuffer.allocate(0));
+		public void testPutChunkReturnsNewChunk() throws IOException {
+			var chunk = inTest.putChunk(100L, ByteBuffer.allocate(0), ownChannel);
 
 			Assertions.assertNotSame(activeChunk1, chunk);
 			Assertions.assertNotSame(staleChunk42, chunk);
@@ -264,7 +278,7 @@ public class ChunkCacheTest {
 	}
 
 	@Test
-	@DisplayName("IOException during eviction of stale chunks is stored to exceptionsDuringWrite")
+	@DisplayName("IOException during eviction of stale chunks is stored to exceptionsDuringWrite, and the guard forgets the chunk")
 	public void testIOExceptionsDuringWriteAreAddedToExceptionsDuringWrite() throws IOException {
 		IOException ioException = new IOException();
 		Chunk chunk = new Chunk(ByteBuffer.allocate(0), true, () -> {});
@@ -273,6 +287,62 @@ public class ChunkCacheTest {
 		inTest.evictStaleChunk(42L, chunk, RemovalCause.EXPIRED);
 
 		verify(exceptionsDuringWrite).add(ioException);
+		verify(writeGuard).forget(42L);
+	}
+
+	@Test
+	@DisplayName("putChunk() reports a refused header check as IOException")
+	public void testPutChunkRethrowsRefusalAsIOException() throws IOException {
+		var refusal = new IOException("refused");
+		doThrow(refusal).when(writeGuard).checkHeader(ownChannel);
+		var data = ByteBuffer.allocate(0);
+
+		var e = Assertions.assertThrows(IOException.class, () -> inTest.putChunk(42L, data, ownChannel));
+
+		Assertions.assertSame(refusal, e);
+	}
+
+	@Test
+	@DisplayName("flush(onFailure) runs onFailure before another flush can save")
+	public void testFlushRunsOnFailureUnderExclusiveLock() throws IOException, InterruptedException, ExecutionException, TimeoutException {
+		var chunk = inTest.putChunk(42L, ByteBuffer.allocate(0), ownChannel);
+		chunk.close();
+		var saves = new AtomicInteger();
+		doAnswer(invocation -> {
+			if (saves.incrementAndGet() == 1) {
+				throw new IOException("save failed");
+			}
+			return null;
+		}).when(chunkSaver).save(42L, chunk);
+		var otherFlush = new FutureTask<Void>(() -> {
+			inTest.flush();
+			return null;
+		});
+		var savesDuringOnFailure = new AtomicInteger();
+		Runnable onFailure = () -> {
+			var flushing = Thread.ofPlatform().start(otherFlush);
+			await().atMost(Duration.ofSeconds(5)).until(() -> flushing.getState() == Thread.State.WAITING || otherFlush.isDone());
+			savesDuringOnFailure.set(saves.get());
+		};
+
+		Assertions.assertThrows(IOException.class, () -> inTest.flush(onFailure));
+
+		otherFlush.get(5, TimeUnit.SECONDS);
+		Assertions.assertEquals(1, savesDuringOnFailure.get());
+		verify(chunkSaver, times(2)).save(42L, chunk);
+	}
+
+	@Test
+	@DisplayName("a failed reload for a write keeps the old buffer out of the pool")
+	public void testFailedReloadKeepsBufferOutOfPool() throws IOException {
+		var oldBuffer = ByteBuffer.allocate(0);
+		when(chunkLoader.load(42L)).thenReturn(oldBuffer).thenThrow(new IOException("reload failed"));
+		when(writeGuard.isCurrent(42L, ownChannel)).thenReturn(false);
+		inTest.getChunk(42L).close();
+
+		Assertions.assertThrows(IOException.class, () -> inTest.getChunkForWrite(42L, ownChannel));
+
+		verify(bufferPool, never()).recycle(oldBuffer);
 	}
 
 }

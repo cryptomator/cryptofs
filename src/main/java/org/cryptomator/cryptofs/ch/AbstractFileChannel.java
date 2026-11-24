@@ -189,13 +189,41 @@ public abstract class AbstractFileChannel extends FileChannel {
 
 	@Override
 	public int write(ByteBuffer src) throws IOException {
-		int written = write(src, position);
+		assertOpen();
+		assertWritable();
+		boolean completed = false;
+		try {
+			beginBlocking();
+			readWriteLock.writeLock().lockInterruptibly();
+			try {
+				int written = writeRelativeLocked(src);
+				completed = true;
+				return written;
+			} finally {
+				readWriteLock.writeLock().unlock();
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new InterruptedIOException();
+		} finally {
+			endBlocking(completed);
+		}
+	}
+
+	/**
+	 * Writes at this channel's position and advances it.
+	 *
+	 * @see #write(ByteBuffer)
+	 */
+	protected int writeRelativeLocked(ByteBuffer src) throws IOException {
+		int written = writeLocked(src, position);
 		position += written;
 		return written;
 	}
 
 	@Override
 	public int write(ByteBuffer src, long position) throws IOException {
+		Preconditions.checkArgument(position >= 0);
 		assertOpen();
 		assertWritable();
 		boolean completed = false;
@@ -276,15 +304,16 @@ public abstract class AbstractFileChannel extends FileChannel {
 	protected long transferToLocked(long position, long count, WritableByteChannel target) throws IOException {
 		ByteBuffer buf = ByteBuffer.allocate((int) min(count, BUFFER_SIZE));
 		long transferred = 0;
-		while (transferred < count) {
-			buf.clear();
+		boolean targetTookAll = true;
+		while (targetTookAll && transferred < count) {
+			buf.clear().limit((int) min(buf.capacity(), count - transferred));
 			int read = read(buf, position + transferred);
 			if (read == -1) {
 				break;
 			} else {
 				buf.flip();
-				buf.limit((int) min(buf.limit(), count - transferred));
 				transferred += target.write(buf);
+				targetTookAll = !buf.hasRemaining(); // a full non-blocking target would be retried forever
 			}
 		}
 		return transferred;
@@ -321,13 +350,12 @@ public abstract class AbstractFileChannel extends FileChannel {
 		ByteBuffer buf = ByteBuffer.allocate((int) min(count, BUFFER_SIZE));
 		long transferred = 0;
 		while (transferred < count) {
-			buf.clear();
+			buf.clear().limit((int) min(buf.capacity(), count - transferred)); // never takes more from the source than it can transfer
 			int read = src.read(buf);
-			if (read == -1) {
+			if (read <= 0) { // a non-blocking source with nothing to read would otherwise be retried forever
 				break;
 			} else {
 				buf.flip();
-				buf.limit((int) min(buf.limit(), count - transferred));
 				transferred += this.write(buf, position + transferred);
 			}
 		}

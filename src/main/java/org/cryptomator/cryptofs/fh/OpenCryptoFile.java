@@ -4,6 +4,7 @@ import jakarta.inject.Inject;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
 import org.cryptomator.cryptofs.ch.CleartextFileChannel;
+import org.cryptomator.cryptofs.common.RunnableThrowingException;
 import org.cryptomator.cryptofs.inuse.InUseManager;
 import org.cryptomator.cryptofs.inuse.UseToken;
 import org.cryptomator.cryptolib.api.Cryptor;
@@ -36,6 +37,7 @@ public class OpenCryptoFile implements Closeable {
 	private final FileHeaderHolder headerHolder;
 	private final ChunkIO chunkIO;
 	private final CiphertextFileKey ciphertextFileKey;
+	private final CiphertextWriteGuard writeGuard;
 	private final AtomicReference<Path> currentFilePath;
 	private final AtomicReference<CryptoPath> currentCleartextPath;
 	private final AtomicLong fileSize;
@@ -47,16 +49,16 @@ public class OpenCryptoFile implements Closeable {
 	private boolean retired; // guarded by this; true once closed, so opens that got this file before it was unregistered retry with a fresh one
 
 	@Inject
-	public OpenCryptoFile(FileCloseListener listener, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, CiphertextFileKey ciphertextFileKey, //
+	public OpenCryptoFile(FileCloseListener listener, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, CiphertextFileKey ciphertextFileKey, CiphertextWriteGuard writeGuard, //
 						  @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, //
 						  @CurrentOpenFileCleartextPath AtomicReference<CryptoPath> currentCleartextPath, //
 						  @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component, //
 						  InUseManager inUseManager) {
-		this(listener, cryptor, headerHolder, chunkIO, ciphertextFileKey, currentFilePath, fileSize, currentCleartextPath, lastModified, component, inUseManager, UseToken.CLOSED_TOKEN);
+		this(listener, cryptor, headerHolder, chunkIO, ciphertextFileKey, writeGuard, currentFilePath, fileSize, currentCleartextPath, lastModified, component, inUseManager, UseToken.CLOSED_TOKEN);
 	}
 
 	//for testing
-	OpenCryptoFile(FileCloseListener listener, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, CiphertextFileKey ciphertextFileKey, //
+	OpenCryptoFile(FileCloseListener listener, Cryptor cryptor, FileHeaderHolder headerHolder, ChunkIO chunkIO, CiphertextFileKey ciphertextFileKey, CiphertextWriteGuard writeGuard, //
 				   @CurrentOpenFilePath AtomicReference<Path> currentFilePath, @OpenFileSize AtomicLong fileSize, //
 				   @CurrentOpenFileCleartextPath AtomicReference<CryptoPath> currentCleartextPath, //
 				   @OpenFileModifiedDate AtomicReference<Instant> lastModified, OpenCryptoFileComponent component, //
@@ -66,6 +68,7 @@ public class OpenCryptoFile implements Closeable {
 		this.headerHolder = headerHolder;
 		this.chunkIO = chunkIO;
 		this.ciphertextFileKey = ciphertextFileKey;
+		this.writeGuard = writeGuard;
 		this.currentFilePath = currentFilePath;
 		this.currentCleartextPath = currentCleartextPath;
 		this.fileSize = fileSize;
@@ -80,7 +83,7 @@ public class OpenCryptoFile implements Closeable {
 	 *
 	 * @param options The options to use to open the file channel. For the most part these will be passed through to the ciphertext channel. {@link java.nio.file.StandardOpenOption#TRUNCATE_EXISTING} is left to the caller, see {@link OpenCryptoFiles.OpenOperation#newFileChannel(org.cryptomator.cryptofs.CryptoPath, EffectiveOpenOptions, FileAttribute[])}.
 	 * @return A new file channel. Ideally used in a try-with-resource statement. If the channel is not properly closed, this OpenCryptoFile will stay open indefinite.
-	 * @throws IOException Also a {@link CiphertextReplacedException} if the ciphertext file at the path is no longer, or can't be confirmed to be, the one of this open file. In that case this open file has been detached like a deleted file.
+	 * @throws IOException Also a {@link CiphertextReplacedException} if the ciphertext file at the path is no longer, or can't be confirmed to be, the one of this open file, or if this open file stopped saving because its ciphertext changed in place. In that case this open file has been detached like a deleted file.
 	 * An {@link OpenFileRetiredException} if this open file has been closed.
 	 */
 	public synchronized FileChannel newFileChannel(EffectiveOpenOptions options, FileAttribute<?>... attrs) throws IOException {
@@ -91,6 +94,9 @@ public class OpenCryptoFile implements Closeable {
 
 		boolean joining = openChannelsCount.incrementAndGet() > 1; // synchronized context, hence we can proactively increase the number
 		try {
+			if (joining && writeGuard.isConflicted()) {
+				throw detachAsReplaced(path, true); // a new open starts on the current ciphertext, and this file's channels can no longer save over it
+			}
 			Instant lastModifiedBeforeOpen = lastModified.get();
 			boolean readFileKey = !joining || ciphertextFileKey.isCaptured();
 			captureOrMatchFileKeyBeforeOpen(path, joining, readFileKey);
@@ -256,6 +262,7 @@ public class OpenCryptoFile implements Closeable {
 			long cleartextSize = 0L;
 			try {
 				long ciphertextSize = ciphertextFileChannel.size();
+				writeGuard.seedSize(ciphertextSize);
 				if (ciphertextSize > 0L) {
 					long payloadSize = ciphertextSize - cryptor.fileHeaderCryptor().headerSize();
 					cleartextSize = cryptor.fileContentCryptor().cleartextSize(payloadSize);
@@ -283,8 +290,15 @@ public class OpenCryptoFile implements Closeable {
 		return FileTime.from(lastModified.get());
 	}
 
-	public void setLastModifiedTime(FileTime lastModifiedTime) {
-		lastModified.set(lastModifiedTime.toInstant());
+	/**
+	 * Writes times set through an attribute view, so that no save of this file takes them for a change by someone else.
+	 * A modification time written to this file's current ciphertext path also becomes this file's own.
+	 *
+	 * @param ciphertextPath The ciphertext file the write goes to
+	 * @param lastModifiedTime The modification time the write sets, or <code>null</code>
+	 */
+	public void writeTimes(Path ciphertextPath, FileTime lastModifiedTime, RunnableThrowingException<IOException> write) throws IOException {
+		writeGuard.persistViewTimes(ciphertextPath, lastModifiedTime, write);
 	}
 
 	/**
@@ -309,6 +323,9 @@ public class OpenCryptoFile implements Closeable {
 	 * @param newFilePath new ciphertext path
 	 */
 	public void updateCurrentFilePath(Path newFilePath) {
+		if (newFilePath == null) {
+			writeGuard.rememberPaths();
+		}
 		currentFilePath.getAndUpdate(p -> p == null ? null : newFilePath);
 		if (newFilePath != null) {
 			useToken.moveTo(newFilePath);

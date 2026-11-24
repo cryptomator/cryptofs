@@ -7,6 +7,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.WritableByteChannel;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
@@ -14,6 +17,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
+import java.time.Duration;
 import java.util.EnumSet;
 
 import static java.nio.file.StandardCopyOption.COPY_ATTRIBUTES;
@@ -77,6 +81,85 @@ public class CopyOperationTest {
 		inTest.copy(aPathFromFsA, aPathFromFsB);
 
 		MatcherAssert.assertThat(targetFile.data(), contains(repeat(42).times(20).asByteBuffer()));
+	}
+
+	@Test
+	public void testCopyFailsIfSourceEndsBeforeItsSize() throws IOException {
+		FileChannelMock targetFile = new FileChannelMock(100);
+		BasicFileAttributes aPathFromFsAAttributes = mock(BasicFileAttributes.class);
+		FileChannelMock sourceEndingEarly = new FileChannelMock(repeat(42).times(20).asByteBuffer()) {
+			@Override
+			public long transferTo(long position, long count, WritableByteChannel target) throws IOException {
+				if (Thread.currentThread().isInterrupted()) {
+					throw new ClosedByInterruptException(); // lets a copy that loops end once the timeout interrupts it
+				}
+				return position < 10 ? super.transferTo(position, Math.min(count, 10 - position), target) : 0; // the source got shorter after 10 of its 20 bytes
+			}
+		};
+		when(fileSystemA.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
+		when(fileSystemB.readAttributes(aPathFromFsB, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(new NoSuchFileException("aPathFromFsB"));
+		when(aPathFromFsAAttributes.isRegularFile()).thenReturn(true);
+		when(fileSystemA.newFileChannel(aPathFromFsA, EnumSet.of(READ))).thenReturn(sourceEndingEarly);
+		when(fileSystemB.newFileChannel(aPathFromFsB, EnumSet.of(CREATE_NEW, WRITE))).thenReturn(targetFile);
+
+		Assertions.assertTimeoutPreemptively(Duration.ofSeconds(10), () -> {
+			Assertions.assertThrows(IOException.class, () -> inTest.copy(aPathFromFsA, aPathFromFsB));
+		});
+	}
+
+	@Test
+	public void testCopyIncludesBytesAppendedToSourceMeanwhile() throws IOException {
+		FileChannelMock targetFile = new FileChannelMock(100);
+		BasicFileAttributes aPathFromFsAAttributes = mock(BasicFileAttributes.class);
+		FileChannelMock sourceGrowing = new FileChannelMock(ByteBuffer.allocate(20).put(repeat(42).times(10).asByteBuffer()).flip()) {
+			@Override
+			public long transferTo(long position, long count, WritableByteChannel target) throws IOException {
+				long transferred = super.transferTo(position, count, target);
+				if (size() == 10) {
+					write(repeat(43).times(10).asByteBuffer(), 10); // another writer appends after the first 10 bytes
+				}
+				return transferred;
+			}
+		};
+		when(fileSystemA.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
+		when(fileSystemB.readAttributes(aPathFromFsB, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(new NoSuchFileException("aPathFromFsB"));
+		when(aPathFromFsAAttributes.isRegularFile()).thenReturn(true);
+		when(fileSystemA.newFileChannel(aPathFromFsA, EnumSet.of(READ))).thenReturn(sourceGrowing);
+		when(fileSystemB.newFileChannel(aPathFromFsB, EnumSet.of(CREATE_NEW, WRITE))).thenReturn(targetFile);
+
+		inTest.copy(aPathFromFsA, aPathFromFsB);
+
+		var expected = ByteBuffer.allocate(20).put(repeat(42).times(10).asByteBuffer()).put(repeat(43).times(10).asByteBuffer()).flip();
+		MatcherAssert.assertThat(targetFile.data(), contains(expected));
+	}
+
+	@Test
+	public void testCopyFailsIfSourceShrinksAfterPartOfItsSize() throws IOException {
+		FileChannelMock targetFile = new FileChannelMock(100);
+		BasicFileAttributes aPathFromFsAAttributes = mock(BasicFileAttributes.class);
+		FileChannelMock sourceShrinking = new FileChannelMock(repeat(42).times(20).asByteBuffer()) {
+			@Override
+			public long transferTo(long position, long count, WritableByteChannel target) throws IOException {
+				if (Thread.currentThread().isInterrupted()) {
+					throw new ClosedByInterruptException(); // lets a copy that loops end once the timeout interrupts it
+				}
+				if (position >= 10) {
+					return 0;
+				}
+				long transferred = super.transferTo(position, Math.min(count, 10 - position), target);
+				truncate(10); // the source got shorter after 10 of its 20 bytes, and reports so
+				return transferred;
+			}
+		};
+		when(fileSystemA.readAttributes(aPathFromFsA, BasicFileAttributes.class)).thenReturn(aPathFromFsAAttributes);
+		when(fileSystemB.readAttributes(aPathFromFsB, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS)).thenThrow(new NoSuchFileException("aPathFromFsB"));
+		when(aPathFromFsAAttributes.isRegularFile()).thenReturn(true);
+		when(fileSystemA.newFileChannel(aPathFromFsA, EnumSet.of(READ))).thenReturn(sourceShrinking);
+		when(fileSystemB.newFileChannel(aPathFromFsB, EnumSet.of(CREATE_NEW, WRITE))).thenReturn(targetFile);
+
+		Assertions.assertTimeoutPreemptively(Duration.ofSeconds(10), () -> {
+			Assertions.assertThrows(IOException.class, () -> inTest.copy(aPathFromFsA, aPathFromFsB));
+		});
 	}
 
 	@Test

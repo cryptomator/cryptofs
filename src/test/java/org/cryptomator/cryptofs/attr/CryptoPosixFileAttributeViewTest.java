@@ -4,6 +4,8 @@ import org.cryptomator.cryptofs.CiphertextFilePath;
 import org.cryptomator.cryptofs.common.CiphertextFileType;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.CryptoPathMapper;
+import org.cryptomator.cryptofs.common.RunnableThrowingException;
+import org.cryptomator.cryptofs.fh.OpenCryptoFile;
 import org.cryptomator.cryptofs.fh.OpenCryptoFiles;
 import org.cryptomator.cryptofs.ReadonlyFlag;
 import org.cryptomator.cryptofs.Symlinks;
@@ -25,12 +27,17 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 import static java.nio.file.attribute.PosixFilePermission.OTHERS_WRITE;
 import static java.util.Arrays.asList;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 public class CryptoPosixFileAttributeViewTest {
@@ -140,6 +147,28 @@ public class CryptoPosixFileAttributeViewTest {
 
 		verify(readonlyFlag).assertWritable();
 		verify(delegate).setTimes(lastModifiedTime, lastAccessTime, createTime);
+	}
+
+	@Test
+	public void testSetTimesOfOpenFileWritesToPathResolvedBefore() throws IOException {
+		FileTime lastModifiedTime = FileTime.fromMillis(39293923);
+		Path movedRawPath = mock(Path.class);
+		PosixFileAttributeView movedDelegate = mock(PosixFileAttributeView.class);
+		OpenCryptoFile openCryptoFile = mock(OpenCryptoFile.class);
+		when(movedRawPath.getFileSystem()).thenReturn(fileSystem);
+		when(provider.getFileAttributeView(movedRawPath, BasicFileAttributeView.class)).thenReturn(movedDelegate);
+		when(ciphertextPath.getFilePath()).thenReturn(ciphertextRawPath, movedRawPath); // resolving again inside the guard would find the file moved
+		when(openCryptoFiles.get(ciphertextRawPath)).thenReturn(Optional.of(openCryptoFile));
+		doAnswer(invocation -> {
+			invocation.<RunnableThrowingException<IOException>>getArgument(2).run();
+			return null;
+		}).when(openCryptoFile).writeTimes(eq(ciphertextRawPath), eq(lastModifiedTime), any());
+
+		inTest.setTimes(lastModifiedTime, null, null);
+
+		verify(openCryptoFile).writeTimes(eq(ciphertextRawPath), eq(lastModifiedTime), any());
+		verify(delegate).setTimes(lastModifiedTime, null, null);
+		verifyNoInteractions(movedDelegate);
 	}
 
 	@Test
