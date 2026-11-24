@@ -91,6 +91,7 @@ public class RealFileSystemIntegrationTest {
 		private static final int SIZE = 5 * 32 * 1024;
 		private static final FileTime FOREIGN_TIME = FileTime.from(Instant.parse("2031-03-04T05:06:07Z"));
 		private static final FileTime VIEW_TIME = FileTime.from(Instant.parse("2029-01-02T03:04:05Z"));
+		private static final FileTime OLD_TIME = FileTime.from(Instant.parse("2020-01-02T03:04:05Z"));
 
 		private Path newFile(String name) throws IOException {
 			Path file = fileSystem.getPath(name);
@@ -194,6 +195,7 @@ public class RealFileSystemIntegrationTest {
 		public void testOwnWriteTimePersists() throws IOException, InterruptedException {
 			Path file = newFile("/timeOwnWrite");
 			Path ciphertext = ciphertextOf(file);
+			Files.setLastModifiedTime(ciphertext, OLD_TIME);
 			Instant afterWrite;
 
 			try (var ch = FileChannel.open(file, READ, WRITE)) {
@@ -202,7 +204,9 @@ public class RealFileSystemIntegrationTest {
 				Thread.sleep(50);
 			}
 
-			Assertions.assertFalse(Files.getLastModifiedTime(ciphertext).toInstant().isAfter(afterWrite));
+			var persisted = Files.getLastModifiedTime(ciphertext).toInstant();
+			Assertions.assertTrue(persisted.isAfter(OLD_TIME.toInstant()));
+			Assertions.assertFalse(persisted.isAfter(afterWrite));
 		}
 
 		@Test

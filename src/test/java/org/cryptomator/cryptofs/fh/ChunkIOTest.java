@@ -66,7 +66,8 @@ public class ChunkIOTest {
 
 			assertThrows(NonWritableChannelException.class, inTest::getWritableChannel);
 			inTest.unregisterChannel(readOnly);
-			assertThrows(NonReadableChannelException.class, () -> inTest.read(ByteBuffer.allocate(3), 0));
+			var buf = ByteBuffer.allocate(3);
+			assertThrows(NonReadableChannelException.class, () -> inTest.read(buf, 0));
 		}
 	}
 

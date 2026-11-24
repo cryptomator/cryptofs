@@ -396,19 +396,18 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 			var file = fs.getPath("/a.txt");
 			Files.write(file, repeat('o', CHUNK));
 
-			assertThrows(IOException.class, () -> { // closing fails like the force, as the edit can't be saved
-				try (var ch = FileChannel.open(file, READ, WRITE)) {
-					ch.write(StandardCharsets.UTF_8.encode("x"), 5);
-					Thread.currentThread().interrupt();
-					try {
-						assertThrows(IOException.class, () -> ch.force(false)); // the interrupt closes the ciphertext handle
-					} finally {
-						Thread.interrupted();
-					}
-
-					assertThrows(IOException.class, () -> ch.force(false));
+			try (var ch = FileChannel.open(file, READ, WRITE)) {
+				ch.write(StandardCharsets.UTF_8.encode("x"), 5);
+				Thread.currentThread().interrupt();
+				try {
+					assertThrows(IOException.class, () -> ch.force(false)); // the interrupt closes the ciphertext handle
+				} finally {
+					Thread.interrupted();
 				}
-			});
+
+				assertThrows(IOException.class, () -> ch.force(false));
+				assertThrows(IOException.class, ch::close); // closing fails like the force, as the edit can't be saved
+			}
 		}
 	}
 
@@ -427,15 +426,14 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 				var newer = olderOnDiskReturningNewer(fs, file, repeat('o', 3 * CHUNK), repeat('n', 3 * CHUNK));
 				var ciphertext = ciphertextPath(fs, file);
 
-				assertThrows(IOException.class, () -> {
-					try (var ch = FileChannel.open(file, READ, WRITE)) {
-						ch.write(StandardCharsets.UTF_8.encode("x"), 100);
-						overwriteInPlace(ciphertext, newer);
-						if (secondEditLength > 0) { // the dirty chunk keeps the baseline of the version it was loaded from
-							ch.write(ByteBuffer.wrap(repeat('y', secondEditLength)), 0);
-						}
+				try (var ch = FileChannel.open(file, READ, WRITE)) {
+					ch.write(StandardCharsets.UTF_8.encode("x"), 100);
+					overwriteInPlace(ciphertext, newer);
+					if (secondEditLength > 0) { // the dirty chunk keeps the baseline of the version it was loaded from
+						ch.write(ByteBuffer.wrap(repeat('y', secondEditLength)), 0);
 					}
-				});
+					assertThrows(IOException.class, ch::close);
+				}
 
 				var event = awaitConflictEvent(events);
 				assertEquals(ciphertext, event.ciphertextPath());
@@ -454,12 +452,11 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 				var other = ciphertextOfOtherFile(fs, repeat('R', 3 * CHUNK));
 				var ciphertext = ciphertextPath(fs, file);
 
-				assertThrows(IOException.class, () -> {
-					try (var ch = FileChannel.open(file, READ, WRITE)) {
-						ch.write(StandardCharsets.UTF_8.encode("x"), 100);
-						overwriteInPlace(ciphertext, other);
-					}
-				});
+				try (var ch = FileChannel.open(file, READ, WRITE)) {
+					ch.write(StandardCharsets.UTF_8.encode("x"), 100);
+					overwriteInPlace(ciphertext, other);
+					assertThrows(IOException.class, ch::close);
+				}
 
 				awaitConflictEvent(events);
 				assertArrayEquals(other, Files.readAllBytes(ciphertext));
@@ -476,12 +473,11 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 				var newer = olderOnDiskReturningNewer(fs, file, repeat('o', CHUNK), repeat('n', CHUNK));
 				var ciphertext = ciphertextPath(fs, file);
 
-				assertThrows(IOException.class, () -> {
-					try (var ch = FileChannel.open(file, READ, WRITE)) {
-						ch.write(StandardCharsets.UTF_8.encode("x"), 100);
-						overwriteInPlace(ciphertext, newer);
-					}
-				});
+				try (var ch = FileChannel.open(file, READ, WRITE)) {
+					ch.write(StandardCharsets.UTF_8.encode("x"), 100);
+					overwriteInPlace(ciphertext, newer);
+					assertThrows(IOException.class, ch::close);
+				}
 
 				var event = awaitConflictEvent(events);
 				assertEquals("contents.c9r", event.ciphertextPath().getFileName().toString());
@@ -569,15 +565,14 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 				var file = fs.getPath("/a.txt");
 				var newer = olderOnDiskReturningNewer(fs, file, repeat('o', 4 * CHUNK), repeat('n', CHUNK));
 
-				assertThrows(IOException.class, () -> {
-					try (var ch = FileChannel.open(file, READ, WRITE)) {
-						ch.read(ByteBuffer.allocate(10), 2L * CHUNK);
-						ch.write(StandardCharsets.UTF_8.encode("x"), dirtyChunk * (long) CHUNK);
-						overwriteInPlace(ciphertextPath(fs, file), newer);
+				try (var ch = FileChannel.open(file, READ, WRITE)) {
+					ch.read(ByteBuffer.allocate(10), 2L * CHUNK);
+					ch.write(StandardCharsets.UTF_8.encode("x"), dirtyChunk * (long) CHUNK);
+					overwriteInPlace(ciphertextPath(fs, file), newer);
 
-						assertTimeoutPreemptively(Duration.ofSeconds(10), () -> assertEquals(-1, ch.read(ByteBuffer.allocate(10), 2L * CHUNK)));
-					}
-				});
+					assertTimeoutPreemptively(Duration.ofSeconds(10), () -> assertEquals(-1, ch.read(ByteBuffer.allocate(10), 2L * CHUNK)));
+					assertThrows(IOException.class, ch::close);
+				}
 
 				assertArrayEquals(repeat('n', CHUNK), Files.readAllBytes(file));
 			}
@@ -590,13 +585,13 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 				var file = fs.getPath("/a.txt");
 				var newer = olderOnDiskReturningNewer(fs, file, repeat('o', 3 * CHUNK), repeat('n', 3 * CHUNK));
 
-				assertThrows(IOException.class, () -> {
-					try (var ch = FileChannel.open(file, READ, WRITE)) {
-						ch.write(StandardCharsets.UTF_8.encode("x"), 2L * CHUNK);
-						overwriteInPlace(ciphertextPath(fs, file), newer);
-						assertThrows(IOException.class, () -> ch.truncate(CHUNK + 10L));
-					}
-				});
+				try (var ch = FileChannel.open(file, READ, WRITE)) {
+					ch.write(StandardCharsets.UTF_8.encode("x"), 2L * CHUNK);
+					overwriteInPlace(ciphertextPath(fs, file), newer);
+					assertThrows(IOException.class, () -> ch.truncate(CHUNK + 10L));
+					assertEquals("n".repeat(20), read(ch, CHUNK, 20)); // reads past the size the refused truncate asked for
+					assertThrows(IOException.class, ch::close);
+				}
 
 				assertArrayEquals(repeat('n', 3 * CHUNK), Files.readAllBytes(file));
 			}
@@ -611,12 +606,11 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 				var other = ciphertextOfOtherFile(fs, repeat('R', 2 * CHUNK));
 				var ciphertext = ciphertextPath(fs, file);
 
-				assertThrows(IOException.class, () -> {
-					try (var ch = FileChannel.open(file, READ, WRITE)) {
-						overwriteInPlace(ciphertext, other);
-						assertThrows(IOException.class, () -> ch.truncate(0));
-					}
-				});
+				try (var ch = FileChannel.open(file, READ, WRITE)) {
+					overwriteInPlace(ciphertext, other);
+					assertThrows(IOException.class, () -> ch.truncate(0));
+					assertThrows(IOException.class, ch::close);
+				}
 
 				assertArrayEquals(other, Files.readAllBytes(ciphertext));
 			}
@@ -629,17 +623,16 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 				var file = fs.getPath("/a.txt");
 				var newer = olderOnDiskReturningNewer(fs, file, repeat('o', 2 * CHUNK), repeat('n', 2 * CHUNK));
 
-				assertThrows(IOException.class, () -> {
-					try (var holder = FileChannel.open(file, READ, WRITE)) {
-						holder.write(StandardCharsets.UTF_8.encode("x"), 5);
-						overwriteInPlace(ciphertextPath(fs, file), newer);
-						assertThrows(IOException.class, () -> holder.force(false));
-						try (var fresh = FileChannel.open(file, READ, WRITE)) {
-							assertEquals("nnnn", read(fresh, 0, 4));
-							fresh.write(StandardCharsets.UTF_8.encode("y"), 0);
-						}
+				try (var holder = FileChannel.open(file, READ, WRITE)) {
+					holder.write(StandardCharsets.UTF_8.encode("x"), 5);
+					overwriteInPlace(ciphertextPath(fs, file), newer);
+					assertThrows(IOException.class, () -> holder.force(false));
+					try (var fresh = FileChannel.open(file, READ, WRITE)) {
+						assertEquals("nnnn", read(fresh, 0, 4));
+						fresh.write(StandardCharsets.UTF_8.encode("y"), 0);
 					}
-				});
+					assertThrows(IOException.class, holder::close);
+				}
 
 				var expected = repeat('n', 2 * CHUNK);
 				expected[0] = 'y';
@@ -737,14 +730,13 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 				var writtenChunks = new HashSet<Integer>();
 				var lastSuccess = new AtomicReference<Instant>();
 
-				assertThrows(IOException.class, () -> {
-					try (var ch = FileChannel.open(file, READ, WRITE)) {
-						ch.write(StandardCharsets.UTF_8.encode("x"), 10);
-						lastSuccess.set(Instant.now());
-						overwriteInPlace(ciphertextPath(fs, file), newer);
-						assertThrows(IOException.class, () -> writeUntilEviction(ch, writtenChunks, lastSuccess));
-					}
-				});
+				try (var ch = FileChannel.open(file, READ, WRITE)) {
+					ch.write(StandardCharsets.UTF_8.encode("x"), 10);
+					lastSuccess.set(Instant.now());
+					overwriteInPlace(ciphertextPath(fs, file), newer);
+					assertThrows(IOException.class, () -> writeUntilEviction(ch, writtenChunks, lastSuccess));
+					assertThrows(IOException.class, ch::close);
+				}
 
 				var event = awaitConflictEvent(events);
 				assertTrue(event.timestamp().isAfter(lastSuccess.get()), "a write succeeded although its eviction found the conflict");
@@ -777,14 +769,13 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 				Files.write(file, repeat('o', 2 * CHUNK));
 				var other = ciphertextOfOtherFile(fs, repeat('R', 2 * CHUNK));
 
-				assertThrows(IOException.class, () -> {
-					try (var ch = FileChannel.open(file, READ, WRITE)) {
-						assertEquals("oooo", read(ch, 0, 4));
-						overwriteInPlace(ciphertextPath(fs, file), other);
-						assertThrows(IOException.class, () -> ch.write(StandardCharsets.UTF_8.encode("x"), 5));
-						assertEquals("oooo", read(ch, 0, 4));
-					}
-				});
+				try (var ch = FileChannel.open(file, READ, WRITE)) {
+					assertEquals("oooo", read(ch, 0, 4));
+					overwriteInPlace(ciphertextPath(fs, file), other);
+					assertThrows(IOException.class, () -> ch.write(StandardCharsets.UTF_8.encode("x"), 5));
+					assertEquals("oooo", read(ch, 0, 4));
+					assertThrows(IOException.class, ch::close);
+				}
 
 				awaitConflictEvent(events);
 				assertTrue(events.stream().noneMatch(DecryptionFailedEvent.class::isInstance));
@@ -802,14 +793,13 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 						? olderOnDiskReturningNewer(fs, file, repeat('o', 2 * CHUNK), repeat('n', 2 * CHUNK)) //
 						: ciphertextOfOtherFileAfterWriting(fs, file);
 
-				assertThrows(IOException.class, () -> {
-					try (var ch = FileChannel.open(file, READ, WRITE)) {
-						ch.write(StandardCharsets.UTF_8.encode("xxxx"), 0);
-						overwriteInPlace(ciphertextPath(fs, file), replacement);
-						assertThrows(IOException.class, () -> ch.force(false));
-						assertEquals("xxxx", read(ch, 0, 4));
-					}
-				});
+				try (var ch = FileChannel.open(file, READ, WRITE)) {
+					ch.write(StandardCharsets.UTF_8.encode("xxxx"), 0);
+					overwriteInPlace(ciphertextPath(fs, file), replacement);
+					assertThrows(IOException.class, () -> ch.force(false));
+					assertEquals("xxxx", read(ch, 0, 4));
+					assertThrows(IOException.class, ch::close);
+				}
 
 				assertTrue(events.stream().noneMatch(DecryptionFailedEvent.class::isInstance));
 				assertArrayEquals(repeat(sameHeader ? 'n' : 'R', 2 * CHUNK), Files.readAllBytes(file));
@@ -857,7 +847,8 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 				var newer = olderOnDiskReturningNewer(fs, file, repeat('o', 2 * CHUNK), repeat('n', 3 * CHUNK));
 
 				try (var ch = FileChannel.open(file, READ, WRITE)) {
-					assertThrows(IllegalArgumentException.class, () -> ch.write(StandardCharsets.UTF_8.encode("x"), -1));
+					var buf = StandardCharsets.UTF_8.encode("x");
+					assertThrows(IllegalArgumentException.class, () -> ch.write(buf, -1));
 					overwriteInPlace(ciphertextPath(fs, file), newer);
 					ch.write(StandardCharsets.UTF_8.encode("y"), 3L * CHUNK);
 				}
@@ -877,26 +868,25 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 				var target = moved ? fs.getPath("/b.txt") : file;
 				Files.write(file, repeat('o', 2 * CHUNK));
 				var other = ciphertextOfOtherFile(fs, repeat('R', 2 * CHUNK));
-				var ciphertext = new AtomicReference<Path>();
+				Path ciphertext;
 
-				assertThrows(IOException.class, () -> {
-					try (var holder = FileChannel.open(file, READ, WRITE)) {
-						holder.write(StandardCharsets.UTF_8.encode("x"), 0);
-						if (moved) {
-							Files.move(file, target);
-						}
-						ciphertext.set(ciphertextPath(fs, target));
-						overwriteInPlace(ciphertext.get(), other);
-						assertThrows(IOException.class, () -> holder.force(false));
-						try (var _ = FileChannel.open(target, READ)) { // detaches the holder's open file
-							assertThrows(IOException.class, () -> holder.read(ByteBuffer.allocate(4), CHUNK));
-						}
+				try (var holder = FileChannel.open(file, READ, WRITE)) {
+					holder.write(StandardCharsets.UTF_8.encode("x"), 0);
+					if (moved) {
+						Files.move(file, target);
 					}
-				});
+					ciphertext = ciphertextPath(fs, target);
+					overwriteInPlace(ciphertext, other);
+					assertThrows(IOException.class, () -> holder.force(false));
+					try (var _ = FileChannel.open(target, READ)) { // detaches the holder's open file
+						assertThrows(IOException.class, () -> holder.read(ByteBuffer.allocate(4), CHUNK));
+					}
+					assertThrows(IOException.class, holder::close);
+				}
 
 				await().atMost(Duration.ofSeconds(5)).until(() -> events.stream().anyMatch(DecryptionFailedEvent.class::isInstance));
 				var event = events.stream().filter(DecryptionFailedEvent.class::isInstance).map(DecryptionFailedEvent.class::cast).findFirst().orElseThrow();
-				assertEquals(ciphertext.get(), event.ciphertextPath());
+				assertEquals(ciphertext, event.ciphertextPath());
 				assertArrayEquals(repeat('R', 2 * CHUNK), Files.readAllBytes(target));
 			}
 		}
@@ -946,13 +936,12 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 				var original = Files.readAllBytes(ciphertext);
 				var grown = Arrays.copyOf(original, original.length + 100); // leaves the chunk the write edits as it is
 
-				assertThrows(IOException.class, () -> {
-					try (var ch = FileChannel.open(file, READ, WRITE)) {
-						ch.write(ByteBuffer.wrap(repeat('x', fullChunk ? CHUNK : 1)), 0);
-						overwriteInPlace(ciphertext, grown);
-						assertThrows(IOException.class, () -> ch.write(StandardCharsets.UTF_8.encode("z"), CHUNK + 5L));
-					}
-				});
+				try (var ch = FileChannel.open(file, READ, WRITE)) {
+					ch.write(ByteBuffer.wrap(repeat('x', fullChunk ? CHUNK : 1)), 0);
+					overwriteInPlace(ciphertext, grown);
+					assertThrows(IOException.class, () -> ch.write(StandardCharsets.UTF_8.encode("z"), CHUNK + 5L));
+					assertThrows(IOException.class, ch::close);
+				}
 
 				awaitConflictEvent(events);
 				assertArrayEquals(grown, Files.readAllBytes(ciphertext));
@@ -1007,12 +996,11 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 				var ciphertext = ciphertextPath(fs, file);
 				var truncated = Arrays.copyOf(Files.readAllBytes(ciphertext), HEADER_SIZE + CIPHERTEXT_CHUNK);
 
-				assertThrows(IOException.class, () -> {
-					try (var ch = FileChannel.open(file, READ, WRITE)) {
-						overwriteInPlace(ciphertext, truncated);
-						assertThrows(IOException.class, () -> ch.write(StandardCharsets.UTF_8.encode("x"), 2L * CHUNK + 5));
-					}
-				});
+				try (var ch = FileChannel.open(file, READ, WRITE)) {
+					overwriteInPlace(ciphertext, truncated);
+					assertThrows(IOException.class, () -> ch.write(StandardCharsets.UTF_8.encode("x"), 2L * CHUNK + 5));
+					assertThrows(IOException.class, ch::close);
+				}
 
 				awaitConflictEvent(events);
 				assertArrayEquals(repeat('o', CHUNK), Files.readAllBytes(file));
@@ -1028,14 +1016,14 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 				var ciphertext = ciphertextPath(fs, file);
 				var truncated = Arrays.copyOf(Files.readAllBytes(ciphertext), HEADER_SIZE + CIPHERTEXT_CHUNK);
 
-				assertThrows(IOException.class, () -> {
-					try (var stale = FileChannel.open(file, READ, WRITE); var other = FileChannel.open(file, READ, WRITE)) {
-						overwriteInPlace(ciphertext, truncated);
-						other.write(StandardCharsets.UTF_8.encode("y"), 5); // adopts the new size
-						other.force(false);
-						assertThrows(IOException.class, () -> stale.write(StandardCharsets.UTF_8.encode("x"), 2L * CHUNK + 5));
-					}
-				});
+				try (var stale = FileChannel.open(file, READ, WRITE); var other = FileChannel.open(file, READ, WRITE)) {
+					overwriteInPlace(ciphertext, truncated);
+					other.write(StandardCharsets.UTF_8.encode("y"), 5); // adopts the new size
+					other.force(false);
+					assertThrows(IOException.class, () -> stale.write(StandardCharsets.UTF_8.encode("x"), 2L * CHUNK + 5));
+					assertThrows(IOException.class, other::close); // the conflict is the open file's, so every channel's close reports it
+					assertThrows(IOException.class, stale::close);
+				}
 
 				awaitConflictEvent(events);
 				var expected = repeat('o', CHUNK);
@@ -1073,18 +1061,17 @@ public class CryptoFileSystemProviderInMemoryIntegrationTest {
 				var original = Files.readAllBytes(ciphertext);
 				var truncated = Arrays.copyOf(original, HEADER_SIZE + CIPHERTEXT_CHUNK);
 
-				assertThrows(IOException.class, () -> {
-					try (var ch = FileChannel.open(file, READ, WRITE)) {
-						overwriteInPlace(ciphertext, truncated);
-						ch.write(StandardCharsets.UTF_8.encode("y"), 5); // adopts the shrink
-						ch.force(false);
-						var saved = Files.readAllBytes(ciphertext);
-						var regrown = Arrays.copyOf(saved, original.length); // the removed chunks come back
-						System.arraycopy(original, saved.length, regrown, saved.length, original.length - saved.length);
-						overwriteInPlace(ciphertext, regrown);
-						assertThrows(IOException.class, () -> ch.write(StandardCharsets.UTF_8.encode("x"), 4L * CHUNK + 5));
-					}
-				});
+				try (var ch = FileChannel.open(file, READ, WRITE)) {
+					overwriteInPlace(ciphertext, truncated);
+					ch.write(StandardCharsets.UTF_8.encode("y"), 5); // adopts the shrink
+					ch.force(false);
+					var saved = Files.readAllBytes(ciphertext);
+					var regrown = Arrays.copyOf(saved, original.length); // the removed chunks come back
+					System.arraycopy(original, saved.length, regrown, saved.length, original.length - saved.length);
+					overwriteInPlace(ciphertext, regrown);
+					assertThrows(IOException.class, () -> ch.write(StandardCharsets.UTF_8.encode("x"), 4L * CHUNK + 5));
+					assertThrows(IOException.class, ch::close);
+				}
 
 				awaitConflictEvent(events);
 				var expected = repeat('o', 3 * CHUNK);
