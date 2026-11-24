@@ -29,7 +29,8 @@ public sealed interface FilesystemEvent permits //
 		ConflictResolutionFailedEvent, //
 		ConflictResolvedEvent, //
 		DecryptionFailedEvent, //
-		FileIsInUseEvent {
+		FileIsInUseEvent, //
+		FileWriteConflictEvent {
 
 	/**
 	 * Gets the timestamp when the event occurred.

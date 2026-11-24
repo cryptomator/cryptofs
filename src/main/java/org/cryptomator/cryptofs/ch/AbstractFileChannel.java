@@ -189,13 +189,41 @@ public abstract class AbstractFileChannel extends FileChannel {
 
 	@Override
 	public int write(ByteBuffer src) throws IOException {
-		int written = write(src, position);
+		assertOpen();
+		assertWritable();
+		boolean completed = false;
+		try {
+			beginBlocking();
+			readWriteLock.writeLock().lockInterruptibly();
+			try {
+				int written = writeRelativeLocked(src);
+				completed = true;
+				return written;
+			} finally {
+				readWriteLock.writeLock().unlock();
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new InterruptedIOException();
+		} finally {
+			endBlocking(completed);
+		}
+	}
+
+	/**
+	 * Writes at this channel's position and advances it.
+	 *
+	 * @see #write(ByteBuffer)
+	 */
+	protected int writeRelativeLocked(ByteBuffer src) throws IOException {
+		int written = writeLocked(src, position);
 		position += written;
 		return written;
 	}
 
 	@Override
 	public int write(ByteBuffer src, long position) throws IOException {
+		Preconditions.checkArgument(position >= 0);
 		assertOpen();
 		assertWritable();
 		boolean completed = false;

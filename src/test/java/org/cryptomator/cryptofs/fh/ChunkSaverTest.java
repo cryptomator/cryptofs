@@ -13,6 +13,7 @@ import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -20,6 +21,8 @@ import java.util.function.Supplier;
 
 import static org.cryptomator.cryptofs.matchers.ByteBufferMatcher.contains;
 import static org.cryptomator.cryptofs.util.ByteBuffers.repeat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
@@ -35,7 +38,8 @@ public class ChunkSaverTest {
 	private static final Integer CLEARTEXT_CHUNK_SIZE = 13;
 	private static final Integer CIPHERTEXT_CHUNK_SIZE = 37;
 
-	private final ChunkIO chunkIO = mock(ChunkIO.class);
+	private final FileChannel ciphertextChannel = mock(FileChannel.class);
+	private final CiphertextWriteGuard writeGuard = mock(CiphertextWriteGuard.class);
 	private final FileContentCryptor fileContentCryptor = mock(FileContentCryptor.class);
 	private final FileHeaderCryptor fileHeaderCryptor = mock(FileHeaderCryptor.class);
 	private final Cryptor cryptor = mock(Cryptor.class);
@@ -43,7 +47,7 @@ public class ChunkSaverTest {
 	private final FileHeader header = mock(FileHeader.class);
 	private final FileHeaderHolder headerHolder = mock(FileHeaderHolder.class);
 	private final BufferPool bufferPool = mock(BufferPool.class);
-	private final ChunkSaver inTest = new ChunkSaver(cryptor, chunkIO, headerHolder, stats, bufferPool);
+	private final ChunkSaver inTest = new ChunkSaver(cryptor, headerHolder, stats, bufferPool, writeGuard);
 	private final List<ByteBuffer> writtenChunks = new ArrayList<>();
 	private final List<Long> writePositions = new ArrayList<>();
 	private int bytesAccepted;
@@ -59,7 +63,11 @@ public class ChunkSaverTest {
 		when(bufferPool.getCiphertextBuffer()).thenAnswer(invocation -> ByteBuffer.allocate(CIPHERTEXT_CHUNK_SIZE));
 		when(bufferPool.getCleartextBuffer()).thenAnswer(invocation -> ByteBuffer.allocate(CLEARTEXT_CHUNK_SIZE));
 		// a real FileChannel consumes the written bytes and returns how many it wrote
-		when(chunkIO.write(Mockito.any(), Mockito.anyLong())).thenAnswer(invocation -> {
+		doAnswer(invocation -> {
+			invocation.<CiphertextWriteGuard.ChunkWrite>getArgument(3).writeTo(ciphertextChannel);
+			return null;
+		}).when(writeGuard).guardedSave(anyLong(), anyLong(), any(), any());
+		when(ciphertextChannel.write(any(ByteBuffer.class), anyLong())).thenAnswer(invocation -> {
 			ByteBuffer buf = invocation.getArgument(0);
 			ByteBuffer copy = ByteBuffer.allocate(buf.remaining());
 			copy.put(buf.duplicate()).flip();
@@ -97,7 +105,7 @@ public class ChunkSaverTest {
 
 		inTest.save(chunkIndex, chunk);
 
-		verify(chunkIO).write(Mockito.any(), eq(expectedPosition));
+		verify(ciphertextChannel).write(any(ByteBuffer.class), eq(expectedPosition));
 		Assertions.assertTrue(writtenChunks.stream().anyMatch(contains(ciphertext.get())::matches), "expected ciphertext to be written");
 		verify(stats).addBytesEncrypted(Mockito.anyLong());
 		verify(bufferPool).recycle(argThat(ByteBufferMatcher.hasCapacity(CIPHERTEXT_CHUNK_SIZE)));
@@ -118,7 +126,7 @@ public class ChunkSaverTest {
 
 		inTest.save(chunkIndex, chunk);
 
-		verify(chunkIO).write(Mockito.any(), eq(expectedPosition));
+		verify(ciphertextChannel).write(any(ByteBuffer.class), eq(expectedPosition));
 		Assertions.assertTrue(writtenChunks.stream().anyMatch(contains(ciphertext.get())::matches), "expected ciphertext to be written");
 		verify(stats).addBytesEncrypted(Mockito.anyLong());
 		verify(bufferPool).recycle(argThat(ByteBufferMatcher.hasCapacity(CIPHERTEXT_CHUNK_SIZE)));
@@ -161,7 +169,7 @@ public class ChunkSaverTest {
 			buf.position(buf.position() + accepted);
 			bytesAccepted += accepted;
 			return accepted;
-		}).when(chunkIO).write(Mockito.any(), Mockito.anyLong());
+		}).when(ciphertextChannel).write(any(ByteBuffer.class), anyLong());
 
 		inTest.save(chunkIndex, chunk);
 
@@ -183,7 +191,7 @@ public class ChunkSaverTest {
 			return null;
 		}).when(fileContentCryptor).encryptChunk(Mockito.any(), Mockito.any(), Mockito.eq(chunkIndex), Mockito.eq(header));
 		// a channel that makes no progress must not be treated as success
-		doAnswer(invocation -> 0).when(chunkIO).write(Mockito.any(), Mockito.anyLong());
+		doAnswer(invocation -> 0).when(ciphertextChannel).write(any(ByteBuffer.class), anyLong());
 
 		Assertions.assertThrows(IOException.class, () -> inTest.save(chunkIndex, chunk));
 		Assertions.assertTrue(chunk.isDirty(), "a chunk that was not written must stay dirty");
@@ -196,7 +204,7 @@ public class ChunkSaverTest {
 
 		inTest.save(chunkIndex, chunk);
 
-		verifyNoInteractions(chunkIO);
+		verifyNoInteractions(writeGuard);
 		verifyNoInteractions(stats);
 		verifyNoInteractions(bufferPool);
 	}

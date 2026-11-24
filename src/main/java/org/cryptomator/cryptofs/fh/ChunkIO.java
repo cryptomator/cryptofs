@@ -3,12 +3,14 @@ package org.cryptomator.cryptofs.fh;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 @OpenFileScoped
 class ChunkIO {
@@ -47,16 +49,19 @@ class ChunkIO {
 		return getReadableChannel().read(dst, position);
 	}
 
-	int write(ByteBuffer src, long position) throws IOException {
-		return getWritableChannel().write(src, position);
+	private FileChannel getReadableChannel() throws ClosedChannelException {
+		return openChannel(readableChannels, NonReadableChannelException::new);
 	}
 
-	private FileChannel getReadableChannel() {
-		return readableChannels.stream().findFirst().orElseThrow(NonReadableChannelException::new);
+	FileChannel getWritableChannel() throws ClosedChannelException {
+		return openChannel(writableChannels, NonWritableChannelException::new);
 	}
 
-	private FileChannel getWritableChannel() {
-		return writableChannels.stream().findFirst().orElseThrow(NonWritableChannelException::new);
+	private static FileChannel openChannel(Set<FileChannel> channels, Supplier<RuntimeException> noneRegistered) throws ClosedChannelException {
+		if (channels.isEmpty()) {
+			throw noneRegistered.get();
+		}
+		return channels.stream().filter(FileChannel::isOpen).findFirst().orElseThrow(ClosedChannelException::new); // an interrupt can close a channel that is still registered
 	}
 
 }

@@ -6,23 +6,24 @@ import org.cryptomator.cryptolib.api.Cryptor;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 
 @OpenFileScoped
 class ChunkSaver {
 
 	private final Cryptor cryptor;
-	private final ChunkIO ciphertext;
 	private final FileHeaderHolder headerHolder;
 	private final CryptoFileSystemStats stats;
 	private final BufferPool bufferPool;
+	private final CiphertextWriteGuard writeGuard;
 
 	@Inject
-	public ChunkSaver(Cryptor cryptor, ChunkIO ciphertext, FileHeaderHolder headerHolder, CryptoFileSystemStats stats, BufferPool bufferPool) {
+	public ChunkSaver(Cryptor cryptor, FileHeaderHolder headerHolder, CryptoFileSystemStats stats, BufferPool bufferPool, CiphertextWriteGuard writeGuard) {
 		this.cryptor = cryptor;
-		this.ciphertext = ciphertext;
 		this.headerHolder = headerHolder;
 		this.stats = stats;
 		this.bufferPool = bufferPool;
+		this.writeGuard = writeGuard;
 	}
 
 	/**
@@ -33,7 +34,7 @@ class ChunkSaver {
 	 *
 	 * @param chunkIndex index of the chunk within the cleartext file
 	 * @param chunkData  the chunk to persist; untouched (and left dirty) if the write does not complete
-	 * @throws IOException if the ciphertext cannot be written completely, e.g. because the channel stops accepting bytes
+	 * @throws IOException if the ciphertext changed outside of this file system, or cannot be written completely, e.g. because the channel stops accepting bytes
 	 */
 	public void save(long chunkIndex, Chunk chunkData) throws IOException {
 		if (chunkData.isDirty()) {
@@ -46,7 +47,7 @@ class ChunkSaver {
 			try {
 				cryptor.fileContentCryptor().encryptChunk(cleartextBuf, ciphertextBuf, chunkIndex, headerHolder.get());
 				ciphertextBuf.flip();
-				writeFully(ciphertextBuf, ciphertextPos);
+				writeGuard.guardedSave(chunkIndex, ciphertextPos, ciphertextBuf, channel -> writeFully(channel, ciphertextBuf, ciphertextPos));
 				chunkData.dirty().set(false); // only after ALL bytes hit the channel, otherwise the chunk would be lost silently
 			} finally {
 				bufferPool.recycle(ciphertextBuf);
@@ -58,9 +59,9 @@ class ChunkSaver {
 	 * {@link java.nio.channels.FileChannel#write(ByteBuffer, long)} may write fewer bytes than requested. Treating a short
 	 * write as success would leave a torn ciphertext chunk behind and mark it clean.
 	 */
-	private void writeFully(ByteBuffer src, long position) throws IOException {
+	private void writeFully(FileChannel channel, ByteBuffer src, long position) throws IOException {
 		while (src.hasRemaining()) {
-			int written = ciphertext.write(src, position);
+			int written = channel.write(src, position);
 			if (written <= 0) {
 				throw new IOException("Unable to make progress while writing ciphertext chunk at position " + position);
 			}

@@ -3,11 +3,13 @@ package org.cryptomator.cryptofs.ch;
 import org.cryptomator.cryptofs.CryptoFileSystemStats;
 import org.cryptomator.cryptofs.CryptoPath;
 import org.cryptomator.cryptofs.EffectiveOpenOptions;
+import org.cryptomator.cryptofs.common.RunnableThrowingException;
 import org.cryptomator.cryptofs.event.FilesystemEvent;
 import org.cryptomator.cryptofs.fh.BufferPool;
 import org.cryptomator.cryptofs.fh.Chunk;
 import org.cryptomator.cryptofs.fh.ChunkCache;
 import org.cryptomator.cryptofs.fh.CiphertextFileKey;
+import org.cryptomator.cryptofs.fh.CiphertextWriteGuard;
 import org.cryptomator.cryptofs.fh.ExceptionsDuringWrite;
 import org.cryptomator.cryptofs.fh.FileHeaderHolder;
 import org.cryptomator.cryptofs.inuse.FileAlreadyInUseException;
@@ -25,11 +27,14 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.lang.foreign.Arena;
 import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousCloseException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
@@ -46,6 +51,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.nio.file.spi.FileSystemProvider;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -58,12 +64,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -96,6 +104,7 @@ public class CleartextFileChannelTest {
 	private FileSystemProvider fsProvider = mock(FileSystemProvider.class);
 	private BasicFileAttributes ciphertextAttributes = mock(BasicFileAttributes.class);
 	private CiphertextFileKey ciphertextFileKey = new CiphertextFileKey();
+	private CiphertextWriteGuard writeGuard = mock(CiphertextWriteGuard.class);
 
 	private CleartextFileChannel inTest;
 
@@ -104,7 +113,8 @@ public class CleartextFileChannelTest {
 		when(cryptor.fileHeaderCryptor()).thenReturn(fileHeaderCryptor);
 		when(cryptor.fileContentCryptor()).thenReturn(fileContentCryptor);
 		when(chunkCache.getChunk(Mockito.anyLong())).then(invocation -> new Chunk(ByteBuffer.allocate(100), false, () -> {}));
-		when(chunkCache.putChunk(Mockito.anyLong(), Mockito.any())).thenAnswer(invocation -> new Chunk(invocation.getArgument(1), true, () -> {}));
+		when(chunkCache.getChunkForWrite(anyLong(), any())).then(invocation -> new Chunk(ByteBuffer.allocate(100), false, () -> {}));
+		when(chunkCache.putChunk(anyLong(), any(), any())).thenAnswer(invocation -> new Chunk(invocation.getArgument(1), true, () -> {}));
 		when(bufferPool.getCleartextBuffer()).thenAnswer(invocation -> ByteBuffer.allocate(100));
 		when(fileHeaderCryptor.headerSize()).thenReturn(50);
 		when(headerHolder.headerIsPersisted()).thenReturn(headerIsPersisted);
@@ -119,8 +129,18 @@ public class CleartextFileChannelTest {
 		when(fsProvider.getFileAttributeView(filePath, BasicFileAttributeView.class)).thenReturn(attributeView);
 		when(readWriteLock.readLock()).thenReturn(readLock);
 		when(readWriteLock.writeLock()).thenReturn(writeLock);
+		doAnswer(invocation -> {
+			invocation.<RunnableThrowingException<IOException>>getArgument(2).run();
+			return null;
+		}).when(writeGuard).guardedHeaderWrite(any(), any(), any());
+		when(writeGuard.readableSize(any(), anyLong())).thenAnswer(invocation -> invocation.getArgument(1));
+		doAnswer(invocation -> {
+			boolean mayWriteModifiedTime = invocation.getArgument(0);
+			invocation.<CiphertextWriteGuard.TimesWrite>getArgument(1).write(mayWriteModifiedTime ? FileTime.from(lastModified.get()) : null);
+			return null;
+		}).when(writeGuard).persistOwnTimes(anyBoolean(), any());
 
-		inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, exceptionsDuringWrite, closeListener, stats);
+		inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, writeGuard, exceptionsDuringWrite, closeListener, stats);
 	}
 
 	private static int writeAtMost(ByteBuffer src, int maxBytes) {
@@ -131,7 +151,7 @@ public class CleartextFileChannelTest {
 
 	private CleartextFileChannel newChannelWithFileKey(Object capturedKey) {
 		ciphertextFileKey.capture(capturedKey);
-		return new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, currentCleartextPath, ciphertextFileKey, //
+		return new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, currentCleartextPath, ciphertextFileKey, writeGuard, //
 				exceptionsDuringWrite, closeListener, eventConsumer, stats, inUseManager);
 	}
 
@@ -196,6 +216,62 @@ public class CleartextFileChannelTest {
 			inTest.truncate(50);
 
 			Assertions.assertEquals(50, inTest.position());
+		}
+
+		@Test
+		@DisplayName("a failed save of the shortened last chunk restores its limit and leaves it dirty")
+		public void testFailedTailSaveKeepsChunkWhole() throws IOException {
+			when(options.writable()).thenReturn(true);
+			var chunk = new Chunk(ByteBuffer.allocate(100), false, () -> {});
+			when(chunkCache.getChunkForWrite(eq(0L), any())).thenReturn(chunk);
+			doAnswer(invocation -> {
+				invocation.<Runnable>getArgument(0).run();
+				throw new IOException("save failed");
+			}).when(chunkCache).flush(any(Runnable.class));
+
+			Assertions.assertThrows(IOException.class, () -> inTest.truncate(50));
+
+			Assertions.assertEquals(100, chunk.data().limit());
+			Assertions.assertTrue(chunk.isDirty());
+			verify(writeGuard, never()).guardedTruncate(anyLong(), any());
+		}
+
+		@Test
+		@DisplayName("shortening the last chunk happens under the edit lock")
+		public void testShorteningHappensUnderEditLock() throws IOException {
+			when(options.writable()).thenReturn(true);
+			var chunk = new Chunk(ByteBuffer.allocate(100), false, () -> {});
+			when(chunkCache.getChunkForWrite(eq(0L), any())).thenReturn(chunk);
+			var limitAtUnlock = new AtomicLong();
+			var dirtyAtUnlock = new AtomicBoolean();
+			var timeAtUnlock = new AtomicReference<Instant>();
+			when(chunkCache.lockForEdit()).thenReturn(() -> {
+				limitAtUnlock.set(chunk.data().limit());
+				dirtyAtUnlock.set(chunk.isDirty());
+				timeAtUnlock.set(lastModified.get());
+			});
+
+			inTest.truncate(50);
+
+			Assertions.assertEquals(50, limitAtUnlock.get());
+			Assertions.assertTrue(dirtyAtUnlock.get());
+			Assertions.assertNotEquals(Instant.ofEpochMilli(0), timeAtUnlock.get());
+			verify(writeGuard).markUnsaved(0L);
+		}
+
+		@Test
+		@DisplayName("a truncate sets the modification time before the guard truncates")
+		public void testTruncateSetsTimeBeforeGuardedTruncate() throws IOException {
+			when(options.writable()).thenReturn(true);
+			var timeAtTruncate = new AtomicReference<Instant>();
+			doAnswer(invocation -> {
+				timeAtTruncate.set(lastModified.get());
+				return null;
+			}).when(writeGuard).guardedTruncate(anyLong(), any());
+
+			inTest.truncate(0); // to a chunk boundary, so that no chunk edit sets the time first
+
+			Assertions.assertNotEquals(Instant.ofEpochMilli(0), timeAtTruncate.get());
 		}
 
 	}
@@ -503,7 +579,7 @@ public class CleartextFileChannelTest {
 			fileSize.set(5_000_000_100l); // initial cleartext size will be 5_000_000_100l
 			when(options.readable()).thenReturn(true);
 
-			inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, exceptionsDuringWrite, closeListener, stats);
+			inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, writeGuard, exceptionsDuringWrite, closeListener, stats);
 			ByteBuffer buf = ByteBuffer.allocate(10);
 
 			// A read from frist chunk:
@@ -561,6 +637,18 @@ public class CleartextFileChannelTest {
 			Assertions.assertEquals(100, inTest.position());
 		}
 
+		@Test
+		@DisplayName("a failed read restores the limit of the destination buffer")
+		public void testFailedReadRestoresDestinationLimit() throws IOException {
+			when(options.readable()).thenReturn(true);
+			when(chunkCache.getChunk(0L)).thenThrow(new IOException("fail"));
+			ByteBuffer buffer = ByteBuffer.allocate(200);
+
+			Assertions.assertThrows(IOException.class, () -> inTest.read(buffer, 0));
+
+			Assertions.assertEquals(200, buffer.limit());
+		}
+
 	}
 
 	@Nested
@@ -585,9 +673,9 @@ public class CleartextFileChannelTest {
 			inTest.write(buf3, 5000);
 
 			InOrder inOrder = Mockito.inOrder(chunkCache, chunkCache, chunkCache);
-			inOrder.verify(chunkCache).getChunk(0l); // A
-			inOrder.verify(chunkCache).putChunk(Mockito.eq(1l), Mockito.any()); // B
-			inOrder.verify(chunkCache).putChunk(Mockito.eq(50l), Mockito.any()); // C
+			inOrder.verify(chunkCache).getChunkForWrite(eq(0l), any()); // A
+			inOrder.verify(chunkCache).putChunk(eq(1l), any(), any()); // B
+			inOrder.verify(chunkCache).putChunk(eq(50l), any(), any()); // C
 			inOrder.verifyNoMoreInteractions();
 		}
 
@@ -615,9 +703,9 @@ public class CleartextFileChannelTest {
 			Assertions.assertEquals(110, written);
 			Assertions.assertEquals(205, inTest.size());
 
-			verify(chunkCache).getChunk(0l);
-			verify(chunkCache).putChunk(Mockito.eq(1l), Mockito.any());
-			verify(chunkCache).getChunk(2l);
+			verify(chunkCache).getChunkForWrite(eq(0l), any());
+			verify(chunkCache).putChunk(eq(1l), any(), any());
+			verify(chunkCache).getChunkForWrite(eq(2l), any());
 		}
 
 		@Test
@@ -716,7 +804,7 @@ public class CleartextFileChannelTest {
 		public void testDontRewriteHeader() throws IOException {
 			when(options.writable()).thenReturn(true);
 			when(headerIsPersisted.get()).thenReturn(true);
-			inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, exceptionsDuringWrite, closeListener, stats);
+			inTest = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, writeGuard, exceptionsDuringWrite, closeListener, stats);
 
 			inTest.force(true);
 
@@ -729,11 +817,142 @@ public class CleartextFileChannelTest {
 			when(options.writable()).thenReturn(true);
 			when(inUseManager.isInUseByOthers(filePath)).thenReturn(true);
 			when(inUseManager.getUseInfo(filePath)).thenReturn(java.util.Optional.of(new UseInfo("alice", Instant.now())));
-			var channel = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, currentCleartextPath, new CiphertextFileKey(),
+			var channel = new CleartextFileChannel(ciphertextFileChannel, headerHolder, readWriteLock, cryptor, chunkCache, bufferPool, options, fileSize, lastModified, currentFilePath, currentCleartextPath, new CiphertextFileKey(), writeGuard,
 					exceptionsDuringWrite, closeListener, eventConsumer, stats, inUseManager);
 
 			Assertions.assertThrows(FileAlreadyInUseException.class, () -> channel.write(ByteBuffer.allocate(1), 0));
 			verify(eventConsumer).accept(any());
+		}
+
+		@Test
+		@DisplayName("a write extending a chunk exposes only zeros from its pooled buffer")
+		public void testExtendingChunkExposesOnlyZeros() throws IOException {
+			when(options.writable()).thenReturn(true);
+			fileSize.set(150); // the write stays within the file size, so it doesn't take the gap-filling path
+			var data = ByteBuffer.allocate(100);
+			Arrays.fill(data.array(), (byte) 0x55);
+			data.limit(10);
+			when(chunkCache.getChunkForWrite(eq(1L), any())).thenReturn(new Chunk(data, false, () -> {}));
+
+			inTest.write(ByteBuffer.wrap(new byte[]{1, 2, 3, 4, 5}), 130);
+
+			Assertions.assertEquals(35, data.limit());
+			Assertions.assertArrayEquals(new byte[20], Arrays.copyOfRange(data.array(), 10, 30));
+			Assertions.assertArrayEquals(new byte[]{1, 2, 3, 4, 5}, Arrays.copyOfRange(data.array(), 30, 35));
+		}
+
+		@Test
+		@DisplayName("a partial write whose copy fails leaves a dirty chunk's limit alone and marks nothing unsaved")
+		public void testFailedCopyLeavesDirtyChunkAlone() throws IOException {
+			when(options.writable()).thenReturn(true);
+			fileSize.set(150); // the write stays within the file size, so it doesn't take the gap-filling path
+			var chunk = new Chunk(ByteBuffer.allocate(100).limit(10), true, () -> {});
+			when(chunkCache.getChunkForWrite(eq(1L), any())).thenReturn(chunk);
+			ByteBuffer closedSource;
+			try (var arena = Arena.ofConfined()) {
+				closedSource = arena.allocate(5).asByteBuffer();
+			}
+
+			Assertions.assertThrows(IllegalStateException.class, () -> inTest.write(closedSource, 130));
+
+			Assertions.assertEquals(10, chunk.data().limit());
+			Assertions.assertTrue(chunk.isDirty());
+			verify(writeGuard, never()).markUnsaved(anyLong());
+		}
+
+		@Test
+		@DisplayName("a partial write looks up, edits and marks its chunk and updates the time under the edit lock")
+		public void testPartialWriteHappensUnderEditLock() throws IOException {
+			when(options.writable()).thenReturn(true);
+			var chunk = new Chunk(ByteBuffer.allocate(100), false, () -> {});
+			var locked = new AtomicBoolean();
+			var byteAtUnlock = new AtomicLong();
+			var dirtyAtUnlock = new AtomicBoolean();
+			var timeAtUnlock = new AtomicReference<Instant>();
+			when(chunkCache.getChunkForWrite(eq(0L), any())).thenAnswer(invocation -> {
+				Assertions.assertTrue(locked.get());
+				return chunk;
+			});
+			when(chunkCache.lockForEdit()).thenAnswer(invocation -> {
+				locked.set(true);
+				return (ChunkCache.EditLock) () -> {
+					locked.set(false);
+					byteAtUnlock.set(chunk.data().get(5));
+					dirtyAtUnlock.set(chunk.isDirty());
+					timeAtUnlock.set(lastModified.get());
+				};
+			});
+
+			inTest.write(ByteBuffer.wrap(new byte[]{7}), 5);
+
+			Assertions.assertEquals(7, byteAtUnlock.get());
+			Assertions.assertTrue(dirtyAtUnlock.get());
+			Assertions.assertNotEquals(Instant.ofEpochMilli(0), timeAtUnlock.get());
+		}
+
+		@Test
+		@DisplayName("a full-chunk write puts, marks its chunk and updates the time under the edit lock")
+		public void testFullChunkWriteHappensUnderEditLock() throws IOException {
+			when(options.writable()).thenReturn(true);
+			var locked = new AtomicBoolean();
+			var markedUnderLock = new AtomicBoolean();
+			var timeAtUnlock = new AtomicReference<Instant>();
+			when(chunkCache.putChunk(eq(0L), any(), any())).thenAnswer(invocation -> {
+				Assertions.assertTrue(locked.get());
+				return new Chunk(invocation.getArgument(1), true, () -> {});
+			});
+			doAnswer(invocation -> {
+				markedUnderLock.set(locked.get());
+				return null;
+			}).when(writeGuard).markUnsaved(0L);
+			when(chunkCache.lockForEdit()).thenAnswer(invocation -> {
+				locked.set(true);
+				return (ChunkCache.EditLock) () -> {
+					locked.set(false);
+					timeAtUnlock.set(lastModified.get());
+				};
+			});
+
+			inTest.write(ByteBuffer.allocate(100), 0);
+
+			verify(chunkCache).putChunk(eq(0L), any(), any());
+			Assertions.assertTrue(markedUnderLock.get());
+			Assertions.assertNotEquals(Instant.ofEpochMilli(0), timeAtUnlock.get());
+		}
+
+		@ParameterizedTest(name = "{0} bytes")
+		@ValueSource(ints = {10, 100})
+		@DisplayName("a write losing the race with close edits no chunk")
+		public void testWriteAfterCloseUnderEditLockEditsNoChunk(int length) throws IOException {
+			when(options.writable()).thenReturn(true);
+			when(chunkCache.lockForEdit()).thenAnswer(invocation -> {
+				inTest.close();
+				return (ChunkCache.EditLock) () -> {};
+			});
+
+			Assertions.assertThrows(AsynchronousCloseException.class, () -> inTest.write(ByteBuffer.allocate(length), 0));
+
+			verify(chunkCache, never()).getChunkForWrite(anyLong(), any());
+			verify(chunkCache, never()).putChunk(anyLong(), any(), any());
+			verify(writeGuard, never()).markUnsaved(anyLong());
+		}
+
+		@Test
+		@DisplayName("a relative append admits once and writes at the size that admission left")
+		public void testRelativeAppendUsesSizeOfItsAdmission() throws IOException {
+			when(options.writable()).thenReturn(true);
+			when(options.append()).thenReturn(true);
+			doAnswer(invocation -> {
+				fileSize.set(230);
+				return false;
+			}).when(writeGuard).beforeWrite(ciphertextFileChannel);
+
+			inTest.write(ByteBuffer.allocate(5));
+
+			verify(writeGuard, times(1)).beforeWrite(ciphertextFileChannel);
+			verify(chunkCache).getChunkForWrite(eq(2L), any());
+			Assertions.assertEquals(235, inTest.position());
+			Assertions.assertEquals(235, inTest.size());
 		}
 
 	}
