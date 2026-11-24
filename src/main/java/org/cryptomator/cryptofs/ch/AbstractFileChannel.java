@@ -304,7 +304,8 @@ public abstract class AbstractFileChannel extends FileChannel {
 	protected long transferToLocked(long position, long count, WritableByteChannel target) throws IOException {
 		ByteBuffer buf = ByteBuffer.allocate((int) min(count, BUFFER_SIZE));
 		long transferred = 0;
-		while (transferred < count) {
+		boolean targetTookAll = true;
+		while (targetTookAll && transferred < count) {
 			buf.clear().limit((int) min(buf.capacity(), count - transferred));
 			int read = read(buf, position + transferred);
 			if (read == -1) {
@@ -312,9 +313,7 @@ public abstract class AbstractFileChannel extends FileChannel {
 			} else {
 				buf.flip();
 				transferred += target.write(buf);
-				if (buf.hasRemaining()) { // a non-blocking target that is full would otherwise be retried forever
-					break;
-				}
+				targetTookAll = !buf.hasRemaining(); // a full non-blocking target would be retried forever
 			}
 		}
 		return transferred;

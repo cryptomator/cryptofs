@@ -6,7 +6,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
 import java.io.ByteArrayInputStream;
@@ -27,20 +26,24 @@ import java.util.concurrent.locks.ReadWriteLock;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class AbstractFileChannelTest {
 
-	private ReadWriteLock readWriteLock = Mockito.mock(ReadWriteLock.class);
-	private Lock readLock = Mockito.mock(Lock.class);
-	private Lock writeLock = Mockito.mock(Lock.class);
-	private AbstractFileChannel delegate = Mockito.mock(AbstractFileChannel.class);
+	private ReadWriteLock readWriteLock = mock(ReadWriteLock.class);
+	private Lock readLock = mock(Lock.class);
+	private Lock writeLock = mock(Lock.class);
+	private AbstractFileChannel delegate = mock(AbstractFileChannel.class);
 
 	@BeforeEach
 	public void setup() {
-		Mockito.when(readWriteLock.readLock()).thenReturn(readLock);
-		Mockito.when(readWriteLock.writeLock()).thenReturn(writeLock);
+		when(readWriteLock.readLock()).thenReturn(readLock);
+		when(readWriteLock.writeLock()).thenReturn(writeLock);
 	}
 
 	@Nested
@@ -69,13 +72,13 @@ public class AbstractFileChannelTest {
 			long read = inTest.read(buffers, 3, 0);
 
 			Assertions.assertEquals(0l, read);
-			Mockito.verify(delegate, Mockito.never()).readLocked(Mockito.any(), Mockito.anyLong());
+			verify(delegate, never()).readLocked(any(), anyLong());
 		}
 
 		@Test
 		public void readWithBuffersReturnsEofIfHitOnFirstRead() throws IOException {
 			ByteBuffer[] buffers = {ByteBuffer.allocate(10), ByteBuffer.allocate(10), ByteBuffer.allocate(10)};
-			Mockito.when(delegate.readLocked(Mockito.any(), Mockito.anyLong())).thenReturn(-1);
+			when(delegate.readLocked(any(), anyLong())).thenReturn(-1);
 
 			long read = inTest.read(buffers, 0, 3);
 
@@ -88,16 +91,16 @@ public class AbstractFileChannelTest {
 			ByteBuffer buf2 = ByteBuffer.allocate(10);
 			ByteBuffer buf3 = ByteBuffer.allocate(10);
 			ByteBuffer[] buffers = {buf1, buf2, buf3};
-			Mockito.when(delegate.readLocked(Mockito.same(buf1), Mockito.anyLong())).thenReturn(8);
-			Mockito.when(delegate.readLocked(Mockito.same(buf2), Mockito.anyLong())).thenReturn(-1);
+			when(delegate.readLocked(same(buf1), anyLong())).thenReturn(8);
+			when(delegate.readLocked(same(buf2), anyLong())).thenReturn(-1);
 
 
 			long read = inTest.read(buffers, 0, 3);
 
 			Assertions.assertEquals(8l, read);
-			Mockito.verify(delegate).readLocked(Mockito.same(buf1), Mockito.anyLong());
-			Mockito.verify(delegate).readLocked(Mockito.same(buf2), Mockito.anyLong());
-			Mockito.verify(delegate, Mockito.never()).readLocked(Mockito.same(buf3), Mockito.anyLong());
+			verify(delegate).readLocked(same(buf1), anyLong());
+			verify(delegate).readLocked(same(buf2), anyLong());
+			verify(delegate, never()).readLocked(same(buf3), anyLong());
 		}
 
 		@Test
@@ -106,16 +109,16 @@ public class AbstractFileChannelTest {
 			ByteBuffer buf2 = ByteBuffer.allocate(10);
 			ByteBuffer buf3 = ByteBuffer.allocate(10);
 			ByteBuffer[] buffers = {buf1, buf2, buf3};
-			Mockito.when(delegate.readLocked(Mockito.same(buf1), Mockito.anyLong())).thenReturn(10);
-			Mockito.when(delegate.readLocked(Mockito.same(buf2), Mockito.anyLong())).thenReturn(10);
-			Mockito.when(delegate.readLocked(Mockito.same(buf3), Mockito.anyLong())).thenReturn(8);
+			when(delegate.readLocked(same(buf1), anyLong())).thenReturn(10);
+			when(delegate.readLocked(same(buf2), anyLong())).thenReturn(10);
+			when(delegate.readLocked(same(buf3), anyLong())).thenReturn(8);
 
 			long read = inTest.read(buffers, 0, 3);
 
 			Assertions.assertEquals(28l, read);
-			Mockito.verify(delegate).readLocked(Mockito.same(buf1), Mockito.anyLong());
-			Mockito.verify(delegate).readLocked(Mockito.same(buf2), Mockito.anyLong());
-			Mockito.verify(delegate).readLocked(Mockito.same(buf3), Mockito.anyLong());
+			verify(delegate).readLocked(same(buf1), anyLong());
+			verify(delegate).readLocked(same(buf2), anyLong());
+			verify(delegate).readLocked(same(buf3), anyLong());
 		}
 
 	}
@@ -146,7 +149,7 @@ public class AbstractFileChannelTest {
 			long written = inTest.write(buffers, 3, 0);
 
 			Assertions.assertEquals(0l, written);
-			Mockito.verify(delegate, Mockito.never()).writeLocked(Mockito.any(), Mockito.anyLong());
+			verify(delegate, never()).writeLocked(any(), anyLong());
 		}
 
 		@Test
@@ -155,19 +158,19 @@ public class AbstractFileChannelTest {
 			ByteBuffer buf2 = ByteBuffer.allocate(0);
 			ByteBuffer buf3 = ByteBuffer.allocate(8);
 			ByteBuffer[] buffers = {buf1, buf2, buf3};
-			Mockito.when(delegate.writeLocked(Mockito.same(buf1), Mockito.anyLong())).thenReturn(10);
-			Mockito.when(delegate.writeLocked(Mockito.same(buf2), Mockito.anyLong())).thenReturn(0);
-			Mockito.when(delegate.writeLocked(Mockito.same(buf3), Mockito.anyLong())).thenReturn(8);
+			when(delegate.writeLocked(same(buf1), anyLong())).thenReturn(10);
+			when(delegate.writeLocked(same(buf2), anyLong())).thenReturn(0);
+			when(delegate.writeLocked(same(buf3), anyLong())).thenReturn(8);
 
-			Mockito.when(delegate.size()).thenReturn(100l);
+			when(delegate.size()).thenReturn(100l);
 			inTest.position(30);
 
 			long written = inTest.write(buffers, 0, 3);
 
 			Assertions.assertEquals(18l, written);
-			Mockito.verify(delegate).writeLocked(buf1, 30);
-			Mockito.verify(delegate).writeLocked(buf2, 40);
-			Mockito.verify(delegate).writeLocked(buf3, 40);
+			verify(delegate).writeLocked(buf1, 30);
+			verify(delegate).writeLocked(buf2, 40);
+			verify(delegate).writeLocked(buf3, 40);
 		}
 
 	}
@@ -194,7 +197,7 @@ public class AbstractFileChannelTest {
 		@Test
 		public void transferRequestedBytes() throws IOException {
 			long fileSize = 50_000l;
-			Mockito.when(inTest.readLocked(Mockito.any(), Mockito.anyLong())).thenAnswer(invocation -> {
+			when(inTest.readLocked(any(), anyLong())).thenAnswer(invocation -> {
 				ByteBuffer buf = invocation.getArgument(0);
 				long pos = invocation.getArgument(1);
 				if (pos >= fileSize) {
@@ -215,7 +218,7 @@ public class AbstractFileChannelTest {
 		@Test
 		public void transferRequestedBytesTillEof() throws IOException {
 			long fileSize = 50_000l;
-			Mockito.when(inTest.readLocked(Mockito.any(), Mockito.anyLong())).thenAnswer(invocation -> {
+			when(inTest.readLocked(any(), anyLong())).thenAnswer(invocation -> {
 				ByteBuffer buf = invocation.getArgument(0);
 				long pos = invocation.getArgument(1);
 				if (pos >= fileSize) {
@@ -248,6 +251,7 @@ public class AbstractFileChannelTest {
 			long transferred = Assertions.assertTimeoutPreemptively(Duration.ofSeconds(10), () -> inTest.transferTo(0, 100, target));
 
 			Assertions.assertEquals(10, transferred);
+			verify(target).write(any());
 		}
 
 	}
@@ -274,7 +278,7 @@ public class AbstractFileChannelTest {
 		@Test
 		public void testTransferFromWritesAllBytesToFile() throws IOException {
 			LongAdder written = new LongAdder();
-			Mockito.when(inTest.writeLocked(Mockito.any(), Mockito.anyLong())).thenAnswer(invocation -> {
+			when(inTest.writeLocked(any(), anyLong())).thenAnswer(invocation -> {
 				ByteBuffer buf = invocation.getArgument(0);
 				int n = buf.remaining();
 				buf.position(buf.position() + n);
@@ -292,7 +296,7 @@ public class AbstractFileChannelTest {
 		@Test
 		public void testTransferFromWritesNumberOfSpecifiedBytesToFile() throws IOException {
 			LongAdder written = new LongAdder();
-			Mockito.when(inTest.writeLocked(Mockito.any(), Mockito.anyLong())).thenAnswer(invocation -> {
+			when(inTest.writeLocked(any(), anyLong())).thenAnswer(invocation -> {
 				ByteBuffer buf = invocation.getArgument(0);
 				int n = buf.remaining();
 				buf.position(buf.position() + n);
@@ -323,6 +327,7 @@ public class AbstractFileChannelTest {
 			long transferred = Assertions.assertTimeoutPreemptively(Duration.ofSeconds(10), () -> inTest.transferFrom(source, 0, 100));
 
 			Assertions.assertEquals(10, transferred);
+			verify(source, times(2)).read(any());
 		}
 
 	}
