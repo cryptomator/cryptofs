@@ -3,9 +3,11 @@ package org.cryptomator.cryptofs.ch;
 import com.google.common.io.ByteStreams;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.mockito.stubbing.Answer;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -16,9 +18,17 @@ import java.nio.channels.Channels;
 import java.nio.channels.FileLock;
 import java.nio.channels.NonReadableChannelException;
 import java.nio.channels.NonWritableChannelException;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
+import java.time.Duration;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class AbstractFileChannelTest {
 
@@ -223,6 +233,23 @@ public class AbstractFileChannelTest {
 			Assertions.assertEquals(20_000, transferred);
 		}
 
+		@Test
+		@DisplayName("transferTo stops once the target accepts fewer bytes than offered")
+		public void transferStopsAtFullTarget() throws IOException {
+			when(delegate.readLocked(any(), anyLong())).thenAnswer(invocation -> {
+				ByteBuffer buf = invocation.getArgument(0);
+				int n = buf.remaining();
+				buf.position(buf.position() + n);
+				return n;
+			});
+			var target = mock(WritableByteChannel.class); // like a non-blocking channel whose buffer is full after 10 bytes
+			when(target.write(any())).thenAnswer(advanceBy(10)).thenReturn(0);
+
+			long transferred = Assertions.assertTimeoutPreemptively(Duration.ofSeconds(10), () -> inTest.transferTo(0, 100, target));
+
+			Assertions.assertEquals(10, transferred);
+		}
+
 	}
 
 	@Nested
@@ -278,10 +305,36 @@ public class AbstractFileChannelTest {
 
 			Assertions.assertEquals(42_000l, transferred);
 			Assertions.assertEquals(42_000l, written.sum());
+			Assertions.assertEquals(18_000, in.available());
+		}
+
+		@Test
+		@DisplayName("transferFrom stops once the source has nothing to read")
+		public void testTransferFromStopsAtEmptySource() throws IOException {
+			when(delegate.writeLocked(any(), anyLong())).thenAnswer(invocation -> {
+				ByteBuffer buf = invocation.getArgument(0);
+				int n = buf.remaining();
+				buf.position(buf.position() + n);
+				return n;
+			});
+			var source = mock(ReadableByteChannel.class); // like a non-blocking channel that has nothing more ready after 10 bytes
+			when(source.read(any())).thenAnswer(advanceBy(10)).thenReturn(0);
+
+			long transferred = Assertions.assertTimeoutPreemptively(Duration.ofSeconds(10), () -> inTest.transferFrom(source, 0, 100));
+
+			Assertions.assertEquals(10, transferred);
 		}
 
 	}
 
+
+	private static Answer<Integer> advanceBy(int n) {
+		return invocation -> {
+			ByteBuffer buf = invocation.getArgument(0);
+			buf.position(buf.position() + n);
+			return n;
+		};
+	}
 
 	private static class TestChannel extends AbstractFileChannel {
 

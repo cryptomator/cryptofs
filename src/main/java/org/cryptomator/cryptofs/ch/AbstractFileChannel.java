@@ -305,14 +305,16 @@ public abstract class AbstractFileChannel extends FileChannel {
 		ByteBuffer buf = ByteBuffer.allocate((int) min(count, BUFFER_SIZE));
 		long transferred = 0;
 		while (transferred < count) {
-			buf.clear();
+			buf.clear().limit((int) min(buf.capacity(), count - transferred));
 			int read = read(buf, position + transferred);
 			if (read == -1) {
 				break;
 			} else {
 				buf.flip();
-				buf.limit((int) min(buf.limit(), count - transferred));
 				transferred += target.write(buf);
+				if (buf.hasRemaining()) { // a non-blocking target that is full would otherwise be retried forever
+					break;
+				}
 			}
 		}
 		return transferred;
@@ -349,13 +351,12 @@ public abstract class AbstractFileChannel extends FileChannel {
 		ByteBuffer buf = ByteBuffer.allocate((int) min(count, BUFFER_SIZE));
 		long transferred = 0;
 		while (transferred < count) {
-			buf.clear();
+			buf.clear().limit((int) min(buf.capacity(), count - transferred)); // never takes more from the source than it can transfer
 			int read = src.read(buf);
-			if (read == -1) {
+			if (read <= 0) { // a non-blocking source with nothing to read would otherwise be retried forever
 				break;
 			} else {
 				buf.flip();
-				buf.limit((int) min(buf.limit(), count - transferred));
 				transferred += this.write(buf, position + transferred);
 			}
 		}
