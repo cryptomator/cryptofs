@@ -62,6 +62,7 @@ public class CiphertextWriteGuard {
 	private boolean adoptedForeignShrink; // guarded by lock
 	private boolean ownChanges; // guarded by lock
 	private boolean savedOnce; // guarded by lock
+	private boolean ownTimeWithheld; // guarded by lock
 	private boolean timeReadAtClose; // guarded by lock
 	private FileTime timeBaseline; // guarded by lock
 	private boolean foreignTimeChange; // guarded by lock
@@ -395,9 +396,10 @@ public class CiphertextWriteGuard {
 	}
 
 	/**
-	 * Closes a ciphertext channel of this file. Once this file saved, a modification time the file system sets during the close is this file's own, so this file's time gets persisted again.
-	 * Windows may complete the time of a written file only when its handle closes.
-	 * A foreign time change before the close still keeps this file's time from being persisted, and so does a close that fails.
+	 * Closes a ciphertext channel of this file. Windows may complete the time of a written file only when its handle closes.
+	 * Once this file saved, a modification time the file system sets during the close is therefore this file's own, so this file's time gets persisted again.
+	 * That doesn't happen after a foreign time change before the close or a close that fails.
+	 * It also doesn't happen while an earlier persist withheld this file's time, until a later save or a time set through the view.
 	 *
 	 * @param close Closes the channel, under this guard's lock
 	 * @throws IOException If closing fails
@@ -417,8 +419,10 @@ public class CiphertextWriteGuard {
 			if (!foreignTimeChange) {
 				var timeAfterClose = readTimeOrNull();
 				if (timeAfterClose != null && !timeAfterClose.equals(timeBaseline)) {
-					ownChanges = true;
-					timeBaseline = timeAfterClose;
+					if (!ownTimeWithheld) {
+						ownChanges = true;
+					}
+					timeBaseline = timeAfterClose; // even a withheld time's close is no foreign change
 				}
 				timeReadAtClose = timeAfterClose != null;
 			}
@@ -438,6 +442,7 @@ public class CiphertextWriteGuard {
 		expectedSize = newExpectedSize;
 		ownChanges = true;
 		savedOnce = true;
+		ownTimeWithheld = false;
 		timeBaseline = readTimeOrNull();
 		timeReadAtClose = false;
 	}
@@ -463,6 +468,9 @@ public class CiphertextWriteGuard {
 			timeReadAtClose = false;
 			write.write(ownTime ? FileTime.from(lastModified.get()) : null);
 			if (mayWriteModifiedTime) {
+				if (ownChanges) { // a persist with nothing pending, e.g. by another channel, decides nothing about the last save's time
+					ownTimeWithheld = !ownTime; // outlives the foreign time change cleared below, so that a close doesn't restore the withheld time
+				}
 				ownChanges = false;
 				foreignTimeChange = false;
 			}
@@ -489,6 +497,7 @@ public class CiphertextWriteGuard {
 				lastModified.set(lastModifiedTime.toInstant());
 				timeBaseline = readTimeOrNull();
 				foreignTimeChange = false;
+				ownTimeWithheld = false;
 			}
 		} finally {
 			lock.unlock();

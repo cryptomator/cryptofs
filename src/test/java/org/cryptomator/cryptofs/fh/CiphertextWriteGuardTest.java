@@ -581,6 +581,56 @@ public class CiphertextWriteGuardTest {
 		assertNull(persistedModifiedTime());
 	}
 
+	@Test
+	@DisplayName("a time the file system sets while closing a channel doesn't restore a save's time that a foreign time change withheld")
+	void testCloseTimeAfterWithheldOwnTimeKeepsItWithheld() throws IOException {
+		Files.setLastModifiedTime(path, FOREIGN_TIME);
+		save(0, 9);
+		assertNull(persistedModifiedTime()); // e.g. force(true) before closing
+
+		inTest.guardedClose(() -> Files.setLastModifiedTime(path, CLOSE_TIME));
+
+		assertNull(persistedModifiedTime());
+	}
+
+	@Test
+	@DisplayName("a time the file system sets while closing a channel after a withheld own time doesn't withhold a later save's time")
+	void testCloseTimeAfterWithheldOwnTimeIsNoForeignChange() throws IOException {
+		Files.setLastModifiedTime(path, FOREIGN_TIME);
+		save(0, 9);
+		assertNull(persistedModifiedTime());
+		inTest.guardedClose(() -> Files.setLastModifiedTime(path, CLOSE_TIME));
+
+		save(1, 9); // e.g. through another channel of the file
+
+		assertEquals(FileTime.fromMillis(1), persistedModifiedTime());
+	}
+
+	@Test
+	@DisplayName("a time the file system sets while closing a channel stays the file's own after a persist with nothing pending")
+	void testCloseTimeAfterPersistWithNothingPendingIsOwn() throws IOException {
+		save(0, 9);
+		assertEquals(FileTime.fromMillis(1), persistedModifiedTime());
+		assertNull(persistedModifiedTime()); // e.g. another channel's force(true)
+
+		inTest.guardedClose(() -> Files.setLastModifiedTime(path, CLOSE_TIME));
+
+		assertEquals(FileTime.fromMillis(1), persistedModifiedTime());
+	}
+
+	@Test
+	@DisplayName("a time set through the view after a withheld own time is set back to once the file system sets another while closing a channel")
+	void testCloseTimeAfterViewTimeFollowingWithheldOwnTimeIsOwn() throws IOException {
+		Files.setLastModifiedTime(path, FOREIGN_TIME);
+		save(0, 9);
+		assertNull(persistedModifiedTime()); // withholds the save's time, which the view time ends
+		inTest.persistViewTimes(path, VIEW_TIME, () -> Files.setLastModifiedTime(path, VIEW_TIME));
+
+		inTest.guardedClose(() -> Files.setLastModifiedTime(path, CLOSE_TIME));
+
+		assertEquals(VIEW_TIME, persistedModifiedTime());
+	}
+
 	private FileTime persistedModifiedTime() throws IOException {
 		var written = new AtomicReference<FileTime>();
 		inTest.persistOwnTimes(true, written::set);
