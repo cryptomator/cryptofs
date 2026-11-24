@@ -448,7 +448,7 @@ public class CiphertextWriteGuard {
 	}
 
 	private void noteForeignTimeChange() {
-		if (timeBaseline != null && !timeBaseline.equals(readTimeOrNull())) {
+		if (!foreignTimeChange && timeBaseline != null && !timeBaseline.equals(readTimeOrNull())) { // once set, skips the stat, a round trip on a network share
 			foreignTimeChange = true;
 		}
 	}
